@@ -1,0 +1,52 @@
+# Lucca Soul — infrastruttura di sviluppo (Wave 0).
+# Servizi dati; l'app e i servizi Python girano in locale contro questi.
+# api-engineer estenderà questo file aggiungendo il servizio BFF quando esiste il Dockerfile.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lucca_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lucca}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lucca}
+      POSTGRES_DB: ${POSTGRES_DB:-lucca_soul}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lucca} -d ${POSTGRES_DB:-lucca_soul}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  neo4j:
+    image: neo4j:5-community
+    container_name: lucca_neo4j
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-luccasoul}
+      NEO4J_PLUGINS: '["apoc"]'
+    ports:
+      - "7474:7474"   # browser
+      - "7687:7687"   # bolt
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: lucca_qdrant
+    ports:
+      - "6333:6333"   # REST
+      - "6334:6334"   # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  pg_data:
+  neo4j_data:
+  qdrant_data:
