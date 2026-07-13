@@ -14,16 +14,19 @@ dependencies = [
     "pydantic-settings>=2",
 ]
 
-# NOTA — pacchetto contratti (packages/contracts):
-# `lucca-contracts` è la single source of truth per gli schemi request/response
-# (docs/DATA_CONTRACTS.md) e NON va aggiunto qui come dipendenza pip (non è
-# pubblicato su un indice). Va installato a parte, in editable mode, insieme
-# a questo pacchetto:
+# NOTA — pacchetti locali (packages/contracts, services/graph, services/rag,
+# services/experience-engine): sono la single source of truth per gli schemi
+# (docs/DATA_CONTRACTS.md), per la CandidateSource del grafo, per l'onboarding
+# conversazionale e per la composizione dei `reason`, e per l'AI Experience
+# Engine che decide le tappe. NON vanno aggiunti qui come dipendenze pip (non
+# sono pubblicati su un indice). Vanno installati a parte, in editable mode,
+# insieme a questo pacchetto:
 #
-#   pip install -e packages/contracts -e services/api
+#   pip install -e packages/contracts -e services/graph -e services/rag \
+#               -e services/experience-engine -e services/api
 #
-# Il codice di `api` importa da `contracts` assumendo che sia già installato
-# nell'ambiente attivo.
+# Il codice di `api` importa da `contracts`, `graph`, `rag` ed
+# `experience_engine` assumendo che siano già installati nell'ambiente attivo.
 
 [tool.hatch.build.targets.wheel]
 packages = ["api"]
