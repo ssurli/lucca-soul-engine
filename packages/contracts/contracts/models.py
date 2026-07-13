@@ -135,6 +135,12 @@ class GraphCandidate(ContractModel):
     place_nome: str
     connessioni: list[str]  # es. "Puccini è legato a questo luogo"
     distanza_m: int | None = Field(default=None, ge=0)
+    # SEPARATA da `connessioni`: le connessioni alimentano lo score di
+    # sorpresa del motore. Se l'attribuzione commerciale vi finisse dentro,
+    # la presenza di un partner comprerebbe score, violando "visibilità non
+    # acquistabile". `attribuzione` è SOLO narrazione trasparente nel
+    # `reason`, mai input di scoring.
+    attribuzione: str | None = None  # es. "Offerta da <bottega>, bottega di <mestiere>."
 
 
 # ---------------------------------------------------------------------------
@@ -145,14 +151,14 @@ class GraphCandidate(ContractModel):
 class ExperienceCandidate(ContractModel):
     experience_id: str
     score: float = Field(ge=0, le=1)
-    reason: str  # SPIEGABILITÀ OBBLIGATORIA, in italiano
+    reason: str = Field(min_length=1)  # SPIEGABILITÀ OBBLIGATORIA, in italiano
 
 
 class ItineraryStop(ContractModel):
     experience_id: str
     arrivo: time
     durata_min: int = Field(ge=0)
-    reason: str
+    reason: str = Field(min_length=1)  # SPIEGABILITÀ OBBLIGATORIA, in italiano
 
 
 class Itinerary(ContractModel):

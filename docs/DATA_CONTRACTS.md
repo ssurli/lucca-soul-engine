@@ -71,8 +71,14 @@ class GraphCandidate(BaseModel):
     experience: ExperienceNode
     place_nome: str
     connessioni: list[str]             # fatti in italiano, es. "Puccini è legato a questo luogo"
-                                        # alimentano il `reason`
+                                        # alimentano il `reason` E lo score di sorpresa
     distanza_m: int | None = None      # se presente: >= 0
+    # `attribuzione` è SEPARATA da `connessioni` per prescrizione ethics-guardian:
+    # le connessioni alimentano lo score di sorpresa del motore. Se l'attribuzione
+    # commerciale vi finisse dentro, la presenza di un partner comprerebbe score,
+    # violando "visibilità non acquistabile". `attribuzione` è SOLO narrazione
+    # trasparente nel `reason`, mai input di scoring.
+    attribuzione: str | None = None    # es. "Offerta da <bottega>, bottega di <mestiere>."
 ```
 
 ## 3. AI Experience Engine — uscita
@@ -81,13 +87,13 @@ class GraphCandidate(BaseModel):
 class ExperienceCandidate(BaseModel):
     experience_id: str
     score: float                      # 0..1
-    reason: str                       # SPIEGABILITÀ OBBLIGATORIA, in italiano
+    reason: str                       # SPIEGABILITÀ OBBLIGATORIA, in italiano (min 1 carattere)
 
 class ItineraryStop(BaseModel):
     experience_id: str
     arrivo: time
     durata_min: int
-    reason: str
+    reason: str                       # SPIEGABILITÀ OBBLIGATORIA, in italiano (min 1 carattere)
 
 class Itinerary(BaseModel):
     person_id: str
@@ -189,6 +195,9 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 ## Vincoli trasversali (verificati da `ethics-guardian`)
 
 - Nessun campo di questi contratti contiene PII.
-- `reason` è obbligatorio ovunque compaia una raccomandazione.
+- `reason` è obbligatorio ovunque compaia una raccomandazione (vincolo di contratto:
+  `min_length=1` su `ExperienceCandidate.reason` e `ItineraryStop.reason`).
+- `GraphCandidate.attribuzione` è narrazione trasparente, sempre separata da
+  `connessioni`: non deve mai influenzare lo score (nessun "acquisto" di visibilità).
 - `MemoryContribution.consenso` deve essere `True` per essere persistito. Nessuna eccezione.
 - Nessun campo esprime "priorità a pagamento": la visibilità non è acquistabile.
