@@ -1,10 +1,16 @@
 // Query "candidati" per l'AI Experience Engine.
 //
 // Il grafo PROPONE per connessioni: ogni riga porta i fatti grezzi (artisti
-// legati al luogo, temi evocati, bottega che offre l'esperienza, distanza
-// dal punto di riferimento) da cui `graph.source.Neo4jCandidateSource` monta
-// un `GraphCandidate`. Non ordina e non applica vincoli etici: quello spetta
-// all'AI Experience Engine, il solo componente che decide.
+// legati al luogo, temi evocati, distanza dal punto di riferimento) da cui
+// `graph.source.Neo4jCandidateSource` monta un `GraphCandidate`. Non ordina e
+// non applica vincoli etici: quello spetta all'AI Experience Engine, il solo
+// componente che decide.
+//
+// `botteghe_nomi` (dalla relazione OFFRE) è nel risultato ma alimenta SOLO
+// `GraphCandidate.attribuzione` (narrazione trasparente nel `reason`), MAI
+// `connessioni`: `connessioni` conta nella componente "sorpresa" dello score
+// del motore, e la presenza di un partner non deve comprare punteggio —
+// "nessuno spazio è acquistabile" (CLAUDE.md).
 //
 // Parametri (tutti opzionali: `null` o lista vuota = nessun filtro):
 //   $temi         list[string]   id di Tema da cercare tra quelli evocati

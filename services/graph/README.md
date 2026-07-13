@@ -68,8 +68,15 @@ ctx = VisitorContext(
 )
 for candidato in SeedCandidateSource().candidates(ctx)[:3]:
     print(candidato.experience.titolo, '->', candidato.connessioni)
+    print('  attribuzione:', candidato.attribuzione)  # None se nessun partner
 "
 ```
+
+`attribuzione` (chi offre l'esperienza, se un partner è coinvolto) è
+SEPARATA da `connessioni`: `connessioni` alimenta la componente "sorpresa"
+dello score del motore, e un partner non deve comprare punteggio — "nessuno
+spazio è acquistabile" (CLAUDE.md). `attribuzione` è solo narrazione
+trasparente per il `reason`.
 
 ## Popolare Neo4j (Aura o locale) — `make seed` equivalente
 

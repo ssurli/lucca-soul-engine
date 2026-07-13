@@ -12,7 +12,7 @@ from __future__ import annotations
 from datetime import time
 
 import pytest
-from contracts import EmotionalProfile, GraphCandidate, Signal, VisitorContext
+from contracts import EmotionalProfile, ExperienceNode, GraphCandidate, Signal, VisitorContext
 from graph.seed_lucca import ESPERIENZE
 from graph.source import CANDIDATES_QUERY_PATH, CandidateSource, SeedCandidateSource
 
@@ -83,13 +83,69 @@ def test_connessione_artista_legato_al_luogo() -> None:
     assert any("Puccini" in frase for frase in candidato_puccini.connessioni)
 
 
-def test_connessione_bottega_che_offre() -> None:
+def test_esperienza_con_partner_ha_attribuzione_valorizzata_e_non_in_connessioni() -> None:
+    # Prescrizione ethics-guardian: "Offerta da..." vive in `attribuzione`,
+    # MAI in `connessioni` (che alimenta lo score di sorpresa del motore) —
+    # un partner non deve comprare punteggio ("visibilità non acquistabile").
     source = SeedCandidateSource()
     candidati = source.candidates(_ctx())
     candidato_liuteria = next(
         c for c in candidati if c.experience.id == "exp-laboratorio-liuteria"
     )
-    assert any("Offerta da" in frase for frase in candidato_liuteria.connessioni)
+    assert candidato_liuteria.attribuzione is not None
+    assert "Offerta da" in candidato_liuteria.attribuzione
+    assert not any("Offerta da" in frase for frase in candidato_liuteria.connessioni)
+
+
+def test_esperienza_senza_partner_ha_attribuzione_none() -> None:
+    source = SeedCandidateSource()
+    candidati = source.candidates(_ctx())
+    candidato_mura = next(c for c in candidati if c.experience.id == "exp-passeggiata-mura")
+    assert candidato_mura.experience.partner_id is None
+    assert candidato_mura.attribuzione is None
+
+
+def test_len_connessioni_non_cambia_tra_esperienza_partner_e_non_partner() -> None:
+    # A parità di luogo/temi, la presenza di un partner non deve alterare il
+    # conteggio delle connessioni: costruiamo due esperienze "gemelle" (stesso
+    # luogo, stessi temi), una con partner e una senza, e confrontiamo la
+    # lunghezza di `connessioni` prodotta dalla stessa istanza di sorgente.
+    source = SeedCandidateSource()
+
+    base = dict(
+        place_id="san-michele-in-foro",
+        temi=["liuteria", "artigianato", "musica"],
+        durata_min=30,
+        al_chiuso=True,
+        accessibile=True,
+    )
+    esperienza_con_partner = ExperienceNode(
+        id="exp-test-gemella-partner",
+        titolo="Gemella con partner",
+        partner_id="liuteria-lucchese",
+        **base,  # type: ignore[arg-type]
+    )
+    esperienza_senza_partner = ExperienceNode(
+        id="exp-test-gemella-no-partner",
+        titolo="Gemella senza partner",
+        partner_id=None,
+        **base,  # type: ignore[arg-type]
+    )
+    riferimento = None
+    luogo_obj = source._luoghi["san-michele-in-foro"]
+
+    connessioni_con_partner = source._connessioni(esperienza_con_partner, luogo_obj, riferimento)
+    connessioni_senza_partner = source._connessioni(
+        esperienza_senza_partner, luogo_obj, riferimento
+    )
+
+    assert len(connessioni_con_partner) == len(connessioni_senza_partner)
+    assert not any("Offerta da" in frase for frase in connessioni_con_partner)
+
+    attribuzione_con_partner = source._attribuzione(esperienza_con_partner)
+    attribuzione_senza_partner = source._attribuzione(esperienza_senza_partner)
+    assert attribuzione_con_partner is not None
+    assert attribuzione_senza_partner is None
 
 
 def test_due_profili_diversi_possono_generare_connessioni_diverse() -> None:

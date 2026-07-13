@@ -1,11 +1,18 @@
 """Sorgenti di candidati per l'AI Experience Engine.
 
 Il grafo PROPONE per CONNESSIONI (fatti leggibili in italiano: un artista
-legato al luogo, un tema evocato, una bottega che offre l'esperienza, una
-vicinanza a un luogo già in contesto). Non ordina, non filtra su segnale
-(pioggia, affollamento, stanchezza) e non assegna punteggi: quello è compito,
-rispettivamente, del Signal/Ethical AI Engine e del Recommender, orchestrati
-dall'AI Experience Engine — l'unico componente che DECIDE.
+legato al luogo, un tema evocato, una vicinanza a un luogo già in contesto).
+Non ordina, non filtra su segnale (pioggia, affollamento, stanchezza) e non
+assegna punteggi: quello è compito, rispettivamente, del Signal/Ethical AI
+Engine e del Recommender, orchestrati dall'AI Experience Engine — l'unico
+componente che DECIDE.
+
+`connessioni` alimenta la componente "sorpresa" dello score del motore
+(`len(connessioni)`): per questo NON contiene mai il fatto commerciale "chi
+offre l'esperienza". Quel fatto va in `GraphCandidate.attribuzione` (`str |
+None`), un campo separato e non contato nello score — SOLO narrazione
+trasparente nel `reason`. Un'esperienza con partner non deve valere di più
+di una senza: "nessuno spazio è acquistabile" (CLAUDE.md).
 
 Due implementazioni della stessa interfaccia (`CandidateSource`):
 - `SeedCandidateSource` — in-memory sul dataset canonico (`graph.seed_lucca`).
@@ -93,6 +100,7 @@ class SeedCandidateSource:
                     place_nome=luogo.nome,
                     connessioni=self._connessioni(esperienza, luogo, riferimento),
                     distanza_m=self._distanza(esperienza.place_id, riferimento),
+                    attribuzione=self._attribuzione(esperienza),
                 )
             )
         return risultato
@@ -111,11 +119,6 @@ class SeedCandidateSource:
             if tema is not None:
                 frasi.append(f'Evoca il tema "{tema.nome}".')
 
-        if esperienza.partner_id is not None:
-            bottega = self._botteghe.get(esperienza.partner_id)
-            if bottega is not None:
-                frasi.append(f"Offerta da {bottega.nome}, bottega di {bottega.mestiere}.")
-
         if riferimento is not None and riferimento != luogo.id:
             luogo_riferimento = self._luoghi.get(riferimento)
             if luogo_riferimento is not None:
@@ -127,6 +130,18 @@ class SeedCandidateSource:
                         break
 
         return frasi
+
+    def _attribuzione(self, esperienza: ExperienceNode) -> str | None:
+        """Fatto commerciale trasparente ("chi offre l'esperienza"), separato
+        da `connessioni`: non deve mai contribuire alla "sorpresa" contata
+        dal motore (`len(connessioni)`). `None` se l'esperienza non ha un
+        partner (`OFFRE`)."""
+        if esperienza.partner_id is None:
+            return None
+        bottega = self._botteghe.get(esperienza.partner_id)
+        if bottega is None:
+            return None
+        return f"Offerta da {bottega.nome}, bottega di {bottega.mestiere}."
 
     def _distanza(self, place_id: str, riferimento: str | None) -> int | None:
         if riferimento is None:
@@ -212,12 +227,15 @@ class Neo4jCandidateSource:
         for nome in record["temi_nomi"] or []:
             if nome:
                 connessioni.append(f'Evoca il tema "{nome}".')
-        for nome in record["botteghe_nomi"] or []:
-            if nome:
-                connessioni.append(f"Offerta da {nome}.")
+        # `botteghe_nomi` NON entra in `connessioni` (contate nello score del
+        # motore): alimenta solo `attribuzione`, fatto commerciale separato e
+        # non conteggiato — "nessuno spazio è acquistabile".
+        botteghe_nomi = [nome for nome in (record["botteghe_nomi"] or []) if nome]
+        attribuzione = f"Offerta da {botteghe_nomi[0]}." if botteghe_nomi else None
         return GraphCandidate(
             experience=esperienza,
             place_nome=record["place_nome"],
             connessioni=connessioni,
             distanza_m=record["distanza_m"],
+            attribuzione=attribuzione,
         )
