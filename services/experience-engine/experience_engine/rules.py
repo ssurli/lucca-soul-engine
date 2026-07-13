@@ -131,10 +131,14 @@ def calcola_score(candidate: GraphCandidate, profile: EmotionalProfile, signal: 
     """Affinità profilo <-> esperienza in [0, 1], deterministica.
 
     VISIBILITÀ NON ACQUISTABILE: questa funzione NON legge mai
-    `candidate.experience.partner_id` né `candidate.experience.prezzo_eur`.
-    Un partner compare solo se coerente col profilo e col luogo; non esiste
-    prezzo che alteri lo score. Il vincolo è verificato da un test-guard che
-    controlla l'assenza di quei nomi in questo modulo.
+    `candidate.experience.partner_id`, `candidate.experience.prezzo_eur` né
+    `candidate.attribuzione`. L'attribuzione ("Offerta da ...") è una
+    disclosure che vive SOLO nel `reason`, in coda ai motivi reali: non deve
+    entrare nello scoring — in particolare non deve gonfiare la componente
+    `sorpresa`, che conta le `connessioni` del grafo e nient'altro. Un partner
+    compare solo se coerente col profilo e col luogo; non esiste prezzo che
+    alteri lo score. Il vincolo è verificato da un test-guard (AST) e da un
+    test comportamentale (score invariante a partner/prezzo/attribuzione).
     """
     esperienza = candidate.experience
     temi = esperienza.temi

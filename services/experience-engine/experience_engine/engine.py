@@ -99,6 +99,26 @@ def _tema_primario(candidate: GraphCandidate) -> str:
     return temi[0] if temi else ""
 
 
+def _con_disclosure(reason: str, candidate: GraphCandidate) -> str:
+    """Appende l'attribuzione del partner (se presente) IN CODA al `reason`.
+
+    L'attribuzione ("Offerta da ...") è disclosure trasparente e veritiera, non
+    promozione: compare solo DOPO i motivi reali della scelta e non tocca lo
+    score (la visibilità non è acquistabile). Se il `reason` non contiene già
+    la frase, la si aggiunge come ultima frase."""
+    attribuzione = getattr(candidate, "attribuzione", None)
+    if not attribuzione:
+        return reason
+    attribuzione = attribuzione.strip()
+    if not attribuzione or attribuzione in reason:
+        return reason
+    testo = reason.rstrip()
+    if testo and not testo.endswith("."):
+        testo += "."
+    coda = attribuzione if attribuzione.endswith(".") else attribuzione + "."
+    return f"{testo} {coda}".strip()
+
+
 def _ordina_per_score(
     candidates: list[GraphCandidate], profile: EmotionalProfile, signal: Signal
 ) -> list[tuple[float, GraphCandidate]]:
@@ -182,7 +202,7 @@ def _costruisci_stops(
         if i > 0:
             orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
         segnali = segnali_rilevanti(cand, signal)
-        reason = reason_fn(cand, profile, segnali)
+        reason = _con_disclosure(reason_fn(cand, profile, segnali), cand)
         stops.append(
             ItineraryStop(
                 experience_id=cand.experience.id,
@@ -451,6 +471,9 @@ def _ricostruisci_stops(
         reason = getattr(cand, "reason_deciso", None)
         if not reason:
             reason = reason_fn(cand, profile, segnali_rilevanti(cand, signal))
+        # Disclosure in coda (idempotente: non duplica se già presente, es.
+        # nelle tappe non toccate che conservano il reason originale).
+        reason = _con_disclosure(reason, cand)
         stops.append(
             ItineraryStop(
                 experience_id=cand.experience.id,

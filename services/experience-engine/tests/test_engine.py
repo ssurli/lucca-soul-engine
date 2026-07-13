@@ -264,3 +264,99 @@ def test_scoring_penalizza_affollamento() -> None:
     vuoto = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
     pieno = Signal(meteo="sereno", affollamento={"luogo": 0.7}, stanchezza=0.0, ora=time(10, 0))
     assert rules.calcola_score(cand, profile, pieno) < rules.calcola_score(cand, profile, vuoto)
+
+
+def _candidato(
+    *,
+    partner_id: str | None = None,
+    prezzo_eur: float | None = None,
+    attribuzione: str | None = None,
+) -> GraphCandidate:
+    """Costruisce a mano un candidato identico salvo i campi commerciali.
+
+    Costruito a mano di proposito: il test comportamentale sull'invarianza NON
+    deve dipendere da come il grafo popola (o meno) `attribuzione`."""
+    from contracts import ExperienceNode
+
+    exp = ExperienceNode(
+        id="exp-x", titolo="Esperienza X", place_id="luogo", temi=["arte", "liuteria"],
+        durata_min=40, al_chiuso=True, accessibile=True,
+        partner_id=partner_id, prezzo_eur=prezzo_eur,
+    )
+    return GraphCandidate(
+        experience=exp, place_nome="Luogo", connessioni=['Evoca il tema "Arte".'],
+        attribuzione=attribuzione,
+    )
+
+
+def test_scoring_invariante_a_partner_prezzo_attribuzione() -> None:
+    """VISIBILITÀ NON ACQUISTABILE (test comportamentale): due candidati
+    identici in tutto tranne partner_id / prezzo_eur / attribuzione devono
+    ottenere lo STESSO score. Nessun canale commerciale influenza la scelta."""
+    profile = EmotionalProfile(
+        curiosita=0.9, contemplazione=0.4, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
+
+    neutro = _candidato()
+    commerciale = _candidato(
+        partner_id="bottega-1", prezzo_eur=25.0,
+        attribuzione="Offerta da Bottega Rossi, bottega di liuteria.",
+    )
+    assert rules.calcola_score(neutro, profile, signal) == rules.calcola_score(
+        commerciale, profile, signal
+    )
+
+
+def test_reason_contiene_attribuzione_ma_score_invariato() -> None:
+    """Con `attribuzione` valorizzata il `reason` finale la contiene (disclosure
+    trasparente in coda), ma lo score resta identico al caso senza attribuzione:
+    la disclosure racconta, non promuove."""
+    profile = EmotionalProfile(
+        curiosita=0.8, contemplazione=0.4, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
+    attribuzione = "Offerta da Bottega Rossi, bottega di liuteria."
+
+    con_attr = _candidato(attribuzione=attribuzione)
+    senza_attr = _candidato()
+
+    # Score invariato.
+    assert rules.calcola_score(con_attr, profile, signal) == rules.calcola_score(
+        senza_attr, profile, signal
+    )
+
+    # Il reason finale contiene la disclosure, in coda.
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+    it = compose_itinerary(ctx, [con_attr], compose_reason)
+    assert len(it.stops) == 1
+    reason = it.stops[0].reason
+    assert attribuzione in reason
+    assert reason.strip().endswith(attribuzione)
+
+    # Senza attribuzione, il reason non la inventa.
+    it2 = compose_itinerary(ctx, [senza_attr], compose_reason)
+    assert "Offerta da" not in it2.stops[0].reason
+
+
+def test_disclosure_non_duplicata_in_adapt() -> None:
+    """La disclosure è idempotente: una tappa non toccata dall'adapt conserva
+    il reason originale senza ripetere l'attribuzione."""
+    profile = EmotionalProfile(
+        curiosita=0.6, contemplazione=0.4, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    attribuzione = "Offerta da Bottega Rossi, bottega di liuteria."
+    signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.2, ora=time(10, 0))
+    cand = _candidato(attribuzione=attribuzione)
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+    base = compose_itinerary(ctx, [cand], compose_reason)
+    # Segnale che tocca un ALTRO luogo: questa tappa resta intatta.
+    crowd = Signal(
+        meteo="sereno", affollamento={"altro-luogo": 0.9}, stanchezza=0.2, ora=time(10, 0)
+    )
+    adattato = adapt_itinerary(base, crowd, [cand], profile, compose_reason, adapt_reason)
+    reason = adattato.stops[0].reason if adattato.stops else base.stops[0].reason
+    assert reason.count(attribuzione) == 1
