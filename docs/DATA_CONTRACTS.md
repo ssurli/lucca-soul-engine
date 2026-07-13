@@ -23,10 +23,15 @@ class EmotionalProfile(BaseModel):
 
 class Signal(BaseModel):              # stato del mondo, ORA
     meteo: Literal["sereno","pioggia","caldo","freddo"]
-    affollamento: dict[str, float]    # place_id -> 0..1
+    affollamento: dict[str, float]    # place_id -> 0..1 (validato: ogni valore in [0,1])
     stanchezza: float                 # 0..1, sale durante la giornata
     ora: time
     eventi_attivi: list[str] = []
+
+    # `field_validator` su `affollamento`: rigetta con errore in italiano (che
+    # indica il place_id incriminato) qualunque valore fuori [0,1]. Motivo:
+    # l'affollamento governa la distribuzione dei flussi; un valore fuori scala
+    # inverte la logica etica del motore. Vedi packages/contracts per il codice.
 
 class PersonKind(str, Enum):
     TURISTA = "turista"
@@ -57,8 +62,8 @@ class ExperienceNode(BaseModel):
     al_chiuso: bool                   # per il segnale "pioggia"
     accessibile: bool
     alimenta_memoria: bool = False    # l'esperienza produce contributi di Urban Memory
-    partner_id: str | None
-    prezzo_eur: float | None
+    partner_id: str | None = None
+    prezzo_eur: float | None = None   # se presente: >= 0
 ```
 
 ## 3. AI Experience Engine — uscita

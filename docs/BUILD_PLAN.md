@@ -11,7 +11,9 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
 - **contract-keeper**: crea `packages/contracts` (Pydantic v2) da `docs/DATA_CONTRACTS.md`.
 - **api-engineer**: scaffold FastAPI, integra `docker-compose.yml`, endpoint `/health`.
 - **test-engineer**: setup pytest + contract test che importano `packages/contracts`.
-- ✅ **Accettazione:** `docker compose up` sano; contratti importabili da tutti i servizi; CI verde.
+- ✅ **Accettazione:** connessioni Aura + Neon verificate; pgvector abilitato; contratti
+  importabili da tutti i servizi; CI verde. *(Il profilo locale con `docker compose up` resta
+  opzionale: stesso codice, cambia solo il `.env`.)*
 
 ## Wave 1 — Proof of Concept: la conversazione → l'itinerario  *(= Fase 1 del white paper)*
 - **graph-architect**: schema Neo4j + seed Lucca (10-15 luoghi, 5 botteghe, esperienze) + query candidati.

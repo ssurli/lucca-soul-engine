@@ -16,7 +16,7 @@ from datetime import datetime, time
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 __all__ = [
     "EmotionalProfile",
@@ -68,10 +68,24 @@ class Signal(ContractModel):
     """Stato del mondo, ORA."""
 
     meteo: Literal["sereno", "pioggia", "caldo", "freddo"]
-    affollamento: dict[str, float]  # place_id -> 0..1
+    affollamento: dict[str, float]  # place_id -> 0..1 (validato: ogni valore in [0,1])
     stanchezza: float = Field(ge=0, le=1)  # sale durante la giornata
     ora: time
     eventi_attivi: list[str] = []
+
+    @field_validator("affollamento")
+    @classmethod
+    def _affollamento_in_scala(cls, v: dict[str, float]) -> dict[str, float]:
+        # L'affollamento governa la distribuzione dei flussi: un valore fuori
+        # scala inverte la logica etica del motore (falsa la scelta tra
+        # luoghi affollati e non). Validato per ogni place_id, non solo il tipo.
+        for place_id, valore in v.items():
+            if not 0 <= valore <= 1:
+                raise ValueError(
+                    f"affollamento fuori scala per place_id={place_id!r}: "
+                    f"{valore} non è in [0,1]"
+                )
+        return v
 
 
 class PersonKind(str, Enum):
@@ -101,8 +115,8 @@ class ExperienceNode(ContractModel):
     al_chiuso: bool  # per il segnale "pioggia"
     accessibile: bool
     alimenta_memoria: bool = False  # l'esperienza produce contributi di Urban Memory
-    partner_id: str | None
-    prezzo_eur: float | None = Field(ge=0)
+    partner_id: str | None = None
+    prezzo_eur: float | None = Field(default=None, ge=0)
 
 
 # ---------------------------------------------------------------------------
