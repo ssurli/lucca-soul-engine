@@ -337,6 +337,37 @@ def test_soddisfazione_rifiuta_5_1() -> None:
 
 
 # ---------------------------------------------------------------------------
+# 3bis. Signal.affollamento: field_validator per-place_id in [0,1]
+# ---------------------------------------------------------------------------
+
+
+def test_signal_affollamento_rifiuta_valore_1_5() -> None:
+    with pytest.raises(ValidationError):
+        make_signal(affollamento={"piazza-anfiteatro": 1.5})
+
+
+def test_signal_affollamento_rifiuta_valore_negativo() -> None:
+    with pytest.raises(ValidationError):
+        make_signal(affollamento={"piazza-anfiteatro": -0.1})
+
+
+def test_signal_affollamento_accetta_valori_limite() -> None:
+    signal = make_signal(affollamento={"piazza-anfiteatro": 0.0, "mura-urbane": 1.0})
+    assert signal.affollamento == {"piazza-anfiteatro": 0.0, "mura-urbane": 1.0}
+
+
+def test_signal_affollamento_messaggio_contiene_place_id_incriminato() -> None:
+    with pytest.raises(ValidationError) as exc_info:
+        make_signal(affollamento={"piazza-napoleone": 2.0})
+    assert "piazza-napoleone" in str(exc_info.value)
+
+
+def test_signal_affollamento_dict_vuoto_accettato() -> None:
+    signal = make_signal(affollamento={})
+    assert signal.affollamento == {}
+
+
+# ---------------------------------------------------------------------------
 # 4. extra="forbid": campi non canonici vengono rifiutati
 # ---------------------------------------------------------------------------
 
@@ -399,6 +430,26 @@ def test_default_curato_false() -> None:
 
 def test_default_alimenta_memoria_false() -> None:
     assert make_experience_node().alimenta_memoria is False
+
+
+def test_default_partner_id_e_prezzo_eur_none_se_omessi() -> None:
+    # partner_id e prezzo_eur sono opzionali: costruzione SENZA passarli.
+    node = ExperienceNode(
+        id="exp-1",
+        titolo="Passeggiata sulle Mura",
+        place_id="mura-urbane",
+        temi=["storia", "panorama"],
+        durata_min=60,
+        al_chiuso=False,
+        accessibile=True,
+    )
+    assert node.partner_id is None
+    assert node.prezzo_eur is None
+
+
+def test_experience_node_prezzo_eur_negativo_rifiutato() -> None:
+    with pytest.raises(ValidationError):
+        make_experience_node(prezzo_eur=-1)
 
 
 # ---------------------------------------------------------------------------
