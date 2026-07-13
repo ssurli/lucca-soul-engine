@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lucca-rag"
+version = "0.1.0"
+description = "Lucca Soul Lab — Engine: servizio RAG. Onboarding conversazionale -> EmotionalProfile; generazione del `reason` (spiegabilità). L'LLM dialoga, non decide: la scelta delle tappe resta dell'AI Experience Engine."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+]
+
+# NOTA — pacchetto contratti (packages/contracts):
+# `lucca-contracts` è la single source of truth per gli schemi (EmotionalProfile,
+# OnboardingRequest, OnboardingAnswer, GraphCandidate...) e NON va aggiunto qui
+# come dipendenza pip (non è pubblicato su un indice). Va installato a parte, in
+# editable mode, insieme a questo pacchetto:
+#
+#   pip install -e packages/contracts -e services/rag
+#
+# NOTA — `anthropic` NON è una dipendenza obbligatoria di questo pacchetto.
+# L'arricchimento via LLM (rag.reasons.enrich_with_llm) è OPZIONALE, dietro la
+# variabile d'ambiente ANTHROPIC_API_KEY, e importa `anthropic` in modo lazy
+# dentro la funzione. Il percorso principale — onboarding conversazionale e
+# composizione del `reason` — è deterministico, testabile offline e non
+# richiede alcuna chiave API. Se vuoi abilitare l'arricchimento:
+#
+#   pip install anthropic
+#
+# e imposta ANTHROPIC_API_KEY nel `.env` alla radice del repo.
+
+[tool.hatch.build.targets.wheel]
+packages = ["rag"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
