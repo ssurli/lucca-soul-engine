@@ -1,0 +1,30 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lucca-graph"
+version = "0.1.0"
+description = "Lucca Soul Lab — Engine: Urban Knowledge Graph (Neo4j). Schema, Cypher versionato, seed Lucca e query dei candidati esperienza per l'AI Experience Engine."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+    "neo4j>=5",
+]
+
+# NOTA — pacchetto contratti (packages/contracts):
+# `lucca-contracts` è la single source of truth per gli schemi (ExperienceNode,
+# GraphCandidate, VisitorContext, ...) e NON va aggiunto qui come dipendenza
+# pip (non è pubblicato su un indice). Va installato a parte, in editable
+# mode, insieme a questo pacchetto:
+#
+#   pip install -e packages/contracts -e services/graph
+#
+# Il codice di `graph` importa da `contracts` assumendo che sia già
+# installato nell'ambiente attivo.
+
+[tool.hatch.build.targets.wheel]
+packages = ["graph"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
