@@ -95,3 +95,17 @@ click/pubblicità/vendite · **visibilità non acquistabile** · spiegabilità o
 consenso e licenza per ogni contributo di Urban Memory.
 
 Il vocabolario è quello del White Paper. Se un nome nel codice diverge, **vince il White Paper**.
+
+## Nota ambiente: rete aziendale con ispezione TLS
+
+Su rete AUSL il traffico HTTPS viene intercettato e ri-firmato con una CA aziendale.
+Python non la riconosce e ogni connessione TLS fallisce con:
+`SSLCertVerificationError: self-signed certificate in certificate chain`
+
+Soluzione (una volta per macchina):
+
+    pip install pip-system-certs
+
+Fa usare a Python il magazzino certificati di Windows, dove la CA aziendale � gia presente.
+Il TLS resta VERIFICATO. Non usare `neo4j+ssc://` ne `verify=False`: disattiverebbero la
+protezione contro l'uomo-in-mezzo, incompatibile con la privacy by design del progetto.
