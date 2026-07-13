@@ -41,8 +41,24 @@ Urban Digital Twin
 | BFF / API | FastAPI (Python 3.12, Pydantic v2) | locale |
 | Urban Knowledge Graph | Neo4j | **Aura (cloud)** — `neo4j+s://` |
 | Transazionale + eventi + memoria | PostgreSQL | **Neon (cloud)** — `sslmode=require` |
-| RAG | Vector DB (Qdrant) + Anthropic API | Qdrant in locale (Docker) |
+| RAG / Vector store | **pgvector dentro Neon** + Anthropic API | cloud (nessun Docker) |
 | Recommender | ML classico su eventi comportamentali | locale |
+
+> **Ambiente: Windows / PowerShell.** Gli script per l'utente vanno in PowerShell (`.ps1`) o
+> come comandi Python. Non dare per scontato `bash`.
+>
+> **DUE PROFILI, UN SOLO CODICE.** Il progetto gira su due macchine con configurazioni diverse:
+>
+> | | Notebook (no Docker) | PC fisso (con Docker) |
+> |---|---|---|
+> | Neo4j | Aura cloud (`neo4j+s://`) | Community locale (`bolt://`) |
+> | Postgres | Neon (`sslmode=require`) | Postgres locale |
+> | Vector store | pgvector su Neon | pgvector locale |
+>
+> **Il codice non deve MAI sapere dove gira.** Tutto passa da `NEO4J_URI` e `DATABASE_URL`,
+> letti dal `.env`. Niente `if local/cloud` nel codice, niente host hardcoded, niente due
+> implementazioni RAG: **pgvector in entrambi i profili**. Se un agente propone Qdrant o un
+> percorso specifico per un profilo, è un errore: rifiutalo.
 
 ### Connessioni — trappole da evitare
 - **Neo4j Aura vuole `neo4j+s://`** (TLS), non `bolt://`. Le variabili sono `NEO4J_URI`,
@@ -52,6 +68,9 @@ Urban Digital Twin
 - **Aura Free si auto-mette in pausa e viene cancellata dopo 30 giorni di inattività.**
   Conseguenza vincolante: il seed del grafo è **versionato** in `services/graph/cypher/` e
   dev'essere **rieseguibile da zero in un comando**. Nessun dato vive solo su Aura.
+- **Vector store = pgvector dentro Neon.** Nessun Qdrant. Abilitazione una tantum:
+  `CREATE EXTENSION IF NOT EXISTS vector;` (l'estensione si chiama `vector`, non `pgvector`).
+  Gli embedding stanno in colonne `VECTOR(EMBEDDING_DIM)`; indici HNSW per la similarità.
 - Credenziali SOLO nel `.env` (mai nel codice, mai nei commit).
 
 Layout target:

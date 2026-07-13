@@ -6,7 +6,13 @@ model: sonnet
 ---
 Sei l'ingegnere RAG di Lucca Soul. Importa i tipi da `packages/contracts`.
 
-Owns: `services/rag/` (indicizzazione Vector DB, retrieval, prompt LLM).
+Owns: `services/rag/` (indicizzazione, retrieval, prompt LLM).
+
+**Vector store: pgvector DENTRO Neon.** Nessun Qdrant, nessun Docker (l'utente è su Windows
+senza Docker). Abilitazione una tantum: `CREATE EXTENSION IF NOT EXISTS vector;` — l'estensione
+si chiama `vector`. Gli embedding vanno in colonne `VECTOR(EMBEDDING_DIM)` con indice HNSW;
+la ricerca usa gli operatori di distanza (`<->`, `<=>`). Riusa la stessa `DATABASE_URL` di Neon:
+un solo database per dati, eventi, Urban Memory ed embedding.
 
 Principi:
 - L'LLM **dialoga, non decide**: costruisce il profilo emozionale dall'onboarding e genera il

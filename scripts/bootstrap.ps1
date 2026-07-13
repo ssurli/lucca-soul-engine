@@ -1,25 +1,23 @@
-# Lucca Soul Lab - bootstrap Wave 0 (MODALITA CLOUD: Aura + Neon + Qdrant locale)
-# Versione PowerShell (Windows). Equivalente a scripts/bootstrap.sh.
+# Lucca Soul Lab - bootstrap Wave 0
+# MODALITA CLOUD, ZERO INFRASTRUTTURA LOCALE: Neo4j Aura + Neon (con pgvector).
+# Nessun Docker richiesto.
+#
 # Uso:   .\scripts\bootstrap.ps1
 # Se Windows blocca lo script:
 #   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 $ErrorActionPreference = "Stop"
-
 Set-Location (Join-Path $PSScriptRoot "..")
-Write-Host "==> Lucca Soul Lab - bootstrap (cloud)" -ForegroundColor Cyan
 
-# 1. Prerequisiti
-try { docker --version | Out-Null } catch { Write-Host "ERRORE: docker non trovato." -ForegroundColor Red; exit 1 }
-try { docker compose version | Out-Null } catch { Write-Host "ERRORE: 'docker compose' v2 non disponibile." -ForegroundColor Red; exit 1 }
+Write-Host "==> Lucca Soul Lab - bootstrap" -ForegroundColor Cyan
 
-# 2. .env
+# 1. .env
 if (-not (Test-Path ".env")) {
     Copy-Item ".env.example" ".env"
     Write-Host "==> creato .env da .env.example - compilalo e rilancia." -ForegroundColor Yellow
     exit 0
 }
 
-# 3. Carica il .env (gestisce virgolette e commenti)
+# 2. Carica il .env
 $env_vars = @{}
 Get-Content ".env" | ForEach-Object {
     $line = $_.Trim()
@@ -31,7 +29,7 @@ Get-Content ".env" | ForEach-Object {
     $env_vars[$k] = $v
 }
 
-# 4. Variabili obbligatorie
+# 3. Variabili obbligatorie
 $missing = $false
 foreach ($v in @("NEO4J_URI","NEO4J_USERNAME","NEO4J_PASSWORD","DATABASE_URL","ANTHROPIC_API_KEY")) {
     $val = $env_vars[$v]
@@ -45,18 +43,33 @@ foreach ($v in @("NEO4J_URI","NEO4J_USERNAME","NEO4J_PASSWORD","DATABASE_URL","A
 }
 if ($missing) { Write-Host "==> Compila le variabili mancanti nel .env e rilancia." -ForegroundColor Yellow; exit 1 }
 
-# 5. Trappole classiche
-if ($env_vars["NEO4J_URI"] -like "bolt://*") {
-    Write-Host "  [!] NEO4J_URI usa bolt:// - con Aura serve neo4j+s:// (TLS). Correggi il .env." -ForegroundColor Red; exit 1
-}
-if (-not ($env_vars["NEO4J_URI"] -like "neo4j+s://*" -or $env_vars["NEO4J_URI"] -like "neo4j+ssc://*")) {
-    Write-Host "  [!] NEO4J_URI ha uno schema inatteso." -ForegroundColor Red; exit 1
-}
-if (-not ($env_vars["DATABASE_URL"] -match "sslmode=require")) {
-    Write-Host "  [!] DATABASE_URL senza sslmode=require - Neon rifiutera la connessione." -ForegroundColor Red; exit 1
+# 4. Rileva il profilo dal .env (cloud vs locale) e valida di conseguenza
+$isLocal = ($env_vars["NEO4J_URI"] -like "bolt://*") -or ($env_vars["DATABASE_URL"] -match "localhost")
+if ($isLocal) {
+    Write-Host "==> PROFILO LOCALE rilevato (Docker: Neo4j Community + Postgres/pgvector)" -ForegroundColor Cyan
+    try { docker compose version | Out-Null } catch {
+        Write-Host "  [X] Il .env punta a localhost ma 'docker compose' non e disponibile." -ForegroundColor Red
+        Write-Host "      Avvia Docker Desktop, oppure usa il profilo cloud (.env con Aura+Neon)." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host "==> avvio i servizi locali..."
+    docker compose up -d
+    Write-Host "    attendo che siano sani..."
+    Start-Sleep -Seconds 12
+} else {
+    Write-Host "==> PROFILO CLOUD rilevato (Neo4j Aura + Neon)" -ForegroundColor Cyan
+    if (-not ($env_vars["NEO4J_URI"] -like "neo4j+s://*" -or $env_vars["NEO4J_URI"] -like "neo4j+ssc://*")) {
+        Write-Host "  [!] Con Aura NEO4J_URI deve essere neo4j+s:// (TLS)." -ForegroundColor Red; exit 1
+    }
+    if (-not ($env_vars["DATABASE_URL"] -match "sslmode=require")) {
+        Write-Host "  [!] DATABASE_URL senza sslmode=require - Neon rifiutera la connessione." -ForegroundColor Red; exit 1
+    }
+    if ($env_vars["DATABASE_URL"] -match "-pooler\.") {
+        Write-Host "  [!] DATABASE_URL e la stringa POOLED. Per migrazioni e seed serve la DIRETTA." -ForegroundColor Yellow
+    }
 }
 
-# 6. Scheletro cartelle
+# 5. Scheletro cartelle
 $dirs = @(
   "apps/lucca_soul_app",
   "services/api","services/experience-engine","services/graph/cypher",
@@ -72,22 +85,13 @@ foreach ($d in $dirs) {
 }
 Write-Host "==> scheletro cartelle pronto" -ForegroundColor Green
 
-# 7. Qdrant
-Write-Host "==> avvio Qdrant..."
-docker compose up -d
-Start-Sleep -Seconds 3
-$qurl = if ($env_vars["QDRANT_URL"]) { $env_vars["QDRANT_URL"] } else { "http://localhost:6333" }
-try {
-    Invoke-WebRequest -Uri $qurl -UseBasicParsing -TimeoutSec 5 | Out-Null
-    Write-Host "  [OK] Qdrant risponde" -ForegroundColor Green
-} catch {
-    Write-Host "  [!] Qdrant non risponde ancora (riprova tra qualche secondo)" -ForegroundColor Yellow
-}
+# 6. Verifica connessioni remote + abilita pgvector
+foreach ($k in $env_vars.Keys) { [Environment]::SetEnvironmentVariable($k, $env_vars[$k], "Process") }
 
-# 8. Verifica connessioni remote (richiede: pip install neo4j "psycopg[binary]")
 $py = @"
 import os, sys
 ok = True
+
 try:
     from neo4j import GraphDatabase
     d = GraphDatabase.driver(os.environ['NEO4J_URI'],
@@ -95,31 +99,45 @@ try:
     d.verify_connectivity(); d.close()
     print('  [OK] Neo4j Aura raggiungibile')
 except ModuleNotFoundError:
-    print('  (check saltato: pip install neo4j "psycopg[binary]")'); sys.exit(0)
+    print('  (check Neo4j saltato: pip install neo4j)')
 except Exception as e:
     print(f'  [X] Neo4j Aura: {e}'); ok = False
+
 try:
     import psycopg
-    with psycopg.connect(os.environ['DATABASE_URL'], connect_timeout=10) as c:
+    with psycopg.connect(os.environ['DATABASE_URL'], connect_timeout=15, autocommit=True) as c:
         c.execute('SELECT 1')
-    print('  [OK] Neon Postgres raggiungibile')
+        print('  [OK] Neon Postgres raggiungibile')
+        c.execute('CREATE EXTENSION IF NOT EXISTS vector')
+        r = c.execute("SELECT extversion FROM pg_extension WHERE extname='vector'").fetchone()
+        if r:
+            print(f'  [OK] pgvector abilitato (v{r[0]}) - nessun Qdrant, nessun Docker')
+        else:
+            print('  [X] pgvector non risulta abilitato'); ok = False
 except ModuleNotFoundError:
     print('  (check Postgres saltato: pip install "psycopg[binary]")')
 except Exception as e:
     print(f'  [X] Neon Postgres: {e}'); ok = False
+
 sys.exit(0 if ok else 2)
 "@
-foreach ($k in $env_vars.Keys) { [Environment]::SetEnvironmentVariable($k, $env_vars[$k], "Process") }
 try { $py | python - } catch { Write-Host "  (verifica remota saltata: python non trovato)" -ForegroundColor Yellow }
 
 Write-Host ""
 Write-Host "==> Bootstrap completo." -ForegroundColor Cyan
-Write-Host "    Neo4j    -> Aura (cloud, neo4j+s://)"
-Write-Host "    Postgres -> Neon (cloud, sslmode=require)"
-Write-Host "    Qdrant   -> $qurl"
-Write-Host ""
-Write-Host "[!] Aura Free: l'istanza va in pausa per inattivita ed e CANCELLATA dopo 30 giorni" -ForegroundColor Yellow
-Write-Host "    senza attivita. Il seed del grafo resta versionato in services/graph/cypher/ -" -ForegroundColor Yellow
-Write-Host "    e ricreabile in ogni momento. Non tenere dati solo su Aura." -ForegroundColor Yellow
+if ($isLocal) {
+    Write-Host "    PROFILO LOCALE (Docker)"
+    Write-Host "    Neo4j        -> http://localhost:7474  (bolt: 7687)"
+    Write-Host "    Postgres     -> localhost:5432"
+    Write-Host "    Vector store -> pgvector, nello stesso Postgres"
+} else {
+    Write-Host "    PROFILO CLOUD"
+    Write-Host "    Neo4j        -> Aura (neo4j+s://)"
+    Write-Host "    Postgres     -> Neon (sslmode=require)"
+    Write-Host "    Vector store -> pgvector, dentro Neon"
+    Write-Host ""
+    Write-Host "[!] Aura Free: l'istanza e CANCELLATA dopo 30 giorni di inattivita." -ForegroundColor Yellow
+    Write-Host "    Il seed del grafo e versionato e ricreabile in un comando." -ForegroundColor Yellow
+}
 Write-Host ""
 Write-Host "Prossimo passo: apri Claude Code nel repo e segui RUNBOOK.md."
