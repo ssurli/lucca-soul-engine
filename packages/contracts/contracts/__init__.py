@@ -5,14 +5,18 @@ Uso: `from contracts import Itinerary, VisitorContext, ...`
 """
 
 from .models import (
+    AdaptRequest,
     BehaviorEvent,
     EmotionalProfile,
     ExperienceCandidate,
     ExperienceNode,
+    GraphCandidate,
     Itinerary,
     ItineraryStop,
     MemoryContribution,
     MemoryKind,
+    OnboardingAnswer,
+    OnboardingRequest,
     PersonKind,
     Signal,
     UrbanIntelligenceIndex,
@@ -20,14 +24,18 @@ from .models import (
 )
 
 __all__ = [
+    "AdaptRequest",
     "BehaviorEvent",
     "EmotionalProfile",
     "ExperienceCandidate",
     "ExperienceNode",
+    "GraphCandidate",
     "Itinerary",
     "ItineraryStop",
     "MemoryContribution",
     "MemoryKind",
+    "OnboardingAnswer",
+    "OnboardingRequest",
     "PersonKind",
     "Signal",
     "UrbanIntelligenceIndex",

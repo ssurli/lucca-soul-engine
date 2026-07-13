@@ -64,6 +64,15 @@ class ExperienceNode(BaseModel):
     alimenta_memoria: bool = False    # l'esperienza produce contributi di Urban Memory
     partner_id: str | None = None
     prezzo_eur: float | None = None   # se presente: >= 0
+
+class GraphCandidate(BaseModel):
+    """Ciò che il grafo PROPONE all'Experience Engine.
+    Il grafo non decide: propone candidati e connessioni leggibili."""
+    experience: ExperienceNode
+    place_nome: str
+    connessioni: list[str]             # fatti in italiano, es. "Puccini è legato a questo luogo"
+                                        # alimentano il `reason`
+    distanza_m: int | None = None      # se presente: >= 0
 ```
 
 ## 3. AI Experience Engine — uscita
@@ -155,6 +164,24 @@ POST /memory               (MemoryContribution) -> 201   # richiede consenso
 GET  /memory/{place_id}    -> list[MemoryContribution]   # solo contenuti curati
 GET  /dashboard/flows      -> heatmap aggregata
 GET  /dashboard/index      -> UrbanIntelligenceIndex
+```
+
+Modelli di richiesta:
+
+```python
+class OnboardingAnswer(BaseModel):
+    """Una risposta della conversazione di onboarding ("Hai voglia di
+    perderti?"...). Testo libero: il parsing è del servizio RAG."""
+    domanda_id: str
+    risposta: str
+
+class OnboardingRequest(BaseModel):        # input di POST /session/onboarding
+    risposte: list[OnboardingAnswer]       # (output: EmotionalProfile, già esistente)
+    lingua: str = "it"
+
+class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
+    itinerary: Itinerary
+    signal: Signal
 ```
 
 > OpenAPI generato da FastAPI è la versione autoritativa dell'API; questo blocco è il riassunto.

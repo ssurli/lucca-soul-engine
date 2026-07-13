@@ -24,6 +24,7 @@ __all__ = [
     "PersonKind",
     "VisitorContext",
     "ExperienceNode",
+    "GraphCandidate",
     "ExperienceCandidate",
     "ItineraryStop",
     "Itinerary",
@@ -31,6 +32,9 @@ __all__ = [
     "MemoryContribution",
     "BehaviorEvent",
     "UrbanIntelligenceIndex",
+    "OnboardingAnswer",
+    "OnboardingRequest",
+    "AdaptRequest",
 ]
 
 
@@ -117,6 +121,20 @@ class ExperienceNode(ContractModel):
     alimenta_memoria: bool = False  # l'esperienza produce contributi di Urban Memory
     partner_id: str | None = None
     prezzo_eur: float | None = Field(default=None, ge=0)
+
+
+class GraphCandidate(ContractModel):
+    """Candidato proposto dal grafo all'AI Experience Engine.
+
+    Il grafo PROPONE connessioni (via `connessioni`, fatti leggibili in
+    italiano che alimentano il `reason`); non decide. Sceglie solo
+    l'Experience Engine.
+    """
+
+    experience: ExperienceNode
+    place_nome: str
+    connessioni: list[str]  # es. "Puccini è legato a questo luogo"
+    distanza_m: int | None = Field(default=None, ge=0)
 
 
 # ---------------------------------------------------------------------------
@@ -208,4 +226,31 @@ class UrbanIntelligenceIndex(ContractModel):
     attivazione_locale: float = Field(ge=0, le=1)  # quanto il territorio minore viene raggiunto
     distribuzione_flussi: float = Field(ge=0, le=1)  # 1 = distribuiti, 0 = overtourism
     contributi_memoria: int = Field(ge=0)  # crescita della Urban Memory
+
+
+# ---------------------------------------------------------------------------
+# 7. API (BFF) — modelli di richiesta
+# ---------------------------------------------------------------------------
+
+
+class OnboardingAnswer(ContractModel):
+    """Una risposta della conversazione di onboarding ("Hai voglia di
+    perderti?"...). Testo libero: il parsing è del servizio RAG."""
+
+    domanda_id: str
+    risposta: str
+
+
+class OnboardingRequest(ContractModel):
+    """Input di POST /session/onboarding (output: EmotionalProfile)."""
+
+    risposte: list[OnboardingAnswer]
+    lingua: str = "it"
+
+
+class AdaptRequest(ContractModel):
+    """Input di POST /itinerary/adapt."""
+
+    itinerary: Itinerary
+    signal: Signal
 
