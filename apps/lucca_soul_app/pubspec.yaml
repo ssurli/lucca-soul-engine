@@ -1,0 +1,24 @@
+name: lucca_soul_app
+description: >
+  Lucca Soul Lab — l'app Flutter dello Human Experience Layer. Parla solo con
+  il BFF (services/api): onboarding conversazionale, itinerario spiegabile,
+  card adattiva ai segnali della città.
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+  flutter: ">=3.19.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
