@@ -1,42 +1,12 @@
-# Lucca Soul — infrastruttura di sviluppo (Wave 0).
-# Servizi dati; l'app e i servizi Python girano in locale contro questi.
-# api-engineer estenderà questo file aggiungendo il servizio BFF quando esiste il Dockerfile.
+# Lucca Soul Lab — infrastruttura di sviluppo (MODALITÀ CLOUD).
+#
+# Neo4j  -> Aura (cloud)   : configurato in .env (NEO4J_URI=neo4j+s://...)
+# Postgres -> Neon (cloud) : configurato in .env (DATABASE_URL=...)
+# Qui resta solo il Vector DB, che gira in locale.
+#
+# Se un giorno vuoi tornare tutto in locale, decommenta i servizi in fondo.
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: lucca_postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-lucca}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-lucca}
-      POSTGRES_DB: ${POSTGRES_DB:-lucca_soul}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
-    volumes:
-      - pg_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-lucca} -d ${POSTGRES_DB:-lucca_soul}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  neo4j:
-    image: neo4j:5-community
-    container_name: lucca_neo4j
-    environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-luccasoul}
-      NEO4J_PLUGINS: '["apoc"]'
-    ports:
-      - "7474:7474"   # browser
-      - "7687:7687"   # bolt
-    volumes:
-      - neo4j_data:/data
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-
   qdrant:
     image: qdrant/qdrant:latest
     container_name: lucca_qdrant
@@ -47,6 +17,30 @@ services:
       - qdrant_data:/qdrant/storage
 
 volumes:
-  pg_data:
-  neo4j_data:
   qdrant_data:
+
+# ---------------------------------------------------------------------------
+# MODALITÀ LOCALE (alternativa a Aura/Neon) — decommentare se serve:
+#
+#  postgres:
+#    image: postgres:16-alpine
+#    container_name: lucca_postgres
+#    environment:
+#      POSTGRES_USER: lucca
+#      POSTGRES_PASSWORD: lucca
+#      POSTGRES_DB: lucca_soul
+#    ports: ["5432:5432"]
+#    volumes: [pg_data:/var/lib/postgresql/data]
+#
+#  neo4j:
+#    image: neo4j:5-community        # Community Edition = gratuita, self-hosted
+#    container_name: lucca_neo4j
+#    environment:
+#      NEO4J_AUTH: neo4j/luccasoul
+#      NEO4J_PLUGINS: '["apoc"]'
+#    ports: ["7474:7474", "7687:7687"]
+#    volumes: [neo4j_data:/data]
+#    # in .env usare allora:  NEO4J_URI=bolt://localhost:7687
+#
+# volumes: pg_data: , neo4j_data:
+# ---------------------------------------------------------------------------

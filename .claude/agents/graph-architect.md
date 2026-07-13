@@ -17,4 +17,13 @@ Principi:
 - Esponi una query "candidati" parametrica su temi/prossimità/`al_chiuso`/`accessibile`,
   restituendo `ExperienceCandidate[]`.
 - Seed Lucca separato dal codice, così la replica (Siena/Ferrara) cambia solo il dataset.
-Consegna: schema + Cypher versionato + seed + una funzione di query testabile. Niente credenziali in chiaro.
+**Ambiente:** il grafo gira su **Neo4j Aura (cloud)**. Usa il driver ufficiale con URI
+`neo4j+s://` (TLS) leggendo `NEO4J_URI` / `NEO4J_USERNAME` / `NEO4J_PASSWORD` / `NEO4J_DATABASE`
+dal `.env`. Mai `bolt://`, mai credenziali in chiaro nel codice.
+
+**Vincolo del tier Free (importante):** l'istanza viene cancellata dopo 30 giorni di inattività e
+ha un limite di ~200k nodi / 400k relazioni. Quindi il **seed dev'essere idempotente e
+rieseguibile da zero con un solo comando** (`make seed` o script equivalente): il grafo è un
+artefatto ricostruibile, non un archivio. Versiona tutto in `services/graph/cypher/`.
+
+Consegna: schema + Cypher versionato + seed idempotente + una funzione di query testabile.

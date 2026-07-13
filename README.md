@@ -14,7 +14,8 @@ specialisti.
 CLAUDE.md                    # memoria di progetto: tassonomia congelata, regole, protocollo
 RUNBOOK.md                   # come lanciare (guidato / lancio unico presidiato)
 docker-compose.yml           # Postgres, Neo4j, Qdrant
-scripts/bootstrap.sh         # Wave 0 in un comando
+scripts/bootstrap.sh         # Wave 0 in un comando (Linux/macOS/WSL)
+scripts/bootstrap.ps1        # idem, per Windows PowerShell
 docs/
   ARCHITECTURE.md            # i due livelli di orchestrazione + flusso runtime
   DATA_CONTRACTS.md          # tipi condivisi = single source of truth (anti-divergenza)
@@ -50,14 +51,28 @@ docs/
 | 4 | Urban Intelligence Index + Dashboard |
 | 5 | Replica (Siena / Ferrara): cambia il dataset, non la tecnologia |
 
-## Avvio
+## Avvio  (modalità cloud: Aura + Neon)
 
 1. Copia questi file nella radice del repo, `git init`, `git add -A && git commit`.
-2. `./scripts/bootstrap.sh` — scheletro cartelle, `.env`, e infrastruttura dati su Docker.
-   Metti la tua `ANTHROPIC_API_KEY` nel `.env` generato.
-3. Apri Claude Code nel repo e segui `RUNBOOK.md` (Modo A consigliato).
+2. Lancia il bootstrap — al primo giro crea il `.env` e si ferma:
+   - **Linux / macOS / WSL / Git Bash:** `./scripts/bootstrap.sh`
+   - **Windows PowerShell:** `.\scripts\bootstrap.ps1`
+     (se Windows blocca lo script: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`)
+3. Compila il `.env`:
+   - **Neo4j Aura** → `NEO4J_URI=neo4j+s://...` (NON `bolt://`), `NEO4J_USERNAME`, `NEO4J_PASSWORD`
+   - **Neon** → `DATABASE_URL=postgresql://...?sslmode=require` (stringa **diretta** per le migrazioni)
+   - `ANTHROPIC_API_KEY`
+4. Rilancia il bootstrap — verifica le connessioni remote, avvia Qdrant, crea lo scheletro.
+   Per il check delle credenziali (il più utile): `pip install neo4j "psycopg[binary]"`
+5. Apri Claude Code nel repo e segui `RUNBOOK.md` (Modo A consigliato).
 
-Requisiti: Docker + `docker compose` v2.
+Requisiti: Docker + `docker compose` v2 (serve solo per Qdrant).
+
+> **Aura Free**: si auto-mette in pausa e l'istanza viene **cancellata dopo 30 giorni di
+> inattività**. Per questo il seed del grafo è versionato e rieseguibile: il grafo è un artefatto
+> ricostruibile, non un archivio. Vale anche come disciplina per la replica su altre città.
+> Vuoi zero limiti e zero cloud? Nel `docker-compose.yml` c'è la modalità locale commentata
+> (Neo4j **Community Edition**, gratuita e senza limiti di dati).
 
 ## Regole non negoziabili
 

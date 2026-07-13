@@ -35,14 +35,24 @@ Urban Digital Twin
 
 ## Stack
 
-| Layer | Tecnologia |
-|---|---|
-| App | Flutter |
-| BFF / API | FastAPI (Python 3.12, Pydantic v2) |
-| Urban Knowledge Graph | Neo4j (Cypher) |
-| Transazionale + eventi + memoria | PostgreSQL |
-| RAG | Vector DB (Qdrant) + Anthropic API |
-| Recommender | ML classico su eventi comportamentali |
+| Layer | Tecnologia | Dove gira |
+|---|---|---|
+| App | Flutter | locale |
+| BFF / API | FastAPI (Python 3.12, Pydantic v2) | locale |
+| Urban Knowledge Graph | Neo4j | **Aura (cloud)** — `neo4j+s://` |
+| Transazionale + eventi + memoria | PostgreSQL | **Neon (cloud)** — `sslmode=require` |
+| RAG | Vector DB (Qdrant) + Anthropic API | Qdrant in locale (Docker) |
+| Recommender | ML classico su eventi comportamentali | locale |
+
+### Connessioni — trappole da evitare
+- **Neo4j Aura vuole `neo4j+s://`** (TLS), non `bolt://`. Le variabili sono `NEO4J_URI`,
+  `NEO4J_USERNAME`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`.
+- **Neon richiede `sslmode=require`**. Per le **migrazioni** usa la stringa **diretta**
+  (senza `-pooler`); quella pooled è per i client ad alta concorrenza.
+- **Aura Free si auto-mette in pausa e viene cancellata dopo 30 giorni di inattività.**
+  Conseguenza vincolante: il seed del grafo è **versionato** in `services/graph/cypher/` e
+  dev'essere **rieseguibile da zero in un comando**. Nessun dato vive solo su Aura.
+- Credenziali SOLO nel `.env` (mai nel codice, mai nei commit).
 
 Layout target:
 ```
