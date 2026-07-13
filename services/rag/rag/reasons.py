@@ -46,6 +46,20 @@ def _pulisci(s: str) -> str:
     return s.strip().rstrip(".;,")
 
 
+def _e_o_ed(testo_seguente: str) -> str:
+    """Restituisce "ed" (d eufonica) se `testo_seguente` inizia per e/è,
+    altrimenti "e". Applicata in modo conservativo: solo davanti a e/è (es.
+    "ed è legato"), non davanti alle altre vocali (es. "e ami", "e hai
+    voglia" restano con "e")."""
+    t = testo_seguente.lstrip()
+    if not t:
+        return "e"
+    primo = t[0].lower()
+    if primo in ("e", "è", "é"):
+        return "ed"
+    return "e"
+
+
 def _frase_segnale(segnale: str) -> str | None:
     if not segnale:
         return None
@@ -133,9 +147,14 @@ def compose_reason(
     if len(parti) == 1:
         testo = parti[0]
     elif len(parti) == 2:
-        testo = f"{parti[0]}, e {_lower_first(parti[1])}"
+        congiunzione = _e_o_ed(parti[1])
+        testo = f"{parti[0]}, {congiunzione} {_lower_first(parti[1])}"
     else:
-        testo = f"{parti[0]}, e {_lower_first(parti[1])}; inoltre, {_lower_first(parti[2])}"
+        congiunzione = _e_o_ed(parti[1])
+        testo = (
+            f"{parti[0]}, {congiunzione} {_lower_first(parti[1])}; "
+            f"inoltre, {_lower_first(parti[2])}"
+        )
 
     testo = _cap(testo)
     if not testo.endswith("."):
