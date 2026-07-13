@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lucca-experience-engine"
+version = "0.1.0"
+description = "Lucca Soul Lab — Engine: AI Experience Engine (il \"brevetto\"). L'UNICO componente che DECIDE: combina candidati del grafo, segnale e vincoli etici in un Itinerary a regole, deterministico e spiegabile. Il grafo propone, la RAG racconta, il recommender ordina: la scelta e i vincoli vivono qui, in un solo punto verificabile."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+]
+
+# NOTA — pacchetto contratti (packages/contracts):
+# `lucca-contracts` è la single source of truth per gli schemi (VisitorContext,
+# EmotionalProfile, Signal, GraphCandidate, Itinerary, ItineraryStop...) e NON va
+# aggiunto qui come dipendenza pip (non è pubblicato su un indice). Va installato
+# a parte, in editable mode, insieme a questo pacchetto.
+#
+# NOTA — grafo e RAG sono INIETTATI, non importati dal motore:
+# l'AI Experience Engine dipende SOLO dai contratti. Riceve i candidati come
+# `list[GraphCandidate]` e la funzione che compone il `reason` come callable
+# (`ReasonFn`). È il BFF (`services/api`) a cablare `graph.source` e
+# `rag.reasons`. Questo mantiene il motore verificabile in isolamento e
+# sostituibile per ogni città senza toccare grafo o RAG. Per lo smoke e i test
+# di integrazione installa tutto insieme, in editable mode:
+#
+#   pip install -e packages/contracts -e services/graph -e services/rag \
+#               -e services/experience-engine
+
+[tool.hatch.build.targets.wheel]
+packages = ["experience_engine"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
