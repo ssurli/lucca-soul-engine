@@ -1,0 +1,32 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lucca-api"
+version = "0.1.0"
+description = "Lucca Soul Lab — Engine: BFF FastAPI. Unico ingresso per l'app Flutter; orchestra i servizi interni (experience-engine, graph, rag, recommender). Non tocca mai i database direttamente in Wave 0."
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2",
+    "pydantic-settings>=2",
+]
+
+# NOTA — pacchetto contratti (packages/contracts):
+# `lucca-contracts` è la single source of truth per gli schemi request/response
+# (docs/DATA_CONTRACTS.md) e NON va aggiunto qui come dipendenza pip (non è
+# pubblicato su un indice). Va installato a parte, in editable mode, insieme
+# a questo pacchetto:
+#
+#   pip install -e packages/contracts -e services/api
+#
+# Il codice di `api` importa da `contracts` assumendo che sia già installato
+# nell'ambiente attivo.
+
+[tool.hatch.build.targets.wheel]
+packages = ["api"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
