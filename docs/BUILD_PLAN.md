@@ -26,6 +26,10 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
 - **test-engineer**: integrazione onboarding→itinerario e riscrittura da segnale.
 - ✅ **Accettazione:** due profili diversi ⇒ due itinerari diversi; `adapt` riscrive su pioggia e su
   affollamento; **ogni tappa ha un `reason`**; nessun percorso viola `accessibile`.
+  **→ SODDISFATTA** (2026-07-13): coperta da `tests/test_integration_wave1.py` end-to-end sul BFF
+  (seed offline); ethics-guardian **PASS** su tutti e 7 i punti dopo la correzione
+  "attribuzione fuori dallo score". *Nota: verificato con `SeedCandidateSource`; la verifica
+  live su Aura (stesso seed via `python -m graph.loader`) resta da eseguire sul profilo cloud.*
 
 > È la dimostrazione centrale del white paper. Se questa wave passa, il concetto è provato.
 
