@@ -5,9 +5,16 @@ addopts = "-ra --strict-markers --strict-config"
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# Script diagnostici legacy alla radice: non fanno parte del prodotto, esclusi dal lint.
+extend-exclude = ["diag_bolt.py", "diag_neo4j.py", "diag_tls.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# I contratti rispecchiano ESATTAMENTE docs/DATA_CONTRACTS.md, che definisce
+# `class PersonKind(str, Enum)`: niente StrEnum finché il doc non cambia.
+"packages/contracts/contracts/models.py" = ["UP042"]
 
 [tool.mypy]
 python_version = "3.11"

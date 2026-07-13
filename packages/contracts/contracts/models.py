@@ -192,6 +192,6 @@ class UrbanIntelligenceIndex(ContractModel):
     tasso_ritorno: float = Field(ge=0, le=1)
     nuovi_percorsi: int = Field(ge=0)  # itinerari emergenti e inattesi
     attivazione_locale: float = Field(ge=0, le=1)  # quanto il territorio minore viene raggiunto
-    distribuzione_flussi: float = Field(ge=0, le=1)  # 1 = distribuiti, 0 = concentrati (overtourism)
+    distribuzione_flussi: float = Field(ge=0, le=1)  # 1 = distribuiti, 0 = overtourism
     contributi_memoria: int = Field(ge=0)  # crescita della Urban Memory
 
