@@ -123,7 +123,11 @@ class MemoryContribution(BaseModel):
     kind: MemoryKind
     testo: str | None = None
     media_uri: str | None = None
-    riguarda: list[str]               # id di Luogo / Bottega / Artista nel grafo
+    # min_length=1: un contributo DEVE riferirsi ad almeno un nodo del grafo,
+    # altrimenti sarebbe un nodo :Memoria orfano. Non garantisce che gli id
+    # esistano nel grafo: quel controllo è a runtime, nel linker
+    # urban_memory.graph_link (collegamento atomico).
+    riguarda: list[str]               # id di Luogo / Bottega / Artista (min 1 elemento)
     contributor_id: str               # PSEUDONIMO
     contributor_kind: PersonKind
     esperienza_id: str | None = None  # da quale esperienza nasce
@@ -204,4 +208,8 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 - `MemoryContribution.consenso` deve essere `True` per essere persistito. Nessuna eccezione.
 - `MemoryContribution.licenza` è sempre tracciata (vincolo di contratto: `min_length=1`,
   mai vuota).
+- `MemoryContribution.riguarda` non può essere vuoto (vincolo di contratto: `min_length=1`).
+- Ogni id in `MemoryContribution.riguarda` deve esistere nel Knowledge Graph: il
+  collegamento è atomico, nessun nodo `:Memoria` orfano (verificato al link-time, non
+  esprimibile nel contratto Pydantic).
 - Nessun campo esprime "priorità a pagamento": la visibilità non è acquistabile.

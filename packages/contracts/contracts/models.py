@@ -191,7 +191,11 @@ class MemoryContribution(ContractModel):
     kind: MemoryKind
     testo: str | None = None
     media_uri: str | None = None
-    riguarda: list[str]  # id di Luogo / Bottega / Artista nel grafo
+    # min_length=1: un contributo DEVE riferirsi ad almeno un nodo del grafo,
+    # altrimenti sarebbe un nodo :Memoria orfano. Non garantisce che gli id
+    # esistano nel grafo: quel controllo è a runtime, nel linker
+    # urban_memory.graph_link (collegamento atomico).
+    riguarda: list[str] = Field(min_length=1)  # id di Luogo / Bottega / Artista
     contributor_id: str  # PSEUDONIMO
     contributor_kind: PersonKind
     esperienza_id: str | None = None  # da quale esperienza nasce
