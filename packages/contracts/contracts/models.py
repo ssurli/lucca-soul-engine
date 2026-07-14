@@ -196,7 +196,7 @@ class MemoryContribution(ContractModel):
     contributor_kind: PersonKind
     esperienza_id: str | None = None  # da quale esperienza nasce
     consenso: bool  # OBBLIGATORIO: nessun conferimento senza consenso esplicito
-    licenza: str  # es. "CC-BY-SA-4.0" — sempre tracciata
+    licenza: str = Field(min_length=1)  # es. "CC-BY-SA-4.0" — sempre tracciata
     creato_il: datetime
     curato: bool = False  # revisione prima della pubblicazione
 

@@ -128,7 +128,7 @@ class MemoryContribution(BaseModel):
     contributor_kind: PersonKind
     esperienza_id: str | None = None  # da quale esperienza nasce
     consenso: bool                    # OBBLIGATORIO: nessun conferimento senza consenso esplicito
-    licenza: str                      # es. "CC-BY-SA-4.0" — sempre tracciata
+    licenza: str                      # es. "CC-BY-SA-4.0" — sempre tracciata (min 1 carattere)
     creato_il: datetime
     curato: bool = False              # revisione prima della pubblicazione
 ```
@@ -202,4 +202,6 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 - `GraphCandidate.attribuzione` è narrazione trasparente, sempre separata da
   `connessioni`: non deve mai influenzare lo score (nessun "acquisto" di visibilità).
 - `MemoryContribution.consenso` deve essere `True` per essere persistito. Nessuna eccezione.
+- `MemoryContribution.licenza` è sempre tracciata (vincolo di contratto: `min_length=1`,
+  mai vuota).
 - Nessun campo esprime "priorità a pagamento": la visibilità non è acquistabile.
