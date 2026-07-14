@@ -23,7 +23,14 @@ Wave 2 aggiunge la Urban Memory (il fossato):
   contributi curati (`curato=True`).
 - Le violazioni dei vincoli (`urban_memory.UrbanMemoryError` e sottoclassi)
   sono mappate a un 422 esplicativo in italiano da
-  `urban_memory_error_handler`, mai a un 500.
+  `urban_memory_error_handler`, mai a un 500: è colpa della richiesta.
+- Gli errori INFRASTRUTTURALI di storage (`urban_memory.MemoryStorageError`,
+  sollevata da `PostgresMemoryRepository` quando Postgres/Neon non risponde
+  o la migrazione non è applicata — NON una sottoclasse di
+  `UrbanMemoryError`) sono mappati a un **503** da
+  `memory_storage_error_handler`, mai a un 500 opaco e mai con dettagli
+  interni del DB/DSN nel corpo o nei log: è colpa del server, non della
+  richiesta.
 
 `/health` non richiede alcun database attivo. Gli errori di validazione dei
 payload sono lasciati alla gestione 422 di default di FastAPI/Pydantic.
@@ -33,6 +40,8 @@ nei log applicativi; il contenuto di un `MemoryContribution` (`testo`,
 """
 
 from __future__ import annotations
+
+from typing import Annotated
 
 import contracts
 from contracts import (
@@ -44,18 +53,32 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine.engine import adapt_itinerary, compose_itinerary
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from rag.onboarding import profile_from_answers
 from rag.reasons import adapt_reason, compose_reason
-from urban_memory import UrbanMemoryError, contributions_for_place, submit_contribution
+from urban_memory import (
+    MemoryRepository,
+    MemoryStorageError,
+    UrbanMemoryError,
+    contributions_for_place,
+    submit_contribution,
+)
 
 from api import __version__
 from api.deps import get_candidate_source, get_memory_repository
 from api.settings import get_settings
 
 app = FastAPI(title="Lucca Soul — BFF")
+
+# Iniezione FastAPI standard (`Annotated[..., Depends(...)]`, non
+# `= Depends(...)` in default d'argomento: quella forma è flaggata da
+# ruff/bugbear B008). Definito una volta qui perché usato da entrambi gli
+# endpoint `/memory*`: consente a un test di sostituire il repository con
+# `app.dependency_overrides[get_memory_repository] = ...` senza toccare
+# `api.deps` o la configurazione reale.
+_MemoryRepositoryDep = Annotated[MemoryRepository, Depends(get_memory_repository)]
 
 
 @app.exception_handler(UrbanMemoryError)
@@ -73,6 +96,26 @@ def urban_memory_error_handler(request: Request, exc: UrbanMemoryError) -> JSONR
     return JSONResponse(
         status_code=422,
         content={"detail": f"conferimento rifiutato: {exc}"},
+    )
+
+
+@app.exception_handler(MemoryStorageError)
+def memory_storage_error_handler(request: Request, exc: MemoryStorageError) -> JSONResponse:
+    """Mappa un fallimento INFRASTRUTTURALE di storage della Urban Memory
+    (`urban_memory.MemoryStorageError` — connessione a Postgres/Neon
+    irraggiungibile, migrazione non applicata, query fallita) a un **503
+    Service Unavailable**, MAI a un 500 opaco: chi chiama sa che è un
+    problema temporaneo del server, non un errore nel proprio conferimento
+    (quello è un 422, gestito da `urban_memory_error_handler`).
+
+    Il corpo della risposta è un messaggio italiano generico e fisso: NON
+    include mai `str(exc)` né altro dettaglio interno (DSN, host, credenziali,
+    stack del driver). Per lo stesso motivo l'eccezione non viene loggata qui
+    con il suo messaggio: nessun log applicativo di questo BFF espone
+    dettagli infrastrutturali o PII."""
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "memoria temporaneamente non disponibile: riprova più tardi"},
     )
 
 
@@ -157,32 +200,43 @@ def adapt_itinerary_endpoint(request: AdaptRequest) -> Itinerary:
 
 
 @app.post("/memory", response_model=MemoryContribution, status_code=201)
-def submit_memory_contribution(contribution: MemoryContribution) -> MemoryContribution:
+def submit_memory_contribution(
+    contribution: MemoryContribution,
+    repo: _MemoryRepositoryDep,
+) -> MemoryContribution:
     """Conferimento alla Urban Memory (contratto §7, `docs/DATA_CONTRACTS.md`).
 
     Delega TUTTI i vincoli non negoziabili — consenso, licenza, pseudonimo,
     `curato` forzato a `False` alla creazione — a
     `urban_memory.service.submit_contribution`: un solo punto verificabile,
-    mai duplicato qui. Le violazioni sollevano `UrbanMemoryError` (o una
-    sottoclasse), mappata a 422 da `urban_memory_error_handler`, mai a un
-    500. Il repository (`InMemoryMemoryRepository` finché `DATABASE_URL` non
-    è configurato, vedi `api.deps.get_memory_repository`) è l'unico che
-    persiste; questo endpoint non tocca mai lo storage direttamente.
+    mai duplicato qui. Le violazioni di dominio sollevano `UrbanMemoryError`
+    (o una sottoclasse), mappata a 422 da `urban_memory_error_handler`. Un
+    fallimento INFRASTRUTTURALE dello storage (`MemoryStorageError`,
+    sollevata da `PostgresMemoryRepository` quando configurata via
+    `DATABASE_URL`) è mappato a 503 da `memory_storage_error_handler`. Mai
+    un 500 opaco in nessuno dei due casi. Il repository arriva via `Depends`
+    (`api.deps.get_memory_repository`, `InMemoryMemoryRepository` finché
+    `DATABASE_URL` non è configurato) invece di essere chiamato
+    direttamente: così un test può sostituirlo con
+    `app.dependency_overrides` senza toccare la configurazione reale;
+    questo endpoint non tocca mai lo storage direttamente.
 
     Non logga MAI il contributo: né `testo`, né `media_uri`, né
     `contributor_id`."""
-    repo = get_memory_repository()
     return submit_contribution(repo, contribution)
 
 
 @app.get("/memory/{place_id}", response_model=list[MemoryContribution])
-def memory_for_place(place_id: str) -> list[MemoryContribution]:
+def memory_for_place(
+    place_id: str,
+    repo: _MemoryRepositoryDep,
+) -> list[MemoryContribution]:
     """Contributi CURATI (`curato=True`) che riguardano `place_id`
     (contratto §7). Delega a `urban_memory.service.contributions_for_place`,
     che passa SEMPRE da `get_curated`: un contributo appena conferito e non
     ancora revisionato da un umano non compare mai qui, indipendentemente
-    da come è stato conferito."""
-    repo = get_memory_repository()
+    da come è stato conferito. Un fallimento di storage risponde 503 (vedi
+    `submit_memory_contribution`), mai un 500."""
     return contributions_for_place(repo, place_id)
 
 

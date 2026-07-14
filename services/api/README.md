@@ -26,7 +26,13 @@ Wave 1: pipeline completa di raccomandazione. Wave 2: Urban Memory.
   esplicativo (`"conferimento rifiutato: ..."`), mai a un 500. `licenza`
   vuota è già rifiutata prima, a **422**, dalla validazione Pydantic del
   contratto (`min_length=1`). Il servizio non logga mai `testo`,
-  `media_uri` o `contributor_id`.
+  `media_uri` o `contributor_id`. Se invece è lo **storage** a fallire
+  (Postgres/Neon irraggiungibile, migrazione non applicata — errore
+  INFRASTRUTTURALE, non di dominio: `urban_memory.MemoryStorageError`, NON
+  una sottoclasse di `UrbanMemoryError`), la risposta è un **503** da
+  `memory_storage_error_handler`, con il messaggio fisso
+  `"memoria temporaneamente non disponibile: riprova più tardi"` — mai un
+  500 opaco, mai un dettaglio del DB/DSN nel corpo o nei log.
 - `GET /memory/{place_id}` (-> `list[MemoryContribution]`) — SOLO contributi
   **curati** (`curato=True`) che riguardano quel `place_id`, via
   `urban_memory.service.contributions_for_place`.
@@ -62,16 +68,26 @@ sola volta (`lru_cache`), non ad ogni richiesta.
 
 `api/deps.get_memory_repository` sceglie il `MemoryRepository` leggendo SOLO
 `DATABASE_URL` (stesso pattern di `get_candidate_source`, nessun `if
-local/cloud`): se configurato usa `PostgresMemoryRepository.from_env()`,
-altrimenti `InMemoryMemoryRepository`. **ATTENZIONE:**
-`PostgresMemoryRepository` (Neon in cloud, Postgres locale via Docker) è
-predisposta in `services/urban-memory` ma NON ancora implementata in questa
-wave — ogni suo metodo solleva `NotImplementedError` (nessun database è
-raggiungibile da lì). In pratica, finché non viene implementata, tenere
-`DATABASE_URL` non configurato in Wave 2: `/memory` e `/memory/{place_id}`
-funzionano allora su `InMemoryMemoryRepository` (non persiste tra processi;
-è il percorso verificato dallo smoke test di questo servizio). L'istanza è
-creata una sola volta (`lru_cache`).
+local/cloud`): se configurato usa `PostgresMemoryRepository.from_env()`
+(Neon in cloud, `sslmode=require`, o Postgres locale — stesso codice nei due
+profili), altrimenti `InMemoryMemoryRepository` (in-process, non persiste
+tra riavvii — il percorso di default e dello smoke test di questo servizio).
+L'istanza è creata una sola volta (`lru_cache`).
+
+`PostgresMemoryRepository` fa **lazy-connect**: una connessione per
+operazione, nessun tentativo di rete alla sola istanziazione. Per usarla
+davvero applica prima la migrazione idempotente dello schema
+(`python -m urban_memory.migrate`, da `services/urban-memory`) puntando
+`DATABASE_URL` al Postgres/Neon del `.env`. Se il database non è
+raggiungibile o la migrazione non è stata applicata, l'errore emerge alla
+prima operazione reale su `/memory` o `/memory/{place_id}` come
+`urban_memory.MemoryStorageError` (errore INFRASTRUTTURALE, distinto dai
+`UrbanMemoryError` di dominio) e il BFF risponde **503**, mai un 500 opaco
+né un dettaglio del DB/DSN esposto nel corpo o nei log (vedi
+`api.main.memory_storage_error_handler`). Per attivare la persistenza in
+Wave 2 basta quindi impostare `DATABASE_URL` nel `.env` (dopo aver
+applicato la migrazione): nessun cambiamento di codice richiesto, né qui né
+in `api/main.py`.
 
 ## Configurazione
 

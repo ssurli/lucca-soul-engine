@@ -31,6 +31,19 @@ dependencies = [
 # Il codice di `api` importa da `contracts`, `graph`, `rag`,
 # `experience_engine` ed `urban_memory` assumendo che siano già installati
 # nell'ambiente attivo.
+#
+# NOTA — persistenza della Urban Memory (Wave 2): il driver Postgres
+# (`psycopg[binary]`) NON è una dipendenza di `services/api`. Lo porta
+# `lucca-urban-memory` (`services/urban-memory/pyproject.toml`), che espone
+# `PostgresMemoryRepository` — il BFF non parla mai direttamente con un
+# database, solo con l'interfaccia `MemoryRepository`. Con `DATABASE_URL`
+# impostato nel `.env` (Neon in cloud, `sslmode=require`, o Postgres locale),
+# `api.deps.get_memory_repository` sceglie `PostgresMemoryRepository`; senza
+# `DATABASE_URL` sceglie `InMemoryMemoryRepository` (in-process, non
+# persiste tra riavvii — il percorso di default e dello smoke test). Un
+# fallimento di storage (`urban_memory.MemoryStorageError`) è sempre
+# mappato da `api.main.memory_storage_error_handler` a un **503**, mai a un
+# 500 opaco.
 
 [tool.hatch.build.targets.wheel]
 packages = ["api"]
