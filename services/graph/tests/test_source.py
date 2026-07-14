@@ -105,12 +105,19 @@ def test_esperienza_senza_partner_ha_attribuzione_none() -> None:
     assert candidato_mura.attribuzione is None
 
 
-def test_len_connessioni_non_cambia_tra_esperienza_partner_e_non_partner() -> None:
-    # A parità di luogo/temi, la presenza di un partner non deve alterare il
-    # conteggio delle connessioni: costruiamo due esperienze "gemelle" (stesso
-    # luogo, stessi temi), una con partner e una senza, e confrontiamo la
-    # lunghezza di `connessioni` prodotta dalla stessa istanza di sorgente.
+def test_len_connessioni_non_cambia_per_un_partner_senza_relazioni_semantiche_proprie() -> None:
+    # L'invariante etica riguarda il fatto COMMERCIALE ("chi offre"), non
+    # "avere un partner" in sé: una bottega SENZA relazioni semantiche
+    # proprie aggiuntive (qui `ceramica-lucca`, che evoca solo "artigianato",
+    # già presente nei temi della gemella) non deve alterare `len(connessioni)`
+    # rispetto a una gemella senza partner. Costruiamo due esperienze
+    # "gemelle" (stesso luogo, stessi temi) e confrontiamo la lunghezza di
+    # `connessioni` prodotta dalla stessa istanza di sorgente.
     source = SeedCandidateSource()
+    assert "artigianato" in {
+        tema_id for tema_id in source._bottega_evoca.get("ceramica-lucca", [])
+    }
+    assert "ceramica-lucca" not in source._bottega_ispirata_da
 
     base = dict(
         place_id="san-michele-in-foro",
@@ -122,7 +129,7 @@ def test_len_connessioni_non_cambia_tra_esperienza_partner_e_non_partner() -> No
     esperienza_con_partner = ExperienceNode(
         id="exp-test-gemella-partner",
         titolo="Gemella con partner",
-        partner_id="liuteria-lucchese",
+        partner_id="ceramica-lucca",
         **base,  # type: ignore[arg-type]
     )
     esperienza_senza_partner = ExperienceNode(
@@ -148,6 +155,42 @@ def test_len_connessioni_non_cambia_tra_esperienza_partner_e_non_partner() -> No
     assert attribuzione_senza_partner is None
 
 
+def test_partner_con_relazioni_semantiche_proprie_arricchisce_connessioni() -> None:
+    # Al contrario: una bottega CON relazioni semantiche proprie (qui
+    # `liuteria-lucchese`, ISPIRATA_DA Puccini e Boccherini) aggiunge
+    # legittimamente connessioni — non è il fatto commerciale a valere
+    # punteggio, ma il fatto semantico vero che porta con sé. La frase
+    # "Offerta da" resta comunque assente da `connessioni` in ogni caso.
+    source = SeedCandidateSource()
+    base = dict(
+        place_id="san-michele-in-foro",
+        temi=["liuteria", "artigianato", "musica"],
+        durata_min=30,
+        al_chiuso=True,
+        accessibile=True,
+    )
+    esperienza_con_partner_ispirato = ExperienceNode(
+        id="exp-test-gemella-partner-ispirato",
+        titolo="Gemella con partner ispirato",
+        partner_id="liuteria-lucchese",
+        **base,  # type: ignore[arg-type]
+    )
+    esperienza_senza_partner = ExperienceNode(
+        id="exp-test-gemella-no-partner-2",
+        titolo="Gemella senza partner",
+        partner_id=None,
+        **base,  # type: ignore[arg-type]
+    )
+    luogo_obj = source._luoghi["san-michele-in-foro"]
+
+    connessioni_con_partner = source._connessioni(esperienza_con_partner_ispirato, luogo_obj, None)
+    connessioni_senza_partner = source._connessioni(esperienza_senza_partner, luogo_obj, None)
+
+    assert len(connessioni_con_partner) > len(connessioni_senza_partner)
+    assert not any("Offerta da" in frase for frase in connessioni_con_partner)
+    assert any("Puccini" in frase for frase in connessioni_con_partner)
+
+
 def test_due_profili_diversi_possono_generare_connessioni_diverse() -> None:
     # Non è compito del grafo scegliere, ma il contesto (luoghi già visti)
     # deve poter produrre candidati con connessioni diverse tra loro: è la
@@ -165,6 +208,26 @@ def test_query_candidati_versionata_esiste_ed_e_parametrica() -> None:
     testo = CANDIDATES_QUERY_PATH.read_text(encoding="utf-8")
     for parametro in ("$temi", "$al_chiuso", "$accessibile", "$vicino_a", "$raggio_m"):
         assert parametro in testo
+
+
+def test_query_candidati_include_le_relazioni_semantiche_della_bottega() -> None:
+    testo = CANDIDATES_QUERY_PATH.read_text(encoding="utf-8")
+    assert "ISPIRATA_DA" in testo
+    assert "racconti_ispirazione" in testo
+    assert "temi_bottega" in testo
+
+
+def test_connessione_semantica_bottega_ispirata_da_artista() -> None:
+    # Il cammino canonico del White Paper reso esplicito in `connessioni`:
+    # la bottega di liuteria porta con sé il legame con Puccini (ISPIRATA_DA)
+    # come fatto SEMANTICO, non come attribuzione commerciale.
+    source = SeedCandidateSource()
+    candidati = source.candidates(_ctx())
+    candidato_liuteria = next(
+        c for c in candidati if c.experience.id == "exp-laboratorio-liuteria"
+    )
+    assert any("Puccini compose opere" in frase for frase in candidato_liuteria.connessioni)
+    assert any("Boccherini" in frase for frase in candidato_liuteria.connessioni)
 
 
 def test_neo4j_candidate_source_importabile() -> None:

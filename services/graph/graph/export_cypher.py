@@ -23,7 +23,17 @@ from pathlib import Path
 
 from contracts import ExperienceNode
 
-from graph.seed_lucca import ARTISTI, BOTTEGHE, ESPERIENZE, LEGATO_A, LUOGHI, TEMI, VICINO
+from graph.seed_lucca import (
+    ARTISTI,
+    BOTTEGA_EVOCA,
+    BOTTEGA_ISPIRATA_DA,
+    BOTTEGHE,
+    ESPERIENZE,
+    LEGATO_A,
+    LUOGHI,
+    TEMI,
+    VICINO,
+)
 
 CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
 SCHEMA_FILE = CYPHER_DIR / "00_schema.cypher"
@@ -74,8 +84,23 @@ def _cypher_str_list(values: list[str]) -> str:
     return "[" + ", ".join(_cypher_str(v) for v in values) + "]"
 
 
+_RELATION_TYPES_COMMENT = (
+    "// Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li\n"
+    "// richiede esplicitamente):\n"
+    "//   (:Artista)-[:LEGATO_A]->(:Luogo)\n"
+    "//   (:Luogo)-[:VICINO {metri}]->(:Luogo)              -- non orientata nel dominio\n"
+    "//   (:Bottega)-[:OFFRE]->(:Esperienza)\n"
+    "//   (:Esperienza)-[:SI_SVOLGE_A]->(:Luogo)\n"
+    "//   (:Esperienza)-[:EVOCA]->(:Tema)\n"
+    "//   (:Bottega)-[:EVOCA]->(:Tema)                      -- SEMANTICA, non di prossimità\n"
+    "//   (:Bottega)-[:ISPIRATA_DA {racconto}]->(:Artista)  -- SEMANTICA, NUOVA: introdotta\n"
+    "//     perché la Bottega di Liuteria fosse raggiungibile da Puccini per sole\n"
+    "//     connessioni semantiche, senza passare per VICINO (vedi graph/topology.py).\n"
+)
+
+
 def build_schema() -> str:
-    lines = [_HEADER, ""]
+    lines = [_HEADER, "", _RELATION_TYPES_COMMENT]
     for label in _NODE_LABELS_WITH_ID:
         lines.append(
             f"CREATE CONSTRAINT {label.lower()}_id_unique IF NOT EXISTS "
@@ -170,6 +195,23 @@ def _offre_statement(e: ExperienceNode, bottega_id: str) -> str:
     )
 
 
+def _bottega_evoca_statement(rel) -> str:
+    return (
+        f"MATCH (b:Bottega {{id: {_cypher_str(rel.bottega_id)}}}), "
+        f"(t:Tema {{id: {_cypher_str(rel.tema_id)}}})\n"
+        f"MERGE (b)-[:EVOCA]->(t);"
+    )
+
+
+def _ispirata_da_statement(rel) -> str:
+    return (
+        f"MATCH (b:Bottega {{id: {_cypher_str(rel.bottega_id)}}}), "
+        f"(a:Artista {{id: {_cypher_str(rel.artista_id)}}})\n"
+        f"MERGE (b)-[r:ISPIRATA_DA]->(a)\n"
+        f"SET r.racconto = {_cypher_str(rel.racconto)};"
+    )
+
+
 def build_seed() -> str:
     parts: list[str] = [_HEADER]
 
@@ -214,6 +256,25 @@ def build_seed() -> str:
     for esperienza in ESPERIENZE:
         if esperienza.partner_id is not None:
             parts.append(_offre_statement(esperienza, esperienza.partner_id))
+
+    parts.append(
+        "\n// --- Relazioni SEMANTICHE: EVOCA (Bottega -> Tema) ----------------------\n"
+        "// Non di prossimità: la bottega evoca i temi del suo mestiere anche a\n"
+        "// prescindere dall'esperienza specifica che offre."
+    )
+    for rel in BOTTEGA_EVOCA:
+        parts.append(_bottega_evoca_statement(rel))
+
+    parts.append(
+        "\n// --- Relazioni SEMANTICHE: ISPIRATA_DA (Bottega -> Artista) -------------\n"
+        "// Tipo di relazione NUOVO (non VICINO, non LEGATO_A che è riservato ad\n"
+        "// Artista->Luogo): lega una bottega al lavoro di un artista che ne ispira\n"
+        "// il mestiere. `racconto` è la frase che rende esplicita la connessione.\n"
+        "// È ciò che rende percorribile, per sole connessioni semantiche,\n"
+        "// \"Puccini -> ... -> liutaio -> violino\" (vedi graph/topology.py)."
+    )
+    for rel in BOTTEGA_ISPIRATA_DA:
+        parts.append(_ispirata_da_statement(rel))
 
     return "\n".join(parts) + "\n"
 

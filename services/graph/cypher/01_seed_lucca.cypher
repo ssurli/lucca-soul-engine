@@ -318,46 +318,109 @@ MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 400;
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 500;
+SET r.metri = 450;
+MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'palazzo-pfanner'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 350;
+MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'san-frediano'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 400;
+MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'torre-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 600;
+MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'casa-puccini'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 550;
 MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'torre-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 250;
+SET r.metri = 300;
 MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'san-frediano'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 200;
+SET r.metri = 250;
 MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'via-fillungo'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 100;
+SET r.metri = 150;
+MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 500;
+MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'san-michele-in-foro'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 350;
 MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'torre-delle-ore'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 150;
+SET r.metri = 100;
 MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'san-michele-in-foro'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 200;
+MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'casa-puccini'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 200;
+MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'torre-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 250;
+MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'piazza-napoleone'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 300;
 MATCH (a:Luogo {id: 'san-michele-in-foro'}), (b:Luogo {id: 'duomo-san-martino'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 300;
 MATCH (a:Luogo {id: 'san-michele-in-foro'}), (b:Luogo {id: 'piazza-napoleone'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 250;
+MATCH (a:Luogo {id: 'san-michele-in-foro'}), (b:Luogo {id: 'torre-delle-ore'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 200;
+MATCH (a:Luogo {id: 'san-michele-in-foro'}), (b:Luogo {id: 'teatro-del-giglio'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 350;
 MATCH (a:Luogo {id: 'duomo-san-martino'}), (b:Luogo {id: 'casa-puccini'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 200;
+MATCH (a:Luogo {id: 'duomo-san-martino'}), (b:Luogo {id: 'torre-delle-ore'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 350;
+MATCH (a:Luogo {id: 'duomo-san-martino'}), (b:Luogo {id: 'piazza-napoleone'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 450;
+MATCH (a:Luogo {id: 'duomo-san-martino'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 600;
+MATCH (a:Luogo {id: 'casa-puccini'}), (b:Luogo {id: 'teatro-del-giglio'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 400;
 MATCH (a:Luogo {id: 'teatro-del-giglio'}), (b:Luogo {id: 'piazza-napoleone'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 100;
-MATCH (a:Luogo {id: 'teatro-del-giglio'}), (b:Luogo {id: 'san-michele-in-foro'})
+MATCH (a:Luogo {id: 'teatro-del-giglio'}), (b:Luogo {id: 'torre-delle-ore'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 350;
+SET r.metri = 300;
+MATCH (a:Luogo {id: 'piazza-napoleone'}), (b:Luogo {id: 'torre-delle-ore'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 250;
+MATCH (a:Luogo {id: 'torre-delle-ore'}), (b:Luogo {id: 'torre-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 300;
+MATCH (a:Luogo {id: 'torre-guinigi'}), (b:Luogo {id: 'palazzo-pfanner'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 400;
 MATCH (a:Luogo {id: 'palazzo-pfanner'}), (b:Luogo {id: 'san-frediano'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 150;
-MATCH (a:Luogo {id: 'palazzo-pfanner'}), (b:Luogo {id: 'torre-guinigi'})
-MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 400;
-MATCH (a:Luogo {id: 'torre-guinigi'}), (b:Luogo {id: 'torre-delle-ore'})
+MATCH (a:Luogo {id: 'palazzo-pfanner'}), (b:Luogo {id: 'baluardo-san-paolino'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 300;
+MATCH (a:Luogo {id: 'san-frediano'}), (b:Luogo {id: 'baluardo-san-paolino'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 350;
+MATCH (a:Luogo {id: 'san-frediano'}), (b:Luogo {id: 'orto-botanico'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 500;
+MATCH (a:Luogo {id: 'baluardo-san-paolino'}), (b:Luogo {id: 'orto-botanico'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 400;
+MATCH (a:Luogo {id: 'orto-botanico'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 700;
 
 // --- Relazioni: LEGATO_A (Artista -> Luogo) ----------------------------
 MATCH (a:Artista {id: 'artista-puccini'}), (l:Luogo {id: 'casa-puccini'})
@@ -546,3 +609,38 @@ MATCH (b:Bottega {id: 'pasticceria-storica'}), (e:Esperienza {id: 'exp-buccellat
 MERGE (b)-[:OFFRE]->(e);
 MATCH (b:Bottega {id: 'tessitura-lucca'}), (e:Esperienza {id: 'exp-telaio-tessitura'})
 MERGE (b)-[:OFFRE]->(e);
+
+// --- Relazioni SEMANTICHE: EVOCA (Bottega -> Tema) ----------------------
+// Non di prossimità: la bottega evoca i temi del suo mestiere anche a
+// prescindere dall'esperienza specifica che offre.
+MATCH (b:Bottega {id: 'liuteria-lucchese'}), (t:Tema {id: 'liuteria'})
+MERGE (b)-[:EVOCA]->(t);
+MATCH (b:Bottega {id: 'liuteria-lucchese'}), (t:Tema {id: 'musica'})
+MERGE (b)-[:EVOCA]->(t);
+MATCH (b:Bottega {id: 'liuteria-lucchese'}), (t:Tema {id: 'artigianato'})
+MERGE (b)-[:EVOCA]->(t);
+MATCH (b:Bottega {id: 'ceramica-lucca'}), (t:Tema {id: 'artigianato'})
+MERGE (b)-[:EVOCA]->(t);
+MATCH (b:Bottega {id: 'stamperia-lucca'}), (t:Tema {id: 'artigianato'})
+MERGE (b)-[:EVOCA]->(t);
+MATCH (b:Bottega {id: 'stamperia-lucca'}), (t:Tema {id: 'storia'})
+MERGE (b)-[:EVOCA]->(t);
+MATCH (b:Bottega {id: 'pasticceria-storica'}), (t:Tema {id: 'gastronomia'})
+MERGE (b)-[:EVOCA]->(t);
+MATCH (b:Bottega {id: 'tessitura-lucca'}), (t:Tema {id: 'artigianato'})
+MERGE (b)-[:EVOCA]->(t);
+MATCH (b:Bottega {id: 'tessitura-lucca'}), (t:Tema {id: 'silenzio'})
+MERGE (b)-[:EVOCA]->(t);
+
+// --- Relazioni SEMANTICHE: ISPIRATA_DA (Bottega -> Artista) -------------
+// Tipo di relazione NUOVO (non VICINO, non LEGATO_A che è riservato ad
+// Artista->Luogo): lega una bottega al lavoro di un artista che ne ispira
+// il mestiere. `racconto` è la frase che rende esplicita la connessione.
+// È ciò che rende percorribile, per sole connessioni semantiche,
+// "Puccini -> ... -> liutaio -> violino" (vedi graph/topology.py).
+MATCH (b:Bottega {id: 'liuteria-lucchese'}), (a:Artista {id: 'artista-puccini'})
+MERGE (b)-[r:ISPIRATA_DA]->(a)
+SET r.racconto = 'Puccini compose opere; qui un liutaio costruisce i violini che le eseguono.';
+MATCH (b:Bottega {id: 'liuteria-lucchese'}), (a:Artista {id: 'artista-boccherini'})
+MERGE (b)-[r:ISPIRATA_DA]->(a)
+SET r.racconto = 'Boccherini fu virtuoso di violoncello: la stessa famiglia di strumenti che nasce in questa bottega.';

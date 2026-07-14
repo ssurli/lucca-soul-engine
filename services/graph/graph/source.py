@@ -1,18 +1,27 @@
 """Sorgenti di candidati per l'AI Experience Engine.
 
 Il grafo PROPONE per CONNESSIONI (fatti leggibili in italiano: un artista
-legato al luogo, un tema evocato, una vicinanza a un luogo già in contesto).
-Non ordina, non filtra su segnale (pioggia, affollamento, stanchezza) e non
-assegna punteggi: quello è compito, rispettivamente, del Signal/Ethical AI
-Engine e del Recommender, orchestrati dall'AI Experience Engine — l'unico
-componente che DECIDE.
+legato al luogo, un tema evocato, una bottega ispirata dal lavoro di un
+artista, una vicinanza a un luogo già in contesto). Non ordina, non filtra su
+segnale (pioggia, affollamento, stanchezza) e non assegna punteggi: quello è
+compito, rispettivamente, del Signal/Ethical AI Engine e del Recommender,
+orchestrati dall'AI Experience Engine — l'unico componente che DECIDE.
 
 `connessioni` alimenta la componente "sorpresa" dello score del motore
-(`len(connessioni)`): per questo NON contiene mai il fatto commerciale "chi
-offre l'esperienza". Quel fatto va in `GraphCandidate.attribuzione` (`str |
-None`), un campo separato e non contato nello score — SOLO narrazione
-trasparente nel `reason`. Un'esperienza con partner non deve valere di più
-di una senza: "nessuno spazio è acquistabile" (CLAUDE.md).
+(`len(connessioni)`). La regola che separa cosa vi entra non è "l'esperienza
+ha un partner?" ma "il fatto è SEMANTICO o COMMERCIALE?":
+- SEMANTICO (entra in `connessioni`, come qualunque altro fatto del grafo):
+  artista legato al luogo, tema evocato, bottega ispirata da un artista
+  (`ISPIRATA_DA`) o che evoca un tema (`EVOCA`) — sono relazioni di
+  significato, identiche in natura a "artista legato al luogo": un'esperienza
+  con più connessioni semantiche vere è, a ragione, più sorprendente;
+- COMMERCIALE (va SOLO in `GraphCandidate.attribuzione`, mai in
+  `connessioni`): "chi offre l'esperienza" (`OFFRE`). Un partner non deve
+  comprare punteggio con la propria sola esistenza — "nessuno spazio è
+  acquistabile" (CLAUDE.md). Per questo un'esperienza con partner ma senza
+  relazioni semantiche proprie (`ISPIRATA_DA`/`EVOCA` aggiuntivi) genera
+  esattamente le stesse `connessioni` di una gemella senza partner (vedi
+  `tests/test_source.py`).
 
 Due implementazioni della stessa interfaccia (`CandidateSource`):
 - `SeedCandidateSource` — in-memory sul dataset canonico (`graph.seed_lucca`).
@@ -32,6 +41,8 @@ from neo4j import Driver, GraphDatabase
 
 from graph.seed_lucca import (
     ARTISTI,
+    BOTTEGA_EVOCA,
+    BOTTEGA_ISPIRATA_DA,
     BOTTEGHE,
     ESPERIENZE,
     LEGATO_A,
@@ -85,6 +96,19 @@ class SeedCandidateSource:
             self._vicini.setdefault(rel.da_id, []).append((rel.a_id, rel.metri))
             self._vicini.setdefault(rel.a_id, []).append((rel.da_id, rel.metri))
 
+        # Relazioni SEMANTICHE della bottega (non di prossimità): temi che
+        # evoca oltre a quelli della singola esperienza, e artisti il cui
+        # lavoro la ispira (con il racconto già in italiano).
+        self._bottega_evoca: dict[str, list[str]] = {}
+        for rel in BOTTEGA_EVOCA:
+            self._bottega_evoca.setdefault(rel.bottega_id, []).append(rel.tema_id)
+
+        self._bottega_ispirata_da: dict[str, list[tuple[str, str]]] = {}
+        for rel in BOTTEGA_ISPIRATA_DA:
+            self._bottega_ispirata_da.setdefault(rel.bottega_id, []).append(
+                (rel.artista_id, rel.racconto)
+            )
+
     def candidates(self, ctx: VisitorContext) -> list[GraphCandidate]:
         riferimento = ctx.luoghi_gia_visti[-1] if ctx.luoghi_gia_visti else None
         risultato: list[GraphCandidate] = []
@@ -119,6 +143,9 @@ class SeedCandidateSource:
             if tema is not None:
                 frasi.append(f'Evoca il tema "{tema.nome}".')
 
+        if esperienza.partner_id is not None:
+            frasi.extend(self._catena_semantica_bottega(esperienza.partner_id, esperienza.temi))
+
         if riferimento is not None and riferimento != luogo.id:
             luogo_riferimento = self._luoghi.get(riferimento)
             if luogo_riferimento is not None:
@@ -128,6 +155,28 @@ class SeedCandidateSource:
                             f"A {metri} m da {luogo_riferimento.nome}, già visitato."
                         )
                         break
+
+        return frasi
+
+    def _catena_semantica_bottega(
+        self, bottega_id: str, temi_esperienza: list[str]
+    ) -> list[str]:
+        """Fatti SEMANTICI della bottega (`ISPIRATA_DA`, `EVOCA`): non fatti
+        commerciali (quello è `_attribuzione`). Sono ciò che rende
+        percorribile "Puccini -> ... -> liutaio -> violino" per sole
+        connessioni di significato (vedi `graph.topology`). Non duplica i
+        temi che l'esperienza evoca già."""
+        frasi: list[str] = []
+
+        for _artista_id, racconto in self._bottega_ispirata_da.get(bottega_id, []):
+            frasi.append(racconto)
+
+        for tema_id in self._bottega_evoca.get(bottega_id, []):
+            if tema_id in temi_esperienza:
+                continue
+            tema = self._temi.get(tema_id)
+            if tema is not None:
+                frasi.append(f'La bottega evoca anche il tema "{tema.nome}".')
 
         return frasi
 
@@ -227,6 +276,19 @@ class Neo4jCandidateSource:
         for nome in record["temi_nomi"] or []:
             if nome:
                 connessioni.append(f'Evoca il tema "{nome}".')
+        # `racconti_ispirazione` (ISPIRATA_DA) e `temi_bottega` (EVOCA
+        # Bottega->Tema) sono fatti SEMANTICI, non commerciali: entrano in
+        # `connessioni` come qualunque altro fatto del grafo (vedi docstring
+        # di modulo). Filtrano i duplicati con i temi già evocati da `e`.
+        for racconto in record["racconti_ispirazione"] or []:
+            if racconto:
+                connessioni.append(racconto)
+        temi_esperienza = set(record["temi"] or [])
+        for entry in record["temi_bottega"] or []:
+            tema_id = entry.get("id") if entry else None
+            tema_nome = entry.get("nome") if entry else None
+            if tema_id and tema_nome and tema_id not in temi_esperienza:
+                connessioni.append(f'La bottega evoca anche il tema "{tema_nome}".')
         # `botteghe_nomi` NON entra in `connessioni` (contate nello score del
         # motore): alimenta solo `attribuzione`, fatto commerciale separato e
         # non conteggiato — "nessuno spazio è acquistabile".

@@ -1,16 +1,24 @@
 // Query "candidati" per l'AI Experience Engine.
 //
 // Il grafo PROPONE per connessioni: ogni riga porta i fatti grezzi (artisti
-// legati al luogo, temi evocati, distanza dal punto di riferimento) da cui
-// `graph.source.Neo4jCandidateSource` monta un `GraphCandidate`. Non ordina e
-// non applica vincoli etici: quello spetta all'AI Experience Engine, il solo
-// componente che decide.
+// legati al luogo, temi evocati, distanza dal punto di riferimento, e la
+// catena SEMANTICA della bottega che eventualmente offre l'esperienza) da
+// cui `graph.source.Neo4jCandidateSource` monta un `GraphCandidate`. Non
+// ordina e non applica vincoli etici: quello spetta all'AI Experience
+// Engine, il solo componente che decide.
 //
-// `botteghe_nomi` (dalla relazione OFFRE) è nel risultato ma alimenta SOLO
-// `GraphCandidate.attribuzione` (narrazione trasparente nel `reason`), MAI
-// `connessioni`: `connessioni` conta nella componente "sorpresa" dello score
-// del motore, e la presenza di un partner non deve comprare punteggio —
+// `botteghe_nomi` (dalla relazione OFFRE, fatto COMMERCIALE) è nel
+// risultato ma alimenta SOLO `GraphCandidate.attribuzione` (narrazione
+// trasparente nel `reason`), MAI `connessioni`: `connessioni` conta nella
+// componente "sorpresa" dello score del motore, e la presenza di un
+// partner non deve comprare punteggio con la propria sola esistenza —
 // "nessuno spazio è acquistabile" (CLAUDE.md).
+//
+// `racconti_ispirazione` (da `ISPIRATA_DA`) e `temi_bottega` (da `EVOCA`
+// Bottega->Tema) sono invece fatti SEMANTICI — della stessa natura di
+// `artisti_nomi`/`temi_nomi` — e alimentano `connessioni`: sono ciò che
+// rende raggiungibile, per sole relazioni di significato, il percorso
+// "Puccini -> ... -> liutaio -> violino" (vedi graph/topology.py).
 //
 // Parametri (tutti opzionali: `null` o lista vuota = nessun filtro):
 //   $temi         list[string]   id di Tema da cercare tra quelli evocati
@@ -39,11 +47,15 @@ WHERE ($temi IS NULL OR size($temi) = 0
 OPTIONAL MATCH (art:Artista)-[:LEGATO_A]->(l)
 OPTIONAL MATCH (bot:Bottega)-[:OFFRE]->(e)
 OPTIONAL MATCH (e)-[:EVOCA]->(tema:Tema)
+OPTIONAL MATCH (bot)-[isp:ISPIRATA_DA]->(:Artista)
+OPTIONAL MATCH (bot)-[:EVOCA]->(temab:Tema)
 OPTIONAL MATCH (l)-[vic:VICINO]-(:Luogo {id: $vicino_a})
 WITH e, l,
      collect(DISTINCT art.nome) AS artisti_nomi,
      collect(DISTINCT bot.nome) AS botteghe_nomi,
      collect(DISTINCT tema.nome) AS temi_nomi,
+     collect(DISTINCT isp.racconto) AS racconti_ispirazione,
+     collect(DISTINCT {id: temab.id, nome: temab.nome}) AS temi_bottega,
      min(vic.metri) AS distanza_m
 RETURN
   e.id AS id,
@@ -60,5 +72,7 @@ RETURN
   artisti_nomi,
   botteghe_nomi,
   temi_nomi,
+  racconti_ispirazione,
+  temi_bottega,
   distanza_m
 ORDER BY e.id

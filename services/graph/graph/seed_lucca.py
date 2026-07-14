@@ -21,11 +21,27 @@ nello schema (`cypher/00_schema.cypher`) ma non hanno seed in questa wave:
 Relazioni derivate implicitamente dai campi di `ExperienceNode` (niente
 tabelle separate da tenere sincronizzate a mano):
 - `SI_SVOLGE_A` da `ExperienceNode.place_id`;
-- `EVOCA` da `ExperienceNode.temi` (id di `Tema`);
+- `EVOCA` (Esperienza -> Tema) da `ExperienceNode.temi` (id di `Tema`);
 - `OFFRE` da `ExperienceNode.partner_id` (id di `Bottega`, quando presente).
 
 Relazioni esplicite (non derivabili da un solo campo): `VICINO` tra Luoghi,
 `LEGATO_A` tra Artista e Luogo.
+
+Relazioni SEMANTICHE bottega (non di prossimità fisica — vedi diagnosi Aura
+del 2026-07-14: densità VICINO troppo bassa e Bottega di Liuteria
+irraggiungibile da Puccini per sole connessioni fisiche):
+- `EVOCA` (Bottega -> Tema): stesso tipo di relazione delle Esperienze — una
+  bottega evoca i temi del suo mestiere anche a prescindere dall'esperienza
+  specifica che offre;
+- `ISPIRATA_DA` (Bottega -> Artista): relazione NUOVA, non di prossimità.
+  Lega una bottega a un artista il cui lavoro ne è l'ispirazione (es. la
+  liuteria è ispirata da Puccini e Boccherini). Porta con sé `racconto`, la
+  frase italiana che rende esplicita la connessione in `connessioni`.
+
+Queste due relazioni sono ciò che rende raggiungibile, per SOLE connessioni
+semantiche (`LEGATO_A`, `SI_SVOLGE_A`, `OFFRE`, `EVOCA`, `ISPIRATA_DA` — mai
+`VICINO`), il percorso canonico del White Paper: Puccini -> ... -> Bottega di
+Liuteria. Verificato in `graph.topology` e `tests/test_topology.py`.
 """
 
 from __future__ import annotations
@@ -87,6 +103,31 @@ class RelazioneLegatoA:
 
     artista_id: str
     luogo_id: str
+
+
+@dataclass(frozen=True)
+class RelazioneBottegaEvoca:
+    """`(:Bottega)-[:EVOCA]->(:Tema)`. Stesso tipo di relazione delle
+    Esperienze (`Esperienza-[:EVOCA]->Tema`): la bottega evoca i temi del suo
+    mestiere. Fatto SEMANTICO, non di prossimità: alimenta `connessioni` solo
+    per i temi che l'esperienza specifica non evoca già (niente doppioni)."""
+
+    bottega_id: str
+    tema_id: str
+
+
+@dataclass(frozen=True)
+class RelazioneIspirataDa:
+    """`(:Bottega)-[:ISPIRATA_DA]->(:Artista)`. Relazione SEMANTICA nuova
+    (non di prossimità fisica, non `LEGATO_A` che è riservato ad
+    Artista->Luogo): lega una bottega al lavoro di un artista che ne ispira
+    il mestiere. `racconto` è la frase italiana che la rende esplicita in
+    `GraphCandidate.connessioni` — è ciò che rende percorribile, per sole
+    connessioni semantiche, "Puccini -> ... -> liutaio -> violino"."""
+
+    bottega_id: str
+    artista_id: str
+    racconto: str
 
 
 # ---------------------------------------------------------------------------
@@ -169,6 +210,41 @@ TEMI: list[Tema] = [
     Tema("con-bambini", "Adatto ai bambini"),
     Tema("artigianato", "Artigianato"),
     Tema("liuteria", "Liuteria"),
+]
+
+# ---------------------------------------------------------------------------
+# Relazioni SEMANTICHE delle botteghe — bottega -> tema, bottega -> artista.
+#
+# Non di prossimità: sono ciò che rende raggiungibile un artigiano pertinente
+# a partire da un artista SENZA passare per `VICINO` (vedi `graph.topology`).
+# `BOTTEGA_EVOCA` riusa il tipo di relazione `EVOCA` (come le Esperienze);
+# `BOTTEGA_ISPIRATA_DA` introduce il nuovo tipo `ISPIRATA_DA`.
+# ---------------------------------------------------------------------------
+
+BOTTEGA_EVOCA: list[RelazioneBottegaEvoca] = [
+    RelazioneBottegaEvoca("liuteria-lucchese", "liuteria"),
+    RelazioneBottegaEvoca("liuteria-lucchese", "musica"),
+    RelazioneBottegaEvoca("liuteria-lucchese", "artigianato"),
+    RelazioneBottegaEvoca("ceramica-lucca", "artigianato"),
+    RelazioneBottegaEvoca("stamperia-lucca", "artigianato"),
+    RelazioneBottegaEvoca("stamperia-lucca", "storia"),
+    RelazioneBottegaEvoca("pasticceria-storica", "gastronomia"),
+    RelazioneBottegaEvoca("tessitura-lucca", "artigianato"),
+    RelazioneBottegaEvoca("tessitura-lucca", "silenzio"),
+]
+
+BOTTEGA_ISPIRATA_DA: list[RelazioneIspirataDa] = [
+    RelazioneIspirataDa(
+        "liuteria-lucchese",
+        "artista-puccini",
+        "Puccini compose opere; qui un liutaio costruisce i violini che le eseguono.",
+    ),
+    RelazioneIspirataDa(
+        "liuteria-lucchese",
+        "artista-boccherini",
+        "Boccherini fu virtuoso di violoncello: la stessa famiglia di strumenti "
+        "che nasce in questa bottega.",
+    ),
 ]
 
 # ---------------------------------------------------------------------------
@@ -396,26 +472,72 @@ ESPERIENZE: list[ExperienceNode] = [
 
 # ---------------------------------------------------------------------------
 # Vicinanze — grafo di prossimità tra luoghi (una riga per coppia)
+#
+# Corretto dopo la diagnosi su Aura del 2026-07-14: densità media 2,3
+# vicini/luogo (una CATENA) con 4 vicoli ciechi (casa-puccini, orto-botanico,
+# baluardo-san-paolino, museo-nazionale-guinigi, tutti a 1 solo vicino).
+# Lucca dentro le Mura è un centro storico compatto (~1,6 x 1,1 km): quasi
+# ogni luogo del seed è raggiungibile a piedi in ~10-15 min da ogni altro.
+# `mura-urbane` è un anello che tocca la maggior parte dei luoghi (hub), non
+# un nodo di passaggio isolato. Target: densità media >= 4, nessun luogo con
+# < 2 vicini (verificato in `tests/test_topology.py`). Le distanze restano
+# plausibili (nessuna scorciatoia impossibile), ma la città È piccola.
 # ---------------------------------------------------------------------------
 
 VICINO: list[RelazioneVicino] = [
+    # mura-urbane: l'anello, hub della rete (8 vicini)
     RelazioneVicino("mura-urbane", "baluardo-san-paolino", 50),
     RelazioneVicino("mura-urbane", "orto-botanico", 100),
     RelazioneVicino("mura-urbane", "piazza-napoleone", 400),
-    RelazioneVicino("mura-urbane", "museo-nazionale-guinigi", 500),
-    RelazioneVicino("piazza-anfiteatro", "torre-guinigi", 250),
-    RelazioneVicino("piazza-anfiteatro", "san-frediano", 200),
-    RelazioneVicino("piazza-anfiteatro", "via-fillungo", 100),
-    RelazioneVicino("via-fillungo", "torre-delle-ore", 150),
+    RelazioneVicino("mura-urbane", "museo-nazionale-guinigi", 450),
+    RelazioneVicino("mura-urbane", "palazzo-pfanner", 350),
+    RelazioneVicino("mura-urbane", "san-frediano", 400),
+    RelazioneVicino("mura-urbane", "torre-guinigi", 600),
+    RelazioneVicino("mura-urbane", "casa-puccini", 550),
+    # piazza-anfiteatro
+    RelazioneVicino("piazza-anfiteatro", "torre-guinigi", 300),
+    RelazioneVicino("piazza-anfiteatro", "san-frediano", 250),
+    RelazioneVicino("piazza-anfiteatro", "via-fillungo", 150),
+    RelazioneVicino("piazza-anfiteatro", "museo-nazionale-guinigi", 500),
+    RelazioneVicino("piazza-anfiteatro", "san-michele-in-foro", 350),
+    # via-fillungo (l'asse commerciale, hub)
+    RelazioneVicino("via-fillungo", "torre-delle-ore", 100),
     RelazioneVicino("via-fillungo", "san-michele-in-foro", 200),
+    RelazioneVicino("via-fillungo", "casa-puccini", 200),
+    RelazioneVicino("via-fillungo", "torre-guinigi", 250),
+    RelazioneVicino("via-fillungo", "piazza-napoleone", 300),
+    # san-michele-in-foro (hub centrale)
     RelazioneVicino("san-michele-in-foro", "duomo-san-martino", 300),
     RelazioneVicino("san-michele-in-foro", "piazza-napoleone", 250),
+    RelazioneVicino("san-michele-in-foro", "torre-delle-ore", 200),
+    RelazioneVicino("san-michele-in-foro", "teatro-del-giglio", 350),
+    # duomo-san-martino
     RelazioneVicino("duomo-san-martino", "casa-puccini", 200),
+    RelazioneVicino("duomo-san-martino", "torre-delle-ore", 350),
+    RelazioneVicino("duomo-san-martino", "piazza-napoleone", 450),
+    RelazioneVicino("duomo-san-martino", "museo-nazionale-guinigi", 600),
+    # casa-puccini (ex vicolo cieco: ora 4 vicini)
+    RelazioneVicino("casa-puccini", "teatro-del-giglio", 400),
+    # teatro-del-giglio
     RelazioneVicino("teatro-del-giglio", "piazza-napoleone", 100),
-    RelazioneVicino("teatro-del-giglio", "san-michele-in-foro", 350),
+    RelazioneVicino("teatro-del-giglio", "torre-delle-ore", 300),
+    # piazza-napoleone (hub)
+    RelazioneVicino("piazza-napoleone", "torre-delle-ore", 250),
+    # torre-delle-ore (hub)
+    RelazioneVicino("torre-delle-ore", "torre-guinigi", 300),
+    # torre-guinigi
+    RelazioneVicino("torre-guinigi", "palazzo-pfanner", 400),
+    # palazzo-pfanner (ex vicolo cieco: ora 4 vicini)
     RelazioneVicino("palazzo-pfanner", "san-frediano", 150),
-    RelazioneVicino("palazzo-pfanner", "torre-guinigi", 400),
-    RelazioneVicino("torre-guinigi", "torre-delle-ore", 300),
+    RelazioneVicino("palazzo-pfanner", "baluardo-san-paolino", 300),
+    # san-frediano
+    RelazioneVicino("san-frediano", "baluardo-san-paolino", 350),
+    RelazioneVicino("san-frediano", "orto-botanico", 500),
+    # baluardo-san-paolino (ex vicolo cieco: ora 4 vicini)
+    RelazioneVicino("baluardo-san-paolino", "orto-botanico", 400),
+    # orto-botanico (ex vicolo cieco: ora 4 vicini)
+    RelazioneVicino("orto-botanico", "museo-nazionale-guinigi", 700),
+    # museo-nazionale-guinigi (ex vicolo cieco: ora 4 vicini)
 ]
 
 # ---------------------------------------------------------------------------
@@ -460,6 +582,23 @@ def _validate() -> None:
     for rel in LEGATO_A:
         assert rel.artista_id in artisti_ids, f"LEGATO_A: artista sconosciuto {rel.artista_id!r}"
         assert rel.luogo_id in luoghi_ids, f"LEGATO_A: luogo sconosciuto {rel.luogo_id!r}"
+
+    for rel in BOTTEGA_EVOCA:
+        assert rel.bottega_id in botteghe_ids, (
+            f"BOTTEGA_EVOCA: bottega sconosciuta {rel.bottega_id!r}"
+        )
+        assert rel.tema_id in temi_ids, f"BOTTEGA_EVOCA: tema sconosciuto {rel.tema_id!r}"
+
+    for rel in BOTTEGA_ISPIRATA_DA:
+        assert rel.bottega_id in botteghe_ids, (
+            f"BOTTEGA_ISPIRATA_DA: bottega sconosciuta {rel.bottega_id!r}"
+        )
+        assert rel.artista_id in artisti_ids, (
+            f"BOTTEGA_ISPIRATA_DA: artista sconosciuto {rel.artista_id!r}"
+        )
+        assert rel.racconto, (
+            f"BOTTEGA_ISPIRATA_DA {rel.bottega_id}->{rel.artista_id}: racconto vuoto"
+        )
 
 
 _validate()
