@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'api/bff_client.dart';
+import 'screens/citizen_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'util/person_id.dart';
 
@@ -39,7 +40,73 @@ class _LuccaSoulAppState extends State<LuccaSoulApp> {
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7A5C3E)),
         useMaterial3: true,
       ),
-      home: OnboardingScreen(bffClient: _bffClient, personId: _personId),
+      home: _HomeScreen(bffClient: _bffClient, personId: _personId),
+    );
+  }
+}
+
+/// Punto di ingresso: sceglie tra il percorso Turista (onboarding
+/// conversazionale) e la vista Cittadino (Urban Memory).
+///
+/// "Il Cittadino non paga: alimenta la Urban Memory ed è la condizione di
+/// sostenibilità sociale del sistema" (CLAUDE.md) — è un percorso di prima
+/// classe fin dalla radice dell'app, non una funzione nascosta dentro
+/// quello del turista.
+class _HomeScreen extends StatelessWidget {
+  final BffClient bffClient;
+  final String personId;
+
+  const _HomeScreen({required this.bffClient, required this.personId});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Lucca Soul Lab')),
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.auto_awesome, size: 48, color: Theme.of(context).colorScheme.primary),
+                const SizedBox(height: 16),
+                Text(
+                  'Chi sei oggi?',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.explore_outlined),
+                    label: const Text('Sono un visitatore'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => OnboardingScreen(bffClient: bffClient, personId: personId),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.groups_outlined),
+                    label: const Text('Sono cittadino/a di Lucca'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CitizenScreen(bffClient: bffClient, personId: personId),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

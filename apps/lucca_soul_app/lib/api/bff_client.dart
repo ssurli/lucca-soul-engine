@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/adapt_request.dart';
 import '../models/emotional_profile.dart';
 import '../models/itinerary.dart';
+import '../models/memory_contribution.dart';
 import '../models/onboarding.dart';
 import '../models/visitor_context.dart';
 import 'bff_exception.dart';
@@ -49,6 +50,22 @@ class BffClient {
     return Itinerary.fromJson(json);
   }
 
+  /// `POST /memory` — conferisce un contributo alla Urban Memory. Il BFF
+  /// rifiuta (4xx) un conferimento senza consenso esplicito o con licenza
+  /// mancante: il messaggio (`detail`) del server arriva intatto nel
+  /// `BffException`, così la UI mostra esattamente ciò che dice il BFF.
+  Future<MemoryContribution> submitMemory(MemoryContribution contribution) async {
+    final json = await _post('/memory', contribution.toJson());
+    return MemoryContribution.fromJson(json);
+  }
+
+  /// `GET /memory/{place_id}` — solo i contributi già curati (revisionati)
+  /// che riguardano un Luogo/Bottega/Artista del grafo.
+  Future<List<MemoryContribution>> memoriesForPlace(String placeId) async {
+    final list = await _getList('/memory/${Uri.encodeComponent(placeId)}');
+    return list.map((e) => MemoryContribution.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
     final uri = baseUrl.resolve(path);
     late final http.Response response;
@@ -73,6 +90,29 @@ class BffClient {
 
     final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (decoded is! Map<String, dynamic>) {
+      throw BffException('Risposta del BFF non nel formato atteso per $path');
+    }
+    return decoded;
+  }
+
+  Future<List<dynamic>> _getList(String path) async {
+    final uri = baseUrl.resolve(path);
+    late final http.Response response;
+    try {
+      response = await _http.get(uri).timeout(const Duration(seconds: 20));
+    } catch (error) {
+      throw BffException('Impossibile contattare il BFF su $uri: $error');
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw BffException(
+        _extractErrorDetail(response.bodyBytes) ?? 'Il BFF ha risposto con un errore',
+        statusCode: response.statusCode,
+      );
+    }
+
+    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    if (decoded is! List<dynamic>) {
       throw BffException('Risposta del BFF non nel formato atteso per $path');
     }
     return decoded;

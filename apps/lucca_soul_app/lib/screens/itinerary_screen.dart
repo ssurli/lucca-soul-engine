@@ -9,8 +9,10 @@ import '../models/signal.dart';
 import '../models/visitor_context.dart';
 import '../util/app_strings.dart';
 import '../util/itinerary_diff.dart';
+import '../util/known_places.dart';
 import '../util/signal_presets.dart';
 import '../widgets/adaptive_card.dart';
+import '../widgets/memory_contribution_sheet.dart';
 
 /// Schermata dell'itinerario: la giornata generata da `POST /itinerary`,
 /// ogni tappa con orario e `reason` in evidenza (la spiegabilità è il
@@ -80,6 +82,24 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     });
   }
 
+  /// Apre il conferimento a Urban Memory, contestuale alla tappa appena
+  /// vissuta: `esperienza_id` e i luoghi che "riguarda" sono passati dal
+  /// contesto, non chiesti di nuovo all'utente (Wave 2).
+  Future<void> _lasciaRicordo(ItineraryStop stop) async {
+    final esito = await showMemoryContributionSheet(
+      context,
+      bffClient: widget.bffClient,
+      contributorId: widget.personId,
+      contributorKind: PersonKind.turista,
+      riguarda: riguardaPerEsperienza(stop.experienceId),
+      esperienzaId: stop.experienceId,
+      strings: _strings,
+    );
+    if (esito == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_strings.memorySuccess)));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -145,6 +165,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
               stop: itinerario.stops[i],
               evidenziata: _tappeEvidenziate.contains(i),
               strings: _strings,
+              onLasciaRicordo: () => _lasciaRicordo(itinerario.stops[i]),
             ),
         ],
       ),
@@ -174,8 +195,14 @@ class _StopCard extends StatelessWidget {
   final ItineraryStop stop;
   final bool evidenziata;
   final AppStrings strings;
+  final VoidCallback onLasciaRicordo;
 
-  const _StopCard({required this.stop, required this.evidenziata, required this.strings});
+  const _StopCard({
+    required this.stop,
+    required this.evidenziata,
+    required this.strings,
+    required this.onLasciaRicordo,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -241,6 +268,14 @@ class _StopCard extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onLasciaRicordo,
+                icon: const Icon(Icons.auto_stories_outlined, size: 18),
+                label: Text(strings.leaveMemoryAction),
               ),
             ),
           ],
