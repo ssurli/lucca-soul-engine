@@ -16,7 +16,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e packages/contracts -e services/graph -e services/rag -e services/experience-engine -e services/api
+          pip install -e packages/contracts -e services/graph -e services/rag -e services/experience-engine -e services/urban-memory -e services/api
           pip install pytest ruff httpx
 
       - name: Lint (ruff)
@@ -25,5 +25,5 @@ jobs:
       - name: Test (pytest)
         run: pytest
 
-      - name: Test services (graph, experience-engine)
-        run: pytest services/graph/tests services/experience-engine/tests
+      - name: Test services (graph, experience-engine, urban-memory)
+        run: pytest services/graph/tests services/experience-engine/tests services/urban-memory/tests
