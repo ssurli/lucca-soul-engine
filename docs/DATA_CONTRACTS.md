@@ -50,7 +50,9 @@ class VisitorContext(BaseModel):
 Nodi: `Luogo`, `Artista`, `Bottega`, `Evento`, `Esperienza`, `Tema`.
 Relazioni: `(:Artista)-[:LEGATO_A]->(:Luogo)`, `(:Luogo)-[:VICINO {metri}]->(:Luogo)`,
 `(:Bottega)-[:OFFRE]->(:Esperienza)`, `(:Esperienza)-[:SI_SVOLGE_A]->(:Luogo)`,
-`(:Esperienza)-[:EVOCA]->(:Tema)`, `(:Memoria)-[:RIGUARDA]->(:Luogo|:Bottega|:Artista)`.
+`(:Esperienza)-[:EVOCA]->(:Tema)`, `(:Bottega)-[:EVOCA]->(:Tema)`,
+`(:Bottega)-[:ISPIRATA_DA {racconto}]->(:Artista)`,
+`(:Memoria)-[:RIGUARDA]->(:Luogo|:Bottega|:Artista)`.
 
 ```python
 class ExperienceNode(BaseModel):
