@@ -7,29 +7,55 @@ di `graph.source.CandidateSource`:
   nei test e finché `DATABASE_URL` non è configurato.
 - `PostgresMemoryRepository` — Neon (`sslmode=require`) in cloud o Postgres
   locale (Docker sul PC fisso): stesso codice nei due profili, cambia solo
-  il DSN. Predisposta ma NON ancora implementata in questa wave: nessun
-  database è raggiungibile da qui (vedi la sua docstring per lo schema di
-  tabella atteso).
+  il DSN letto da `DATABASE_URL`. Persiste DAVVERO: la memoria non si azzera
+  al riavvio del processo (il fossato del progetto non può vivere solo in
+  RAM). Lo schema di tabella è versionato e idempotente in
+  `services/urban-memory/sql/00_memory_schema.sql` (vedi `urban_memory.
+  migrate`), con `CHECK (consenso = true)` e `CHECK (char_length(licenza) >=
+  1)` a difesa in profondità, oltre ai controlli già fatti da
+  `urban_memory.service`.
 
 Nessuna delle due implementazioni applica i vincoli etici (consenso,
 licenza, pseudonimo, curatela): quelli vivono in `urban_memory.service`, in
 un solo punto verificabile. Il repository sa solo leggere e scrivere ciò
-che il servizio gli passa già validato.
+che il servizio gli passa già validato — i due `CHECK` in
+`00_memory_schema.sql` sono l'unica eccezione, ed esistono apposta come
+seconda barriera, non come prima.
 """
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
+import psycopg
 from contracts import MemoryContribution
+from psycopg.rows import dict_row
+
+from ._env import database_url_from_env
 
 __all__ = [
     "MemoryRepository",
     "InMemoryMemoryRepository",
     "PostgresMemoryRepository",
+    "MemoryStorageError",
 ]
+
+_COLUMNS = (
+    "id",
+    "kind",
+    "testo",
+    "media_uri",
+    "riguarda",
+    "contributor_id",
+    "contributor_kind",
+    "esperienza_id",
+    "consenso",
+    "licenza",
+    "creato_il",
+    "curato",
+)
+_COLUMNS_SQL = ", ".join(_COLUMNS)
 
 
 class MemoryRepository(Protocol):
@@ -95,98 +121,48 @@ class InMemoryMemoryRepository:
 
 
 # ---------------------------------------------------------------------------
-# Postgres (Neon in cloud, locale con Docker) — predisposta, non implementata
+# Postgres (Neon in cloud, locale con Docker/Postgres nativo)
 # ---------------------------------------------------------------------------
 
 
-def _read_dotenv(path: Path) -> dict[str, str]:
-    """Parser minimale di `.env` (stesso pattern di `graph.env`): KEY=VALUE,
-    righe vuote e `#commenti` ignorati, virgolette attorno al valore
-    rimosse. Nessuna dipendenza da `python-dotenv`: qui basta questo."""
-    values: dict[str, str] = {}
-    if not path.exists():
-        return values
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        key, _, value = line.partition("=")
-        values[key.strip()] = value.strip().strip('"').strip("'")
-    return values
+class MemoryStorageError(Exception):
+    """Errore INFRASTRUTTURALE di persistenza (connessione, vincolo DB,
+    query fallita) — NON un'eccezione di dominio: NON è una sottoclasse di
+    `urban_memory.service.UrbanMemoryError`.
 
-
-def _database_url_from_env(dotenv_path: Path | None = None) -> str:
-    """Legge `DATABASE_URL` dal `.env` (radice del repo) e dall'ambiente di
-    processo (che ha sempre la precedenza sul file). Nessun host hardcoded,
-    nessun `if local/cloud`: Neon (`sslmode=require`) o Postgres locale
-    dipendono solo da questo valore.
-
-    Solleva `ValueError` se `DATABASE_URL` manca: fallire qui, in modo
-    leggibile, è meglio che fallire dentro un driver con un errore di rete
-    generico.
+    La distinzione è deliberata: `UrbanMemoryError` (e le sue sottoclassi:
+    `ConsentRequiredError`, `LicenseRequiredError`, `PseudonymRequiredError`)
+    significa "questo contributo viola una regola non negoziabile", un 422
+    per il BFF. `MemoryStorageError` significa "il database non ha potuto
+    completare l'operazione" (rete, credenziali, un `CHECK` scattato per un
+    bug applicativo a monte) — il BFF può distinguerla e rispondere di
+    conseguenza, invece di restituire un 500 opaco che confonde le due
+    situazioni molto diverse.
     """
-    # urban_memory/repository.py -> radice del repo, 3 livelli sopra
-    # (stessa profondità di services/graph/graph/env.py).
-    repo_root = Path(__file__).resolve().parents[3]
-    env = _read_dotenv(dotenv_path or (repo_root / ".env"))
-    env.update(os.environ)
-
-    dsn = env.get("DATABASE_URL")
-    if not dsn:
-        raise ValueError("DATABASE_URL mancante nel .env o nell'ambiente")
-    return dsn
 
 
 class PostgresMemoryRepository:
     """Persistenza reale via Postgres — Neon (`sslmode=require`) in cloud,
-    Postgres locale (Docker) sul PC fisso. NON ANCORA IMPLEMENTATA in questa
-    wave: nessun database è raggiungibile da questo ambiente. Il posto è
-    predisposto perché `services/api` possa cablarla in una wave successiva
-    senza cambiare l'interfaccia (`MemoryRepository`).
+    Postgres locale (Docker sul PC fisso, o un cluster nativo). Stesso
+    codice nei due profili: cambia solo il DSN. Nessun host hardcoded,
+    nessun `if local/cloud` — dipende solo dalla stringa passata al
+    costruttore (tipicamente `DATABASE_URL`, letta da `from_env()`).
 
-    Il DSN arriva SEMPRE dal costruttore (mai letto da `os.environ` dentro i
-    metodi di lettura/scrittura): usa `from_env()` per costruirla a partire
-    da `DATABASE_URL`, così chi la istanzia resta libero di scegliere la
-    fonte di configurazione — stesso pattern di
-    `graph.source.Neo4jCandidateSource.from_credentials`. Nessun host
-    hardcoded, nessun `if local/cloud`: Neon o Postgres locale dipendono
-    solo dal valore di `DATABASE_URL` nel `.env`.
+    Lo schema atteso (`memory_contribution`, colonne speculari a
+    `MemoryContribution`, `docs/DATA_CONTRACTS.md` §4) è versionato e
+    idempotente in `services/urban-memory/sql/00_memory_schema.sql`: va
+    applicato una volta con `urban_memory.migrate.migrate(dsn)` (o `python -m
+    urban_memory.migrate`) prima di usare questa classe. Questa classe non
+    applica la migrazione da sé (nessun DDL implicito a ogni richiesta): la
+    migrazione è un passo esplicito e versionato, come il seed del grafo.
 
-    Tabella attesa (allineata a `docs/DATA_CONTRACTS.md` §4 —
-    `MemoryContribution`)::
-
-        CREATE TABLE IF NOT EXISTS memory_contribution (
-            id                TEXT PRIMARY KEY,
-            kind              TEXT NOT NULL,
-            testo             TEXT,
-            media_uri         TEXT,
-            riguarda          TEXT[] NOT NULL DEFAULT '{}',
-            contributor_id    TEXT NOT NULL,      -- pseudonimo, mai PII
-            contributor_kind  TEXT NOT NULL,
-            esperienza_id     TEXT,
-            consenso          BOOLEAN NOT NULL,   -- deve essere TRUE
-            licenza           TEXT NOT NULL,
-            creato_il         TIMESTAMPTZ NOT NULL,
-            curato            BOOLEAN NOT NULL DEFAULT FALSE
-        );
-
-        -- Vincolo etico ribadito a livello di schema (secondo strato:
-        -- `urban_memory.service` lo applica già prima di arrivare qui;
-        -- un contributo senza consenso non deve poter persistere nemmeno
-        -- per un bug futuro nel livello applicativo).
-        ALTER TABLE memory_contribution
-            ADD CONSTRAINT memory_contribution_consenso_check CHECK (consenso IS TRUE);
-
-        -- get_curated(place_id) è la query più frequente (curato=True e
-        -- place_id in riguarda): indice mirato su entrambi gli accessi.
-        CREATE INDEX IF NOT EXISTS memory_contribution_curato_idx
-            ON memory_contribution (curato);
-        CREATE INDEX IF NOT EXISTS memory_contribution_riguarda_gin_idx
-            ON memory_contribution USING GIN (riguarda);
-
-    Come per il grafo (`services/graph/cypher/`), la migrazione andrà
-    versionata quando questa classe verrà implementata; qui resta solo
-    documentata perché nessun database è raggiungibile in questa wave.
+    Una connessione (e una transazione) per operazione: nessuno stato di
+    connessione persistente tenuto in `self` — coerente con "la memoria
+    sopravvive al riavvio del processo che la scrive", non solo del
+    processo che la legge. Ogni errore psycopg è mappato in
+    `MemoryStorageError` (mai lasciato propagare come eccezione psycopg
+    grezza): è un errore infrastrutturale, non un `UrbanMemoryError` di
+    dominio.
     """
 
     def __init__(self, dsn: str) -> None:
@@ -197,36 +173,109 @@ class PostgresMemoryRepository:
         """Costruisce leggendo `DATABASE_URL` dal `.env` (radice del repo) o
         dall'ambiente di processo. Comodità equivalente a
         `graph.env.load_neo4j_config()` per il lato Postgres."""
-        return cls(_database_url_from_env(dotenv_path))
+        return cls(database_url_from_env(dotenv_path))
+
+    # -- lettura/scrittura -----------------------------------------------
 
     def submit(self, contribution: MemoryContribution) -> MemoryContribution:
-        raise NotImplementedError(
-            "PostgresMemoryRepository non è ancora implementata: nessun "
-            "database è raggiungibile in questa wave. Usa "
-            "InMemoryMemoryRepository nel frattempo (vedi il README del "
-            "servizio)."
+        query = (
+            f"INSERT INTO memory_contribution ({_COLUMNS_SQL}) "
+            f"VALUES (%(id)s, %(kind)s, %(testo)s, %(media_uri)s, %(riguarda)s, "
+            f"%(contributor_id)s, %(contributor_kind)s, %(esperienza_id)s, "
+            f"%(consenso)s, %(licenza)s, %(creato_il)s, %(curato)s) "
+            f"RETURNING {_COLUMNS_SQL}"
         )
+        params = _to_params(contribution)
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, params)
+                    riga = cur.fetchone()
+                conn.commit()
+        except psycopg.Error as exc:
+            raise MemoryStorageError(
+                f"impossibile persistere il contributo id={contribution.id!r}: {exc}"
+            ) from exc
+        assert riga is not None  # RETURNING su un INSERT riuscito produce sempre una riga
+        return _from_row(riga)
 
     def get_curated(self, place_id: str) -> list[MemoryContribution]:
-        raise NotImplementedError(
-            "PostgresMemoryRepository non è ancora implementata: nessun "
-            "database è raggiungibile in questa wave. Usa "
-            "InMemoryMemoryRepository nel frattempo (vedi il README del "
-            "servizio)."
+        query = (
+            f"SELECT {_COLUMNS_SQL} FROM memory_contribution "
+            "WHERE curato = true AND %(place_id)s = ANY(riguarda) "
+            "ORDER BY creato_il, id"
         )
+        righe = self._select(query, {"place_id": place_id})
+        return [_from_row(riga) for riga in righe]
 
     def list_pending(self) -> list[MemoryContribution]:
-        raise NotImplementedError(
-            "PostgresMemoryRepository non è ancora implementata: nessun "
-            "database è raggiungibile in questa wave. Usa "
-            "InMemoryMemoryRepository nel frattempo (vedi il README del "
-            "servizio)."
+        query = (
+            f"SELECT {_COLUMNS_SQL} FROM memory_contribution "
+            "WHERE curato = false ORDER BY creato_il, id"
         )
+        righe = self._select(query, {})
+        return [_from_row(riga) for riga in righe]
 
     def curate(self, memory_id: str) -> MemoryContribution:
-        raise NotImplementedError(
-            "PostgresMemoryRepository non è ancora implementata: nessun "
-            "database è raggiungibile in questa wave. Usa "
-            "InMemoryMemoryRepository nel frattempo (vedi il README del "
-            "servizio)."
+        query = (
+            f"UPDATE memory_contribution SET curato = true "
+            f"WHERE id = %(id)s RETURNING {_COLUMNS_SQL}"
         )
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, {"id": memory_id})
+                    riga = cur.fetchone()
+                conn.commit()
+        except psycopg.Error as exc:
+            raise MemoryStorageError(
+                f"impossibile curare il contributo id={memory_id!r}: {exc}"
+            ) from exc
+        if riga is None:
+            raise KeyError(f"nessun contributo con id={memory_id!r}")
+        return _from_row(riga)
+
+    # -- interno ------------------------------------------------------------
+
+    def _select(self, query: str, params: dict[str, Any]) -> list[dict[str, Any]]:
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, params)
+                    return list(cur.fetchall())
+        except psycopg.Error as exc:
+            raise MemoryStorageError(f"lettura fallita su memory_contribution: {exc}") from exc
+
+
+def _to_params(contribution: MemoryContribution) -> dict[str, Any]:
+    return {
+        "id": contribution.id,
+        "kind": contribution.kind.value,
+        "testo": contribution.testo,
+        "media_uri": contribution.media_uri,
+        "riguarda": list(contribution.riguarda),
+        "contributor_id": contribution.contributor_id,
+        "contributor_kind": contribution.contributor_kind.value,
+        "esperienza_id": contribution.esperienza_id,
+        "consenso": contribution.consenso,
+        "licenza": contribution.licenza,
+        "creato_il": contribution.creato_il,
+        "curato": contribution.curato,
+    }
+
+
+def _from_row(riga: dict[str, Any]) -> MemoryContribution:
+    return MemoryContribution(
+        id=riga["id"],
+        kind=riga["kind"],
+        testo=riga["testo"],
+        media_uri=riga["media_uri"],
+        riguarda=list(riga["riguarda"] or []),
+        contributor_id=riga["contributor_id"],
+        contributor_kind=riga["contributor_kind"],
+        esperienza_id=riga["esperienza_id"],
+        consenso=riga["consenso"],
+        licenza=riga["licenza"],
+        creato_il=riga["creato_il"],
+        curato=riga["curato"],
+    )

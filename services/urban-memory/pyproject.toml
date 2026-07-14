@@ -9,6 +9,8 @@ description = "Lucca Soul Lab — Engine: Urban Memory. Il fossato difendibile d
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2",
+    "psycopg[binary]>=3",
+    "neo4j>=5",
 ]
 
 # NOTA — pacchetto contratti (packages/contracts):
@@ -19,19 +21,22 @@ dependencies = [
 #
 #   pip install -e packages/contracts -e services/urban-memory
 #
-# NOTA — nessun driver Postgres come dipendenza obbligatoria:
-# `urban_memory.repository.PostgresMemoryRepository` è predisposta (il DSN
-# arriva dal costruttore, tipicamente letto da DATABASE_URL da chi la
-# istanzia — Neon `sslmode=require` in cloud, Postgres locale col PC fisso;
-# MAI hardcoded, MAI un `if local/cloud`) ma non ancora implementata in
-# questa wave: nessun database è raggiungibile da qui. Il percorso di
-# default, usato dai test e finché DATABASE_URL non è configurato, è
-# `InMemoryMemoryRepository` — nessuna dipendenza extra richiesta.
+# NOTA — persistenza reale:
+# `urban_memory.repository.PostgresMemoryRepository` persiste DAVVERO via
+# `psycopg[binary]` (driver Postgres 3): il DSN arriva dal costruttore,
+# tipicamente letto da DATABASE_URL da chi la istanzia — Neon
+# (`sslmode=require`) in cloud, Postgres locale sul PC fisso; MAI
+# hardcoded, MAI un `if local/cloud`. Lo schema (`memory_contribution`) è
+# versionato e idempotente in `sql/00_memory_schema.sql`, applicato da
+# `urban_memory.migrate.migrate(dsn)` (o `python -m urban_memory.migrate`)
+# prima del primo uso. Il percorso di default, usato dai test e finché
+# DATABASE_URL non è configurato, resta `InMemoryMemoryRepository`.
 #
-# NOTA — nessuna connessione a Neo4j qui: `urban_memory.graph_link` produce
-# SOLO (query, params) in modo puro. L'esecuzione contro il grafo (Aura
-# `neo4j+s://` o locale `bolt://`) spetta a chi ha il driver, nelle wave
-# successive (`services/api` o `services/graph`).
+# NOTA — aggancio al grafo:
+# `urban_memory.graph_link.riguarda_to_cypher` produce SOLO (query, params)
+# in modo puro. `link_to_graph`/`Neo4jMemoryLinker` (driver ufficiale
+# `neo4j`) eseguono quella query davvero contro Aura (`neo4j+s://`) o Neo4j
+# locale (`bolt://`) — lo schema dell'URI vive solo in `NEO4J_URI` (`.env`).
 
 [tool.hatch.build.targets.wheel]
 packages = ["urban_memory"]

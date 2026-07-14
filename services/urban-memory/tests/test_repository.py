@@ -1,19 +1,26 @@
 """Test di `urban_memory.repository`.
 
-`InMemoryMemoryRepository` è il percorso principale (usato nei test e
-finché `DATABASE_URL` non è configurato). `PostgresMemoryRepository` non è
-testabile live in questo ambiente (nessun Postgres raggiungibile): resta
-coperta da test che ne verificano l'interfaccia e la predisposizione
-(`NotImplementedError`, DSN mai letto implicitamente dall'ambiente).
+`InMemoryMemoryRepository` è il percorso di default (usato nei test e
+finché `DATABASE_URL` non è configurato). `PostgresMemoryRepository` è
+testata contro un Postgres 16 EFFIMERO vero (vedi `tests/conftest.py`:
+`postgres_cluster`/`pg_dsn`/`pg_repo`) — non un mock: submit/get_curated/
+list_pending/curate, la migrazione idempotente, i `CHECK` del DB a difesa
+in profondità di consenso e licenza, e soprattutto che il contributo
+sopravvive alla chiusura e riapertura della connessione (la persistenza che
+il committente ha chiesto di dimostrare). Se Postgres 16 non è disponibile
+in questo ambiente, quei test sono SALTATI (`pytest.skip`), non falliti.
 """
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
+import psycopg
 import pytest
 from contracts import MemoryContribution, MemoryKind, PersonKind
 from urban_memory import InMemoryMemoryRepository, MemoryRepository, PostgresMemoryRepository
+from urban_memory.migrate import migrate
+from urban_memory.repository import MemoryStorageError
 
 
 def _contributo(**overrides: object) -> MemoryContribution:
@@ -87,7 +94,7 @@ def test_get_curated_su_place_id_senza_contributi_e_vuoto() -> None:
     assert repo.get_curated("luogo-mai-visto") == []
 
 
-# --- PostgresMemoryRepository: predisposta, non implementata ---------------
+# --- PostgresMemoryRepository: interfaccia e costruzione -------------------
 
 
 def test_postgres_repository_ha_linterfaccia_attesa() -> None:
@@ -96,19 +103,6 @@ def test_postgres_repository_ha_linterfaccia_attesa() -> None:
     assert hasattr(repo, "get_curated")
     assert hasattr(repo, "list_pending")
     assert hasattr(repo, "curate")
-
-
-def test_postgres_repository_non_implementata_solleva_not_implemented_error() -> None:
-    repo = PostgresMemoryRepository(dsn="postgresql://esplicito/db")
-    contributo = _contributo()
-    with pytest.raises(NotImplementedError):
-        repo.submit(contributo)
-    with pytest.raises(NotImplementedError):
-        repo.get_curated("luogo-1")
-    with pytest.raises(NotImplementedError):
-        repo.list_pending()
-    with pytest.raises(NotImplementedError):
-        repo.curate("mem-repo-1")
 
 
 def test_postgres_repository_dsn_arriva_sempre_dal_costruttore(
@@ -138,3 +132,211 @@ def test_postgres_repository_from_env_legge_il_dotenv(tmp_path, monkeypatch) -> 
     dotenv.write_text('DATABASE_URL="postgresql://letto-dal-file/db"\n', encoding="utf-8")
     repo = PostgresMemoryRepository.from_env(dotenv_path=dotenv)
     assert repo._dsn == "postgresql://letto-dal-file/db"
+
+
+# --- PostgresMemoryRepository: persistenza reale (Postgres 16 effimero) ----
+#
+# Tutti i test sotto dipendono (direttamente o via `pg_dsn`/`pg_repo`) dalla
+# fixture `postgres_cluster` (tests/conftest.py): se questo ambiente non può
+# avviare un Postgres 16 effimero, sono SALTATI, non falliti.
+
+
+def test_migrate_e_idempotente(pg_dsn: str) -> None:
+    """Rieseguita due volte sullo stesso DSN, `migrate` non solleva: `CREATE
+    TABLE`/`INDEX ... IF NOT EXISTS`, nessun `DROP` (CLAUDE.md — rieseguibile
+    da zero in un comando, come il seed del grafo)."""
+    migrate(pg_dsn)
+    migrate(pg_dsn)  # seconda corsa: deve essere un no-op, non un errore
+
+
+def test_postgres_repository_implementa_il_protocollo(pg_repo: PostgresMemoryRepository) -> None:
+    repo: MemoryRepository = pg_repo
+    assert hasattr(repo, "submit")
+    assert hasattr(repo, "get_curated")
+    assert hasattr(repo, "list_pending")
+    assert hasattr(repo, "curate")
+
+
+def test_postgres_submit_poi_get_curated_e_vuoto_finche_non_curato(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    contributo = _contributo(
+        id="mem-pg-1",
+        riguarda=["luogo-pg-1"],
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    persistito = pg_repo.submit(contributo)
+    assert persistito.id == "mem-pg-1"
+    assert persistito.curato is False
+    assert pg_repo.get_curated("luogo-pg-1") == []  # non ancora curato
+
+
+def test_postgres_curate_pubblica_il_contributo(pg_repo: PostgresMemoryRepository) -> None:
+    contributo = _contributo(
+        id="mem-pg-2",
+        riguarda=["luogo-pg-2"],
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    pg_repo.submit(contributo)
+
+    curato = pg_repo.curate("mem-pg-2")
+    assert curato.curato is True
+
+    pubblicati = pg_repo.get_curated("luogo-pg-2")
+    assert [c.id for c in pubblicati] == ["mem-pg-2"]
+    assert pubblicati[0].licenza == contributo.licenza
+    assert pubblicati[0].kind == contributo.kind
+
+
+def test_postgres_curate_id_sconosciuto_solleva_keyerror(pg_repo: PostgresMemoryRepository) -> None:
+    with pytest.raises(KeyError):
+        pg_repo.curate("non-esiste-su-postgres")
+
+
+def test_postgres_get_curated_filtra_per_place_id_e_per_curato(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    creato_il = datetime(2026, 7, 14, 9, 0, tzinfo=UTC)
+    pg_repo.submit(_contributo(id="a", riguarda=["luogo-a"], creato_il=creato_il))
+    pg_repo.submit(_contributo(id="b", riguarda=["luogo-b"], creato_il=creato_il))
+    pg_repo.submit(_contributo(id="c", riguarda=["luogo-a"], creato_il=creato_il))
+    pg_repo.curate("a")
+    pg_repo.curate("b")
+    # "c" resta non curato di proposito
+
+    assert [c.id for c in pg_repo.get_curated("luogo-a")] == ["a"]
+
+
+def test_postgres_list_pending_contiene_solo_i_non_curati(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    creato_il = datetime(2026, 7, 14, 9, 0, tzinfo=UTC)
+    pg_repo.submit(_contributo(id="p1", riguarda=["luogo-p"], creato_il=creato_il))
+    pg_repo.submit(_contributo(id="p2", riguarda=["luogo-p"], creato_il=creato_il))
+    pg_repo.curate("p2")
+
+    assert [c.id for c in pg_repo.list_pending()] == ["p1"]
+
+
+def test_postgres_persistenza_sopravvive_a_una_nuova_connessione(pg_dsn: str) -> None:
+    """IL CUORE DELLA RICHIESTA: dopo aver chiuso il repository "scrittore" e
+    aperto un repository NUOVO sullo STESSO DSN (nessuno stato di
+    connessione condiviso: simula un riavvio del processo), il contributo
+    curato è ANCORA lì. È la differenza tra `PostgresMemoryRepository` e lo
+    stub in-memory che si azzerava al riavvio."""
+    migrate(pg_dsn)
+
+    scrittore = PostgresMemoryRepository(pg_dsn)
+    contributo = _contributo(
+        id="mem-persist-1",
+        riguarda=["luogo-persist"],
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    scrittore.submit(contributo)
+    scrittore.curate("mem-persist-1")
+    del scrittore  # nessuna connessione persistente da chiudere: per-operazione
+
+    lettore = PostgresMemoryRepository(pg_dsn)  # istanza NUOVA, stesso DSN
+    pubblicati = lettore.get_curated("luogo-persist")
+    assert [c.id for c in pubblicati] == ["mem-persist-1"]
+    assert pubblicati[0].curato is True
+
+    # Una TERZA istanza (un altro "riavvio") continua a vederlo: non è un
+    # comportamento di una singola riconnessione fortunata.
+    ancora = PostgresMemoryRepository(pg_dsn)
+    assert [c.id for c in ancora.get_curated("luogo-persist")] == ["mem-persist-1"]
+
+
+def test_check_db_rifiuta_insert_diretto_senza_consenso(pg_dsn: str) -> None:
+    """Difesa in profondità: ANCHE un INSERT diretto (che scavalca
+    `urban_memory.service`) è rifiutato dal `CHECK` a livello DB — non solo
+    dal servizio applicativo."""
+    migrate(pg_dsn)
+    with pytest.raises(psycopg.errors.CheckViolation):
+        with psycopg.connect(pg_dsn) as conn:
+            conn.execute(
+                "INSERT INTO memory_contribution "
+                "(id, kind, riguarda, contributor_id, contributor_kind, "
+                "consenso, licenza, creato_il, curato) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    "mem-senza-consenso-diretto",
+                    "racconto",
+                    ["luogo-x"],
+                    "qualcuno",
+                    "turista",
+                    False,  # <- consenso=False: deve essere rifiutato dal CHECK
+                    "CC-BY-4.0",
+                    datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+                    False,
+                ),
+            )
+
+
+def test_check_db_rifiuta_insert_diretto_con_licenza_vuota(pg_dsn: str) -> None:
+    migrate(pg_dsn)
+    with pytest.raises(psycopg.errors.CheckViolation):
+        with psycopg.connect(pg_dsn) as conn:
+            conn.execute(
+                "INSERT INTO memory_contribution "
+                "(id, kind, riguarda, contributor_id, contributor_kind, "
+                "consenso, licenza, creato_il, curato) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                (
+                    "mem-senza-licenza-diretto",
+                    "racconto",
+                    ["luogo-x"],
+                    "qualcuno",
+                    "turista",
+                    True,
+                    "",  # <- licenza vuota: deve essere rifiutata dal CHECK
+                    datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+                    False,
+                ),
+            )
+
+
+def test_postgres_submit_id_duplicato_solleva_memory_storage_error(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    """Un errore psycopg (qui: violazione della chiave primaria) è mappato
+    in `MemoryStorageError` — infrastrutturale, MAI un `UrbanMemoryError` di
+    dominio: il BFF deve poterle distinguere."""
+    contributo = _contributo(
+        id="mem-duplicato",
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    pg_repo.submit(contributo)
+    with pytest.raises(MemoryStorageError):
+        pg_repo.submit(contributo)
+
+
+# --- Protocol MemoryRepository: stessi test, entrambe le implementazioni ---
+
+
+def test_protocollo_submit_get_curated_curate_su_entrambe_le_implementazioni(
+    any_memory_repository: MemoryRepository,
+) -> None:
+    """Lo stesso ciclo di vita (submit -> non pubblicato -> curate ->
+    pubblicato) vale IDENTICO su `InMemoryMemoryRepository` e su
+    `PostgresMemoryRepository`: è lo stesso `Protocol`, non due contratti
+    diversi con lo stesso nome."""
+    repo = any_memory_repository
+    contributo = _contributo(
+        id="mem-protocollo-1",
+        riguarda=["luogo-protocollo"],
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+
+    persistito = repo.submit(contributo)
+    assert persistito.id == "mem-protocollo-1"
+    assert repo.get_curated("luogo-protocollo") == []
+    assert [c.id for c in repo.list_pending()] == ["mem-protocollo-1"]
+
+    curato = repo.curate("mem-protocollo-1")
+    assert curato.curato is True
+    assert [c.id for c in repo.get_curated("luogo-protocollo")] == ["mem-protocollo-1"]
+    assert repo.list_pending() == []
+
+    with pytest.raises(KeyError):
+        repo.curate("non-esiste-in-nessuna-implementazione")

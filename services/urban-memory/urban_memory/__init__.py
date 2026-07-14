@@ -31,17 +31,34 @@ Uso tipico::
     curate_contribution(repo, contribution.id)         # revisione umana
     contributions_for_place(repo, "bottega-liuteria-1")  # solo curati
 
-Ogni contributo si aggancia inoltre al Knowledge Graph via
-`urban_memory.graph_link.riguarda_to_cypher`: la memoria arricchisce il
-grafo (`(:Memoria)-[:RIGUARDA]->(...)`), non vive a lato.
+Persistenza reale (Neon in cloud o Postgres locale — mai `if local/cloud`,
+solo `DATABASE_URL`). Una tantum, applica la migrazione idempotente
+(`python -m urban_memory.migrate`), poi::
+
+    from urban_memory import PostgresMemoryRepository
+
+    repo = PostgresMemoryRepository.from_env()  # legge DATABASE_URL
+    submit_contribution(repo, contribution)      # persiste DAVVERO
+
+Ogni contributo si aggancia inoltre al Knowledge Graph: `urban_memory.
+graph_link.riguarda_to_cypher` produce la query pura
+(`(:Memoria)-[:RIGUARDA]->(...)`), `link_to_graph`/`Neo4jMemoryLinker` la
+eseguono davvero contro Neo4j (Aura o locale).
 """
 
 from __future__ import annotations
 
-from .graph_link import MEMORY_LINK_QUERY_PATH, riguarda_to_cypher
+from .graph_link import (
+    MEMORY_LINK_QUERY_PATH,
+    Neo4jMemoryLinker,
+    link_to_graph,
+    riguarda_to_cypher,
+)
+from .migrate import SCHEMA_PATH, migrate
 from .repository import (
     InMemoryMemoryRepository,
     MemoryRepository,
+    MemoryStorageError,
     PostgresMemoryRepository,
 )
 from .service import (
@@ -60,6 +77,7 @@ __all__ = [
     "MemoryRepository",
     "InMemoryMemoryRepository",
     "PostgresMemoryRepository",
+    "MemoryStorageError",
     "UrbanMemoryError",
     "ConsentRequiredError",
     "LicenseRequiredError",
@@ -71,4 +89,8 @@ __all__ = [
     "contributions_for_place",
     "riguarda_to_cypher",
     "MEMORY_LINK_QUERY_PATH",
+    "link_to_graph",
+    "Neo4jMemoryLinker",
+    "migrate",
+    "SCHEMA_PATH",
 ]
