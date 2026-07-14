@@ -13,9 +13,23 @@ Wave 1 aggiunge la pipeline completa di raccomandazione:
 - `POST /itinerary/adapt` fa lo stesso con `adapt_itinerary` e
   `rag.reasons.adapt_reason`.
 
+Wave 2 aggiunge la Urban Memory (il fossato):
+- `POST /memory` delega a `urban_memory.service.submit_contribution`, che
+  applica in un solo punto i vincoli non negoziabili (consenso, licenza,
+  pseudonimo, `curato` sempre forzato a `False` alla creazione — vedi
+  `docs/DATA_CONTRACTS.md` §4 e §7);
+- `GET /memory/{place_id}` delega a
+  `urban_memory.service.contributions_for_place`, che espone SOLO i
+  contributi curati (`curato=True`).
+- Le violazioni dei vincoli (`urban_memory.UrbanMemoryError` e sottoclassi)
+  sono mappate a un 422 esplicativo in italiano da
+  `urban_memory_error_handler`, mai a un 500.
+
 `/health` non richiede alcun database attivo. Gli errori di validazione dei
 payload sono lasciati alla gestione 422 di default di FastAPI/Pydantic.
-Nessun PII: `person_id` è pseudonimo, e non compare mai nei log applicativi.
+Nessun PII: `person_id`/`contributor_id` sono pseudonimi e non compaiono mai
+nei log applicativi; il contenuto di un `MemoryContribution` (`testo`,
+`media_uri`) non viene MAI loggato, né qui né in `urban_memory.service`.
 """
 
 from __future__ import annotations
@@ -25,20 +39,41 @@ from contracts import (
     AdaptRequest,
     EmotionalProfile,
     Itinerary,
+    MemoryContribution,
     OnboardingRequest,
     VisitorContext,
 )
 from experience_engine.engine import adapt_itinerary, compose_itinerary
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from rag.onboarding import profile_from_answers
 from rag.reasons import adapt_reason, compose_reason
+from urban_memory import UrbanMemoryError, contributions_for_place, submit_contribution
 
 from api import __version__
-from api.deps import get_candidate_source
+from api.deps import get_candidate_source, get_memory_repository
 from api.settings import get_settings
 
 app = FastAPI(title="Lucca Soul — BFF")
+
+
+@app.exception_handler(UrbanMemoryError)
+def urban_memory_error_handler(request: Request, exc: UrbanMemoryError) -> JSONResponse:
+    """Mappa i vincoli non negoziabili della Urban Memory (consenso,
+    licenza, pseudonimo — sollevati da `urban_memory.service`, un solo
+    punto verificabile) a un 422 esplicativo in italiano, MAI un 500: chi
+    conferisce deve sapere esattamente cosa manca (utile per un conferimento
+    leggero e contestuale, vedi CLAUDE.md).
+
+    Il messaggio dell'eccezione (`str(exc)`) descrive SOLO il vincolo
+    violato, mai il contenuto del contributo (`testo`, `media_uri`,
+    `contributor_id`): niente PII finisce in una risposta HTTP né in un log.
+    """
+    return JSONResponse(
+        status_code=422,
+        content={"detail": f"conferimento rifiutato: {exc}"},
+    )
 
 
 class HealthResponse(BaseModel):
@@ -119,6 +154,36 @@ def adapt_itinerary_endpoint(request: AdaptRequest) -> Itinerary:
         reason_fn=compose_reason,
         adapt_reason_fn=adapt_reason,
     )
+
+
+@app.post("/memory", response_model=MemoryContribution, status_code=201)
+def submit_memory_contribution(contribution: MemoryContribution) -> MemoryContribution:
+    """Conferimento alla Urban Memory (contratto §7, `docs/DATA_CONTRACTS.md`).
+
+    Delega TUTTI i vincoli non negoziabili — consenso, licenza, pseudonimo,
+    `curato` forzato a `False` alla creazione — a
+    `urban_memory.service.submit_contribution`: un solo punto verificabile,
+    mai duplicato qui. Le violazioni sollevano `UrbanMemoryError` (o una
+    sottoclasse), mappata a 422 da `urban_memory_error_handler`, mai a un
+    500. Il repository (`InMemoryMemoryRepository` finché `DATABASE_URL` non
+    è configurato, vedi `api.deps.get_memory_repository`) è l'unico che
+    persiste; questo endpoint non tocca mai lo storage direttamente.
+
+    Non logga MAI il contributo: né `testo`, né `media_uri`, né
+    `contributor_id`."""
+    repo = get_memory_repository()
+    return submit_contribution(repo, contribution)
+
+
+@app.get("/memory/{place_id}", response_model=list[MemoryContribution])
+def memory_for_place(place_id: str) -> list[MemoryContribution]:
+    """Contributi CURATI (`curato=True`) che riguardano `place_id`
+    (contratto §7). Delega a `urban_memory.service.contributions_for_place`,
+    che passa SEMPRE da `get_curated`: un contributo appena conferito e non
+    ancora revisionato da un umano non compare mai qui, indipendentemente
+    da come è stato conferito."""
+    repo = get_memory_repository()
+    return contributions_for_place(repo, place_id)
 
 
 def _profilo_neutro_per_candidati() -> EmotionalProfile:

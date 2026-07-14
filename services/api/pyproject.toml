@@ -15,18 +15,22 @@ dependencies = [
 ]
 
 # NOTA — pacchetti locali (packages/contracts, services/graph, services/rag,
-# services/experience-engine): sono la single source of truth per gli schemi
-# (docs/DATA_CONTRACTS.md), per la CandidateSource del grafo, per l'onboarding
-# conversazionale e per la composizione dei `reason`, e per l'AI Experience
-# Engine che decide le tappe. NON vanno aggiunti qui come dipendenze pip (non
-# sono pubblicati su un indice). Vanno installati a parte, in editable mode,
-# insieme a questo pacchetto:
+# services/experience-engine, services/urban-memory): sono la single source
+# of truth per gli schemi (docs/DATA_CONTRACTS.md), per la CandidateSource
+# del grafo, per l'onboarding conversazionale e per la composizione dei
+# `reason`, per l'AI Experience Engine che decide le tappe, e (Wave 2) per i
+# vincoli non negoziabili della Urban Memory (consenso, licenza, pseudonimo,
+# curatela — `lucca-urban-memory`). NON vanno aggiunti qui come dipendenze
+# pip (non sono pubblicati su un indice). Vanno installati a parte, in
+# editable mode, insieme a questo pacchetto:
 #
 #   pip install -e packages/contracts -e services/graph -e services/rag \
-#               -e services/experience-engine -e services/api
+#               -e services/experience-engine -e services/urban-memory \
+#               -e services/api
 #
-# Il codice di `api` importa da `contracts`, `graph`, `rag` ed
-# `experience_engine` assumendo che siano già installati nell'ambiente attivo.
+# Il codice di `api` importa da `contracts`, `graph`, `rag`,
+# `experience_engine` ed `urban_memory` assumendo che siano già installati
+# nell'ambiente attivo.
 
 [tool.hatch.build.targets.wheel]
 packages = ["api"]
