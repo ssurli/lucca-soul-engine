@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lucca-urban-memory"
+version = "0.1.0"
+description = "Lucca Soul Lab — Engine: Urban Memory. Il fossato difendibile del progetto: contenuto che nessun concorrente può acquisire dall'esterno, perché nasce solo dalla partecipazione (racconti, mestieri, dialetto, fotografie di botteghe). Conferimento leggero e contestuale, consenso obbligatorio, licenza sempre tracciata, curatela prima della pubblicazione, aggancio al Knowledge Graph via `RIGUARDA`."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+]
+
+# NOTA — pacchetto contratti (packages/contracts):
+# `lucca-contracts` è la single source of truth per gli schemi
+# (MemoryContribution, MemoryKind, PersonKind...) e NON va aggiunto qui come
+# dipendenza pip (non è pubblicato su un indice). Va installato a parte, in
+# editable mode, insieme a questo pacchetto:
+#
+#   pip install -e packages/contracts -e services/urban-memory
+#
+# NOTA — nessun driver Postgres come dipendenza obbligatoria:
+# `urban_memory.repository.PostgresMemoryRepository` è predisposta (il DSN
+# arriva dal costruttore, tipicamente letto da DATABASE_URL da chi la
+# istanzia — Neon `sslmode=require` in cloud, Postgres locale col PC fisso;
+# MAI hardcoded, MAI un `if local/cloud`) ma non ancora implementata in
+# questa wave: nessun database è raggiungibile da qui. Il percorso di
+# default, usato dai test e finché DATABASE_URL non è configurato, è
+# `InMemoryMemoryRepository` — nessuna dipendenza extra richiesta.
+#
+# NOTA — nessuna connessione a Neo4j qui: `urban_memory.graph_link` produce
+# SOLO (query, params) in modo puro. L'esecuzione contro il grafo (Aura
+# `neo4j+s://` o locale `bolt://`) spetta a chi ha il driver, nelle wave
+# successive (`services/api` o `services/graph`).
+
+[tool.hatch.build.targets.wheel]
+packages = ["urban_memory"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
