@@ -41,17 +41,22 @@ solo `DATABASE_URL`). Una tantum, applica la migrazione idempotente
     submit_contribution(repo, contribution)      # persiste DAVVERO
 
 Ogni contributo si aggancia inoltre al Knowledge Graph: `urban_memory.
-graph_link.riguarda_to_cypher` produce la query pura
-(`(:Memoria)-[:RIGUARDA]->(...)`), `link_to_graph`/`Neo4jMemoryLinker` la
-eseguono davvero contro Neo4j (Aura o locale).
+graph_link.riguarda_to_cypher`/`riguarda_check_cypher` producono query pure
+(`(:Memoria)-[:RIGUARDA]->(...)`); `link_to_graph`/`Neo4jMemoryLinker` le
+eseguono davvero contro Neo4j (Aura o locale), ATOMICAMENTE: se un id in
+`riguarda` non esiste nel grafo, `MemoryLinkError` lo nomina e NESSUN nodo
+`:Memoria` orfano viene creato.
 """
 
 from __future__ import annotations
 
 from .graph_link import (
-    MEMORY_LINK_QUERY_PATH,
+    MEMORY_LINK_CHECK_QUERY_PATH,
+    MEMORY_LINK_WRITE_QUERY_PATH,
+    MemoryLinkError,
     Neo4jMemoryLinker,
     link_to_graph,
+    riguarda_check_cypher,
     riguarda_to_cypher,
 )
 from .migrate import SCHEMA_PATH, migrate
@@ -88,7 +93,10 @@ __all__ = [
     "pending_contributions",
     "contributions_for_place",
     "riguarda_to_cypher",
-    "MEMORY_LINK_QUERY_PATH",
+    "riguarda_check_cypher",
+    "MEMORY_LINK_CHECK_QUERY_PATH",
+    "MEMORY_LINK_WRITE_QUERY_PATH",
+    "MemoryLinkError",
     "link_to_graph",
     "Neo4jMemoryLinker",
     "migrate",

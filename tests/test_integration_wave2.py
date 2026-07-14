@@ -48,6 +48,7 @@ from typing import Any
 
 import pytest
 from contracts import MemoryContribution, MemoryKind, PersonKind
+from pydantic import ValidationError
 from urban_memory import (
     ConsentRequiredError,
     InMemoryMemoryRepository,
@@ -244,12 +245,11 @@ def test_riguarda_to_cypher_produce_merge_memoria_e_una_riguarda_per_id() -> Non
     assert params["id"] == "mem-w2-cypher"
     assert params["riguarda"] == riguarda_ids
 
-    # riguarda vuoto: la Memoria si crea/aggiorna comunque, senza relazioni.
-    contributo_senza_riguarda = MemoryContribution(
-        **_payload(id="mem-w2-cypher-vuoto", riguarda=[])
-    )
-    _, params_vuoti = riguarda_to_cypher(contributo_senza_riguarda)
-    assert params_vuoti["riguarda"] == []
+    # riguarda vuoto: VIETATO dal contratto (min_length=1). Un contributo che
+    # non riguarda alcun nodo sarebbe un :Memoria orfano — è il bug osservato
+    # su Aura. Il vincolo lo blocca alla costruzione, prima ancora del linker.
+    with pytest.raises(ValidationError):
+        MemoryContribution(**_payload(id="mem-w2-cypher-vuoto", riguarda=[]))
 
 
 # ---------------------------------------------------------------------------

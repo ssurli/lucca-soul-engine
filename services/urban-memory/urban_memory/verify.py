@@ -15,8 +15,12 @@ Cosa fa, in ordine, stampando ogni passo in italiano:
 4. Rilegge il contributo appena curato da `get_curated` e lo stampa: è la
    prova che il dato è nel database, non solo nella risposta della prima
    chiamata.
-5. Se `NEO4J_URI` è configurata, esegue `link_to_graph` e stampa quante
-   `:Memoria`/`RIGUARDA` risultano nel grafo.
+5. Se `NEO4J_URI` è configurata, esegue `link_to_graph` (ATOMICO: verifica
+   prima, scrive poi, nella stessa transazione) e stampa quante `:Memoria`/
+   `RIGUARDA` risultano nel grafo. Se `MemoryLinkError` viene sollevata
+   (tipicamente: `PLACE_ID_ESEMPIO` non esiste ancora nel grafo di
+   destinazione), il passo è segnalato come ERRORE ESPLICITO — mai in
+   silenzio, e mai un nodo `:Memoria` orfano.
 
 Lanciato DUE VOLTE (o una volta, poi di nuovo dopo un riavvio del
 processo/macchina) mostra lo stesso contributo ancora presente al passo 4:
@@ -36,7 +40,12 @@ from .repository import MemoryStorageError, PostgresMemoryRepository
 from .service import curate_contribution, submit_contribution
 
 CONTRIBUTO_ID = "mem-verify-persistenza"
-PLACE_ID_ESEMPIO = "bottega-liuteria-1"
+# ATTENZIONE: deve essere un id REALE del seed del grafo (services/graph/
+# graph/seed_lucca.py), non inventato — un id inesistente qui riproduce
+# esattamente il bug corretto in `urban_memory.graph_link` (nodo :Memoria
+# orfano). Le botteghe del seed: liuteria-lucchese, ceramica-lucca,
+# stamperia-lucca, pasticceria-storica, tessitura-lucca.
+PLACE_ID_ESEMPIO = "liuteria-lucchese"
 
 
 def _contributo_esempio() -> MemoryContribution:
@@ -100,13 +109,23 @@ def _verifica_grafo(contributo: MemoryContribution) -> None:
         )
         return
 
-    from .graph_link import Neo4jMemoryLinker
+    from .graph_link import MemoryLinkError, Neo4jMemoryLinker
 
     print("5. Aggancio al Knowledge Graph (Neo4j)...")
-    with Neo4jMemoryLinker.from_env() as linker:
-        linker.link(contributo)
-        memorie, relazioni = linker.count_memoria()
-        print(f"   OK: {memorie} nodo/i :Memoria, {relazioni} relazione/i :RIGUARDA nel grafo.")
+    try:
+        with Neo4jMemoryLinker.from_env() as linker:
+            linker.link(contributo)
+            memorie, relazioni = linker.count_memoria()
+            print(f"   OK: {memorie} nodo/i :Memoria, {relazioni} relazione/i :RIGUARDA nel grafo.")
+    except MemoryLinkError as exc:
+        # MAI silenzioso: se il link fallisce, NON è "ok" — è un errore
+        # esplicito (tipicamente: PLACE_ID_ESEMPIO non esiste nel grafo di
+        # destinazione, o il seed non è stato applicato con `python -m
+        # graph.loader`). Nessun nodo :Memoria orfano è stato creato (è
+        # esattamente ciò che questa eccezione garantisce), ma la verifica
+        # va segnalata come fallita, non taciuta.
+        print(f"   ERRORE: aggancio al grafo NON riuscito — {exc}")
+        raise SystemExit(1) from exc
 
 
 def main() -> None:
