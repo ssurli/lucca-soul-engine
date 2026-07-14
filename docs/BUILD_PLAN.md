@@ -44,8 +44,14 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   **→ SODDISFATTA** (2026-07-14): `tests/test_integration_wave2.py` copre esperienza→contributo→
   curatela→pubblicazione e l'aggancio `(:Memoria)-[:RIGUARDA]->(...)`; ethics-guardian **PASS**
   su consenso, licenza, pseudonimizzazione, curatela, Cittadino di prima classe, no monetizzazione.
-  *Nota: aggancio al grafo verificato come generazione Cypher (offline); la scrittura live su Aura
-  resta da eseguire sul profilo cloud, insieme alla `PostgresMemoryRepository` (oggi stub).*
+  **Persistenza reale** (2026-07-14): `PostgresMemoryRepository` (psycopg 3) su Neon/Postgres,
+  migrazione `sql/00_memory_schema.sql` idempotente con `CHECK(consenso=true)`/`CHECK(licenza)`
+  come backstop DB; `MemoryStorageError`→**503** sul BFF (mai 500 opaco); writer live dei nodi
+  `:Memoria` (`link_to_graph`). Persistenza provata contro Postgres reale (sopravvive alla
+  riapertura); ethics-guardian **PASS** anche sul percorso di persistenza. Verifica utente:
+  `python -m urban_memory.migrate` e `python -m urban_memory.verify` col `.env` (vedi
+  `services/urban-memory/README.md`). *Resta da eseguire dall'utente la verifica live contro il
+  proprio Neon/Aura (non raggiungibili dalla CI).*
 
 > **Perché prima del marketplace:** Urban Memory è ciò che nessun concorrente può copiare, e cresce
 > solo con l'uso. Prima comincia ad accumularsi, prima il fossato esiste.
