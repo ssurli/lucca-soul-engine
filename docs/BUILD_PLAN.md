@@ -41,6 +41,11 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
 - **test-engineer**: nessun contributo persiste senza `consenso=True` e `licenza`.
 - ✅ **Accettazione:** un'esperienza vissuta genera un contributo; il contributo compare nel grafo;
   il Cittadino ha un percorso d'uso proprio.
+  **→ SODDISFATTA** (2026-07-14): `tests/test_integration_wave2.py` copre esperienza→contributo→
+  curatela→pubblicazione e l'aggancio `(:Memoria)-[:RIGUARDA]->(...)`; ethics-guardian **PASS**
+  su consenso, licenza, pseudonimizzazione, curatela, Cittadino di prima classe, no monetizzazione.
+  *Nota: aggancio al grafo verificato come generazione Cypher (offline); la scrittura live su Aura
+  resta da eseguire sul profilo cloud, insieme alla `PostgresMemoryRepository` (oggi stub).*
 
 > **Perché prima del marketplace:** Urban Memory è ciò che nessun concorrente può copiare, e cresce
 > solo con l'uso. Prima comincia ad accumularsi, prima il fossato esiste.
