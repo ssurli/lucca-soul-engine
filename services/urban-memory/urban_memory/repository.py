@@ -91,6 +91,13 @@ class MemoryRepository(Protocol):
         `urban_memory.link`."""
         ...
 
+    def list_curated(self) -> list[MemoryContribution]:
+        """TUTTI i contributi con `curato=True`, su qualunque place — a
+        differenza di `get_curated(place_id)`, che filtra per un singolo
+        place. Usato da `urban_memory.audit` per verificare l'esistenza dei
+        target di OGNI contributo pubblicato, non di uno alla volta."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # In-memory — percorso di test e di default finché DATABASE_URL non c'è
@@ -130,6 +137,10 @@ class InMemoryMemoryRepository:
 
     def get(self, memory_id: str) -> MemoryContribution | None:
         return self._store.get(memory_id)
+
+    def list_curated(self) -> list[MemoryContribution]:
+        risultato = [c for c in self._store.values() if c.curato]
+        return sorted(risultato, key=lambda c: (c.creato_il, c.id))
 
 
 # ---------------------------------------------------------------------------
@@ -253,6 +264,14 @@ class PostgresMemoryRepository:
         if not righe:
             return None
         return _from_row(righe[0])
+
+    def list_curated(self) -> list[MemoryContribution]:
+        query = (
+            f"SELECT {_COLUMNS_SQL} FROM memory_contribution "
+            "WHERE curato = true ORDER BY creato_il, id"
+        )
+        righe = self._select(query, {})
+        return [_from_row(riga) for riga in righe]
 
     # -- interno ------------------------------------------------------------
 

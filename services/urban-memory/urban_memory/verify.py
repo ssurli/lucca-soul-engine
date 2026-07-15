@@ -21,16 +21,27 @@ errore di storage per un successo). Ogni corsa, in ordine, stampa:
    presente" (bug corretto: prima confondeva "il DB non risponde" con "il
    DB ha già la riga").
 3. Curatela: se il contributo è già `curato=True` (da una corsa
-   precedente), lo dichiara "già curato" (successo). Altrimenti
-   `curate_contribution`. `KeyError` qui significa che il passo 2 non ha
-   davvero persistito nulla: FALLITO, exit 1 — mai una spallucciata.
+   precedente), lo dichiara "già curato" (successo — NON riverificata: è
+   `python -m urban_memory.audit` lo strumento per scovare curati
+   PRECEDENTI rimasti con target invalidi, non questo passo). Altrimenti
+   `curate_contribution`. DECISIONE ARCHITETTURALE (bug reale corretto: un
+   contributo con un id inesistente nel grafo era arrivato a
+   `curato=True`): se `NEO4J_URI` È configurata, la curatela PASSA SEMPRE
+   un `target_checker` reale (`Neo4jMemoryLinker.targets_mancanti` — vedi
+   passo 5) — `InvalidTargetsError` qui è "FALLITO", exit 1, con gli id
+   mancanti nominati. Se `NEO4J_URI` NON è configurata, cura senza
+   verifica (comportamento precedente) ma stampa un AVVISO esplicito: la
+   curatela senza grafo configurato non protegge da riferimenti invalidi.
+   `KeyError` (con o senza `target_checker`) significa che il passo 2 non
+   ha davvero persistito nulla: FALLITO, exit 1 — mai una spallucciata.
 4. Rilegge da un repository NUOVO (`repo.get`, mai `get_curated` più il
    filtro manuale): è la prova che il dato è nel database, non solo nella
    risposta della chiamata precedente. Il messaggio distingue esplicitamente
    se il contributo è stato "persistito ORA da questa corsa" o "persisteva
    GIÀ da una corsa precedente" — non li confonde mai.
 5. Se `NEO4J_URI` è configurata, aggancia al grafo IL CONTRIBUTO RILETTO AL
-   PASSO 4 (mai un oggetto ricostruito in memoria) con `link_to_graph`
+   PASSO 4 (mai un oggetto ricostruito in memoria) con lo STESSO
+   `Neo4jMemoryLinker` già aperto per il `target_checker` del passo 3
    (ATOMICO: verifica prima, scrive poi, nella stessa transazione) e stampa
    quante `:Memoria`/`RIGUARDA` risultano nel grafo. Se `MemoryLinkError`
    viene sollevata (tipicamente: `PLACE_ID_ESEMPIO` non esiste ancora nel
@@ -51,15 +62,17 @@ dare — il fossato del progetto non può vivere solo in RAM.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 
 import psycopg
 from contracts import MemoryContribution, MemoryKind, PersonKind
 
 from ._env import database_url_from_env, neo4j_config_from_env
+from .graph_link import MemoryLinkError, Neo4jMemoryLinker
 from .migrate import mask_dsn, migrate
 from .repository import MemoryStorageError, PostgresMemoryRepository
-from .service import curate_contribution, submit_contribution
+from .service import InvalidTargetsError, curate_contribution, submit_contribution
 
 CONTRIBUTO_ID = "mem-verify-persistenza"
 # ATTENZIONE: deve essere un id REALE del seed del grafo (services/graph/
@@ -84,7 +97,9 @@ def _contributo_esempio() -> MemoryContribution:
     )
 
 
-def _verifica_postgres(dsn: str) -> MemoryContribution:
+def _verifica_postgres(
+    dsn: str, *, target_checker: Callable[[list[str]], list[str]] | None
+) -> MemoryContribution:
     print(f"1. Migrazione schema su {mask_dsn(dsn)} (idempotente)...")
     try:
         migrate(dsn)
@@ -118,9 +133,16 @@ def _verifica_postgres(dsn: str) -> MemoryContribution:
     print(f"3. Curatela del contributo (id={contributo.id!r})...")
     if contributo.curato:
         print("   Già curato da una corsa precedente (OK: non serve rifare la curatela).")
+        print("   (non riverificato qui: usa `python -m urban_memory.audit` per gli storici)")
     else:
+        if target_checker is None:
+            print("   AVVISO: curatela SENZA verifica dei target — grafo non configurato")
+            print("           (NEO4J_URI assente): un riferimento invalido potrebbe passare.")
         try:
-            contributo = curate_contribution(repo, contributo.id)
+            contributo = curate_contribution(repo, contributo.id, target_checker=target_checker)
+        except InvalidTargetsError as exc:
+            print(f"   FALLITO: target invalidi nel grafo — {exc}")
+            raise SystemExit(1) from exc
         except MemoryStorageError as exc:
             print(f"   FALLITO: storage non disponibile/errore — {exc}")
             raise SystemExit(1) from exc
@@ -128,7 +150,8 @@ def _verifica_postgres(dsn: str) -> MemoryContribution:
             print(f"   FALLITO: {exc}")
             print("            (significa che il passo 2 non ha davvero persistito nulla)")
             raise SystemExit(1) from exc
-        print("   OK: curato=True.")
+        verificato = " (target verificati nel grafo)" if target_checker is not None else ""
+        print(f"   OK: curato=True{verificato}.")
 
     print("4. Rilettura da un repository NUOVO (simula un riavvio del processo)...")
     repo_riletto = PostgresMemoryRepository(dsn)
@@ -155,24 +178,12 @@ def _verifica_postgres(dsn: str) -> MemoryContribution:
     return trovato
 
 
-def _verifica_grafo(contributo: MemoryContribution) -> None:
-    try:
-        neo4j_config_from_env()
-    except ValueError:
-        print(
-            "5. NEO4J_URI non configurata: salto l'aggancio al grafo "
-            "(solo la persistenza Postgres è stata verificata)."
-        )
-        return
-
-    from .graph_link import MemoryLinkError, Neo4jMemoryLinker
-
+def _verifica_grafo(contributo: MemoryContribution, *, linker: Neo4jMemoryLinker) -> None:
     print("5. Aggancio al Knowledge Graph (Neo4j), con il contributo RILETTO al passo 4...")
     try:
-        with Neo4jMemoryLinker.from_env() as linker:
-            linker.link(contributo)
-            memorie, relazioni = linker.count_memoria()
-            print(f"   OK: {memorie} nodo/i :Memoria, {relazioni} relazione/i :RIGUARDA nel grafo.")
+        linker.link(contributo)
+        memorie, relazioni = linker.count_memoria()
+        print(f"   OK: {memorie} nodo/i :Memoria, {relazioni} relazione/i :RIGUARDA nel grafo.")
     except MemoryLinkError as exc:
         # MAI silenzioso: se il link fallisce, NON è "ok" — è un errore
         # esplicito (tipicamente: PLACE_ID_ESEMPIO non esiste nel grafo di
@@ -184,12 +195,36 @@ def _verifica_grafo(contributo: MemoryContribution) -> None:
         raise SystemExit(1) from exc
 
 
+def _grafo_non_configurato() -> None:
+    print(
+        "5. NEO4J_URI non configurata: salto l'aggancio al grafo "
+        "(solo la persistenza Postgres è stata verificata)."
+    )
+
+
 def main() -> None:
     print("=== Verifica di persistenza — Urban Memory ===\n")
     dsn = database_url_from_env()
-    contributo = _verifica_postgres(dsn)
-    print()
-    _verifica_grafo(contributo)
+
+    try:
+        neo4j_config_from_env()
+        grafo_configurato = True
+    except ValueError:
+        grafo_configurato = False
+
+    if grafo_configurato:
+        with Neo4jMemoryLinker.from_env() as linker:
+            # Un solo driver, per l'INTERA corsa: il target_checker della
+            # curatela (passo 3) e l'aggancio (passo 5) condividono lo
+            # stesso `Neo4jMemoryLinker` — un solo round-trip di apertura.
+            contributo = _verifica_postgres(dsn, target_checker=linker.targets_mancanti)
+            print()
+            _verifica_grafo(contributo, linker=linker)
+    else:
+        _verifica_postgres(dsn, target_checker=None)
+        print()
+        _grafo_non_configurato()
+
     print("\n=== Verifica completata ===")
 
 

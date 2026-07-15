@@ -25,6 +25,19 @@ Applicate in un solo punto verificabile, `urban_memory.service` (CLAUDE.md,
   `False` alla creazione — nessuna auto-pubblicazione. Solo dopo
   `curate_contribution` il contributo compare in `get_curated`/
   `contributions_for_place`: la memoria di una città non si pubblica grezza.
+- **La validazione dei target sta ALLA CURATELA, non al conferimento**
+  (decisione architetturale, bug reale corretto: un contributo con
+  `riguarda=['bottega-liuteria-1']`, un id INESISTENTE nel grafo, era
+  arrivato a `curato=True`). `submit_contribution` non verifica MAI il
+  grafo — il conferimento deve poter avvenire sempre, anche ad Aura in
+  pausa (Aura Free si auto-mette in pausa dopo inattività: il Cittadino
+  deve poter conferire comunque). `curate_contribution`/`publish_pending`
+  accettano invece un `target_checker`: se un id in `riguarda` non esiste,
+  sollevano `InvalidTargetsError` (nomina gli id) e NON toccano il
+  repository — `curato` resta `False`. **In produzione il `target_checker`
+  è obbligatorio**: senza, la curatela torna al comportamento pre-
+  correzione (nessuna verifica) — utile solo per test di dominio puri.
+  `python -m urban_memory.audit` scova i curati storici rimasti invalidi.
 - **Nessun log del contenuto.** Il servizio non chiama mai `print`/`logging`
   sul payload di un contributo (`testo`, `media_uri`, `contributor_id`).
 - **Aggancio al grafo, ATOMICO.** Ogni contributo si collega al Knowledge
@@ -58,12 +71,16 @@ pip install -e packages/contracts -e services/urban-memory
 ## Moduli
 
 - `urban_memory/repository.py` — `MemoryRepository` (Protocol):
-  `submit`/`get_curated`/`list_pending`/`curate`/`get`.
+  `submit`/`get_curated`/`list_pending`/`curate`/`get`/`list_curated`.
   - `get(memory_id) -> MemoryContribution | None` rilegge un contributo
     COSÌ COM'È persistito (curato o no; `None` se non esiste) — un lookup,
     non un comando. Usato da `urban_memory.verify` per non assumere mai che
     un passo precedente sia riuscito, e da `urban_memory.link` per
     riagganciare al grafo il dato REALMENTE persistito.
+  - `list_curated() -> list[MemoryContribution]` — TUTTI i contributi
+    `curato=True`, su qualunque place (a differenza di `get_curated
+    (place_id)`, che ne filtra uno). Usato da `urban_memory.audit` per
+    scandagliare l'intero database.
   - `InMemoryMemoryRepository` — dizionario in-process. **Percorso usato dai
     test e finché `DATABASE_URL` non è configurato.**
   - `PostgresMemoryRepository(dsn)` — Neon (`sslmode=require` in cloud) o
@@ -83,8 +100,18 @@ pip install -e packages/contracts -e services/urban-memory
 - `urban_memory/service.py` — la logica di dominio: `submit_contribution`,
   `curate_contribution` (alias `publish_pending`), `pending_contributions`,
   `contributions_for_place`. Le eccezioni dedicate: `ConsentRequiredError`,
-  `LicenseRequiredError`, `PseudonymRequiredError` (tutte sottoclassi di
-  `UrbanMemoryError`).
+  `LicenseRequiredError`, `PseudonymRequiredError`, `InvalidTargetsError`
+  (tutte sottoclassi di `UrbanMemoryError`, quindi il BFF le mappa già a
+  422 senza codice nuovo).
+  - `curate_contribution(repo, memory_id, *, target_checker=None)` —
+    `target_checker: Callable[[list[str]], list[str]] | None` riceve
+    `riguarda` del contributo, ritorna gli id NON esistenti nel grafo. Se
+    non vuota, solleva `InvalidTargetsError` e NON tocca il repository
+    (`curato` resta `False`). `target_checker=None` (default): nessuna
+    verifica — SOLO per test di dominio puri; **chi cura per pubblicare
+    davvero DEVE passare un `target_checker` reale**. `publish_pending`,
+    essendo un alias (non un wrapper), eredita `target_checker`
+    automaticamente, anche curando in un ciclo su più `memory_id`.
 - `urban_memory/graph_link.py`:
   - `riguarda_check_cypher(contribution) -> (query, params)` e
     `riguarda_to_cypher(contribution) -> (query, params)`: funzioni
@@ -102,6 +129,11 @@ pip install -e packages/contracts -e services/urban-memory
     `riguarda` vuota, con lo stesso errore, prima di aprire qualunque
     sessione. Senza `driver` esplicito, apre e chiude un driver da
     `NEO4J_URI`/`NEO4J_USERNAME`/`NEO4J_PASSWORD`/`NEO4J_DATABASE`.
+  - `Neo4jMemoryLinker.targets_mancanti(ids) -> list[str]` — riusa la
+    STESSA query di verifica, ma SOLA LETTURA e fuori dal contesto di un
+    aggancio: è il `target_checker` di `curate_contribution`/`publish_
+    pending` e di `urban_memory.audit`. `target_checker_from_env()` è il
+    context manager comodo per costruirne uno da `.env`.
 - `urban_memory/verify.py` — CLI di verifica end-to-end (`python -m
   urban_memory.verify`): migra → conferisce → cura → rilegge da un
   repository nuovo → (se `NEO4J_URI` è presente) aggancia al grafo. RIESE-
@@ -109,7 +141,11 @@ pip install -e packages/contracts -e services/urban-memory
   invece di assumere che il passo precedente sia riuscito — un
   `MemoryStorageError` in un punto qualunque è SEMPRE "FALLITO" ed exit 1,
   mai scambiato per "id già presente" (bug corretto: prima confondeva "il
-  DB non risponde" con "il DB ha già la riga").
+  DB non risponde" con "il DB ha già la riga"). **Se `NEO4J_URI` è
+  configurata, la curatela (passo 3) passa SEMPRE un `target_checker`
+  reale**: `InvalidTargetsError` è "FALLITO", exit 1, con gli id nominati.
+  Se `NEO4J_URI` non è configurata, cura senza verifica ma stampa un
+  AVVISO esplicito — mai in silenzio.
 - `urban_memory/link.py` — CLI dedicata SOLO all'aggancio al grafo
   (`python -m urban_memory.link [memory_id]`), a valle di `verify`: rilegge
   il contributo DA POSTGRES (mai un oggetto ricostruito in memoria) e lo
@@ -120,6 +156,15 @@ pip install -e packages/contracts -e services/urban-memory
   rieffettua) in isolamento, e con `--controprova` dimostra, SENZA toccare
   Postgres, che un target inesistente fa fallire l'aggancio con
   `MemoryLinkError` senza creare nulla.
+- `urban_memory/audit.py` — CLI di audit di SOLA LETTURA (`python -m
+  urban_memory.audit`): legge da Postgres TUTTI i contributi `curato=True`
+  (`list_curated`) e verifica ognuno nel grafo (`targets_mancanti`). Esiste
+  per scovare i contributi curati PRIMA che `target_checker` esistesse —
+  il bug reale che ha motivato tutto questo: un curato con
+  `riguarda=['bottega-liuteria-1']`, un id inesistente. NON corregge nulla,
+  solo segnala: stampa un report (validi contati, invalidi con id del
+  contributo + id mancanti — MAI testo/media_uri/contributor_id) ed esce
+  con `1` se almeno un curato ha target invalidi, `0` altrimenti.
 
 ## Migrazione dello schema (una tantum, idempotente)
 
@@ -300,6 +345,8 @@ python -m urban_memory.migrate
 # 2. VERIFY — conferisci -> cura -> rileggi da un repository NUOVO (prova di
 #    persistenza su Postgres). Se NEO4J_URI è presente prova ANCHE l'aggancio,
 #    ma NON è la fonte di verità per il grafo: usa il comando 3 per quello.
+#    Con NEO4J_URI presente, la CURATELA verifica i target nel grafo (passa
+#    target_checker): InvalidTargetsError -> FALLITO esplicito, exit 1.
 python -m urban_memory.verify
 
 # 3. LINK — aggancio al grafo, in isolamento, sul contributo REALMENTE
@@ -332,19 +379,56 @@ Output atteso: `CONTROPROVA SUPERATA: errore esplicito, nessun nodo creato.`
 linker ha smesso di rifiutare un target inesistente — una regressione del
 bug corretto in questa wave, da trattare come un incidente.
 
+## Audit dei curati con target invalidi — `python -m urban_memory.audit`
+
+La curatela verifica i target SOLO da quando `target_checker` esiste (vedi
+"Regole non negoziabili" sopra) — un contributo curato PRIMA di questa
+correzione (es. il bug reale: `curato=True` con
+`riguarda=['bottega-liuteria-1']`, un id inesistente) resta com'è, non
+viene corretto retroattivamente. `python -m urban_memory.audit` è lo
+strumento DEDICATO da lanciare su Neon+Aura per scovarli — SOLA LETTURA,
+non scrive né corregge nulla:
+
+```powershell
+cd services\urban-memory
+
+# Stesse variabili del blocco "Verifica end-to-end" sopra: DATABASE_URL e
+# NEO4J_URI/NEO4J_USERNAME/NEO4J_PASSWORD sono ENTRAMBE obbligatorie — un
+# audit del grafo non ha senso senza il grafo da verificare.
+$envFile = Get-Content ..\..\.env | Where-Object { $_ -match '^\s*[A-Z_]+=' }
+foreach ($line in $envFile) {
+    $key, $value = $line -split '=', 2
+    Set-Item -Path "Env:$($key.Trim())" -Value $value.Trim().Trim('"')
+}
+
+python -m urban_memory.audit
+```
+
+Legge TUTTI i contributi `curato=True` su Postgres e verifica ognuno nel
+grafo. Stampa un report — solo `id`, `kind`, `riguarda`, gli id mancanti:
+MAI `testo`/`media_uri`/`contributor_id` — e conclude con `AUDIT OK` (exit
+`0`, nessun curato invalido) o `AUDIT FALLITO: N contributo/i curato/i con
+target invalidi` (exit `1`, con l'elenco sopra). Non corregge nulla: la
+correzione (applicare il seed mancante nel grafo, o sistemare `riguarda` a
+mano) resta una decisione umana.
+
 ## Test
 
 ```powershell
 pytest services/urban-memory/tests
 ```
 
-I test di `PostgresMemoryRepository` e `urban_memory.link` (persistenza
-reale, migrazione idempotente, `CHECK` del DB, rilettura via `repo.get`)
-usano un Postgres 16 **effimero** avviato al volo dalla suite stessa
-(`tests/conftest.py`: `initdb` + `pg_ctl` in una directory temporanea, auth
-`trust`, solo locale) — nessun `DATABASE_URL` da impostare per farli girare,
-e nessun impatto su Neon. Se Postgres 16 non è installato in macchina, quei
-test sono **saltati** (`pytest.skip`), non falliti; i test di
-`urban_memory.graph_link`/`urban_memory.link` con driver Neo4j FINTO
-(`tests/_neo4j_fakes.py`, condiviso dai due moduli di test) girano sempre,
-senza bisogno di un Neo4j vero.
+I test di `PostgresMemoryRepository`, `urban_memory.link` e `urban_memory.
+audit` (persistenza reale, migrazione idempotente, `CHECK` del DB, rilettura
+via `repo.get`/`list_curated`) usano un Postgres 16 **effimero** avviato al
+volo dalla suite stessa (`tests/conftest.py`: `initdb` + `pg_ctl` in una
+directory temporanea, auth `trust`, solo locale) — nessun `DATABASE_URL` da
+impostare per farli girare, e nessun impatto su Neon. Se Postgres 16 non è
+installato in macchina, quei test sono **saltati** (`pytest.skip`), non
+falliti; i test di `urban_memory.graph_link`/`urban_memory.link`/
+`urban_memory.audit` con driver Neo4j FINTO (`tests/_neo4j_fakes.py`,
+condiviso da tutti e tre i moduli di test) girano sempre, senza bisogno di
+un Neo4j vero. `curate_contribution(..., target_checker=...)` è invece
+testato in `tests/test_service.py` con un `target_checker` finto (una
+semplice funzione Python: non serve un driver Neo4j finto per testare la
+logica di dominio).

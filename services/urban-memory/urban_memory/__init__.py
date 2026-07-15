@@ -48,15 +48,28 @@ eseguono davvero contro Neo4j (Aura o locale), ATOMICAMENTE: se un id in
 `:Memoria` orfano viene creato.
 
 `MemoryRepository.get(memory_id)` rilegge un contributo per id (`None` se
-assente): `link_memory` (`python -m urban_memory.link`) lo usa per riagganciare
-al grafo IL DATO REALMENTE PERSISTITO, mai un oggetto ricostruito in
-memoria — è lo strumento dedicato a verificare (e rieseguire) SOLO
-l'aggancio, a valle di `urban_memory.verify`. `controprova` dimostra che il
-linker rifiuta DAVVERO un target inesistente, senza toccare Postgres.
+assente); `list_curated()` rilegge TUTTI i contributi `curato=True`, su
+qualunque place. `link_memory` (`python -m urban_memory.link`) usa `get` per
+riagganciare al grafo IL DATO REALMENTE PERSISTITO, mai un oggetto
+ricostruito in memoria — è lo strumento dedicato a verificare (e
+rieseguire) SOLO l'aggancio, a valle di `urban_memory.verify`. `controprova`
+dimostra che il linker rifiuta DAVVERO un target inesistente, senza toccare
+Postgres.
+
+La validazione dell'esistenza dei target sta ALLA CURATELA, non al
+conferimento (decisione architetturale, bug reale corretto: un contributo
+con un id inesistente nel grafo era arrivato a `curato=True`): `curate_
+contribution`/`publish_pending` accettano un `target_checker` — tipicamente
+`Neo4jMemoryLinker.targets_mancanti`, o il context manager `target_checker_
+from_env()` — e sollevano `InvalidTargetsError` (nominando gli id mancanti,
+senza toccare il repository) se il grafo non li conosce ancora.
+`python -m urban_memory.audit` scova, su Neon+Aura, i contributi curati
+PRIMA di questa correzione che sono rimasti con target invalidi.
 """
 
 from __future__ import annotations
 
+from .audit import audit
 from .graph_link import (
     MEMORY_LINK_CHECK_QUERY_PATH,
     MEMORY_LINK_WRITE_QUERY_PATH,
@@ -65,6 +78,7 @@ from .graph_link import (
     link_to_graph,
     riguarda_check_cypher,
     riguarda_to_cypher,
+    target_checker_from_env,
 )
 from .link import controprova, link_memory
 from .migrate import SCHEMA_PATH, migrate
@@ -76,6 +90,7 @@ from .repository import (
 )
 from .service import (
     ConsentRequiredError,
+    InvalidTargetsError,
     LicenseRequiredError,
     PseudonymRequiredError,
     UrbanMemoryError,
@@ -95,6 +110,7 @@ __all__ = [
     "ConsentRequiredError",
     "LicenseRequiredError",
     "PseudonymRequiredError",
+    "InvalidTargetsError",
     "submit_contribution",
     "curate_contribution",
     "publish_pending",
@@ -107,8 +123,10 @@ __all__ = [
     "MemoryLinkError",
     "link_to_graph",
     "Neo4jMemoryLinker",
+    "target_checker_from_env",
     "link_memory",
     "controprova",
+    "audit",
     "migrate",
     "SCHEMA_PATH",
 ]

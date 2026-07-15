@@ -9,17 +9,21 @@ uno pseudonimo obbligatorio; solo i contributi curati sono pubblici.
 from __future__ import annotations
 
 import inspect
+from datetime import UTC, datetime
 
 import pytest
-from contracts import MemoryKind
+from contracts import MemoryContribution, MemoryKind, PersonKind
 from urban_memory import (
     ConsentRequiredError,
     InMemoryMemoryRepository,
+    InvalidTargetsError,
     LicenseRequiredError,
+    PostgresMemoryRepository,
     PseudonymRequiredError,
     contributions_for_place,
     curate_contribution,
     pending_contributions,
+    publish_pending,
     submit_contribution,
 )
 
@@ -181,6 +185,126 @@ def test_roundtrip_racconto_consenso_licenza_cc_by_sa(repo, valid_contribution_f
     assert pubblicati[0].kind == MemoryKind.RACCONTO
     assert pubblicati[0].curato is True
     assert pubblicati[0].licenza == "CC-BY-SA-4.0"
+
+
+# --- curatela: la validazione dei target sta QUI, non al submit ------------
+#
+# Decisione architetturale (bug reale corretto): un contributo con
+# riguarda=['bottega-liuteria-1'] (nodo INESISTENTE nel grafo) era arrivato
+# a curato=True. submit_contribution non deve MAI dipendere dal grafo (Aura
+# Free si auto-mette in pausa: il Cittadino deve poter conferire comunque);
+# è curate_contribution, con un target_checker, il gate che blocca.
+
+
+def test_curate_con_target_checker_tutti_mancanti_solleva_invalid_targets_error(
+    repo, valid_contribution_factory
+) -> None:
+    # valid_contribution_factory ha di default riguarda=["bottega-liuteria-1"]
+    # — esattamente l'id INESISTENTE del bug reale.
+    contributo = valid_contribution_factory()
+    submit_contribution(repo, contributo)
+
+    def target_checker_tutto_mancante(riguarda: list[str]) -> list[str]:
+        return list(riguarda)  # nessun id "esiste" per questo checker finto
+
+    with pytest.raises(InvalidTargetsError) as errore:
+        curate_contribution(repo, contributo.id, target_checker=target_checker_tutto_mancante)
+
+    assert "bottega-liuteria-1" in str(errore.value)
+    assert errore.value.mancanti == ["bottega-liuteria-1"]
+    assert errore.value.memory_id == contributo.id
+
+
+def test_curate_con_target_checker_invalido_non_tocca_il_repository(
+    repo, valid_contribution_factory
+) -> None:
+    """`curato` NON diventa `True`: verifica che il repository non venga
+    toccato — il repository resta esattamente come dopo il submit."""
+    contributo = valid_contribution_factory()
+    submit_contribution(repo, contributo)
+
+    with pytest.raises(InvalidTargetsError):
+        curate_contribution(repo, contributo.id, target_checker=lambda riguarda: list(riguarda))
+
+    rilecto = repo.get(contributo.id)
+    assert rilecto is not None
+    assert rilecto.curato is False
+    assert contributions_for_place(repo, "bottega-liuteria-1") == []
+    assert contributo.id in [c.id for c in pending_contributions(repo)]
+
+
+def test_curate_con_target_checker_nessun_mancante_cura_normalmente(
+    repo, valid_contribution_factory
+) -> None:
+    contributo = valid_contribution_factory()
+    submit_contribution(repo, contributo)
+
+    curato = curate_contribution(repo, contributo.id, target_checker=lambda riguarda: [])
+
+    assert curato.curato is True
+    assert [c.id for c in contributions_for_place(repo, "bottega-liuteria-1")] == [contributo.id]
+
+
+def test_curate_senza_target_checker_comportamento_invariato(
+    repo, valid_contribution_factory
+) -> None:
+    """`target_checker=None` (default): comportamento IDENTICO a prima di
+    questa correzione — nessuna verifica dei target. Pensato SOLO per test
+    di dominio puri che non riguardano il grafo (questo file)."""
+    contributo = valid_contribution_factory()  # riguarda un id inesistente nel grafo
+    submit_contribution(repo, contributo)
+
+    curato = curate_contribution(repo, contributo.id)  # nessun target_checker qui
+
+    assert curato.curato is True
+
+
+def test_curate_con_target_checker_id_sconosciuto_solleva_keyerror(repo) -> None:
+    with pytest.raises(KeyError):
+        curate_contribution(repo, "non-esiste-mai", target_checker=lambda riguarda: [])
+
+
+def test_publish_pending_e_lo_stesso_curate_contribution() -> None:
+    """Alias, non un wrapper: eredita `target_checker` (anche in un ciclo su
+    più `memory_id`, "in batch") perché È la stessa funzione."""
+    assert publish_pending is curate_contribution
+
+
+def test_publish_pending_con_target_checker_solleva_invalid_targets_error(
+    repo, valid_contribution_factory
+) -> None:
+    contributo = valid_contribution_factory()
+    submit_contribution(repo, contributo)
+
+    with pytest.raises(InvalidTargetsError):
+        publish_pending(repo, contributo.id, target_checker=lambda riguarda: list(riguarda))
+
+
+def test_curate_con_target_checker_su_postgres_reale_non_persiste_curato(pg_repo) -> None:
+    """Stessa garanzia delle prove sopra, ma contro un Postgres VERO (non un
+    mock, non InMemory): dopo `InvalidTargetsError`, una RILETTURA DAL DB
+    (una connessione nuova, via `pg_repo.get`) conferma `curato=False` — il
+    cuore della richiesta del committente."""
+    contributo = MemoryContribution(
+        id="mem-invalid-targets-pg",
+        kind=MemoryKind.RACCONTO,
+        riguarda=["bottega-liuteria-1"],  # id INESISTENTE nel grafo, per costruzione
+        contributor_id="voce-di-controllo",
+        contributor_kind=PersonKind.CITTADINO,
+        consenso=True,
+        licenza="CC-BY-SA-4.0",
+        creato_il=datetime(2026, 7, 15, 9, 0, tzinfo=UTC),
+    )
+    submit_contribution(pg_repo, contributo)
+
+    with pytest.raises(InvalidTargetsError):
+        curate_contribution(pg_repo, contributo.id, target_checker=lambda riguarda: list(riguarda))
+
+    rilecto: PostgresMemoryRepository = pg_repo
+    trovato = rilecto.get(contributo.id)
+    assert trovato is not None
+    assert trovato.curato is False
+    assert pg_repo.get_curated("bottega-liuteria-1") == []
 
 
 # --- nessuna PII/contenuto loggato -------------------------------------------

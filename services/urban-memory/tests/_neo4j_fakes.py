@@ -37,8 +37,9 @@ class FakeTransaction:
 
     def run(self, query: str, parameters: dict[str, Any] | None = None) -> FakeResult:
         self._driver.query_eseguite.append((query, parameters))
-        if "RETURN collect(target_id) AS mancanti" in query:
-            return FakeResult({"mancanti": list(self._driver.mancanti)})
+        risultato = self._driver._risultato_per(query, parameters)
+        if risultato is not None:
+            return FakeResult(risultato)
         if "MERGE (m:Memoria" in query and parameters is not None:
             self._driver._registra_scrittura(parameters)
         return FakeResult(None)
@@ -55,12 +56,11 @@ class FakeSession:
         return transaction_function(tx, *args, **kwargs)
 
     def run(self, query: str, parameters: dict[str, Any] | None = None) -> FakeResult:
-        # Usata SOLO da `Neo4jMemoryLinker.count_memoria` (lettura, fuori da
-        # qualunque transazione gestita): non passa da `FakeTransaction`.
+        # Usata da letture DIRETTE, fuori da qualunque transazione gestita
+        # (non passano da `FakeTransaction`): `count_memoria` E
+        # `targets_mancanti` la chiamano entrambe.
         self._driver.query_eseguite.append((query, parameters))
-        if self._driver.valore_single is not None:
-            return FakeResult(self._driver.valore_single)
-        return FakeResult(self._driver.conteggio_dinamico())
+        return FakeResult(self._driver._risultato_per(query, parameters))
 
     def __enter__(self) -> FakeSession:
         return self
@@ -75,10 +75,15 @@ class FakeDriver:
     socket: solo liste/insiemi in memoria — esattamente ciò che il task
     chiede.
 
-    `mancanti`: gli id che la query di VERIFICA finta deve dichiarare
-    mancanti (default: nessuno, cioè "tutti i target esistono"). Si applica
-    a qualunque verifica eseguita su questo driver — coerente con i test che
-    fissano il comportamento atteso una volta per l'intero test.
+    `mancanti`: l'INSIEME degli id che, in questo grafo finto, non esistono
+    — non necessariamente gli id di UNA chiamata: ogni verifica calcola
+    l'INTERSEZIONE tra gli id richiesti (`$riguarda`) e questo insieme,
+    preservando l'ordine della richiesta (come farebbe `UNWIND` + `collect`
+    su Neo4j vero). Un contributo che riguarda solo id fuori da `mancanti`
+    risulta quindi valido, anche se `mancanti` non è vuoto — utile per
+    simulare un grafo con ALCUNI id mancanti e altri no (es. `urban_memory.
+    audit` su più contributi, alcuni validi e alcuni no, sullo STESSO
+    driver).
 
     `valore_single`: se passato, le letture dirette (`count_memoria`)
     ritornano SEMPRE questo valore fisso — comodo per testarlo in
@@ -105,6 +110,34 @@ class FakeDriver:
 
     def conteggio_dinamico(self) -> dict[str, int]:
         return {"memorie": len(self._memoria_ids), "relazioni": self._relazioni}
+
+    def _risultato_per(
+        self, query: str, parameters: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        """Simula la risposta in base al CONTENUTO della query — lo stesso
+        riconoscimento serve sia dentro una transazione gestita
+        (`FakeTransaction.run`, es. `_link_transaction`) sia per letture
+        dirette fuori da una transazione (`FakeSession.run`, es.
+        `count_memoria`/`targets_mancanti`): la query di verifica
+        (`30_memory_link_check.cypher`, colonna `mancanti`) e la query di
+        conteggio (`count_memoria`, colonne `memorie`/`relazioni`) sono
+        entrambe sola lettura ed eseguibili in entrambi i modi dal codice
+        reale. `None` se la query non è nota (es. la query di SCRITTURA:
+        gestita a parte da `FakeTransaction.run`, che aggiorna lo stato).
+
+        La query di verifica ritorna l'INTERSEZIONE tra `$riguarda` (i
+        parametri della CHIAMATA, non un valore fisso) e `self.mancanti`
+        (l'insieme di id "inesistenti" configurato sul driver): permette a
+        UN SOLO driver finto di rispondere correttamente a più contributi
+        diversi, alcuni validi e alcuni no (vedi `urban_memory.audit`)."""
+        if "AS mancanti" in query:
+            richiesti = (parameters or {}).get("riguarda", [])
+            return {"mancanti": [rid for rid in richiesti if rid in self.mancanti]}
+        if "AS memorie" in query:
+            if self.valore_single is not None:
+                return self.valore_single
+            return self.conteggio_dinamico()
+        return None
 
     def session(self, database: str | None = None) -> FakeSession:
         self.database_richiesti.append(database)

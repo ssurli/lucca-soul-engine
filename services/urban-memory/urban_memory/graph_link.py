@@ -31,10 +31,21 @@ questo servizio, ma stesso pattern):
   driver Neo4j vero (Aura `neo4j+s://` o locale `bolt://`, secondo la
   stringa in `NEO4J_URI`: nessun `if local/cloud`). Nei test si passa un
   driver/sessione/transazione FINTI (nessuna connessione reale in `tests/`).
+
+`Neo4jMemoryLinker.targets_mancanti` riusa la STESSA query di verifica
+(sola lettura, non scrive nulla) fuori dal contesto di un aggancio: è il
+`target_checker` che `urban_memory.service.curate_contribution`/
+`publish_pending` e `urban_memory.audit` usano per verificare l'esistenza
+dei target ALLA CURATELA (decisione architetturale: il conferimento non
+deve mai dipendere dalla disponibilità del grafo — vedi `urban_memory.
+service`). `target_checker_from_env` è il modo comodo di costruirne uno da
+`.env`.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -50,6 +61,7 @@ __all__ = [
     "MemoryLinkError",
     "link_to_graph",
     "Neo4jMemoryLinker",
+    "target_checker_from_env",
 ]
 
 _CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
@@ -110,6 +122,18 @@ def riguarda_to_cypher(contribution: MemoryContribution) -> tuple[str, dict[str,
     return query, params
 
 
+def _check_query_and_params(ids: list[str]) -> tuple[str, dict[str, Any]]:
+    """Query + parametri della verifica di esistenza (`30_memory_link_check.
+    cypher`) per una lista di id NUDA — non richiede un `MemoryContribution`
+    completo. Condivisa da `riguarda_check_cypher` (che la applica a
+    `contribution.riguarda`) e da `Neo4jMemoryLinker.targets_mancanti` (che
+    la applica a una lista arbitraria, fuori dal contesto di un aggancio):
+    stessa query, una sola volta letta da file."""
+    query = MEMORY_LINK_CHECK_QUERY_PATH.read_text(encoding="utf-8")
+    params: dict[str, Any] = {"riguarda": list(ids)}
+    return query, params
+
+
 def riguarda_check_cypher(contribution: MemoryContribution) -> tuple[str, dict[str, Any]]:
     """Query + parametri per VERIFICARE che ogni id in `contribution.
     riguarda` esista nel grafo come `:Luogo`/`:Bottega`/`:Artista`
@@ -120,9 +144,7 @@ def riguarda_check_cypher(contribution: MemoryContribution) -> tuple[str, dict[s
     (eventualmente vuota) degli id di `riguarda` che NON esistono con quei
     label. Lista vuota => si può procedere a `riguarda_to_cypher`.
     """
-    query = MEMORY_LINK_CHECK_QUERY_PATH.read_text(encoding="utf-8")
-    params: dict[str, Any] = {"riguarda": list(contribution.riguarda)}
-    return query, params
+    return _check_query_and_params(contribution.riguarda)
 
 
 # ---------------------------------------------------------------------------
@@ -305,3 +327,45 @@ class Neo4jMemoryLinker:
         with self._driver.session(database=self._database) as session:
             record = session.run(query).single()
         return record["memorie"], record["relazioni"]
+
+    def targets_mancanti(self, ids: list[str]) -> list[str]:
+        """Quali id in `ids` NON esistono nel grafo come `:Luogo`/`:Bottega`/
+        `:Artista` — riusa la STESSA query di verifica di `_link_transaction`
+        (`30_memory_link_check.cypher`, `_check_query_and_params`): sola
+        lettura, nessuna scrittura, nessuna transazione gestita (non serve:
+        non modifica nulla).
+
+        È il `target_checker` (`Callable[[list[str]], list[str]]`) che
+        `urban_memory.service.curate_contribution`/`publish_pending` e
+        `urban_memory.audit` usano — passalo direttamente come metodo
+        legato: `curate_contribution(repo, id, target_checker=linker.
+        targets_mancanti)`.
+        """
+        query, params = _check_query_and_params(ids)
+        with self._driver.session(database=self._database) as session:
+            record = session.run(query, params).single()
+        return list(record["mancanti"]) if record is not None else list(ids)
+
+
+_TargetChecker = Callable[[list[str]], list[str]]
+
+
+@contextmanager
+def target_checker_from_env(dotenv_path: Path | None = None) -> Iterator[_TargetChecker]:
+    """Context manager comodo: apre un `Neo4jMemoryLinker` da `.env`
+    (`NEO4J_URI`/`NEO4J_USERNAME`/`NEO4J_PASSWORD`/`NEO4J_DATABASE` — Aura
+    `neo4j+s://` o locale `bolt://`, nessun `if local/cloud`) e cede un
+    `target_checker` pronto — `Neo4jMemoryLinker.targets_mancanti`, con
+    esattamente la firma richiesta da `urban_memory.service.
+    curate_contribution`/`publish_pending`. Chiude il driver all'uscita del
+    blocco `with` — anche se avvengono più chiamate al checker dentro
+    (`urban_memory.audit` ne fa molte sullo stesso driver, aperto una volta
+    sola; `urban_memory.verify` ne fa una).
+
+    Uso::
+
+        with target_checker_from_env() as target_checker:
+            curate_contribution(repo, memory_id, target_checker=target_checker)
+    """
+    with Neo4jMemoryLinker.from_env(dotenv_path) as linker:
+        yield linker.targets_mancanti

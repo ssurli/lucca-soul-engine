@@ -24,6 +24,7 @@ from urban_memory.graph_link import (
     MEMORY_LINK_CHECK_QUERY_PATH,
     MEMORY_LINK_WRITE_QUERY_PATH,
     riguarda_check_cypher,
+    target_checker_from_env,
 )
 
 
@@ -350,3 +351,91 @@ def test_neo4j_memory_linker_context_manager_chiude_il_driver_posseduto() -> Non
         linker.link(_contributo())
         assert driver.closed is False
     assert driver.closed is True
+
+
+# ---------------------------------------------------------------------------
+# Neo4jMemoryLinker.targets_mancanti — sola lettura, riusa la query di
+# verifica esistente (30_memory_link_check.cypher), fuori dal contesto di un
+# aggancio: è il target_checker della curatela (`urban_memory.service.
+# curate_contribution`) e dell'audit (`urban_memory.audit`).
+# ---------------------------------------------------------------------------
+
+
+def test_targets_mancanti_restituisce_gli_id_assenti() -> None:
+    driver = FakeDriver(mancanti=["bottega-fantasma"])
+    linker = Neo4jMemoryLinker(driver)
+
+    mancanti = linker.targets_mancanti(["bottega-fantasma", "artista-1"])
+
+    assert mancanti == ["bottega-fantasma"]
+
+
+def test_targets_mancanti_vuoto_se_tutto_esiste() -> None:
+    driver = FakeDriver(mancanti=[])
+    linker = Neo4jMemoryLinker(driver)
+
+    assert linker.targets_mancanti(["bottega-1", "luogo-1"]) == []
+
+
+def test_targets_mancanti_non_scrive_nulla() -> None:
+    driver = FakeDriver(mancanti=["bottega-fantasma"])
+    linker = Neo4jMemoryLinker(driver)
+
+    linker.targets_mancanti(["bottega-fantasma"])
+
+    assert not any("MERGE" in q or "CREATE" in q or "SET " in q for q, _ in driver.query_eseguite)
+
+
+def test_targets_mancanti_usa_la_stessa_query_di_verifica_del_linker() -> None:
+    """Stessa query di `_link_transaction` (`30_memory_link_check.cypher`):
+    non una copia, non una query "simile" — la STESSA, riusata."""
+    driver = FakeDriver(mancanti=[])
+    linker = Neo4jMemoryLinker(driver)
+
+    linker.targets_mancanti(["bottega-1"])
+
+    query_eseguita, params = driver.query_eseguite[0]
+    assert "RETURN collect(target_id) AS mancanti" in query_eseguita
+    assert params == {"riguarda": ["bottega-1"]}
+
+
+def test_targets_mancanti_usato_come_target_checker_di_curate_contribution() -> None:
+    """Il metodo legato `linker.targets_mancanti` ha esattamente la firma
+    `Callable[[list[str]], list[str]]` richiesta da `urban_memory.service.
+    curate_contribution(..., target_checker=...)`."""
+    from urban_memory import (
+        InMemoryMemoryRepository,
+        InvalidTargetsError,
+        curate_contribution,
+        submit_contribution,
+    )
+
+    driver = FakeDriver(mancanti=["bottega-liuteria-1"])
+    linker = Neo4jMemoryLinker(driver)
+    repo = InMemoryMemoryRepository()
+    contributo = _contributo(id="mem-target-checker", riguarda=["bottega-liuteria-1"], curato=False)
+    submit_contribution(repo, contributo)
+
+    with pytest.raises(InvalidTargetsError, match="bottega-liuteria-1"):
+        curate_contribution(repo, contributo.id, target_checker=linker.targets_mancanti)
+
+
+# ---------------------------------------------------------------------------
+# target_checker_from_env — costruisce un target_checker da .env
+# ---------------------------------------------------------------------------
+
+
+def test_target_checker_from_env_richiede_le_variabili_neo4j(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+) -> None:
+    """Come `link_to_graph`: legge NEO4J_URI/USERNAME/PASSWORD dal `.env`/
+    ambiente PRIMA di tentare qualunque connessione — nessun tentativo di
+    rete se mancano."""
+    for var in ("NEO4J_URI", "NEO4J_USERNAME", "NEO4J_PASSWORD", "NEO4J_DATABASE"):
+        monkeypatch.delenv(var, raising=False)
+    dotenv_vuoto = tmp_path / ".env"
+    dotenv_vuoto.write_text("", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="NEO4J"):
+        with target_checker_from_env(dotenv_path=dotenv_vuoto):
+            pass

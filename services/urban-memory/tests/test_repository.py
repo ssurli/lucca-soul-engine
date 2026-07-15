@@ -49,6 +49,7 @@ def test_in_memory_repository_implementa_il_protocollo() -> None:
     assert hasattr(repo, "list_pending")
     assert hasattr(repo, "curate")
     assert hasattr(repo, "get")
+    assert hasattr(repo, "list_curated")
 
 
 def test_submit_ritorna_il_contributo_persistito() -> None:
@@ -110,6 +111,18 @@ def test_in_memory_get_id_sconosciuto_restituisce_none() -> None:
     assert repo.get("non-esiste") is None
 
 
+def test_in_memory_list_curated_contiene_solo_i_curati() -> None:
+    repo = InMemoryMemoryRepository()
+    repo.submit(_contributo(id="a", riguarda=["luogo-a"], curato=True))
+    repo.submit(_contributo(id="b", riguarda=["luogo-b"], curato=True))
+    repo.submit(_contributo(id="c", riguarda=["luogo-c"], curato=False))
+
+    # A DIFFERENZA di get_curated(place_id): nessun filtro per place, TUTTI
+    # i curati indipendentemente da dove riguardano — è ciò che serve
+    # all'audit per scandagliare l'intero database, non un place alla volta.
+    assert sorted(c.id for c in repo.list_curated()) == ["a", "b"]
+
+
 def test_in_memory_get_riflette_lo_stato_curato_aggiornato() -> None:
     """`get` legge lo stato REALE, non uno stantio: dopo `curate`, rilegge
     `curato=True` — lo stesso principio che rende `urban_memory.verify`
@@ -132,6 +145,7 @@ def test_postgres_repository_ha_linterfaccia_attesa() -> None:
     assert hasattr(repo, "list_pending")
     assert hasattr(repo, "curate")
     assert hasattr(repo, "get")
+    assert hasattr(repo, "list_curated")
 
 
 def test_postgres_repository_dsn_arriva_sempre_dal_costruttore(
@@ -185,6 +199,7 @@ def test_postgres_repository_implementa_il_protocollo(pg_repo: PostgresMemoryRep
     assert hasattr(repo, "list_pending")
     assert hasattr(repo, "curate")
     assert hasattr(repo, "get")
+    assert hasattr(repo, "list_curated")
 
 
 def test_postgres_submit_poi_get_curated_e_vuoto_finche_non_curato(
@@ -246,6 +261,22 @@ def test_postgres_list_pending_contiene_solo_i_non_curati(
     pg_repo.curate("p2")
 
     assert [c.id for c in pg_repo.list_pending()] == ["p1"]
+
+
+def test_postgres_list_curated_contiene_solo_i_curati(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    creato_il = datetime(2026, 7, 14, 9, 0, tzinfo=UTC)
+    pg_repo.submit(_contributo(id="c1", riguarda=["luogo-c1"], creato_il=creato_il))
+    pg_repo.submit(_contributo(id="c2", riguarda=["luogo-c2"], creato_il=creato_il))
+    pg_repo.submit(_contributo(id="c3", riguarda=["luogo-c1"], creato_il=creato_il))
+    pg_repo.curate("c1")
+    pg_repo.curate("c2")
+    # "c3" resta non curato di proposito
+
+    # A DIFFERENZA di get_curated(place_id): nessun filtro per place — è
+    # ciò che serve a `urban_memory.audit` per scandagliare OGNI curato.
+    assert sorted(c.id for c in pg_repo.list_curated()) == ["c1", "c2"]
 
 
 def test_postgres_persistenza_sopravvive_a_una_nuova_connessione(pg_dsn: str) -> None:
@@ -416,11 +447,14 @@ def test_protocollo_submit_get_curated_curate_su_entrambe_le_implementazioni(
     assert repo.get("mem-protocollo-1").curato is False  # type: ignore[union-attr]
     assert repo.get("mai-esistito-in-nessuna-implementazione") is None
 
+    assert [c.id for c in repo.list_curated()] == []  # non ancora curato
+
     curato = repo.curate("mem-protocollo-1")
     assert curato.curato is True
     assert [c.id for c in repo.get_curated("luogo-protocollo")] == ["mem-protocollo-1"]
     assert repo.list_pending() == []
     assert repo.get("mem-protocollo-1").curato is True  # type: ignore[union-attr]
+    assert [c.id for c in repo.list_curated()] == ["mem-protocollo-1"]
 
     with pytest.raises(KeyError):
         repo.curate("non-esiste-in-nessuna-implementazione")
