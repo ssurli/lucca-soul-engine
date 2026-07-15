@@ -58,7 +58,12 @@ pip install -e packages/contracts -e services/urban-memory
 ## Moduli
 
 - `urban_memory/repository.py` — `MemoryRepository` (Protocol):
-  `submit`/`get_curated`/`list_pending`/`curate`.
+  `submit`/`get_curated`/`list_pending`/`curate`/`get`.
+  - `get(memory_id) -> MemoryContribution | None` rilegge un contributo
+    COSÌ COM'È persistito (curato o no; `None` se non esiste) — un lookup,
+    non un comando. Usato da `urban_memory.verify` per non assumere mai che
+    un passo precedente sia riuscito, e da `urban_memory.link` per
+    riagganciare al grafo il dato REALMENTE persistito.
   - `InMemoryMemoryRepository` — dizionario in-process. **Percorso usato dai
     test e finché `DATABASE_URL` non è configurato.**
   - `PostgresMemoryRepository(dsn)` — Neon (`sslmode=require` in cloud) o
@@ -66,11 +71,11 @@ pip install -e packages/contracts -e services/urban-memory
     cambia solo il DSN. **Persiste davvero**: una connessione (e una
     transazione) per operazione, nessuno stato tenuto in RAM tra una
     chiamata e l'altra — il contributo sopravvive al riavvio del processo.
-    Ogni errore psycopg è mappato in `MemoryStorageError` (infrastrutturale,
-    NON un `UrbanMemoryError` di dominio). `PostgresMemoryRepository.
-    from_env()` legge `DATABASE_URL` dal `.env` (radice del repo) o
-    dall'ambiente di processo. Richiede lo schema applicato una volta (vedi
-    "Migrazione" sotto).
+    Ogni errore psycopg (anche in `get`) è mappato in `MemoryStorageError`
+    (infrastrutturale, NON un `UrbanMemoryError` di dominio).
+    `PostgresMemoryRepository.from_env()` legge `DATABASE_URL` dal `.env`
+    (radice del repo) o dall'ambiente di processo. Richiede lo schema
+    applicato una volta (vedi "Migrazione" sotto).
 - `urban_memory/migrate.py` — `migrate(dsn)`: applica lo schema idempotente
   `sql/00_memory_schema.sql` (`CREATE TABLE`/`INDEX ... IF NOT EXISTS`,
   nessun `DROP`). Anche come CLI: `python -m urban_memory.migrate` (legge
@@ -99,9 +104,22 @@ pip install -e packages/contracts -e services/urban-memory
     `NEO4J_URI`/`NEO4J_USERNAME`/`NEO4J_PASSWORD`/`NEO4J_DATABASE`.
 - `urban_memory/verify.py` — CLI di verifica end-to-end (`python -m
   urban_memory.verify`): migra → conferisce → cura → rilegge da un
-  repository nuovo → (se `NEO4J_URI` è presente) aggancia al grafo. Pensata
-  per essere lanciata due volte: la seconda corsa deve trovare lo stesso
-  contributo ancora lì.
+  repository nuovo → (se `NEO4J_URI` è presente) aggancia al grafo. RIESE-
+  GUIBILE ALL'INFINITO: ogni passo legge PRIMA lo stato reale (`repo.get`)
+  invece di assumere che il passo precedente sia riuscito — un
+  `MemoryStorageError` in un punto qualunque è SEMPRE "FALLITO" ed exit 1,
+  mai scambiato per "id già presente" (bug corretto: prima confondeva "il
+  DB non risponde" con "il DB ha già la riga").
+- `urban_memory/link.py` — CLI dedicata SOLO all'aggancio al grafo
+  (`python -m urban_memory.link [memory_id]`), a valle di `verify`: rilegge
+  il contributo DA POSTGRES (mai un oggetto ricostruito in memoria) e lo
+  aggancia, stampando il conteggio `:Memoria`/`:RIGUARDA` prima e dopo.
+  Esiste perché un fatto osservato in produzione ha mostrato che `verify`
+  può persistere su Postgres SENZA che l'aggancio al grafo sia mai avvenuto
+  (es. `NEO4J_URI` assente in quella corsa) — questo comando lo esegue (o
+  rieffettua) in isolamento, e con `--controprova` dimostra, SENZA toccare
+  Postgres, che un target inesistente fa fallire l'aggancio con
+  `MemoryLinkError` senza creare nulla.
 
 ## Migrazione dello schema (una tantum, idempotente)
 
@@ -245,49 +263,74 @@ relazione `RIGUARDA` uscente (gli unici nodi orfani possibili con questo
 schema) — una `:Memoria` curata e correttamente agganciata non viene mai
 toccata.
 
-## Verifica di persistenza — comandi PowerShell ESATTI
+## Verifica end-to-end — i TRE comandi PowerShell ESATTI
 
-Dimostra che un contributo conferito ORA è ancora leggibile DOPO un riavvio
-(un'altra corsa dello stesso comando, o il PC riacceso): il `DATABASE_URL`
-punta a Neon (o al Postgres locale), quindi non c'è alcun processo Python da
-tenere vivo tra le due corse. `urban_memory.verify` usa
+Tre comandi separati DI PROPOSITO: il primo prepara lo schema, il secondo
+dimostra la persistenza su Postgres, il terzo dimostra (e riverifica, in
+isolamento) l'aggancio al Knowledge Graph — così un fallimento del terzo
+(l'aggancio) non si confonde MAI con un fallimento del secondo (la
+persistenza): è esattamente la distinzione che il fatto osservato in
+produzione (riga presente su Neon, ma 0 nodi `:Memoria` su Aura) ha reso
+necessaria.
+
+`urban_memory.verify`/`urban_memory.link` usano
 `PLACE_ID_ESEMPIO = "liuteria-lucchese"` — un id REALE del seed del grafo
-(FIX: prima era `"bottega-liuteria-1"`, inesistente, che faceva sollevare
-`MemoryLinkError` al passo 5 — l'errore era corretto, il dato di prova era
-sbagliato).
+(`services/graph/graph/seed_lucca.py`; le altre botteghe: `ceramica-lucca`,
+`stamperia-lucca`, `pasticceria-storica`, `tessitura-lucca`). Se il seed non
+è ancora stato applicato ad Aura, applicalo prima con `python -m
+graph.loader` (`services/graph`) — altrimenti il comando 3 solleva
+`MemoryLinkError` per design (nessun nodo `:Memoria` orfano), anche con
+l'id giusto.
 
 ```powershell
 cd services\urban-memory
 
-# 1. Variabili dal .env alla radice del repo (Neon in cloud: sslmode=require
-#    è già dentro la stringa; NEO4J_URI è opzionale, se assente la CLI salta
-#    solo il passo 5 e verifica comunque la persistenza su Postgres). Se il
-#    seed del grafo (services/graph) non è ancora stato applicato ad Aura,
-#    applicalo prima con `python -m graph.loader` (services/graph), altrimenti
-#    il passo 5 qui sotto solleva `MemoryLinkError` (per design: nessun nodo
-#    :Memoria orfano) anche con l'id giusto.
+# 0. Variabili dal .env alla radice del repo (Neon in cloud: sslmode=require
+#    è già dentro la stringa; NEO4J_URI è opzionale per il comando 2, ma
+#    OBBLIGATORIA per il comando 3).
 $envFile = Get-Content ..\..\.env | Where-Object { $_ -match '^\s*[A-Z_]+=' }
 foreach ($line in $envFile) {
     $key, $value = $line -split '=', 2
     Set-Item -Path "Env:$($key.Trim())" -Value $value.Trim().Trim('"')
 }
 
-# 2. Migrazione (una tantum, idempotente: sicura anche se già applicata).
+# 1. MIGRATE — schema idempotente (sicuro anche se già applicato).
 python -m urban_memory.migrate
 
-# 3. Conferisci -> cura -> rileggi -> (se NEO4J_URI c'è) aggancia al grafo,
-#    ATOMICAMENTE. Se il passo 5 fallisce, la CLI lo stampa come ERRORE
-#    esplicito ed esce con codice diverso da zero — mai un "OK" silenzioso
-#    su un aggancio non riuscito.
+# 2. VERIFY — conferisci -> cura -> rileggi da un repository NUOVO (prova di
+#    persistenza su Postgres). Se NEO4J_URI è presente prova ANCHE l'aggancio,
+#    ma NON è la fonte di verità per il grafo: usa il comando 3 per quello.
 python -m urban_memory.verify
+
+# 3. LINK — aggancio al grafo, in isolamento, sul contributo REALMENTE
+#    persistito al passo 2 (rilettura via repo.get, mai un oggetto
+#    ricostruito in memoria). Stampa il conteggio :Memoria/:RIGUARDA PRIMA
+#    e DOPO: se resta 0/0, l'aggancio non è avvenuto — mai un "OK" silenzioso.
+python -m urban_memory.link mem-verify-persistenza
 ```
 
-Rilancia SOLO il passo 3 (`python -m urban_memory.verify`) — anche dopo aver
-chiuso il terminale, riavviato il notebook, o su un altro giorno: il
-contributo d'esempio (`mem-verify-persistenza`) compare ANCORA al passo 4
-della CLI ("TROVATO — la memoria è ANCORA presente dopo la riapertura della
-connessione"). Se invece sparisse, la persistenza sarebbe rotta — è
-esattamente ciò che questa CLI verifica.
+Rilancia SOLO il comando 2 (`verify`) — anche dopo aver chiuso il terminale,
+riavviato il notebook, o su un altro giorno: il contributo d'esempio
+(`mem-verify-persistenza`) compare ANCORA al passo 4 della CLI ("TROVATO...
+persisteva GIÀ da una corsa precedente"). Se invece sparisse, la persistenza
+sarebbe rotta.
+
+Rilancia SOLO il comando 3 (`link`) per riverificare (o rieseguire) SOLO
+l'aggancio — è idempotente (`MERGE`): rieseguirlo su un contributo già
+agganciato non duplica nulla, il conteggio "dopo" resta lo stesso.
+
+**Controprova del fallimento forte** (dimostra che un target inesistente fa
+fallire l'aggancio DAVVERO, senza creare nulla — SENZA toccare Postgres,
+richiede solo `NEO4J_URI`):
+
+```powershell
+python -m urban_memory.link --controprova
+```
+
+Output atteso: `CONTROPROVA SUPERATA: errore esplicito, nessun nodo creato.`
+(exit code `0`). Se invece stampa `CONTROPROVA FALLITA` (exit code `1`), il
+linker ha smesso di rifiutare un target inesistente — una regressione del
+bug corretto in questa wave, da trattare come un incidente.
 
 ## Test
 
@@ -295,11 +338,13 @@ esattamente ciò che questa CLI verifica.
 pytest services/urban-memory/tests
 ```
 
-I test di `PostgresMemoryRepository` (persistenza reale, migrazione
-idempotente, `CHECK` del DB) usano un Postgres 16 **effimero** avviato al
-volo dalla suite stessa (`tests/conftest.py`: `initdb` + `pg_ctl` in una
-directory temporanea, auth `trust`, solo locale) — nessun `DATABASE_URL`
-da impostare per farli girare, e nessun impatto su Neon. Se Postgres 16 non
-è installato in macchina, quei test sono **saltati** (`pytest.skip`), non
-falliti; i test di `urban_memory.graph_link` con driver Neo4j finto girano
-sempre, senza bisogno di un Neo4j vero.
+I test di `PostgresMemoryRepository` e `urban_memory.link` (persistenza
+reale, migrazione idempotente, `CHECK` del DB, rilettura via `repo.get`)
+usano un Postgres 16 **effimero** avviato al volo dalla suite stessa
+(`tests/conftest.py`: `initdb` + `pg_ctl` in una directory temporanea, auth
+`trust`, solo locale) — nessun `DATABASE_URL` da impostare per farli girare,
+e nessun impatto su Neon. Se Postgres 16 non è installato in macchina, quei
+test sono **saltati** (`pytest.skip`), non falliti; i test di
+`urban_memory.graph_link`/`urban_memory.link` con driver Neo4j FINTO
+(`tests/_neo4j_fakes.py`, condiviso dai due moduli di test) girano sempre,
+senza bisogno di un Neo4j vero.

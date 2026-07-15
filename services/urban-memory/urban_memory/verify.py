@@ -53,6 +53,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import psycopg
 from contracts import MemoryContribution, MemoryKind, PersonKind
 
 from ._env import database_url_from_env, neo4j_config_from_env
@@ -85,7 +86,13 @@ def _contributo_esempio() -> MemoryContribution:
 
 def _verifica_postgres(dsn: str) -> MemoryContribution:
     print(f"1. Migrazione schema su {mask_dsn(dsn)} (idempotente)...")
-    migrate(dsn)
+    try:
+        migrate(dsn)
+    except psycopg.Error as exc:
+        # Stesso pattern esplicito degli altri passi (prescrizione ethics):
+        # mai un traceback grezzo al posto di un FALLITO leggibile.
+        print(f"   FALLITO: storage non disponibile/errore — {exc}")
+        raise SystemExit(1) from exc
     print("   OK: `memory_contribution` esiste (o esisteva già).")
 
     repo = PostgresMemoryRepository(dsn)
