@@ -5,22 +5,43 @@ obbligatoria, `NEO4J_URI`/`NEO4J_USERNAME`/`NEO4J_PASSWORD` opzionali)::
 
     python -m urban_memory.verify
 
-Cosa fa, in ordine, stampando ogni passo in italiano:
+RIESEGUIBILE ALL'INFINITO: ogni passo legge PRIMA lo stato reale del
+database (mai "assume che il passo precedente sia riuscito", mai scambia un
+errore di storage per un successo). Ogni corsa, in ordine, stampa:
 
 1. `migrate(DATABASE_URL)` — applica lo schema (idempotente: sicuro anche
    se già applicato in una corsa precedente).
-2. `submit_contribution` di un contributo d'esempio (consenso=True, licenza
-   tracciata, `kind=racconto`, agganciato a un place noto).
-3. `curate_contribution` — la revisione umana prima della pubblicazione.
-4. Rilegge il contributo appena curato da `get_curated` e lo stampa: è la
-   prova che il dato è nel database, non solo nella risposta della prima
-   chiamata.
-5. Se `NEO4J_URI` è configurata, esegue `link_to_graph` (ATOMICO: verifica
-   prima, scrive poi, nella stessa transazione) e stampa quante `:Memoria`/
-   `RIGUARDA` risultano nel grafo. Se `MemoryLinkError` viene sollevata
-   (tipicamente: `PLACE_ID_ESEMPIO` non esiste ancora nel grafo di
-   destinazione), il passo è segnalato come ERRORE ESPLICITO — mai in
-   silenzio, e mai un nodo `:Memoria` orfano.
+2. Il contributo d'esempio: PRIMA `repo.get(CONTRIBUTO_ID)`. Se esiste già
+   (una corsa precedente lo ha persistito), lo usa così com'è — "già
+   presente" è un successo, è la prova di persistenza, non un caso da
+   scartare. Se non esiste, `submit_contribution` lo crea ORA. Se
+   `MemoryStorageError` viene sollevata in QUALSIASI di questi due punti
+   (connessione, credenziali, un `CHECK` scattato), la CLI lo dichiara
+   ESPLICITAMENTE "FALLITO" ed esce con 1 — MAI più scambiato per "id già
+   presente" (bug corretto: prima confondeva "il DB non risponde" con "il
+   DB ha già la riga").
+3. Curatela: se il contributo è già `curato=True` (da una corsa
+   precedente), lo dichiara "già curato" (successo). Altrimenti
+   `curate_contribution`. `KeyError` qui significa che il passo 2 non ha
+   davvero persistito nulla: FALLITO, exit 1 — mai una spallucciata.
+4. Rilegge da un repository NUOVO (`repo.get`, mai `get_curated` più il
+   filtro manuale): è la prova che il dato è nel database, non solo nella
+   risposta della chiamata precedente. Il messaggio distingue esplicitamente
+   se il contributo è stato "persistito ORA da questa corsa" o "persisteva
+   GIÀ da una corsa precedente" — non li confonde mai.
+5. Se `NEO4J_URI` è configurata, aggancia al grafo IL CONTRIBUTO RILETTO AL
+   PASSO 4 (mai un oggetto ricostruito in memoria) con `link_to_graph`
+   (ATOMICO: verifica prima, scrive poi, nella stessa transazione) e stampa
+   quante `:Memoria`/`RIGUARDA` risultano nel grafo. Se `MemoryLinkError`
+   viene sollevata (tipicamente: `PLACE_ID_ESEMPIO` non esiste ancora nel
+   grafo di destinazione), il passo è segnalato come ERRORE ESPLICITO — mai
+   in silenzio, e mai un nodo `:Memoria` orfano.
+
+   ATTENZIONE (fatto osservato in produzione): questo passo dimostra che
+   l'aggancio riesce IN QUESTA CORSA. Non dimostra che sia MAI avvenuto in
+   una corsa precedente (es. se `NEO4J_URI` non era configurata quella
+   volta) — per verificarlo/rieseguirlo in isolamento su un contributo già
+   persistito, usa `python -m urban_memory.link [memory_id]`.
 
 Lanciato DUE VOLTE (o una volta, poi di nuovo dopo un riavvio del
 processo/macchina) mostra lo stesso contributo ancora presente al passo 4:
@@ -69,30 +90,53 @@ def _verifica_postgres(dsn: str) -> MemoryContribution:
 
     repo = PostgresMemoryRepository(dsn)
 
-    contributo = _contributo_esempio()
-    print(f"2. Conferimento del contributo d'esempio (id={contributo.id!r})...")
+    print(f"2. Contributo d'esempio (id={CONTRIBUTO_ID!r})...")
     try:
-        submit_contribution(repo, contributo)
-        print("   OK: consenso e licenza validati, contributo persistito.")
+        contributo = repo.get(CONTRIBUTO_ID)
     except MemoryStorageError as exc:
-        print(f"   (submit non ripetuto: {exc}")
-        print("    id già presente da una corsa precedente — previsto, non un errore)")
+        print(f"   FALLITO: storage non disponibile/errore — {exc}")
+        raise SystemExit(1) from exc
+
+    persistito_ora = contributo is None
+    if contributo is not None:
+        print("   Già presente da una corsa precedente (OK: è la prova di persistenza).")
+    else:
+        try:
+            contributo = submit_contribution(repo, _contributo_esempio())
+        except MemoryStorageError as exc:
+            print(f"   FALLITO: storage non disponibile/errore — {exc}")
+            raise SystemExit(1) from exc
+        print("   OK: consenso e licenza validati, contributo persistito ORA.")
 
     print(f"3. Curatela del contributo (id={contributo.id!r})...")
-    try:
-        curate_contribution(repo, contributo.id)
+    if contributo.curato:
+        print("   Già curato da una corsa precedente (OK: non serve rifare la curatela).")
+    else:
+        try:
+            contributo = curate_contribution(repo, contributo.id)
+        except MemoryStorageError as exc:
+            print(f"   FALLITO: storage non disponibile/errore — {exc}")
+            raise SystemExit(1) from exc
+        except KeyError as exc:
+            print(f"   FALLITO: {exc}")
+            print("            (significa che il passo 2 non ha davvero persistito nulla)")
+            raise SystemExit(1) from exc
         print("   OK: curato=True.")
-    except KeyError as exc:
-        print(f"   ATTENZIONE: {exc}")
 
     print("4. Rilettura da un repository NUOVO (simula un riavvio del processo)...")
     repo_riletto = PostgresMemoryRepository(dsn)
-    pubblicati = repo_riletto.get_curated(PLACE_ID_ESEMPIO)
-    trovato = next((c for c in pubblicati if c.id == CONTRIBUTO_ID), None)
-    if trovato is None:
-        print("   FALLITO: il contributo NON è stato ritrovato. La persistenza non funziona.")
+    try:
+        trovato = repo_riletto.get(CONTRIBUTO_ID)
+    except MemoryStorageError as exc:
+        print(f"   FALLITO: storage non disponibile/errore — {exc}")
+        raise SystemExit(1) from exc
+
+    if trovato is None or not trovato.curato:
+        print("   FALLITO: il contributo NON è stato ritrovato (curato). La persistenza non funziona.")
         raise SystemExit(1)
-    print("   TROVATO — la memoria è ANCORA presente dopo la riapertura della connessione:")
+
+    origine = "persistito ORA da questa corsa" if persistito_ora else "persisteva GIÀ da una corsa precedente"
+    print(f"   TROVATO ({origine}) — la memoria è ANCORA presente dopo la riapertura della connessione:")
     print(f"     id={trovato.id!r}  kind={trovato.kind.value}  licenza={trovato.licenza!r}")
     print(f"     contributor_kind={trovato.contributor_kind.value}  curato={trovato.curato}")
     print(f"     riguarda={trovato.riguarda}  creato_il={trovato.creato_il.isoformat()}")
@@ -111,7 +155,7 @@ def _verifica_grafo(contributo: MemoryContribution) -> None:
 
     from .graph_link import MemoryLinkError, Neo4jMemoryLinker
 
-    print("5. Aggancio al Knowledge Graph (Neo4j)...")
+    print("5. Aggancio al Knowledge Graph (Neo4j), con il contributo RILETTO al passo 4...")
     try:
         with Neo4jMemoryLinker.from_env() as linker:
             linker.link(contributo)

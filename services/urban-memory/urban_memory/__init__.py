@@ -46,6 +46,13 @@ graph_link.riguarda_to_cypher`/`riguarda_check_cypher` producono query pure
 eseguono davvero contro Neo4j (Aura o locale), ATOMICAMENTE: se un id in
 `riguarda` non esiste nel grafo, `MemoryLinkError` lo nomina e NESSUN nodo
 `:Memoria` orfano viene creato.
+
+`MemoryRepository.get(memory_id)` rilegge un contributo per id (`None` se
+assente): `link_memory` (`python -m urban_memory.link`) lo usa per riagganciare
+al grafo IL DATO REALMENTE PERSISTITO, mai un oggetto ricostruito in
+memoria — è lo strumento dedicato a verificare (e rieseguire) SOLO
+l'aggancio, a valle di `urban_memory.verify`. `controprova` dimostra che il
+linker rifiuta DAVVERO un target inesistente, senza toccare Postgres.
 """
 
 from __future__ import annotations
@@ -59,6 +66,7 @@ from .graph_link import (
     riguarda_check_cypher,
     riguarda_to_cypher,
 )
+from .link import controprova, link_memory
 from .migrate import SCHEMA_PATH, migrate
 from .repository import (
     InMemoryMemoryRepository,
@@ -99,6 +107,8 @@ __all__ = [
     "MemoryLinkError",
     "link_to_graph",
     "Neo4jMemoryLinker",
+    "link_memory",
+    "controprova",
     "migrate",
     "SCHEMA_PATH",
 ]

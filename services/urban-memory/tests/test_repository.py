@@ -48,6 +48,7 @@ def test_in_memory_repository_implementa_il_protocollo() -> None:
     assert hasattr(repo, "get_curated")
     assert hasattr(repo, "list_pending")
     assert hasattr(repo, "curate")
+    assert hasattr(repo, "get")
 
 
 def test_submit_ritorna_il_contributo_persistito() -> None:
@@ -94,6 +95,33 @@ def test_get_curated_su_place_id_senza_contributi_e_vuoto() -> None:
     assert repo.get_curated("luogo-mai-visto") == []
 
 
+def test_in_memory_get_restituisce_il_contributo_esistente() -> None:
+    repo = InMemoryMemoryRepository()
+    contributo = _contributo(id="mem-esiste")
+    repo.submit(contributo)
+
+    trovato = repo.get("mem-esiste")
+
+    assert trovato == contributo
+
+
+def test_in_memory_get_id_sconosciuto_restituisce_none() -> None:
+    repo = InMemoryMemoryRepository()
+    assert repo.get("non-esiste") is None
+
+
+def test_in_memory_get_riflette_lo_stato_curato_aggiornato() -> None:
+    """`get` legge lo stato REALE, non uno stantio: dopo `curate`, rilegge
+    `curato=True` — lo stesso principio che rende `urban_memory.verify`
+    idempotente (rilegge sempre prima di assumere)."""
+    repo = InMemoryMemoryRepository()
+    repo.submit(_contributo(id="mem-curabile", curato=False))
+
+    repo.curate("mem-curabile")
+
+    assert repo.get("mem-curabile").curato is True  # type: ignore[union-attr]
+
+
 # --- PostgresMemoryRepository: interfaccia e costruzione -------------------
 
 
@@ -103,6 +131,7 @@ def test_postgres_repository_ha_linterfaccia_attesa() -> None:
     assert hasattr(repo, "get_curated")
     assert hasattr(repo, "list_pending")
     assert hasattr(repo, "curate")
+    assert hasattr(repo, "get")
 
 
 def test_postgres_repository_dsn_arriva_sempre_dal_costruttore(
@@ -155,6 +184,7 @@ def test_postgres_repository_implementa_il_protocollo(pg_repo: PostgresMemoryRep
     assert hasattr(repo, "get_curated")
     assert hasattr(repo, "list_pending")
     assert hasattr(repo, "curate")
+    assert hasattr(repo, "get")
 
 
 def test_postgres_submit_poi_get_curated_e_vuoto_finche_non_curato(
@@ -296,6 +326,57 @@ def test_check_db_rifiuta_insert_diretto_con_licenza_vuota(pg_dsn: str) -> None:
             )
 
 
+def test_postgres_get_restituisce_il_contributo_esistente(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    contributo = _contributo(
+        id="mem-pg-get-1",
+        riguarda=["luogo-pg-get"],
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    pg_repo.submit(contributo)
+
+    trovato = pg_repo.get("mem-pg-get-1")
+
+    assert trovato is not None
+    assert trovato.id == "mem-pg-get-1"
+    assert trovato.riguarda == ["luogo-pg-get"]
+    assert trovato.licenza == contributo.licenza
+    assert trovato.curato is False  # get rilegge lo stato REALE, non curato
+
+
+def test_postgres_get_id_sconosciuto_restituisce_none(pg_repo: PostgresMemoryRepository) -> None:
+    assert pg_repo.get("mai-esistito-su-postgres") is None
+
+
+def test_postgres_get_riflette_lo_stato_curato_aggiornato(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    """Come per `InMemoryMemoryRepository`: `get` legge lo stato REALE dal
+    DB, mai una copia stantia — è ciò su cui si basa l'idempotenza onesta
+    di `urban_memory.verify` (rilegge sempre prima di assumere)."""
+    contributo = _contributo(
+        id="mem-pg-get-curato",
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    pg_repo.submit(contributo)
+    assert pg_repo.get("mem-pg-get-curato").curato is False  # type: ignore[union-attr]
+
+    pg_repo.curate("mem-pg-get-curato")
+
+    assert pg_repo.get("mem-pg-get-curato").curato is True  # type: ignore[union-attr]
+
+
+def test_postgres_get_con_connessione_non_raggiungibile_solleva_memory_storage_error() -> None:
+    """`get` mappa un errore psycopg (qui: connessione rifiutata, porta 1 su
+    localhost non ha alcun listener) in `MemoryStorageError` — non lo lascia
+    propagare come eccezione psycopg grezza, né lo confonde con `None`
+    ("non trovato": un errore di storage NON è un "non esiste")."""
+    repo = PostgresMemoryRepository(dsn="postgresql://postgres@127.0.0.1:1/inesistente")
+    with pytest.raises(MemoryStorageError):
+        repo.get("qualunque-id")
+
+
 def test_postgres_submit_id_duplicato_solleva_memory_storage_error(
     pg_repo: PostgresMemoryRepository,
 ) -> None:
@@ -332,11 +413,14 @@ def test_protocollo_submit_get_curated_curate_su_entrambe_le_implementazioni(
     assert persistito.id == "mem-protocollo-1"
     assert repo.get_curated("luogo-protocollo") == []
     assert [c.id for c in repo.list_pending()] == ["mem-protocollo-1"]
+    assert repo.get("mem-protocollo-1").curato is False  # type: ignore[union-attr]
+    assert repo.get("mai-esistito-in-nessuna-implementazione") is None
 
     curato = repo.curate("mem-protocollo-1")
     assert curato.curato is True
     assert [c.id for c in repo.get_curated("luogo-protocollo")] == ["mem-protocollo-1"]
     assert repo.list_pending() == []
+    assert repo.get("mem-protocollo-1").curato is True  # type: ignore[union-attr]
 
     with pytest.raises(KeyError):
         repo.curate("non-esiste-in-nessuna-implementazione")

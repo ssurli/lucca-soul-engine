@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import inspect
 from datetime import datetime
-from typing import Any
 
 import pytest
 from contracts import MemoryContribution, MemoryKind, PersonKind
@@ -25,6 +24,8 @@ from urban_memory.graph_link import (
     MEMORY_LINK_WRITE_QUERY_PATH,
     riguarda_check_cypher,
 )
+
+from _neo4j_fakes import FakeDriver
 
 
 def _contributo(**overrides: object) -> MemoryContribution:
@@ -169,99 +170,11 @@ def test_riguarda_check_cypher_non_scrive_nulla() -> None:
 # ---------------------------------------------------------------------------
 
 
-class _FakeResult:
-    def __init__(self, valore_single: dict[str, Any] | None) -> None:
-        self._valore_single = valore_single
-
-    def single(self) -> dict[str, Any] | None:
-        return self._valore_single
-
-
-class _FakeTransaction:
-    """Transazione finta passata da `_FakeSession.execute_write` alla
-    funzione di transazione (`urban_memory.graph_link._link_transaction`):
-    registra ogni `.run(...)` nell'ordine in cui avviene — è così che i test
-    (b)/(c) dimostrano che la query di SCRITTURA non viene mai eseguita
-    quando la verifica fallisce."""
-
-    def __init__(
-        self, registro: list[tuple[str, dict[str, Any] | None]], mancanti: list[str]
-    ) -> None:
-        self._registro = registro
-        self._mancanti = mancanti
-
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> _FakeResult:
-        self._registro.append((query, parameters))
-        if "RETURN collect(target_id) AS mancanti" in query:
-            return _FakeResult({"mancanti": list(self._mancanti)})
-        return _FakeResult(None)
-
-
-class _FakeSession:
-    def __init__(
-        self,
-        registro: list[tuple[str, dict[str, Any] | None]],
-        mancanti: list[str] | None = None,
-        valore_single: dict[str, Any] | None = None,
-    ) -> None:
-        self._registro = registro
-        self._mancanti = mancanti if mancanti is not None else []
-        self._valore_single = valore_single
-        self.execute_write_calls = 0
-
-    def execute_write(self, transaction_function: Any, *args: Any, **kwargs: Any) -> Any:
-        self.execute_write_calls += 1
-        tx = _FakeTransaction(self._registro, self._mancanti)
-        return transaction_function(tx, *args, **kwargs)
-
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> _FakeResult:
-        # Usata SOLO da `Neo4jMemoryLinker.count_memoria` (lettura, fuori da
-        # qualunque transazione gestita): non passa da `_FakeTransaction`.
-        self._registro.append((query, parameters))
-        return _FakeResult(self._valore_single)
-
-    def __enter__(self) -> _FakeSession:
-        return self
-
-    def __exit__(self, *exc_info: object) -> None:
-        return None
-
-
-class _FakeDriver:
-    """Driver Neo4j finto: registra ogni `(query, params)` eseguito da una
-    sessione aperta con `.session(database=...)`. Nessuna connessione, nessun
-    socket: solo liste in memoria — esattamente ciò che il task chiede.
-
-    `mancanti`: gli id che la query di VERIFICA finta deve dichiarare
-    mancanti (default: nessuno, cioè "tutti i target esistono")."""
-
-    def __init__(
-        self, mancanti: list[str] | None = None, valore_single: dict[str, Any] | None = None
-    ) -> None:
-        self.query_eseguite: list[tuple[str, dict[str, Any] | None]] = []
-        self.database_richiesti: list[str | None] = []
-        self.sessioni_aperte: list[_FakeSession] = []
-        self.closed = False
-        self._mancanti = mancanti if mancanti is not None else []
-        self._valore_single = valore_single
-
-    def session(self, database: str | None = None) -> _FakeSession:
-        self.database_richiesti.append(database)
-        sessione = _FakeSession(
-            self.query_eseguite, mancanti=self._mancanti, valore_single=self._valore_single
-        )
-        self.sessioni_aperte.append(sessione)
-        return sessione
-
-    def close(self) -> None:
-        self.closed = True
-
-
 # --- (a) target esistenti: verifica ESEGUITA, poi la scrittura ESEGUITA ----
 
 
 def test_link_to_graph_con_target_esistenti_verifica_poi_scrive() -> None:
-    driver = _FakeDriver(mancanti=[])  # tutti i target "esistono" nel grafo finto
+    driver = FakeDriver(mancanti=[])  # tutti i target "esistono" nel grafo finto
     contributo = _contributo(riguarda=["bottega-1", "artista-1"])
 
     link_to_graph(contributo, driver=driver, database="neo4j")
@@ -288,7 +201,7 @@ def test_link_to_graph_con_target_esistenti_usa_execute_write_una_sola_volta() -
     """Verifica e scrittura girano nella STESSA transazione (`execute_write`
     chiamato una volta sola, non due sessioni/transazioni separate: è
     l'atomicità che rende impossibile un nodo :Memoria orfano)."""
-    driver = _FakeDriver(mancanti=[])
+    driver = FakeDriver(mancanti=[])
 
     link_to_graph(_contributo(), driver=driver)
 
@@ -300,7 +213,7 @@ def test_link_to_graph_con_target_esistenti_usa_execute_write_una_sola_volta() -
 
 
 def test_link_to_graph_con_target_inesistente_solleva_memory_link_error() -> None:
-    driver = _FakeDriver(mancanti=["bottega-fantasma"])
+    driver = FakeDriver(mancanti=["bottega-fantasma"])
     contributo = _contributo(riguarda=["bottega-fantasma", "artista-1"])
 
     with pytest.raises(MemoryLinkError, match=r"bottega-fantasma"):
@@ -310,7 +223,7 @@ def test_link_to_graph_con_target_inesistente_solleva_memory_link_error() -> Non
 def test_link_to_graph_con_target_inesistente_non_esegue_mai_la_scrittura() -> None:
     """IL CUORE DEL FIX: se un target manca, il nodo :Memoria non deve MAI
     essere creato — nessun nodo orfano, come accaduto su Aura."""
-    driver = _FakeDriver(mancanti=["bottega-fantasma"])
+    driver = FakeDriver(mancanti=["bottega-fantasma"])
     contributo = _contributo(riguarda=["bottega-fantasma"])
 
     with pytest.raises(MemoryLinkError):
@@ -327,7 +240,7 @@ def test_link_to_graph_con_target_inesistente_non_esegue_mai_la_scrittura() -> N
 
 
 def test_link_to_graph_con_piu_target_inesistenti_li_nomina_tutti() -> None:
-    driver = _FakeDriver(mancanti=["luogo-fantasma", "bottega-fantasma"])
+    driver = FakeDriver(mancanti=["luogo-fantasma", "bottega-fantasma"])
     contributo = _contributo(riguarda=["luogo-fantasma", "bottega-fantasma"])
 
     with pytest.raises(MemoryLinkError) as errore:
@@ -351,7 +264,7 @@ def test_link_to_graph_con_riguarda_vuoto_solleva_memory_link_error_senza_driver
     validato altrove — es. un oggetto costruito con `model_construct`, o un
     contratto futuro meno restrittivo) si usa `model_copy`, che NON
     rivalida, per ottenere comunque un `riguarda` vuoto qui."""
-    driver = _FakeDriver()
+    driver = FakeDriver()
     contributo_con_riguarda_vuoto = _contributo().model_copy(update={"riguarda": []})
 
     with pytest.raises(MemoryLinkError, match="riguarda"):
@@ -368,13 +281,13 @@ def test_link_to_graph_con_driver_esplicito_non_lo_chiude() -> None:
     """Il ciclo di vita di un driver passato da chi chiama resta di chi
     chiama: `link_to_graph` non lo chiude (solo un driver aperto al suo
     interno, quando `driver=None`, viene chiuso a fine chiamata)."""
-    driver = _FakeDriver()
+    driver = FakeDriver()
     link_to_graph(_contributo(), driver=driver)
     assert driver.closed is False
 
 
 def test_link_to_graph_usa_database_default_neo4j_se_non_specificato() -> None:
-    driver = _FakeDriver()
+    driver = FakeDriver()
     link_to_graph(_contributo(), driver=driver)
     assert driver.database_richiesti == ["neo4j"]
 
@@ -398,7 +311,7 @@ def test_link_to_graph_senza_driver_richiede_le_variabili_neo4j(
 
 
 def test_neo4j_memory_linker_link_delega_a_link_to_graph_sul_driver_posseduto() -> None:
-    driver = _FakeDriver(mancanti=[])
+    driver = FakeDriver(mancanti=[])
     linker = Neo4jMemoryLinker(driver, database="lucca")
     contributo = _contributo(riguarda=["artista-1"])
 
@@ -414,7 +327,7 @@ def test_neo4j_memory_linker_link_delega_a_link_to_graph_sul_driver_posseduto() 
 
 
 def test_neo4j_memory_linker_link_propaga_memory_link_error_senza_creare_nulla() -> None:
-    driver = _FakeDriver(mancanti=["bottega-fantasma"])
+    driver = FakeDriver(mancanti=["bottega-fantasma"])
     linker = Neo4jMemoryLinker(driver)
 
     with pytest.raises(MemoryLinkError, match="bottega-fantasma"):
@@ -424,7 +337,7 @@ def test_neo4j_memory_linker_link_propaga_memory_link_error_senza_creare_nulla()
 
 
 def test_neo4j_memory_linker_count_memoria() -> None:
-    driver = _FakeDriver(valore_single={"memorie": 3, "relazioni": 7})
+    driver = FakeDriver(valore_single={"memorie": 3, "relazioni": 7})
     linker = Neo4jMemoryLinker(driver)
 
     memorie, relazioni = linker.count_memoria()
@@ -433,7 +346,7 @@ def test_neo4j_memory_linker_count_memoria() -> None:
 
 
 def test_neo4j_memory_linker_context_manager_chiude_il_driver_posseduto() -> None:
-    driver = _FakeDriver()
+    driver = FakeDriver()
     with Neo4jMemoryLinker(driver) as linker:
         linker.link(_contributo())
         assert driver.closed is False

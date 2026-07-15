@@ -82,6 +82,15 @@ class MemoryRepository(Protocol):
         Solleva `KeyError` se `memory_id` non esiste."""
         ...
 
+    def get(self, memory_id: str) -> MemoryContribution | None:
+        """Il contributo con id `memory_id`, letto COSÌ COM'È persistito —
+        curato o no. `None` se non esiste: a differenza di `curate`, questo
+        è un lookup, non un comando, quindi "non esiste" non è un errore.
+        Usato per RILEGGERE un contributo già persistito (es. per riagganciarlo
+        al grafo con il dato reale, mai uno ricostruito in memoria) — vedi
+        `urban_memory.link`."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # In-memory — percorso di test e di default finché DATABASE_URL non c'è
@@ -118,6 +127,9 @@ class InMemoryMemoryRepository:
         aggiornato = corrente.model_copy(update={"curato": True})
         self._store[memory_id] = aggiornato
         return aggiornato
+
+    def get(self, memory_id: str) -> MemoryContribution | None:
+        return self._store.get(memory_id)
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +246,13 @@ class PostgresMemoryRepository:
         if riga is None:
             raise KeyError(f"nessun contributo con id={memory_id!r}")
         return _from_row(riga)
+
+    def get(self, memory_id: str) -> MemoryContribution | None:
+        query = f"SELECT {_COLUMNS_SQL} FROM memory_contribution WHERE id = %(id)s"
+        righe = self._select(query, {"id": memory_id})
+        if not righe:
+            return None
+        return _from_row(righe[0])
 
     # -- interno ------------------------------------------------------------
 
