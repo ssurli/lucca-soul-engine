@@ -132,11 +132,16 @@ def _verifica_postgres(dsn: str) -> MemoryContribution:
         raise SystemExit(1) from exc
 
     if trovato is None or not trovato.curato:
-        print("   FALLITO: il contributo NON è stato ritrovato (curato). La persistenza non funziona.")
+        print("   FALLITO: il contributo NON è stato ritrovato (curato).")
+        print("            La persistenza non funziona.")
         raise SystemExit(1)
 
-    origine = "persistito ORA da questa corsa" if persistito_ora else "persisteva GIÀ da una corsa precedente"
-    print(f"   TROVATO ({origine}) — la memoria è ANCORA presente dopo la riapertura della connessione:")
+    origine = (
+        "persistito ORA da questa corsa"
+        if persistito_ora
+        else "persisteva GIÀ da una corsa precedente"
+    )
+    print(f"   TROVATO ({origine}) — la memoria è ANCORA presente dopo la riapertura:")
     print(f"     id={trovato.id!r}  kind={trovato.kind.value}  licenza={trovato.licenza!r}")
     print(f"     contributor_kind={trovato.contributor_kind.value}  curato={trovato.curato}")
     print(f"     riguarda={trovato.riguarda}  creato_il={trovato.creato_il.isoformat()}")

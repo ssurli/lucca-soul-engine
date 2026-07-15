@@ -17,6 +17,7 @@ import inspect
 from datetime import datetime
 
 import pytest
+from _neo4j_fakes import FakeDriver
 from contracts import MemoryContribution, MemoryKind, PersonKind
 from urban_memory import MemoryLinkError, Neo4jMemoryLinker, link_to_graph, riguarda_to_cypher
 from urban_memory.graph_link import (
@@ -24,8 +25,6 @@ from urban_memory.graph_link import (
     MEMORY_LINK_WRITE_QUERY_PATH,
     riguarda_check_cypher,
 )
-
-from _neo4j_fakes import FakeDriver
 
 
 def _contributo(**overrides: object) -> MemoryContribution:

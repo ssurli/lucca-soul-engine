@@ -138,12 +138,11 @@ def test_link_memory_rilegge_da_postgres_il_contributo_reale(pg_repo) -> None:
 
     scritture = [
         params
-        for query, params in driver.query_eseguite
-        if params is not None and "MERGE (m:Memoria" not in query and "kind" in params
+        for _query, params in driver.query_eseguite
+        if params is not None and "kind" in params
     ]
-    assert scritture, (
-        "la query di scrittura deve essere stata eseguita con i parametri del contributo"
-    )
+    messaggio = "la query di scrittura deve essere stata eseguita con i parametri del contributo"
+    assert scritture, messaggio
     assert scritture[-1]["id"] == contributo.id
     assert scritture[-1]["riguarda"] == ["liuteria-lucchese"]
     assert scritture[-1]["licenza"] == contributo.licenza

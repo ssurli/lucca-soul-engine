@@ -88,7 +88,7 @@ def link_memory(memory_id: str, *, dsn: str, linker: Neo4jMemoryLinker) -> None:
         raise SystemExit(1) from exc
 
     if contributo is None:
-        print(f"ERRORE: nessun contributo con id={memory_id!r} su Postgres.")
+        print(f"ERRORE: contributo non trovato (id={memory_id!r}) su Postgres.")
         print("        Prima persistilo: python -m urban_memory.verify")
         raise SystemExit(1)
 
