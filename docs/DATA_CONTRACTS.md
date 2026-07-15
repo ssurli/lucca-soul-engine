@@ -134,7 +134,8 @@ class MemoryContribution(BaseModel):
     consenso: bool                    # OBBLIGATORIO: nessun conferimento senza consenso esplicito
     licenza: str                      # es. "CC-BY-SA-4.0" — sempre tracciata (min 1 carattere)
     creato_il: datetime
-    curato: bool = False              # revisione prima della pubblicazione
+    curato: bool = False              # revisione; curabile solo se tutti i target di
+                                       # `riguarda` esistono nel grafo
 ```
 
 ## 5. Eventi comportamentali (per il recommender e l'Index)
@@ -212,4 +213,8 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 - Ogni id in `MemoryContribution.riguarda` deve esistere nel Knowledge Graph: il
   collegamento è atomico, nessun nodo `:Memoria` orfano (verificato al link-time, non
   esprimibile nel contratto Pydantic).
+- Un contributo non può raggiungere `curato=True` se un id in `riguarda` non esiste nel
+  Knowledge Graph: la curatela verifica i target (`InvalidTargetsError`), il linker resta
+  atomico al link-time. Il submit NON dipende dal grafo: il conferimento del Cittadino è
+  sempre possibile.
 - Nessun campo esprime "priorità a pagamento": la visibilità non è acquistabile.
