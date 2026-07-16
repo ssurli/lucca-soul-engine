@@ -116,6 +116,12 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
   in italiano. La spiegabilità rende il vincolo etico auditabile da un'amministrazione.
 - **Urban Memory cresce con l'uso.** Ogni esperienza vissuta può alimentare la memoria: non è un
   archivio da riempire una volta. Il conferimento richiede consenso esplicito e licenza tracciata.
+- **La curatela verifica i target.** Un contributo raggiunge `curato=True` solo se ogni id in
+  `riguarda` esiste nel Knowledge Graph. Il conferimento (submit) NON dipende dal grafo — il
+  Cittadino può sempre conferire, anche con Aura in pausa; la validazione è alla **curatela**, il
+  gate di pubblicazione. Se in futuro si espone `memory/curate` via HTTP, deve **sempre** ricevere
+  un `target_checker` reale, **mai `None`**: `None` esiste solo per i test di dominio puri e per
+  quella via riaprirebbe il bug delle memorie orfane (nodi `:Memoria` senza `RIGUARDA`).
 - **Italiano** nel dominio, inglese nei nomi dei pilastri (sono termini congelati).
 
 ## Glossario di dominio (allineato al white paper)
