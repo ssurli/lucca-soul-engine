@@ -19,6 +19,7 @@ from contracts import Booking, BookingStatus, CommissionRecord
 from marketplace import BookingRepository, InMemoryBookingRepository, PostgresBookingRepository
 from marketplace.migrate import migrate
 from marketplace.repository import MarketplaceStorageError
+from marketplace.service import confirm_booking
 
 
 def _booking(**overrides: object) -> Booking:
@@ -299,3 +300,78 @@ def test_protocollo_create_get_update_status_su_entrambe_le_implementazioni(
 
     with pytest.raises(KeyError):
         repo.update_status("non-esiste-in-nessuna-implementazione", BookingStatus.CONFERMATA)
+
+
+# --- Separazione contabile: booking e commission_record ---------------------
+#
+# Verifica permanente, contro Postgres reale, di quanto già confermato
+# manualmente in chiusura di Wave 3a (prescrizione ethics-guardian,
+# docs/DATA_CONTRACTS.md §5): la commissione è un dato contabile SEPARATO
+# dalla prenotazione, a livello di SCHEMA (tabelle e colonne distinte) e a
+# livello di SEQUENZA TEMPORALE (calcolata solo dopo la conferma).
+
+
+def test_booking_e_commission_record_sono_due_tabelle_distinte(pg_dsn: str) -> None:
+    """Non una tabella sola con entrambi i concetti, non una vista che li
+    unisce: due tabelle distinte nello schema reale."""
+    migrate(pg_dsn)
+    with psycopg.connect(pg_dsn) as conn:
+        righe = conn.execute(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'public' AND table_name IN (%s, %s)",
+            ("booking", "commission_record"),
+        ).fetchall()
+
+    nomi_tabelle = {riga[0] for riga in righe}
+    assert nomi_tabelle == {"booking", "commission_record"}
+
+
+def test_booking_non_ha_nessuna_colonna_di_commissione(pg_dsn: str) -> None:
+    """`booking` non deve MAI acquisire una colonna di commissione: verifica
+    che l'insieme delle colonne di `commission_record` non intersechi
+    l'insieme delle colonne di `booking`, invece di una whitelist rigida
+    delle colonne di `booking` (che si romperebbe a ogni futura colonna
+    legittima aggiunta lì)."""
+    migrate(pg_dsn)
+    with psycopg.connect(pg_dsn) as conn:
+        colonne_booking = {
+            riga[0]
+            for riga in conn.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = %s",
+                ("booking",),
+            ).fetchall()
+        }
+        colonne_commissione = {
+            riga[0]
+            for riga in conn.execute(
+                "SELECT column_name FROM information_schema.columns "
+                "WHERE table_schema = 'public' AND table_name = %s",
+                ("commission_record",),
+            ).fetchall()
+        }
+
+    assert colonne_booking  # la tabella esiste davvero e ha colonne
+    assert colonne_commissione  # idem per commission_record
+    assert colonne_booking & colonne_commissione == set()
+
+
+def test_commissione_e_registrata_solo_dopo_la_conferma_con_cronologia_reale(
+    pg_repo: PostgresBookingRepository,
+) -> None:
+    """`confirm_booking` (il percorso reale, non `record_commission` diretto)
+    calcola e registra la commissione SOLO dopo che la conferma è già
+    persistita. Il riferimento temporale viene da un orologio ESTERNO al
+    codice sotto test (catturato qui, nel test, subito prima della
+    chiamata) — non da due timestamp scritti entrambi dal codice testato,
+    confronto che proverebbe ben poco."""
+    prenotazione = pg_repo.create(_booking(id="booking-cronologia-1"))
+    assert pg_repo.get_commission("booking-cronologia-1") is None
+
+    prima_della_conferma = datetime.now(UTC)
+    confirm_booking(pg_repo, "booking-cronologia-1")
+
+    commissione = pg_repo.get_commission("booking-cronologia-1")
+    assert commissione is not None
+    assert commissione.registrata_il >= prima_della_conferma
+    assert commissione.registrata_il > prenotazione.creato_il
