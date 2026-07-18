@@ -12,7 +12,6 @@ questo ambiente, i test che dipendono da `postgres_cluster` sono saltati con
 from __future__ import annotations
 
 import os
-import pwd
 import shutil
 import socket
 import subprocess
@@ -134,9 +133,15 @@ def _start_ephemeral_postgres() -> _EphemeralPostgres | None:
         return None
 
     run_as: str | None = None
-    if os.geteuid() == 0:
-        # Postgres si rifiuta di girare come root: delega a un utente di
-        # sistema dedicato, se c'è.
+    tmp_base = tempfile.gettempdir()
+    # `os.geteuid` non esiste su Windows: questo intero ramo (delega a un
+    # utente di sistema "postgres" via sudo) è rilevante solo su un
+    # container Linux/CI eseguito come root, dove Postgres si rifiuta di
+    # girare come root. `pwd` è Unix-only: import locale, mai a livello di
+    # modulo, altrimenti la sola collection del conftest crasha su Windows.
+    if hasattr(os, "geteuid") and os.geteuid() == 0:
+        import pwd
+
         try:
             pwd.getpwnam("postgres")
         except KeyError:
@@ -144,13 +149,16 @@ def _start_ephemeral_postgres() -> _EphemeralPostgres | None:
         if shutil.which("sudo") is None:
             return None
         run_as = "postgres"
+        # Sotto /tmp esplicito (non sotto lo scratchpad di sessione): l'utente
+        # `postgres` deve poter ATTRAVERSARE l'intera catena di directory, e la
+        # sandbox tipicamente rende /tmp/<...>/scratchpad non attraversabile da
+        # un altro utente anche dopo un chown della sola foglia.
+        tmp_base = "/tmp"
 
-    # Sotto /tmp (non sotto lo scratchpad di sessione): l'utente `postgres`
-    # deve poter ATTRAVERSARE l'intera catena di directory, e la sandbox
-    # tipicamente rende /tmp/<...>/scratchpad non attraversabile da un altro
-    # utente anche dopo un chown della sola foglia.
-    base_dir = Path(tempfile.mkdtemp(prefix="urban_memory_pgtest_", dir="/tmp"))
+    base_dir = Path(tempfile.mkdtemp(prefix="urban_memory_pgtest_", dir=tmp_base))
     if run_as:
+        import pwd
+
         utente = pwd.getpwnam(run_as)
         os.chown(base_dir, utente.pw_uid, utente.pw_gid)
     os.chmod(base_dir, 0o700)

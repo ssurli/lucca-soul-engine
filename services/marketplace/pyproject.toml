@@ -1,0 +1,49 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lucca-marketplace"
+version = "0.1.0"
+description = "Lucca Soul Lab — Engine: Marketplace (Wave 3a). Prenotazioni (`Booking`) e commissione (`CommissionRecord`, dato CONTABILE registrato SOLO dopo la conferma). Il modello di ricavo dei partner resta un abbonamento di presenza (sì/no, `Partner.abbonamento_attivo`): questo servizio non introduce alcuna asta sulla visibilità, nessun campo 'peso'/'boost'/'priorita_pagata', e non è mai importato da `experience_engine` (né lo importa)."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+    "psycopg[binary]>=3",
+]
+
+# NOTA — pacchetto contratti (packages/contracts):
+# `lucca-contracts` è la single source of truth per gli schemi
+# (Booking, BookingRequest, BookingStatus, CommissionRecord...) e NON va
+# aggiunto qui come dipendenza pip (non è pubblicato su un indice). Va
+# installato a parte, in editable mode, insieme a questo pacchetto:
+#
+#   pip install -e packages/contracts -e services/marketplace
+#
+# NOTA — persistenza reale:
+# `marketplace.repository.PostgresBookingRepository` persiste DAVVERO via
+# `psycopg[binary]` (driver Postgres 3): il DSN arriva dal costruttore,
+# tipicamente letto da DATABASE_URL da chi la istanzia — Neon
+# (`sslmode=require`) in cloud, Postgres locale sul PC fisso; MAI
+# hardcoded, MAI un `if local/cloud`. Lo schema (`booking`,
+# `commission_record`) è versionato e idempotente in
+# `sql/00_marketplace_schema.sql`, applicato da
+# `marketplace.migrate.migrate(dsn)` (o `python -m marketplace.migrate`)
+# prima del primo uso. Il percorso di default, usato dai test e finché
+# DATABASE_URL non è configurato, resta `InMemoryBookingRepository`.
+#
+# NOTA — vincolo non negoziabile (ethics-guardian):
+# `marketplace.service.confirm_booking` è l'UNICO punto in cui viene
+# calcolato un `CommissionRecord`, e lo fa SOLO dopo aver persistito la
+# transizione di stato a `CONFERMATA`. Nessuna funzione di questo pacchetto
+# calcola una commissione a partire da una `Booking` in stato `RICHIESTA`.
+# Questo pacchetto non importa `services/experience-engine` e non è
+# importato da esso: lo scoring del motore non vede mai `CommissionRecord`
+# né `Partner` (vede solo `ExperienceNode.partner_abbonamento_attivo`,
+# booleano denormalizzato — docs/DATA_CONTRACTS.md §2, §5).
+
+[tool.hatch.build.targets.wheel]
+packages = ["marketplace"]
+
+[tool.hatch.metadata]
+allow-direct-references = true

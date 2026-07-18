@@ -20,6 +20,18 @@
 // rende raggiungibile, per sole relazioni di significato, il percorso
 // "Puccini -> ... -> liutaio -> violino" (vedi graph/topology.py).
 //
+// `partner_abbonamento_attivo` (Wave 3a, marketplace — `docs/DATA_CONTRACTS.md`
+// §5) è un JOIN puro: legge `Partner.abbonamento_attivo` risalendo dalla
+// Bottega referenziata da `e.partner_id` via `HA_ABBONAMENTO`, MAI logica di
+// scoring. Default `true` se l'esperienza non ha partner (`e.partner_id IS
+// NULL`) o se la Bottega non ha alcun `HA_ABBONAMENTO` collegato: solo un
+// Partner ESPLICITAMENTE presente con `abbonamento_attivo = false` fa
+// scendere il booleano. Il consumer (`graph.source.Neo4jCandidateSource`)
+// lo scrive, senza modifiche, in `ExperienceNode.partner_abbonamento_attivo`;
+// l'Experience Engine lo legge come filtro duro booleano in
+// `passa_filtri_duri` (`services/experience-engine`), mai come input di
+// `calcola_score`.
+//
 // Parametri (tutti opzionali: `null` o lista vuota = nessun filtro):
 //   $temi         list[string]   id di Tema da cercare tra quelli evocati
 //   $al_chiuso    bool | null    filtro esatto su Esperienza.al_chiuso
@@ -50,13 +62,15 @@ OPTIONAL MATCH (e)-[:EVOCA]->(tema:Tema)
 OPTIONAL MATCH (bot)-[isp:ISPIRATA_DA]->(:Artista)
 OPTIONAL MATCH (bot)-[:EVOCA]->(temab:Tema)
 OPTIONAL MATCH (l)-[vic:VICINO]-(:Luogo {id: $vicino_a})
+OPTIONAL MATCH (bp:Bottega {id: e.partner_id})-[:HA_ABBONAMENTO]->(partner:Partner)
 WITH e, l,
      collect(DISTINCT art.nome) AS artisti_nomi,
      collect(DISTINCT bot.nome) AS botteghe_nomi,
      collect(DISTINCT tema.nome) AS temi_nomi,
      collect(DISTINCT isp.racconto) AS racconti_ispirazione,
      collect(DISTINCT {id: temab.id, nome: temab.nome}) AS temi_bottega,
-     min(vic.metri) AS distanza_m
+     min(vic.metri) AS distanza_m,
+     collect(DISTINCT partner.abbonamento_attivo) AS abbonamenti_partner
 RETURN
   e.id AS id,
   e.titolo AS titolo,
@@ -68,11 +82,22 @@ RETURN
   e.alimenta_memoria AS alimenta_memoria,
   e.partner_id AS partner_id,
   e.prezzo_eur AS prezzo_eur,
+  // `prenotabile` (Wave 3a, marketplace) può mancare su un grafo il cui seed
+  // non è ancora stato rieseguito dopo l'introduzione della proprietà (Aura
+  // Free si cancella dopo 30 giorni di inattività — CLAUDE.md — quindi questa
+  // non è un'eccezione ma una condizione ricorrente e attesa). Un'Esperienza
+  // senza questa proprietà non deve mai propagare `null` fino a
+  // `ExperienceNode.prenotabile` (bool, default `false` nel contratto):
+  // degrada all'unico default sicuro — non prenotabile — esattamente come
+  // `partner_abbonamento_attivo` degrada a `true` per un Partner assente.
+  coalesce(e.prenotabile, false) AS prenotabile,
   l.nome AS place_nome,
   artisti_nomi,
   botteghe_nomi,
   temi_nomi,
   racconti_ispirazione,
   temi_bottega,
-  distanza_m
+  distanza_m,
+  CASE WHEN size(abbonamenti_partner) = 0 THEN true ELSE abbonamenti_partner[0] END
+    AS partner_abbonamento_attivo
 ORDER BY e.id

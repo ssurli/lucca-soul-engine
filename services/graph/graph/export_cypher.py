@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from contracts import ExperienceNode
+from contracts import ExperienceNode, Partner
 
 from graph.seed_lucca import (
     ARTISTI,
@@ -29,8 +29,10 @@ from graph.seed_lucca import (
     BOTTEGA_ISPIRATA_DA,
     BOTTEGHE,
     ESPERIENZE,
+    HA_ABBONAMENTO,
     LEGATO_A,
     LUOGHI,
+    PARTNERS,
     TEMI,
     VICINO,
 )
@@ -56,6 +58,7 @@ _NODE_LABELS_WITH_ID = [
     "Esperienza",
     "Evento",
     "Memoria",
+    "Partner",
 ]
 
 
@@ -96,6 +99,9 @@ _RELATION_TYPES_COMMENT = (
     "//   (:Bottega)-[:ISPIRATA_DA {racconto}]->(:Artista)  -- SEMANTICA, NUOVA: introdotta\n"
     "//     perché la Bottega di Liuteria fosse raggiungibile da Puccini per sole\n"
     "//     connessioni semantiche, senza passare per VICINO (vedi graph/topology.py).\n"
+    "//   (:Bottega)-[:HA_ABBONAMENTO]->(:Partner)          -- COMMERCIALE, NUOVA\n"
+    "//     (Wave 3a, marketplace): Partner.abbonamento_attivo è l'UNICA leva che\n"
+    "//     decide presenza/assenza tra i candidati (mai il ranking, mai lo score).\n"
 )
 
 
@@ -150,7 +156,8 @@ def _esperienza_statement(e: ExperienceNode) -> str:
         f"    e.accessibile = {_cypher_bool(e.accessibile)},\n"
         f"    e.alimenta_memoria = {_cypher_bool(e.alimenta_memoria)},\n"
         f"    e.partner_id = {_cypher_str_or_null(e.partner_id)},\n"
-        f"    e.prezzo_eur = {_cypher_number_or_null(e.prezzo_eur)};"
+        f"    e.prezzo_eur = {_cypher_number_or_null(e.prezzo_eur)},\n"
+        f"    e.prenotabile = {_cypher_bool(e.prenotabile)};"
     )
 
 
@@ -212,6 +219,22 @@ def _ispirata_da_statement(rel) -> str:
     )
 
 
+def _partner_statement(partner: Partner) -> str:
+    return (
+        f"MERGE (p:Partner {{id: {_cypher_str(partner.id)}}})\n"
+        f"SET p.nome = {_cypher_str(partner.nome)}, "
+        f"p.abbonamento_attivo = {_cypher_bool(partner.abbonamento_attivo)};"
+    )
+
+
+def _ha_abbonamento_statement(rel) -> str:
+    return (
+        f"MATCH (b:Bottega {{id: {_cypher_str(rel.bottega_id)}}}), "
+        f"(p:Partner {{id: {_cypher_str(rel.partner_id)}}})\n"
+        f"MERGE (b)-[:HA_ABBONAMENTO]->(p);"
+    )
+
+
 def build_seed() -> str:
     parts: list[str] = [_HEADER]
 
@@ -234,6 +257,10 @@ def build_seed() -> str:
     parts.append("\n// --- Nodi: Esperienza ---------------------------------------------------")
     for esperienza in ESPERIENZE:
         parts.append(_esperienza_statement(esperienza))
+
+    parts.append("\n// --- Nodi: Partner (Wave 3a, marketplace) -------------------------------")
+    for partner in PARTNERS:
+        parts.append(_partner_statement(partner))
 
     parts.append("\n// --- Relazioni: VICINO (Luogo -> Luogo) --------------------------------")
     for rel in VICINO:
@@ -275,6 +302,15 @@ def build_seed() -> str:
     )
     for rel in BOTTEGA_ISPIRATA_DA:
         parts.append(_ispirata_da_statement(rel))
+
+    parts.append(
+        "\n// --- Relazioni COMMERCIALI: HA_ABBONAMENTO (Bottega -> Partner) ---------\n"
+        "// Wave 3a (marketplace): Partner.abbonamento_attivo è l'UNICA leva che\n"
+        "// decide presenza/assenza di un'esperienza tra i candidati, mai il ranking.\n"
+        "// Una Bottega senza questa relazione è sempre visibile (default True)."
+    )
+    for rel in HA_ABBONAMENTO:
+        parts.append(_ha_abbonamento_statement(rel))
 
     return "\n".join(parts) + "\n"
 

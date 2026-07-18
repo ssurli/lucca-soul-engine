@@ -230,6 +230,28 @@ def test_connessione_semantica_bottega_ispirata_da_artista() -> None:
     assert any("Boccherini" in frase for frase in candidato_liuteria.connessioni)
 
 
+def test_prenotabile_solo_sul_laboratorio_di_liuteria() -> None:
+    # Gap ethics-guardian (Wave 3a): `prenotabile` è indipendente dalla
+    # presenza di un partner (`docs/DATA_CONTRACTS.md` §2) — nel seed
+    # canonico è vero SOLO per `exp-laboratorio-liuteria`, nonostante altre
+    # esperienze abbiano comunque un partner con abbonamento attivo.
+    source = SeedCandidateSource()
+    candidati = {c.experience.id: c for c in source.candidates(_ctx())}
+    assert candidati["exp-laboratorio-liuteria"].experience.prenotabile is True
+    for esperienza_id, candidato in candidati.items():
+        if esperienza_id == "exp-laboratorio-liuteria":
+            continue
+        assert candidato.experience.prenotabile is False
+
+
+def test_query_candidati_restituisce_prenotabile() -> None:
+    # `coalesce(e.prenotabile, false)` (non `e.prenotabile` nudo): un grafo il
+    # cui seed non è stato rieseguito con questa proprietà non deve mai far
+    # propagare `null` fino a `ExperienceNode.prenotabile` (bool, contratto).
+    testo = CANDIDATES_QUERY_PATH.read_text(encoding="utf-8")
+    assert "coalesce(e.prenotabile, false) AS prenotabile" in testo
+
+
 def test_neo4j_candidate_source_importabile() -> None:
     # Non testabile live in questo ambiente (nessun Neo4j raggiungibile):
     # verifichiamo almeno che il modulo importi e che la classe esista con

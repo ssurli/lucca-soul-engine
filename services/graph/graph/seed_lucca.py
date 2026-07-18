@@ -42,13 +42,24 @@ Queste due relazioni sono ciò che rende raggiungibile, per SOLE connessioni
 semantiche (`LEGATO_A`, `SI_SVOLGE_A`, `OFFRE`, `EVOCA`, `ISPIRATA_DA` — mai
 `VICINO`), il percorso canonico del White Paper: Puccini -> ... -> Bottega di
 Liuteria. Verificato in `graph.topology` e `tests/test_topology.py`.
+
+Marketplace (Wave 3a — `docs/DATA_CONTRACTS.md` §5):
+- `HA_ABBONAMENTO` (Bottega -> Partner): relazione NUOVA. Un `Partner` è
+  l'entità di ricavo (`Partner.abbonamento_attivo`, importato da
+  `contracts`, NON ridefinito qui); la Bottega è l'entità del dominio
+  culturale (mestiere, luogo). Le due restano separate perché il modello di
+  ricavo (abbonamento di presenza) non deve mai inquinare il nodo che il
+  grafo usa per raccontare connessioni semantiche (`EVOCA`, `ISPIRATA_DA`).
+  Una Bottega SENZA relazione `HA_ABBONAMENTO` è trattata come sempre
+  visibile (default `True`), stessa regola di `ExperienceNode.
+  partner_abbonamento_attivo` in `contracts`.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from contracts import ExperienceNode
+from contracts import ExperienceNode, Partner
 
 # ---------------------------------------------------------------------------
 # Nodi: tipi minimi, locali a questo servizio (non sono contratti
@@ -128,6 +139,18 @@ class RelazioneIspirataDa:
     bottega_id: str
     artista_id: str
     racconto: str
+
+
+@dataclass(frozen=True)
+class RelazioneHaAbbonamento:
+    """`(:Bottega)-[:HA_ABBONAMENTO]->(:Partner)`. Relazione COMMERCIALE
+    (Wave 3a, marketplace): collega la Bottega del dominio culturale
+    all'entità di ricavo `Partner` (`docs/DATA_CONTRACTS.md` §5). Una
+    Bottega senza questa relazione è considerata sempre visibile (nessun
+    partner = nessuna leva commerciale attiva su di essa)."""
+
+    bottega_id: str
+    partner_id: str
 
 
 # ---------------------------------------------------------------------------
@@ -245,6 +268,46 @@ BOTTEGA_ISPIRATA_DA: list[RelazioneIspirataDa] = [
         "Boccherini fu virtuoso di violoncello: la stessa famiglia di strumenti "
         "che nasce in questa bottega.",
     ),
+]
+
+# ---------------------------------------------------------------------------
+# Partner — Wave 3a (marketplace, `docs/DATA_CONTRACTS.md` §5).
+#
+# 3 partner di esempio, collegati a 3 delle 5 botteghe via `HA_ABBONAMENTO`.
+# Deliberatamente NON tutte e 5: le due botteghe restanti (`pasticceria-
+# storica`, `tessitura-lucca`) dimostrano il caso "Bottega con `partner_id` su
+# un'Esperienza ma nessun nodo `:Partner` collegato" -> `partner_abbonamento_
+# attivo` deve restare `True` di default (nessuna leva commerciale attiva
+# esplicitamente significa nessun blocco), verificato in `tests/test_source.py`
+# e `tests/test_seed_lucca.py`.
+#
+# `partner-stamperia-lucca` ha `abbonamento_attivo=False` apposta: è il caso
+# che deve sparire dai candidati quando l'Experience Engine applica il filtro
+# duro (letto da `ExperienceNode.partner_abbonamento_attivo`, MAI qui).
+# ---------------------------------------------------------------------------
+
+PARTNERS: list[Partner] = [
+    Partner(
+        id="partner-liuteria-lucchese",
+        nome="Bottega di Liuteria Lucchese — abbonamento presenza",
+        abbonamento_attivo=True,
+    ),
+    Partner(
+        id="partner-ceramica-lucca",
+        nome="Bottega di Ceramica Artistica — abbonamento presenza",
+        abbonamento_attivo=True,
+    ),
+    Partner(
+        id="partner-stamperia-lucca",
+        nome="Antica Stamperia Lucchese — abbonamento presenza",
+        abbonamento_attivo=False,
+    ),
+]
+
+HA_ABBONAMENTO: list[RelazioneHaAbbonamento] = [
+    RelazioneHaAbbonamento("liuteria-lucchese", "partner-liuteria-lucchese"),
+    RelazioneHaAbbonamento("ceramica-lucca", "partner-ceramica-lucca"),
+    RelazioneHaAbbonamento("stamperia-lucca", "partner-stamperia-lucca"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -424,6 +487,11 @@ ESPERIENZE: list[ExperienceNode] = [
         alimenta_memoria=True,
         partner_id="liuteria-lucchese",
         prezzo_eur=15.0,
+        # `prenotabile` è indipendente dalla presenza di un partner (vedi
+        # `docs/DATA_CONTRACTS.md` §2): questa è l'unica esperienza del seed
+        # canonico resa prenotabile, a dimostrazione che il campo non si
+        # deduce mai da `partner_id`/l'abbonamento della bottega.
+        prenotabile=True,
     ),
     ExperienceNode(
         id="exp-decorazione-ceramica",
@@ -553,12 +621,14 @@ def _validate() -> None:
     botteghe_ids = {b.id for b in BOTTEGHE}
     temi_ids = {t.id for t in TEMI}
     esperienze_ids = {e.id for e in ESPERIENZE}
+    partner_ids = {p.id for p in PARTNERS}
 
     assert len(luoghi_ids) == len(LUOGHI), "id di Luogo duplicati nel seed"
     assert len(artisti_ids) == len(ARTISTI), "id di Artista duplicati nel seed"
     assert len(botteghe_ids) == len(BOTTEGHE), "id di Bottega duplicati nel seed"
     assert len(temi_ids) == len(TEMI), "id di Tema duplicati nel seed"
     assert len(esperienze_ids) == len(ESPERIENZE), "id di Esperienza duplicati nel seed"
+    assert len(partner_ids) == len(PARTNERS), "id di Partner duplicati nel seed"
 
     for bottega in BOTTEGHE:
         assert bottega.place_id in luoghi_ids, f"{bottega.id}: place_id sconosciuto"
@@ -600,6 +670,22 @@ def _validate() -> None:
             f"BOTTEGA_ISPIRATA_DA {rel.bottega_id}->{rel.artista_id}: racconto vuoto"
         )
 
+    for rel in HA_ABBONAMENTO:
+        assert rel.bottega_id in botteghe_ids, (
+            f"HA_ABBONAMENTO: bottega sconosciuta {rel.bottega_id!r}"
+        )
+        assert rel.partner_id in partner_ids, (
+            f"HA_ABBONAMENTO: partner sconosciuto {rel.partner_id!r}"
+        )
+    bottega_con_abbonamento = [rel.bottega_id for rel in HA_ABBONAMENTO]
+    assert len(bottega_con_abbonamento) == len(set(bottega_con_abbonamento)), (
+        "HA_ABBONAMENTO: una Bottega non può avere più di un Partner"
+    )
+    assert any(not p.abbonamento_attivo for p in PARTNERS), (
+        "seed marketplace: serve almeno un Partner con abbonamento_attivo=False "
+        "per poter testare il filtro duro (vedi CLAUDE.md, filtro sui candidati)"
+    )
+
 
 _validate()
 
@@ -635,3 +721,25 @@ def vicini_di(place_id: str) -> list[tuple[str, int]]:
         elif rel.a_id == place_id:
             risultato.append((rel.da_id, rel.metri))
     return risultato
+
+
+def partner_by_id(partner_id: str) -> Partner | None:
+    return next((p for p in PARTNERS if p.id == partner_id), None)
+
+
+def abbonamento_attivo_per_bottega(bottega_id: str | None) -> bool:
+    """`True` di default (nessun partner = sempre visibile), come
+    `ExperienceNode.partner_abbonamento_attivo` in `contracts`. `bottega_id`
+    è l'id di `Bottega`, non di `Partner` (`ExperienceNode.partner_id`
+    referenzia una Bottega, coerente con la relazione `OFFRE`). Usata da
+    `graph.source.SeedCandidateSource` per popolare il booleano denormalizzato
+    senza alcuna logica di scoring: è un puro fatto del grafo."""
+    if bottega_id is None:
+        return True
+    rel = next((r for r in HA_ABBONAMENTO if r.bottega_id == bottega_id), None)
+    if rel is None:
+        return True
+    partner = partner_by_id(rel.partner_id)
+    if partner is None:
+        return True
+    return partner.abbonamento_attivo

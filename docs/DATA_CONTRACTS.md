@@ -55,6 +55,20 @@ Relazioni: `(:Artista)-[:LEGATO_A]->(:Luogo)`, `(:Luogo)-[:VICINO {metri}]->(:Lu
 `(:Memoria)-[:RIGUARDA]->(:Luogo|:Bottega|:Artista)`.
 
 ```python
+class Partner(BaseModel):
+    """Un partner (bottega, operatore) che offre esperienze sul marketplace.
+
+    `abbonamento_attivo` è l'UNICA leva che decide se le esperienze di questo
+    partner compaiono tra i candidati: mai il ranking. Il modello di ricavo è
+    un abbonamento di presenza (sì/no), MAI un'asta sulla visibilità: nessun
+    campo di prezzo/commissione vive qui, e nessun campo di questo modello è
+    mai letto dallo scoring dell'Experience Engine (che non importa nemmeno
+    questo tipo — vede solo `ExperienceNode.partner_abbonamento_attivo`,
+    booleano denormalizzato)."""
+    id: str
+    nome: str
+    abbonamento_attivo: bool = True
+
 class ExperienceNode(BaseModel):
     id: str
     titolo: str
@@ -66,6 +80,20 @@ class ExperienceNode(BaseModel):
     alimenta_memoria: bool = False    # l'esperienza produce contributi di Urban Memory
     partner_id: str | None = None
     prezzo_eur: float | None = None   # se presente: >= 0
+    # Booleano denormalizzato, popolato a monte dal grafo/BFF a partire da
+    # `Partner.abbonamento_attivo`. Default True: un'esperienza senza partner
+    # (partner_id=None) è SEMPRE visibile. È l'UNICO campo che l'Experience
+    # Engine legge per decidere presenza/assenza di un candidato (filtro duro
+    # booleano in `passa_filtri_duri`), MAI un input numerico dello scoring:
+    # così "visibilità non acquistabile" è strutturale, non una convenzione —
+    # lo scoring non ha nemmeno bisogno di importare `Partner` o `prezzo_eur`.
+    partner_abbonamento_attivo: bool = True
+    # Deliberatamente NON derivato da `partner_id is not None`: presenza
+    # commerciale (chi offre l'esperienza) e prenotabilità (se si può
+    # prenotare) sono concetti distinti. Un'esperienza gratuita e senza
+    # partner può essere prenotabile (posti limitati); un'esperienza con
+    # partner può non esserlo.
+    prenotabile: bool = False
 
 class GraphCandidate(BaseModel):
     """Ciò che il grafo PROPONE all'Experience Engine.
@@ -138,7 +166,47 @@ class MemoryContribution(BaseModel):
                                        # `riguarda` esistono nel grafo
 ```
 
-## 5. Eventi comportamentali (per il recommender e l'Index)
+## 5. Marketplace — prenotazioni e ricavo (dato contabile, mai input di scoring)
+
+```python
+class BookingStatus(str, Enum):
+    RICHIESTA = "richiesta"
+    CONFERMATA = "confermata"
+    ANNULLATA = "annullata"
+
+class BookingRequest(BaseModel):          # input di POST /booking
+    person_id: str                        # PSEUDONIMO
+    experience_id: str
+    quando: datetime                      # data e ora richieste per l'esperienza
+
+class Booking(BaseModel):
+    id: str
+    person_id: str                        # PSEUDONIMO
+    experience_id: str
+    quando: datetime
+    stato: BookingStatus = BookingStatus.RICHIESTA
+    prezzo_eur: float                     # snapshot: il prezzo dell'ExperienceNode può
+                                           # cambiare nel tempo, la Booking congela quanto
+                                           # pattuito al momento della richiesta (>= 0)
+    creato_il: datetime
+
+class CommissionRecord(BaseModel):
+    """Dato CONTABILE, separato da `Booking` per prescrizione ethics-guardian
+    (stesso principio di `attribuzione` in `GraphCandidate`, sezione 2):
+
+    la commissione è calcolata DOPO che l'Experience Engine ha già scelto la
+    tappa — lo scoring lavora su `GraphCandidate`/`ExperienceNode`, che non
+    contengono e non importano questo tipo. Tenere `CommissionRecord` in un
+    modello a parte, mai raggiungibile da `experience_engine.rules`, rende
+    STRUTTURALMENTE impossibile che un domani la commissione diventi un input
+    di scoring: non esiste un percorso di import che colleghi i due moduli."""
+    booking_id: str
+    importo_eur: float                    # >= 0
+    percentuale: float = 0.15             # in [0,1]; commissione sul prezzo, non sul ranking
+    registrata_il: datetime
+```
+
+## 6. Eventi comportamentali (per il recommender e l'Index)
 
 ```python
 class BehaviorEvent(BaseModel):
@@ -149,7 +217,7 @@ class BehaviorEvent(BaseModel):
     # NIENTE PII. Aggregabile.
 ```
 
-## 6. Urban Intelligence Index — indicatori (anonimi e aggregati)
+## 7. Urban Intelligence Index — indicatori (anonimi e aggregati)
 
 ```python
 class UrbanIntelligenceIndex(BaseModel):
@@ -166,7 +234,7 @@ class UrbanIntelligenceIndex(BaseModel):
     contributi_memoria: int           # crescita della Urban Memory
 ```
 
-## 7. API (BFF) — contratto sintetico
+## 8. API (BFF) — contratto sintetico
 
 ```
 POST /session/onboarding   -> EmotionalProfile
@@ -175,6 +243,8 @@ POST /itinerary/adapt      (Itinerary + Signal) -> Itinerary
 POST /events               (BehaviorEvent) -> 202
 POST /memory               (MemoryContribution) -> 201   # richiede consenso
 GET  /memory/{place_id}    -> list[MemoryContribution]   # solo contenuti curati
+POST /booking              (BookingRequest) -> Booking   # commissione registrata a parte,
+                                                          # DOPO la scelta (CommissionRecord)
 GET  /dashboard/flows      -> heatmap aggregata
 GET  /dashboard/index      -> UrbanIntelligenceIndex
 ```
@@ -218,3 +288,15 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   atomico al link-time. Il submit NON dipende dal grafo: il conferimento del Cittadino è
   sempre possibile.
 - Nessun campo esprime "priorità a pagamento": la visibilità non è acquistabile.
+- `Partner.abbonamento_attivo` è l'UNICA leva che decide presenza/assenza di un'esperienza
+  tra i candidati (filtro duro booleano su `ExperienceNode.partner_abbonamento_attivo`),
+  MAI un input di scoring. Il modello di ricavo è un abbonamento di presenza, mai un'asta
+  sulla visibilità: nessun contratto definisce (né deve mai definire) campi come "peso",
+  "boost" o "priorita_pagata".
+- Nessun campo di `Booking` o `CommissionRecord` è mai letto dallo scoring dell'Experience
+  Engine: `experience_engine.rules` non importa questi tipi. `CommissionRecord` è
+  registrato DOPO che l'Experience Engine ha già scelto la tappa (dato contabile
+  a posteriori, mai un input ex-ante).
+- `Booking.prezzo_eur` è uno snapshot al momento della richiesta (non il prezzo corrente
+  di `ExperienceNode`): la Booking è un contratto tra persona e partner, non deve
+  cambiare se il listino cambia dopo la prenotazione.

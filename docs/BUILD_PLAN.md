@@ -56,8 +56,44 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
 > **Perché prima del marketplace:** Urban Memory è ciò che nessun concorrente può copiare, e cresce
 > solo con l'uso. Prima comincia ad accumularsi, prima il fossato esiste.
 
-## Wave 3 — Marketplace + Recommender ML
-- **api-engineer**: esperienze prenotabili, ingestion `/events`.
+## Wave 3a — Marketplace  *(SOLO prenotazione; il Recommender è la 3b, separata)*
+- **contract-keeper**: `Partner` (abbonamento_attivo), esperienza prenotabile (disponibilità,
+  prezzo), `Booking`/`BookingStatus`, `CommissionRecord` (dato contabile separato).
+- **graph-architect**: seed Partner + flag abbonamento sui candidati (presenza, non score).
+- **experience-engine**: filtro duro "partner non attivo → escluso"; guard che lo score resta
+  bit-identico a partner/prezzo/commissione.
+- **api-engineer**: `services/marketplace` (booking, persistenza Neon, commissione 15%
+  registrata DOPO la scelta), endpoint `POST /booking` sul BFF.
+- **ethics-guardian**: gate esplicito — la visibilità non è acquistabile; l'abbonamento è
+  l'UNICO effetto (presenza sì/no, mai ranking).
+- **test-engineer**: test bit-identico (score invariato con/senza partner, prezzo, commissione)
+  in CI; test di persistenza booking.
+- ✅ **Accettazione:** esperienze prenotabili end-to-end; commissione mai input di scoring;
+  partner non attivo sparisce dai candidati senza toccare lo score altrui; test bit-identico
+  verde in CI; ethics-guardian PASS.
+  **→ SODDISFATTA** (2026-07-18): `Partner`/`Booking`/`BookingRequest`/`BookingStatus`/
+  `CommissionRecord` in `packages/contracts`; seed con un Partner ad abbonamento non attivo
+  (`stamperia-lucca`) e relazione `HA_ABBONAMENTO`; `passa_filtri_duri` esclude un'esperienza
+  con partner non attivo, `calcola_score` non legge mai `partner_id`/`prezzo_eur`/
+  `partner_abbonamento_attivo`/`attribuzione` (guard AST + test bit-identico
+  `test_scoring_bit_identico_con_abbonamento_e_prenotabilita_variati`, verde in
+  `services/experience-engine`); `services/marketplace` (nuovo servizio: `request_booking`/
+  `confirm_booking`, commissione 15% calcolata e registrata SOLO dopo che la conferma è già
+  persistita — mai prima) con persistenza reale su Postgres/Neon (`PostgresBookingRepository`)
+  e repository in-memory; `POST /booking` sul BFF (404 su esperienza inesistente, 422 su
+  vincoli di dominio, 503 su storage non disponibile, mai un 500 opaco). Prezzo e
+  prenotabilità letti SEMPRE dal grafo/candidati correnti, mai dal body della richiesta.
+  Un'esperienza reale del seed (`exp-laboratorio-liuteria`) resa prenotabile end-to-end,
+  provata da test contro il vero `SeedCandidateSource` (non solo un doppio). CI estesa a
+  `windows-latest` oltre `ubuntu-latest` e a `services/marketplace`. ethics-guardian **PASS**
+  (due giri: un gap iniziale su "prenotabile end-to-end" non dimostrato dal seed reale,
+  colmato e riverificato). *Nota: un fallimento intermittente di
+  `tests/test_integration_wave1.py` in suite combinata lunga (`neo4j.exceptions.SessionExpired`,
+  connessione Aura chiusa dal server) è una fragilità pre-esistente di `Neo4jCandidateSource`
+  (driver cache-ato per l'intera sessione pytest, nessun retry su errori di connessione
+  transitori) — non introdotta da questa wave, tracciata come debito tecnico separato.*
+
+## Wave 3b — Recommender ML  *(separata, non iniziare senza via libera)*
 - **recommender-engineer**: modello su `BehaviorEvent` che riordina i candidati (con `reason`).
 - **ethics-guardian**: gate sull'obiettivo — mai click/vendite; nessuna visibilità acquistabile.
 - **test-engineer**: test che il recommender rispetti i vincoli etici.

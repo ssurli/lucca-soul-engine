@@ -23,6 +23,14 @@ ha un partner?" ma "il fatto è SEMANTICO o COMMERCIALE?":
   esattamente le stesse `connessioni` di una gemella senza partner (vedi
   `tests/test_source.py`).
 
+Marketplace (Wave 3a): entrambe le implementazioni popolano
+`ExperienceNode.partner_abbonamento_attivo` — booleano denormalizzato letto da
+`Partner.abbonamento_attivo` risalendo `(:Bottega)-[:HA_ABBONAMENTO]->
+(:Partner)` a partire dalla Bottega referenziata da `partner_id`. È un JOIN,
+non uno score: il valore risultante è l'UNICO input che l'Experience Engine
+legge per decidere presenza/assenza di un candidato (`passa_filtri_duri` in
+`services/experience-engine/experience_engine/rules.py`, non toccato qui).
+
 Due implementazioni della stessa interfaccia (`CandidateSource`):
 - `SeedCandidateSource` — in-memory sul dataset canonico (`graph.seed_lucca`).
   È il percorso usato nei test e finché `NEO4J_URI` non è configurato.
@@ -36,7 +44,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from contracts import ExperienceNode, GraphCandidate, VisitorContext
+from contracts import ExperienceNode, GraphCandidate, Partner, VisitorContext
 from neo4j import Driver, GraphDatabase
 
 from graph.seed_lucca import (
@@ -45,8 +53,10 @@ from graph.seed_lucca import (
     BOTTEGA_ISPIRATA_DA,
     BOTTEGHE,
     ESPERIENZE,
+    HA_ABBONAMENTO,
     LEGATO_A,
     LUOGHI,
+    PARTNERS,
     TEMI,
     VICINO,
     Artista,
@@ -109,6 +119,14 @@ class SeedCandidateSource:
                 (rel.artista_id, rel.racconto)
             )
 
+        # Marketplace (Wave 3a): stato dell'abbonamento del Partner collegato
+        # alla Bottega via `HA_ABBONAMENTO`. Fatto puro del grafo (JOIN),
+        # nessuna logica di scoring qui.
+        self._partners: dict[str, Partner] = {p.id: p for p in PARTNERS}
+        self._ha_abbonamento: dict[str, str] = {
+            rel.bottega_id: rel.partner_id for rel in HA_ABBONAMENTO
+        }
+
     def candidates(self, ctx: VisitorContext) -> list[GraphCandidate]:
         riferimento = ctx.luoghi_gia_visti[-1] if ctx.luoghi_gia_visti else None
         risultato: list[GraphCandidate] = []
@@ -118,9 +136,18 @@ class SeedCandidateSource:
                 # Non dovrebbe accadere: `graph.seed_lucca._validate()` lo
                 # garantisce a import-time. Difensivo, non silenzioso.
                 continue
+            # Booleano denormalizzato (Wave 3a): un JOIN sul grafo, non uno
+            # score. `model_copy` non muta l'istanza condivisa in `ESPERIENZE`.
+            esperienza_effettiva = esperienza.model_copy(
+                update={
+                    "partner_abbonamento_attivo": self._abbonamento_attivo(
+                        esperienza.partner_id
+                    )
+                }
+            )
             risultato.append(
                 GraphCandidate(
-                    experience=esperienza,
+                    experience=esperienza_effettiva,
                     place_nome=luogo.nome,
                     connessioni=self._connessioni(esperienza, luogo, riferimento),
                     distanza_m=self._distanza(esperienza.place_id, riferimento),
@@ -128,6 +155,22 @@ class SeedCandidateSource:
                 )
             )
         return risultato
+
+    def _abbonamento_attivo(self, bottega_id: str | None) -> bool:
+        """`True` di default: nessun partner (`bottega_id is None`), oppure
+        una Bottega senza `HA_ABBONAMENTO` collegato, sono sempre visibili.
+        Solo un `Partner` esplicitamente presente con `abbonamento_attivo =
+        False` fa scendere il booleano — coerente con la query Cypher
+        (`cypher/10_candidates.cypher`) e con `docs/DATA_CONTRACTS.md` §5."""
+        if bottega_id is None:
+            return True
+        partner_id = self._ha_abbonamento.get(bottega_id)
+        if partner_id is None:
+            return True
+        partner = self._partners.get(partner_id)
+        if partner is None:
+            return True
+        return partner.abbonamento_attivo
 
     def _connessioni(
         self, esperienza: ExperienceNode, luogo: Luogo, riferimento: str | None
@@ -268,6 +311,14 @@ class Neo4jCandidateSource:
             alimenta_memoria=record["alimenta_memoria"],
             partner_id=record["partner_id"],
             prezzo_eur=record["prezzo_eur"],
+            # Booleano denormalizzato (Wave 3a): la query ha già fatto il
+            # JOIN su `Partner.abbonamento_attivo` via `HA_ABBONAMENTO`; qui
+            # si copia soltanto il risultato, nessuna logica aggiuntiva.
+            partner_abbonamento_attivo=record["partner_abbonamento_attivo"],
+            # `prenotabile` è una proprietà propria del nodo `:Esperienza`
+            # (non derivata da partner/abbonamento, vedi `docs/DATA_CONTRACTS.md`
+            # §2): si copia il valore così come scritto dal seed.
+            prenotabile=record["prenotabile"],
         )
         connessioni: list[str] = []
         for nome in record["artisti_nomi"] or []:

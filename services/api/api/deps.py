@@ -9,13 +9,15 @@ dataset diverso a seconda del profilo (cloud/locale).
 
 L'istanza è creata una sola volta (`lru_cache`): aprire un driver Neo4j a
 ogni richiesta sarebbe costoso e inutile. Stesso pattern per
-`get_memory_repository` (Urban Memory, Wave 2).
+`get_memory_repository` (Urban Memory, Wave 2) e `get_booking_repository`
+(Marketplace, Wave 3a).
 """
 
 from __future__ import annotations
 
 from functools import lru_cache
 
+import marketplace
 from graph.source import CandidateSource, Neo4jCandidateSource, SeedCandidateSource
 from urban_memory import (
     InMemoryMemoryRepository,
@@ -26,7 +28,7 @@ from urban_memory import (
 
 from api.settings import get_settings
 
-__all__ = ["get_candidate_source", "get_memory_repository"]
+__all__ = ["get_candidate_source", "get_memory_repository", "get_booking_repository"]
 
 
 @lru_cache
@@ -88,3 +90,42 @@ def get_memory_repository() -> MemoryRepository:
                 "impossibile inizializzare la persistenza di Urban Memory"
             ) from exc
     return InMemoryMemoryRepository()
+
+
+@lru_cache
+def get_booking_repository() -> marketplace.BookingRepository:
+    """Sceglie il repository del Marketplace in base al `.env`, una volta
+    sola — stesso pattern di `get_memory_repository` (Wave 2): nessun `if
+    local/cloud`, solo presenza di `DATABASE_URL`.
+
+    Se `DATABASE_URL` è configurato usa `marketplace.PostgresBookingRepository`
+    (Neon in cloud o Postgres locale — stesso codice nei due profili, cambia
+    solo il DSN): persiste DAVVERO, con connessione lazy per operazione.
+    Altrimenti ricade su `marketplace.InMemoryBookingRepository` (in-process,
+    non persiste tra riavvii — il percorso verificato dai test di questo
+    servizio quando `DATABASE_URL` non è impostato).
+
+    Ogni errore infrastrutturale di storage (connessione, credenziali, query
+    fallita) è responsabilità esclusiva di
+    `marketplace.repository.PostgresBookingRepository`, che lo mappa già in
+    `MarketplaceStorageError` — mai lasciato propagare come eccezione psycopg
+    grezza. Questa funzione non implementa NESSUNA logica di database: si
+    limita ad avvolgere in `MarketplaceStorageError` anche un eventuale
+    fallimento della sola costruzione (`from_env()`, che legge `DATABASE_URL`
+    e può sollevare `ValueError` se la variabile risulta assente qui pur
+    essendo vista come presente da `api.settings.Settings` — stesso `.env`,
+    letture indipendenti), così che un handler analogo a
+    `api.main.memory_storage_error_handler` (503, mai un 500 opaco) catturi
+    ANCHE questo caso, non solo i fallimenti nelle operazioni successive.
+    """
+    settings = get_settings()
+    if settings.database_url:
+        try:
+            return marketplace.PostgresBookingRepository.from_env()
+        except marketplace.MarketplaceStorageError:
+            raise
+        except Exception as exc:  # difesa in profondità: mai un errore grezzo
+            raise marketplace.MarketplaceStorageError(
+                "impossibile inizializzare la persistenza del Marketplace"
+            ) from exc
+    return marketplace.InMemoryBookingRepository()

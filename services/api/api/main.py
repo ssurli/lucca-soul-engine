@@ -32,6 +32,23 @@ Wave 2 aggiunge la Urban Memory (il fossato):
   interni del DB/DSN nel corpo o nei log: è colpa del server, non della
   richiesta.
 
+Wave 3a aggiunge il Marketplace (`docs/DATA_CONTRACTS.md` §5), un solo
+endpoint in questo BFF:
+- `POST /booking` delega a `marketplace.service.request_booking`. `prezzo_eur`
+  e `prenotabile` NON arrivano mai dal chiamante (`BookingRequest` non li
+  contiene, di proposito): questo endpoint li legge dal candidato corrente
+  della `CandidateSource` (stesso profilo neutro di
+  `_profilo_neutro_per_candidati`, usato SOLO per costruire il
+  `VisitorContext` richiesto — non introduce preferenze). Se
+  `request.experience_id` non è tra i candidati -> **404** (risorsa
+  inesistente, non un vincolo di dominio). Le violazioni di dominio
+  (`marketplace.MarketplaceError` e sottoclassi, es. `prenotabile=False`)
+  sono mappate a 422 da `marketplace_error_handler`; un fallimento
+  INFRASTRUTTURALE di storage (`marketplace.MarketplaceStorageError`) è
+  mappato a 503 da `marketplace_storage_error_handler`. Mai un 500 opaco.
+  `confirm_booking` esiste nel service layer ma non è esposto da questo BFF
+  in questa wave (fuori scope).
+
 `/health` non richiede alcun database attivo. Gli errori di validazione dei
 payload sono lasciati alla gestione 422 di default di FastAPI/Pydantic.
 Nessun PII: `person_id`/`contributor_id` sono pseudonimi e non compaiono mai
@@ -41,19 +58,24 @@ nei log applicativi; il contenuto di un `MemoryContribution` (`testo`,
 
 from __future__ import annotations
 
+from datetime import time
 from typing import Annotated
 
 import contracts
+import marketplace
 from contracts import (
     AdaptRequest,
+    Booking,
+    BookingRequest,
     EmotionalProfile,
     Itinerary,
     MemoryContribution,
     OnboardingRequest,
+    Signal,
     VisitorContext,
 )
 from experience_engine.engine import adapt_itinerary, compose_itinerary
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from rag.onboarding import profile_from_answers
@@ -67,7 +89,7 @@ from urban_memory import (
 )
 
 from api import __version__
-from api.deps import get_candidate_source, get_memory_repository
+from api.deps import get_booking_repository, get_candidate_source, get_memory_repository
 from api.settings import get_settings
 
 app = FastAPI(title="Lucca Soul — BFF")
@@ -79,6 +101,13 @@ app = FastAPI(title="Lucca Soul — BFF")
 # `app.dependency_overrides[get_memory_repository] = ...` senza toccare
 # `api.deps` o la configurazione reale.
 _MemoryRepositoryDep = Annotated[MemoryRepository, Depends(get_memory_repository)]
+
+# Stesso pattern per `POST /booking` (Wave 3a): un test sostituisce il
+# repository del Marketplace con `app.dependency_overrides` senza toccare
+# `api.deps` o la configurazione reale.
+_BookingRepositoryDep = Annotated[
+    marketplace.BookingRepository, Depends(get_booking_repository)
+]
 
 
 @app.exception_handler(UrbanMemoryError)
@@ -116,6 +145,39 @@ def memory_storage_error_handler(request: Request, exc: MemoryStorageError) -> J
     return JSONResponse(
         status_code=503,
         content={"detail": "memoria temporaneamente non disponibile: riprova più tardi"},
+    )
+
+
+@app.exception_handler(marketplace.MarketplaceError)
+def marketplace_error_handler(
+    request: Request, exc: marketplace.MarketplaceError
+) -> JSONResponse:
+    """Mappa i vincoli non negoziabili del Marketplace (`ExperienceNotBookableError`,
+    `BookingNotFoundError`, `InvalidBookingStateError` — sollevati da
+    `marketplace.service`, un solo punto verificabile) a un 422 esplicativo in
+    italiano, MAI un 500: stesso stile di `urban_memory_error_handler`."""
+    return JSONResponse(
+        status_code=422,
+        content={"detail": f"prenotazione rifiutata: {exc}"},
+    )
+
+
+@app.exception_handler(marketplace.MarketplaceStorageError)
+def marketplace_storage_error_handler(
+    request: Request, exc: marketplace.MarketplaceStorageError
+) -> JSONResponse:
+    """Mappa un fallimento INFRASTRUTTURALE di storage del Marketplace
+    (`marketplace.MarketplaceStorageError` — connessione a Postgres/Neon
+    irraggiungibile, migrazione non applicata, query fallita) a un **503
+    Service Unavailable**, MAI a un 500 opaco: stesso stile di
+    `memory_storage_error_handler`. Il corpo è un messaggio italiano generico
+    e fisso: NON include mai `str(exc)` né altro dettaglio interno (DSN,
+    host, credenziali, stack del driver)."""
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "prenotazioni temporaneamente non disponibili: riprova più tardi"
+        },
     )
 
 
@@ -240,6 +302,62 @@ def memory_for_place(
     return contributions_for_place(repo, place_id)
 
 
+@app.post("/booking", response_model=Booking, status_code=201)
+def create_booking(
+    request: BookingRequest,
+    repo: _BookingRepositoryDep,
+) -> Booking:
+    """Prenotazione sul Marketplace (contratto §5, `docs/DATA_CONTRACTS.md`).
+
+    `prezzo_eur` e `prenotabile` NON arrivano MAI dal chiamante (`BookingRequest`
+    non li contiene, di proposito: sarebbe un varco per manomettere il prezzo)
+    — li legge questo endpoint dal candidato corrente della `CandidateSource`
+    (`api.deps.get_candidate_source`, seed o Neo4j), costruendo un
+    `VisitorContext` con lo stesso profilo neutro usato in
+    `/itinerary/adapt` (`_profilo_neutro_per_candidati`: serve solo a
+    soddisfare l'interfaccia, non introduce preferenze). Se
+    `request.experience_id` non è tra i candidati risponde 404 (risorsa
+    inesistente, non un vincolo di dominio — non un `MarketplaceError`).
+
+    Delega TUTTI i vincoli non negoziabili — stato iniziale `RICHIESTA`,
+    rifiuto immediato se `prenotabile=False` — a
+    `marketplace.service.request_booking`: un solo punto verificabile, mai
+    duplicato qui. Le violazioni di dominio sollevano `MarketplaceError` (o
+    una sottoclasse), mappata a 422 da `marketplace_error_handler`. Un
+    fallimento INFRASTRUTTURALE dello storage (`MarketplaceStorageError`,
+    sollevata da `PostgresBookingRepository` quando configurata via
+    `DATABASE_URL`) è mappato a 503 da `marketplace_storage_error_handler`.
+    Mai un 500 opaco in nessuno dei due casi. Il repository arriva via
+    `Depends` (`api.deps.get_booking_repository`,
+    `InMemoryBookingRepository` finché `DATABASE_URL` non è configurato)
+    invece di essere chiamato direttamente: così un test può sostituirlo con
+    `app.dependency_overrides` senza toccare la configurazione reale.
+
+    `confirm_booking` non è esposto da questo BFF in questa wave (fuori
+    scope: vedi `docs/DATA_CONTRACTS.md` §5)."""
+    source = get_candidate_source()
+    ctx = VisitorContext(
+        person_id=request.person_id,
+        profile=_profilo_neutro_per_candidati(),
+        signal=_segnale_neutro_per_candidati(),
+    )
+    candidates = source.candidates(ctx)
+    candidato = next(
+        (c for c in candidates if c.experience.id == request.experience_id), None
+    )
+    if candidato is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"esperienza id={request.experience_id!r} non trovata",
+        )
+    return marketplace.request_booking(
+        repo,
+        request,
+        prezzo_eur=candidato.experience.prezzo_eur or 0.0,
+        prenotabile=candidato.experience.prenotabile,
+    )
+
+
 def _profilo_neutro_per_candidati() -> EmotionalProfile:
     """Profilo neutro usato SOLO per costruire il `VisitorContext` richiesto
     da `CandidateSource.candidates` in `/itinerary/adapt`, dove `AdaptRequest`
@@ -252,6 +370,22 @@ def _profilo_neutro_per_candidati() -> EmotionalProfile:
         arte=0.5,
         con_bambini=False,
         tempo_disponibile_min=0,
+    )
+
+
+def _segnale_neutro_per_candidati() -> Signal:
+    """`Signal` neutro usato SOLO per costruire il `VisitorContext` richiesto
+    da `CandidateSource.candidates` in `POST /booking`, dove `BookingRequest`
+    non trasporta alcun segnale (meteo, affollamento, stanchezza, ora): non
+    influenza la scelta, `SeedCandidateSource` e `Neo4jCandidateSource` non
+    filtrano su segnale (è responsabilità dell'Experience Engine, non
+    toccato da questo endpoint — qui serve solo a leggere `prezzo_eur` e
+    `prenotabile` dell'esperienza richiesta)."""
+    return Signal(
+        meteo="sereno",
+        affollamento={},
+        stanchezza=0.0,
+        ora=time(12, 0),
     )
 
 

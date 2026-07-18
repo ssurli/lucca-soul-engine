@@ -226,10 +226,28 @@ def test_adapt_non_degrada_accessibilita_con_profilo_assente(
 # --- vincolo etico: visibilità non acquistabile ----------------------------
 
 
+#: Nomi commerciali/di booking che lo scoring NON deve MAI toccare. La lista è
+#: esplicita apposta: ogni nuovo campo commerciale (partner, prezzo,
+#: abbonamento, prenotazione, commissione) va aggiunto QUI, così il guard
+#: cresce insieme ai contratti e "visibilità non acquistabile" resta strutturale.
+NOMI_COMMERCIALI_VIETATI_NELLO_SCORING = (
+    "partner_id",
+    "partner_abbonamento_attivo",
+    "abbonamento",
+    "prezzo",
+    "prenotabile",
+    "prenotazione",
+    "booking",
+    "commission",
+    "commissione",
+)
+
+
 def test_scoring_non_usa_partner_id_ne_prezzo() -> None:
-    """Test-guard: lo scoring non deve MAI riferirsi a `partner_id` o
-    `prezzo_eur`. La visibilità non è acquistabile: nessun prezzo cambia lo
-    score. Si ispeziona il CODICE della funzione (docstring esclusa)."""
+    """Test-guard: lo scoring non deve MAI riferirsi a campi commerciali o di
+    booking (partner, prezzo, abbonamento, prenotazione, commissione). La
+    visibilità non è acquistabile: nessun canale commerciale cambia lo score.
+    Si ispeziona il CODICE della funzione (docstring esclusa)."""
     import ast
     import textwrap
 
@@ -243,9 +261,9 @@ def test_scoring_non_usa_partner_id_ne_prezzo() -> None:
         and isinstance(funzione.body[0].value, ast.Constant)
     ):
         funzione.body = funzione.body[1:]
-    codice = ast.unparse(funzione)
-    assert "partner_id" not in codice
-    assert "prezzo" not in codice
+    codice = ast.unparse(funzione).lower()
+    for vietato in NOMI_COMMERCIALI_VIETATI_NELLO_SCORING:
+        assert vietato not in codice, f"lo scoring non deve riferirsi a '{vietato}'"
 
 
 def test_scoring_penalizza_affollamento() -> None:
@@ -271,6 +289,8 @@ def _candidato(
     partner_id: str | None = None,
     prezzo_eur: float | None = None,
     attribuzione: str | None = None,
+    partner_abbonamento_attivo: bool = True,
+    prenotabile: bool = False,
 ) -> GraphCandidate:
     """Costruisce a mano un candidato identico salvo i campi commerciali.
 
@@ -282,6 +302,7 @@ def _candidato(
         id="exp-x", titolo="Esperienza X", place_id="luogo", temi=["arte", "liuteria"],
         durata_min=40, al_chiuso=True, accessibile=True,
         partner_id=partner_id, prezzo_eur=prezzo_eur,
+        partner_abbonamento_attivo=partner_abbonamento_attivo, prenotabile=prenotabile,
     )
     return GraphCandidate(
         experience=exp, place_nome="Luogo", connessioni=['Evoca il tema "Arte".'],
@@ -307,6 +328,63 @@ def test_scoring_invariante_a_partner_prezzo_attribuzione() -> None:
     assert rules.calcola_score(neutro, profile, signal) == rules.calcola_score(
         commerciale, profile, signal
     )
+
+
+def test_scoring_bit_identico_con_abbonamento_e_prenotabilita_variati() -> None:
+    """VISIBILITÀ NON ACQUISTABILE (Wave 3a): lo score deve restare
+    BIT-IDENTICO al variare di `partner_abbonamento_attivo` e `prenotabile`.
+
+    L'abbonamento decide solo la PRESENZA del candidato (filtro duro), mai il
+    punteggio: aggiungere/togliere un partner, un prezzo o la prenotabilità non
+    deve cambiare lo score nemmeno di un bit. Si testa `calcola_score`
+    DIRETTAMENTE (non `passa_filtri_duri`) per isolare "score invariato" da
+    "presenza filtrata": qui verifichiamo solo che lo score non si muova."""
+    profile = EmotionalProfile(
+        curiosita=0.9, contemplazione=0.4, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
+
+    # Candidato di riferimento: nessun partner, nessun prezzo.
+    riferimento = _candidato()
+    score_riferimento = rules.calcola_score(riferimento, profile, signal)
+
+    # Ogni combinazione commerciale possibile deve dare lo STESSO identico score.
+    varianti = [
+        _candidato(partner_id="bottega-1", partner_abbonamento_attivo=True),
+        _candidato(partner_id="bottega-1", partner_abbonamento_attivo=False),
+        _candidato(partner_id="bottega-1", prezzo_eur=25.0, partner_abbonamento_attivo=True),
+        _candidato(partner_id="bottega-1", prezzo_eur=999.0, partner_abbonamento_attivo=False),
+        _candidato(partner_id="bottega-1", prezzo_eur=25.0, prenotabile=True),
+        _candidato(prenotabile=True),
+        _candidato(
+            partner_id="bottega-1", prezzo_eur=25.0, prenotabile=True,
+            attribuzione="Offerta da Bottega Rossi, bottega di liuteria.",
+        ),
+    ]
+    for variante in varianti:
+        # `==` su float è voluto: pretendiamo identità bit-a-bit, non prossimità.
+        assert rules.calcola_score(variante, profile, signal) == score_riferimento
+
+
+def test_partner_non_attivo_escluso_dai_filtri_duri() -> None:
+    """Filtro duro (Wave 3a): un partner con abbonamento NON attivo è escluso;
+    lo stesso candidato con abbonamento attivo passa. La presenza cambia solo
+    per l'abbonamento — mai per il prezzo."""
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
+
+    attivo = _candidato(partner_id="bottega-1", partner_abbonamento_attivo=True)
+    non_attivo = _candidato(partner_id="bottega-1", partner_abbonamento_attivo=False)
+    # Esperienza senza partner: sempre visibile, anche col flag denormalizzato a False.
+    senza_partner = _candidato(partner_id=None, partner_abbonamento_attivo=False)
+
+    assert rules.passa_filtri_duri(attivo, profile, signal, []) is True
+    assert rules.passa_filtri_duri(non_attivo, profile, signal, []) is False
+    assert rules.passa_filtri_duri(senza_partner, profile, signal, []) is True
 
 
 def test_reason_contiene_attribuzione_ma_score_invariato() -> None:

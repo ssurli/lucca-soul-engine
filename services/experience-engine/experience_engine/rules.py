@@ -116,6 +116,13 @@ def passa_filtri_duri(
     - Esclude i luoghi già visti: non si ripropone ciò che è già stato vissuto.
     - Esclude i luoghi criticamente affollati (>= soglia): distribuire i flussi
       per non aggravare l'overtourism è un dovere del motore, non un'opzione.
+    - Esclude le esperienze di un partner con abbonamento NON attivo. Questa è
+      l'UNICA leva commerciale ammessa, ed è un interruttore booleano di
+      PRESENZA, non un input dello scoring: la visibilità non è acquistabile,
+      quindi un partner o c'è (abbonamento attivo) o non c'è, ma quando c'è
+      concorre esattamente come tutti gli altri — il suo punteggio non cambia
+      di un bit. Verificato dal booleano denormalizzato `partner_abbonamento_attivo`
+      (popolato a monte dal grafo); `calcola_score` non lo legge mai.
     """
     esperienza = candidate.experience
     if profile.accessibilita_richiesta and not esperienza.accessibile:
@@ -124,6 +131,8 @@ def passa_filtri_duri(
         return False
     if signal.affollamento.get(esperienza.place_id, 0.0) >= SOGLIA_AFFOLLAMENTO_CRITICO:
         return False
+    if esperienza.partner_id is not None and not esperienza.partner_abbonamento_attivo:
+        return False
     return True
 
 
@@ -131,8 +140,11 @@ def calcola_score(candidate: GraphCandidate, profile: EmotionalProfile, signal: 
     """Affinità profilo <-> esperienza in [0, 1], deterministica.
 
     VISIBILITÀ NON ACQUISTABILE: questa funzione NON legge mai
-    `candidate.experience.partner_id`, `candidate.experience.prezzo_eur` né
-    `candidate.attribuzione`. L'attribuzione ("Offerta da ...") è una
+    `candidate.experience.partner_id`, `candidate.experience.prezzo_eur`,
+    `candidate.experience.partner_abbonamento_attivo` né
+    `candidate.attribuzione`. L'abbonamento del partner decide solo la
+    PRESENZA del candidato (filtro duro in `passa_filtri_duri`), mai il
+    punteggio. L'attribuzione ("Offerta da ...") è una
     disclosure che vive SOLO nel `reason`, in coda ai motivi reali: non deve
     entrare nello scoring — in particolare non deve gonfiare la componente
     `sorpresa`, che conta le `connessioni` del grafo e nient'altro. Un partner
