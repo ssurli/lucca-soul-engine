@@ -99,6 +99,38 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
 - **test-engineer**: test che il recommender rispetti i vincoli etici.
 - ✅ **Accettazione:** il recommender migliora la pertinenza senza aumentare la concentrazione dei
   flussi; tutto resta spiegabile.
+  **Vincolo esplicito sui segnali di terze parti** (precisazione del committente): stelle
+  Google/TripAdvisor e simili NON sono mai feature, né dirette né come proxy — il numero di
+  recensioni è notorietà, pesarlo reintrodurrebbe il bias di popolarità. Potrebbero valere SOLO
+  come soglia di ammissione binaria (mai come contributo al punteggio), e sarebbe comunque
+  responsabilità dell'Experience Engine, non del recommender. Il segnale di qualità legittimo è
+  il feedback dei visitatori che alimenta l'Urban Intelligence Index (Wave 4) — reporting
+  separato, mai un input del ranking individuale.
+  **→ SODDISFATTA** (2026-07-19): `experience_engine.engine.compose_itinerary` accetta ora un
+  `score_fn` iniettabile (stesso pattern di `reason_fn`); il filtro duro `passa_filtri_duri`
+  resta invariato e applicato PRIMA, il recommender riordina i soli candidati già ammessi, mai
+  seleziona né filtra. Nuovo servizio `services/recommender`: persistenza `BehaviorEvent` su
+  Neon (migrazione idempotente), feature aggregate e anonime documentate in
+  `services/recommender/README.md` con motivazione per ciascuna e una sezione esplicita "Cosa
+  NON è una feature, e perché" (campi commerciali/proxy, rating di terze parti, dati di Urban
+  Memory/Index — tutti esclusi). Punteggio finale = `calcola_score` penalizzato (mai premiato)
+  da due termini indipendenti: quota storica (con smoothing di Laplace su tutti i luoghi
+  candidati, non solo quelli con eventi tracciati) e quota strutturale (dominanza per pertinenza
+  di contenuto attraverso un insieme fisso di profili-archetipo, nessun dato storico/esterno) —
+  il secondo termine è nato da un bug reale trovato dal test di distribuzione: un luogo dominante
+  per pertinenza ma a zero eventi tracciati assorbiva il flusso spostato da un luogo penalizzato,
+  peggiorando la distribuzione aggregata. Limite combinato dei pesi verificato anche a runtime
+  (`ValueError`), non solo documentato. `POST /events` (202) persiste eventi; `POST /itinerary`
+  costruisce il reranking e degrada silenziosamente al ranking deterministico se il recommender
+  fallisce per qualunque motivo (mai un errore per un arricchimento opzionale). Criterio di
+  distribuzione verificato su 4 scenari storici indipendenti (concentrazione su 1 luogo, su 5
+  luoghi, storico anche sul luogo dominante per pertinenza, randomizzato a seed fisso): nessuno
+  peggiora la distribuzione rispetto al ranking deterministico puro. Cold start bit-identico a
+  `calcola_score` da solo, verificato end-to-end. ethics-guardian **PASS** su funzione obiettivo,
+  assenza di feature commerciali/proxy/rating esterni, effetto sulla distribuzione, privacy,
+  spiegabilità. *Limite noto — vedi `docs/LIMITI.md`: la correzione è locale per-richiesta,
+  robustezza empirica su 4 scenari, non garanzia matematica su una popolazione di richieste.
+  Documentato con cosa servirebbe per una garanzia vera e il costo stimato — non intrapreso ora.*
 
 ## Wave 4 — Urban Intelligence Index + Dashboard  *(= Fase 3, Smart City)*
 - **index-engineer**: aggregazioni anonime, calcolo degli 8 indicatori, endpoint `/dashboard/*`.

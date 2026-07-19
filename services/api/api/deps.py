@@ -18,6 +18,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 import marketplace
+import recommender
 from graph.source import CandidateSource, Neo4jCandidateSource, SeedCandidateSource
 from urban_memory import (
     InMemoryMemoryRepository,
@@ -28,7 +29,12 @@ from urban_memory import (
 
 from api.settings import get_settings
 
-__all__ = ["get_candidate_source", "get_memory_repository", "get_booking_repository"]
+__all__ = [
+    "get_candidate_source",
+    "get_memory_repository",
+    "get_booking_repository",
+    "get_event_repository",
+]
 
 
 @lru_cache
@@ -129,3 +135,52 @@ def get_booking_repository() -> marketplace.BookingRepository:
                 "impossibile inizializzare la persistenza del Marketplace"
             ) from exc
     return marketplace.InMemoryBookingRepository()
+
+
+@lru_cache
+def get_event_repository() -> recommender.BehaviorEventRepository:
+    """Sceglie il repository degli eventi comportamentali (Recommender, Wave
+    3b) in base al `.env`, una volta sola — stesso pattern di
+    `get_memory_repository`/`get_booking_repository`: nessun `if
+    local/cloud`, solo presenza di `DATABASE_URL`.
+
+    Se `DATABASE_URL` è configurato usa `recommender.PostgresBehaviorEventRepository`
+    (Neon in cloud o Postgres locale — stesso codice nei due profili, cambia
+    solo il DSN): persiste DAVVERO, con connessione lazy per operazione.
+    Altrimenti ricade su `recommender.InMemoryBehaviorEventRepository`
+    (in-process, non persiste tra riavvii — il percorso verificato dai test
+    di questo servizio quando `DATABASE_URL` non è impostato, e quello di
+    cold start: repository vuoto, `costruisci_score_fn` produce un
+    punteggio bit-identico a `calcola_score` da solo).
+
+    Ogni errore infrastrutturale di storage (connessione, credenziali, query
+    fallita) è responsabilità esclusiva di
+    `recommender.repository.PostgresBehaviorEventRepository`, che lo mappa
+    già in `RecommenderStorageError` — mai lasciato propagare come
+    eccezione psycopg grezza. Questa funzione non implementa NESSUNA logica
+    di database: si limita ad avvolgere in `RecommenderStorageError` anche
+    un eventuale fallimento della sola costruzione (`from_env()`, che legge
+    `DATABASE_URL` e può sollevare `ValueError` se la variabile risulta
+    assente qui pur essendo vista come presente da `api.settings.Settings`
+    — stesso `.env`, letture indipendenti), così che
+    `api.main.event_storage_error_handler` (503 su `POST /events`, mai un
+    500 opaco) catturi ANCHE questo caso, non solo i fallimenti nelle
+    operazioni successive.
+
+    NOTA — a differenza di `/memory` e `/booking`, questo repository è
+    iniettato ANCHE nel wiring di `POST /itinerary` (`api.main.create_itinerary`),
+    dove un suo fallimento (qui o nella lettura dello storico da
+    `recommender.costruisci_score_fn`) NON deve mai propagare: lo storico
+    comportamentale è un arricchimento opzionale del ranking, non il cuore
+    della richiesta — vedi il commento in `create_itinerary`."""
+    settings = get_settings()
+    if settings.database_url:
+        try:
+            return recommender.PostgresBehaviorEventRepository.from_env()
+        except recommender.RecommenderStorageError:
+            raise
+        except Exception as exc:  # difesa in profondità: mai un errore grezzo
+            raise recommender.RecommenderStorageError(
+                "impossibile inizializzare la persistenza degli eventi comportamentali"
+            ) from exc
+    return recommender.InMemoryBehaviorEventRepository()

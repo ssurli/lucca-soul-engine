@@ -49,6 +49,24 @@ endpoint in questo BFF:
   `confirm_booking` esiste nel service layer ma non è esposto da questo BFF
   in questa wave (fuori scope).
 
+Wave 3b aggiunge il Recommender ML (`docs/DATA_CONTRACTS.md` §6/§8):
+- `POST /events` (202, non 201: non crea una risorsa interrogabile, solo un
+  segnale comportamentale accodato) riceve un `BehaviorEvent` e lo persiste
+  con `repo.record(evento)` (`api.deps.get_event_repository`). Un fallimento
+  INFRASTRUTTURALE di storage (`recommender.RecommenderStorageError`) è
+  mappato a 503 da `event_storage_error_handler`, stesso stile di
+  `memory_storage_error_handler`/`marketplace_storage_error_handler`.
+- `POST /itinerary` costruisce ORA anche uno `score_fn` da
+  `recommender.costruisci_score_fn(get_event_repository(), candidates)` e lo
+  passa a `compose_itinerary` per il reranking (pertinenza vincolata a
+  distribuzione dei flussi, vedi `services/recommender/README.md`). A
+  differenza di `/events` — dove lo storage È la richiesta — qui lo storico
+  comportamentale è un ARRICCHIMENTO OPZIONALE del ranking: un fallimento del
+  recommender (storage irraggiungibile o qualunque altro errore) non deve
+  MAI far fallire `/itinerary`, quindi viene catturato e l'endpoint ricade su
+  `score_fn=None` (il ranking deterministico `calcola_score`, identico al
+  comportamento pre-Wave-3b) — vedi il commento in `create_itinerary`.
+
 `/health` non richiede alcun database attivo. Gli errori di validazione dei
 payload sono lasciati alla gestione 422 di default di FastAPI/Pydantic.
 Nessun PII: `person_id`/`contributor_id` sono pseudonimi e non compaiono mai
@@ -63,8 +81,10 @@ from typing import Annotated
 
 import contracts
 import marketplace
+import recommender
 from contracts import (
     AdaptRequest,
+    BehaviorEvent,
     Booking,
     BookingRequest,
     EmotionalProfile,
@@ -89,7 +109,12 @@ from urban_memory import (
 )
 
 from api import __version__
-from api.deps import get_booking_repository, get_candidate_source, get_memory_repository
+from api.deps import (
+    get_booking_repository,
+    get_candidate_source,
+    get_event_repository,
+    get_memory_repository,
+)
 from api.settings import get_settings
 
 app = FastAPI(title="Lucca Soul — BFF")
@@ -107,6 +132,13 @@ _MemoryRepositoryDep = Annotated[MemoryRepository, Depends(get_memory_repository
 # `api.deps` o la configurazione reale.
 _BookingRepositoryDep = Annotated[
     marketplace.BookingRepository, Depends(get_booking_repository)
+]
+
+# Stesso pattern per `POST /events` (Wave 3b): un test sostituisce il
+# repository degli eventi comportamentali con `app.dependency_overrides`
+# senza toccare `api.deps` o la configurazione reale.
+_EventRepositoryDep = Annotated[
+    recommender.BehaviorEventRepository, Depends(get_event_repository)
 ]
 
 
@@ -181,6 +213,29 @@ def marketplace_storage_error_handler(
     )
 
 
+@app.exception_handler(recommender.RecommenderStorageError)
+def event_storage_error_handler(
+    request: Request, exc: recommender.RecommenderStorageError
+) -> JSONResponse:
+    """Mappa un fallimento INFRASTRUTTURALE di storage del Recommender
+    (`recommender.RecommenderStorageError` — connessione a Postgres/Neon
+    irraggiungibile, migrazione non applicata, query fallita) a un **503
+    Service Unavailable**, MAI a un 500 opaco: stesso stile di
+    `memory_storage_error_handler`/`marketplace_storage_error_handler`.
+
+    Questo handler copre SOLO `POST /events`, dove la persistenza dell'evento
+    È la richiesta. Non copre `POST /itinerary`: lì un fallimento dello
+    stesso repository è catturato direttamente in `create_itinerary` e non
+    arriva mai fin qui (vedi il commento in quella funzione per il perché di
+    una strategia diversa). Il corpo è un messaggio italiano generico e
+    fisso: NON include mai `str(exc)` né altro dettaglio interno (DSN, host,
+    credenziali, stack del driver)."""
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "eventi temporaneamente non disponibili: riprova più tardi"},
+    )
+
+
 class HealthResponse(BaseModel):
     status: str
     service: str
@@ -229,10 +284,58 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
 
     I candidati arrivano dalla `CandidateSource` configurata (seed o Neo4j,
     vedi `api.deps.get_candidate_source`); la scelta e i vincoli etici
-    restano interamente dell'AI Experience Engine, l'unico che decide."""
+    restano interamente dell'AI Experience Engine, l'unico che decide.
+
+    Wave 3b: dopo aver ottenuto i candidati, prova a costruire uno `score_fn`
+    dal Recommender ML (`recommender.costruisci_score_fn`) per il reranking
+    "pertinenza vincolata a distribuzione dei flussi" (vedi
+    `services/recommender/README.md`) e lo passa a `compose_itinerary`.
+
+    NOTA sull'iniezione: qui `get_event_repository()` è chiamata
+    DIRETTAMENTE (non tramite `Depends` nella firma), esattamente come già fa
+    questo stesso endpoint per `get_candidate_source()` — a differenza di
+    `POST /events`, dove il repository È il contenuto della richiesta ed è
+    quindi iniettato via `Depends` per essere sostituibile con
+    `app.dependency_overrides`. Il motivo è il VINCOLO CRITICO sotto: la
+    risoluzione di un `Depends` da parte di FastAPI avviene PRIMA che il
+    corpo di questa funzione inizi a eseguire, quindi un suo fallimento non
+    sarebbe MAI catturabile dal `try/except` qui sotto e finirebbe
+    inevitabilmente nel gestore globale di `RecommenderStorageError`
+    (pensato per `/events`, un 503) — esattamente ciò che questo endpoint
+    deve evitare. Chiamandola direttamente dentro il `try`, un test la
+    sostituisce con `monkeypatch.setattr(api.main, "get_event_repository",
+    ...)`, stessa tecnica già usata da `tests/test_booking.py` per
+    `get_candidate_source`.
+
+    VINCOLO CRITICO: a differenza di `/memory`, `/booking` ed `/events` —
+    dove lo storage È il cuore della richiesta, quindi un fallimento
+    infrastrutturale è un 503 legittimo (`memory_storage_error_handler`,
+    `marketplace_storage_error_handler`, `event_storage_error_handler`) — qui
+    lo storico comportamentale è un ARRICCHIMENTO OPZIONALE del ranking, non
+    il contenuto della richiesta: l'utente ha chiesto un itinerario, non una
+    lettura dello storico eventi. Un fallimento del Recommender (repository
+    non raggiungibile — `recommender.RecommenderStorageError` — o qualunque
+    altro errore imprevisto nella costruzione del repository o nella
+    lettura/aggregazione dello storico) NON deve MAI propagare da qui: viene
+    catturato e l'endpoint ricade su `score_fn=None`, cioè il ranking
+    deterministico `calcola_score` da solo — esattamente il comportamento di
+    questo endpoint PRIMA che questa wave esistesse. Stesso principio del
+    cold start (repository vuoto -> punteggio bit-identico a
+    `calcola_score`), esteso al caso "il recommender non è raggiungibile":
+    mai un errore, mai rumore, mai un 500/503 per un problema di
+    un'infrastruttura ausiliaria che non riguarda la richiesta dell'utente.
+    Per questo qui la strategia è "cattura e degrada", non "503 esplicito"
+    come in `/events`: sono scelte diverse per motivi diversi (centralità
+    dello storage nella richiesta), non un'incoerenza tra i due endpoint."""
     source = get_candidate_source()
     candidates = source.candidates(ctx)
-    return compose_itinerary(ctx, candidates, reason_fn=compose_reason)
+    try:
+        score_fn = recommender.costruisci_score_fn(get_event_repository(), candidates)
+    except Exception:  # difesa in profondità: il recommender è un arricchimento
+        # opzionale, mai un motivo di fallimento di /itinerary — degrada al
+        # ranking deterministico (score_fn=None -> calcola_score da solo).
+        score_fn = None
+    return compose_itinerary(ctx, candidates, reason_fn=compose_reason, score_fn=score_fn)
 
 
 @app.post("/itinerary/adapt", response_model=Itinerary)
@@ -356,6 +459,34 @@ def create_booking(
         prezzo_eur=candidato.experience.prezzo_eur or 0.0,
         prenotabile=candidato.experience.prenotabile,
     )
+
+
+@app.post("/events", status_code=202)
+def submit_behavior_event(
+    event: BehaviorEvent,
+    repo: _EventRepositoryDep,
+) -> None:
+    """Registra un evento comportamentale (contratto §6/§8,
+    `docs/DATA_CONTRACTS.md`) per il Recommender ML (Wave 3b).
+
+    `202 Accepted` (non 201, a differenza di `/memory`/`/booking`): questo
+    endpoint non crea una risorsa interrogabile da un `GET` — è un segnale
+    comportamentale accodato per l'aggregazione, coerente con
+    `docs/DATA_CONTRACTS.md` §8 (`POST /events (BehaviorEvent) -> 202`).
+
+    Delega la persistenza a `repo.record(evento)`
+    (`recommender.BehaviorEventRepository`, iniettato via `Depends` —
+    `api.deps.get_event_repository`, `InMemoryBehaviorEventRepository`
+    finché `DATABASE_URL` non è configurato): così un test può sostituirlo
+    con `app.dependency_overrides` senza toccare la configurazione reale.
+    Un fallimento INFRASTRUTTURALE di storage
+    (`recommender.RecommenderStorageError`) è mappato a 503 da
+    `event_storage_error_handler`, mai a un 500 opaco.
+
+    `BehaviorEvent.person_id` è uno pseudonimo: non viene MAI loggato qui, né
+    altrove in questo endpoint — stesso principio di `person_id`/
+    `contributor_id` negli altri endpoint di questo BFF."""
+    repo.record(event)
 
 
 def _profilo_neutro_per_candidati() -> EmotionalProfile:

@@ -419,6 +419,125 @@ def test_reason_contiene_attribuzione_ma_score_invariato() -> None:
     assert "Offerta da" not in it2.stops[0].reason
 
 
+# --- score_fn iniettabile (Wave 3b): il recommender ORDINA, non seleziona ----
+
+
+def test_compose_senza_score_fn_uguale_al_default_esplicito(
+    source: SeedCandidateSource,
+) -> None:
+    """`compose_itinerary` senza `score_fn` deve produrre ESATTAMENTE lo stesso
+    itinerario che si otterrebbe iniettando esplicitamente `rules.calcola_score`:
+    il default non è un ramo diverso, è `calcola_score`. Zero regressioni per i
+    chiamanti esistenti (BFF Wave 1/2/3a) che non passano `score_fn`."""
+    profile = EmotionalProfile(
+        curiosita=0.6, contemplazione=0.5, arte=0.7, con_bambini=False,
+        tempo_disponibile_min=180,
+    )
+    ctx = _ctx(profile)
+    cands = _candidati(source, ctx)
+    implicito = compose_itinerary(ctx, cands, compose_reason)
+    esplicito = compose_itinerary(ctx, cands, compose_reason, score_fn=rules.calcola_score)
+    assert [s.experience_id for s in implicito.stops] == [
+        s.experience_id for s in esplicito.stops
+    ]
+    assert [s.arrivo for s in implicito.stops] == [s.arrivo for s in esplicito.stops]
+
+
+def test_score_fn_iniettato_cambia_realmente_lordine(source: SeedCandidateSource) -> None:
+    """Un `score_fn` che INVERTE la preferenza (`-calcola_score`) deve cambiare
+    davvero l'ordine delle tappe rispetto al default: prova che l'iniezione è
+    usata, non ignorata. Il recommender fornisce un ranking alternativo e il
+    motore lo rispetta."""
+    profile = EmotionalProfile(
+        curiosita=0.6, contemplazione=0.5, arte=0.7, con_bambini=False,
+        tempo_disponibile_min=180,
+    )
+    ctx = _ctx(profile)
+    cands = _candidati(source, ctx)
+
+    def score_invertito(
+        cand: GraphCandidate, prof: EmotionalProfile, sig: Signal
+    ) -> float:
+        return -rules.calcola_score(cand, prof, sig)
+
+    default = compose_itinerary(ctx, cands, compose_reason)
+    invertito = compose_itinerary(ctx, cands, compose_reason, score_fn=score_invertito)
+
+    ids_default = [s.experience_id for s in default.stops]
+    ids_invertito = [s.experience_id for s in invertito.stops]
+    assert ids_default and ids_invertito
+    # L'ordine deve cambiare: l'iniezione ha effetto reale, non è ignorata.
+    assert ids_default != ids_invertito
+
+
+def test_score_fn_forza_una_tappa_specifica_in_testa(source: SeedCandidateSource) -> None:
+    """Un `score_fn` che dà punteggio massimo a UN candidato specifico lo porta
+    in testa all'itinerario: il ranking del recommender determina l'ordine tra i
+    candidati ammessi."""
+    profile = EmotionalProfile(
+        curiosita=0.6, contemplazione=0.5, arte=0.7, con_bambini=False,
+        tempo_disponibile_min=180,
+    )
+    ctx = _ctx(profile)
+    cands = _candidati(source, ctx)
+    default = compose_itinerary(ctx, cands, compose_reason)
+    # Scegli un candidato ammesso che NON è già la prima tappa del default.
+    ammessi = [
+        c for c in cands
+        if rules.passa_filtri_duri(c, profile, ctx.signal, ctx.luoghi_gia_visti)
+    ]
+    prima_default = default.stops[0].experience_id
+    bersaglio = next(c for c in ammessi if c.experience.id != prima_default)
+
+    def score_favorisce(
+        cand: GraphCandidate, prof: EmotionalProfile, sig: Signal
+    ) -> float:
+        return 1.0 if cand.experience.id == bersaglio.experience.id else 0.0
+
+    forzato = compose_itinerary(ctx, cands, compose_reason, score_fn=score_favorisce)
+    assert forzato.stops[0].experience_id == bersaglio.experience.id
+
+
+def test_score_fn_non_puo_salvare_candidato_escluso_dal_filtro_duro(
+    source: SeedCandidateSource,
+) -> None:
+    """IL FILTRO DURO RESTA SOVRANO: un candidato escluso dai vincoli etici
+    (qui: non accessibile con `accessibilita_richiesta=True`) NON compare tra le
+    tappe nemmeno con uno `score_fn` che gli assegna punteggio massimo. Il
+    recommender non vede i candidati esclusi e non può reintrodurli: ordina solo
+    ciò che il filtro ha già ammesso."""
+    from contracts import ExperienceNode
+
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.8, con_bambini=False,
+        tempo_disponibile_min=300, accessibilita_richiesta=True,
+    )
+    ctx = _ctx(profile)
+    # Candidato deliberatamente inaccessibile: il filtro duro lo esclude.
+    escluso = GraphCandidate(
+        experience=ExperienceNode(
+            id="exp-inaccessibile", titolo="Torre senza ascensore", place_id="torre",
+            temi=["arte"], durata_min=30, al_chiuso=True, accessibile=False,
+        ),
+        place_nome="Torre",
+        connessioni=['Evoca il tema "Arte".'],
+    )
+    cands = [escluso, *_candidati(source, ctx)]
+
+    def score_massimo_allescluso(
+        cand: GraphCandidate, prof: EmotionalProfile, sig: Signal
+    ) -> float:
+        return 1.0 if cand.experience.id == "exp-inaccessibile" else 0.0
+
+    it = compose_itinerary(ctx, cands, compose_reason, score_fn=score_massimo_allescluso)
+    assert it.stops
+    ids = [s.experience_id for s in it.stops]
+    assert "exp-inaccessibile" not in ids
+    # E ogni tappa presente è comunque accessibile (filtro duro rispettato).
+    acc = {c.experience.id: c.experience.accessibile for c in cands}
+    assert all(acc[i] for i in ids)
+
+
 def test_disclosure_non_duplicata_in_adapt() -> None:
     """La disclosure è idempotente: una tappa non toccata dall'adapt conserva
     il reason originale senza ripetere l'attribuzione."""

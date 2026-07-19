@@ -1,0 +1,47 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lucca-recommender"
+version = "0.1.0"
+description = "Lucca Soul Lab — Engine: Recommender ML (Wave 3b). Impara l'algoritmo dai comportamenti storici (BehaviorEvent), non il modello linguistico: produce una score_fn compatibile con experience_engine.engine.ScoreFn che riusa calcola_score per la pertinenza e la penalizza (mai premia) in proporzione alla concentrazione storica di flusso sul luogo fisico. Nessuna feature commerciale, nessun segnale di notorietà esterna, nessun dato di Urban Memory/Index."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+    "psycopg[binary]>=3",
+]
+
+# NOTA — pacchetti locali (packages/contracts, services/experience-engine):
+# `lucca-contracts` e `lucca-experience-engine` sono la single source of
+# truth per gli schemi e per `calcola_score` e NON vanno aggiunti qui come
+# dipendenze pip (non sono pubblicati su un indice). Vanno installati a
+# parte, in editable mode, insieme a questo pacchetto:
+#
+#   pip install -e packages/contracts -e services/experience-engine \
+#               -e services/recommender
+#
+# NOTA — confine di import (non negoziabile, ethics-guardian):
+# questo pacchetto NON importa `services/graph` né `services/api`: la mappa
+# experience_id -> place_id necessaria al ranking si costruisce SOLO dai
+# `GraphCandidate` ricevuti a runtime per la richiesta corrente, mai da un
+# join/import del grafo. Da `experience_engine` importa SOLO
+# `rules.calcola_score` (mai `engine`, mai `rules.passa_filtri_duri`: il
+# filtro duro resta responsabilità esclusiva dell'Experience Engine).
+#
+# NOTA — persistenza reale:
+# `recommender.repository.PostgresBehaviorEventRepository` persiste DAVVERO
+# via `psycopg[binary]`: il DSN arriva dal costruttore, tipicamente letto da
+# DATABASE_URL da chi la istanzia — Neon (`sslmode=require`) in cloud,
+# Postgres locale sul PC fisso; MAI hardcoded, MAI un `if local/cloud`. Lo
+# schema (`behavior_event`) è versionato e idempotente in
+# `sql/00_events_schema.sql`, applicato da `recommender.migrate.migrate(dsn)`
+# (o `python -m recommender.migrate`) prima del primo uso. Il percorso di
+# default, usato dai test e finché DATABASE_URL non è configurato, resta
+# `InMemoryBehaviorEventRepository`.
+
+[tool.hatch.build.targets.wheel]
+packages = ["recommender"]
+
+[tool.hatch.metadata]
+allow-direct-references = true

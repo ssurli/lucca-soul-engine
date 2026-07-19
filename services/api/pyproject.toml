@@ -15,25 +15,28 @@ dependencies = [
 ]
 
 # NOTA — pacchetti locali (packages/contracts, services/graph, services/rag,
-# services/experience-engine, services/urban-memory, services/marketplace):
-# sono la single source of truth per gli schemi (docs/DATA_CONTRACTS.md), per
-# la CandidateSource del grafo, per l'onboarding conversazionale e per la
-# composizione dei `reason`, per l'AI Experience Engine che decide le tappe,
-# per i vincoli non negoziabili della Urban Memory (Wave 2: consenso,
-# licenza, pseudonimo, curatela — `lucca-urban-memory`) e (Wave 3a) per il
-# Marketplace (`lucca-marketplace`: prenotazioni, stato iniziale RICHIESTA,
-# commissione calcolata SOLO dopo la conferma — non esposta da questo BFF in
-# questa wave). NON vanno aggiunti qui come dipendenze pip (non sono
-# pubblicati su un indice). Vanno installati a parte, in editable mode,
-# insieme a questo pacchetto:
+# services/experience-engine, services/urban-memory, services/marketplace,
+# services/recommender): sono la single source of truth per gli schemi
+# (docs/DATA_CONTRACTS.md), per la CandidateSource del grafo, per
+# l'onboarding conversazionale e per la composizione dei `reason`, per l'AI
+# Experience Engine che decide le tappe, per i vincoli non negoziabili della
+# Urban Memory (Wave 2: consenso, licenza, pseudonimo, curatela —
+# `lucca-urban-memory`), per il Marketplace (Wave 3a, `lucca-marketplace`:
+# prenotazioni, stato iniziale RICHIESTA, commissione calcolata SOLO dopo la
+# conferma — non esposta da questo BFF in questa wave) e per il Recommender
+# ML (Wave 3b, `lucca-recommender`: `score_fn` che rerankano i candidati
+# vincolando la pertinenza alla distribuzione dei flussi — mai esposto come
+# endpoint proprio, solo cablato dentro `POST /itinerary`). NON vanno
+# aggiunti qui come dipendenze pip (non sono pubblicati su un indice). Vanno
+# installati a parte, in editable mode, insieme a questo pacchetto:
 #
 #   pip install -e packages/contracts -e services/graph -e services/rag \
 #               -e services/experience-engine -e services/urban-memory \
-#               -e services/marketplace -e services/api
+#               -e services/marketplace -e services/recommender -e services/api
 #
 # Il codice di `api` importa da `contracts`, `graph`, `rag`,
-# `experience_engine`, `urban_memory` e `marketplace` assumendo che siano già
-# installati nell'ambiente attivo.
+# `experience_engine`, `urban_memory`, `marketplace` e `recommender`
+# assumendo che siano già installati nell'ambiente attivo.
 #
 # NOTA — persistenza della Urban Memory (Wave 2): il driver Postgres
 # (`psycopg[binary]`) NON è una dipendenza di `services/api`. Lo porta
@@ -55,6 +58,18 @@ dependencies = [
 # `PostgresBookingRepository`; senza, `InMemoryBookingRepository`. Un
 # fallimento di storage (`marketplace.MarketplaceStorageError`) è mappato da
 # `api.main.marketplace_storage_error_handler` a un 503, mai a un 500 opaco.
+#
+# NOTA — persistenza degli eventi comportamentali (Wave 3b): stesso schema,
+# con `lucca-recommender` (`services/recommender/pyproject.toml`) che espone
+# `PostgresBehaviorEventRepository`/`InMemoryBehaviorEventRepository`. Con
+# `DATABASE_URL` impostato, `api.deps.get_event_repository` sceglie
+# `PostgresBehaviorEventRepository`; senza, `InMemoryBehaviorEventRepository`.
+# Un fallimento di storage (`recommender.RecommenderStorageError`) su
+# `POST /events` è mappato da `api.main.event_storage_error_handler` a un
+# 503, mai a un 500 opaco — MA in `POST /itinerary` lo stesso repository è
+# usato solo per un reranking OPZIONALE: lì un fallimento è catturato e fa
+# degradare al ranking deterministico (`score_fn=None`), mai un 503 (vedi il
+# commento in `api.main.create_itinerary`).
 
 [tool.hatch.build.targets.wheel]
 packages = ["api"]

@@ -39,7 +39,7 @@ from .rules import (
     stima_trasferimento_min,
 )
 
-__all__ = ["compose_itinerary", "adapt_itinerary", "ReasonFn", "AdaptReasonFn"]
+__all__ = ["compose_itinerary", "adapt_itinerary", "ReasonFn", "AdaptReasonFn", "ScoreFn"]
 
 #: Firma della funzione che compone il `reason` di una tappa. Combacia con
 #: `rag.reasons.compose_reason(candidate, profile, segnali)`.
@@ -48,6 +48,13 @@ ReasonFn = Callable[[GraphCandidate, EmotionalProfile, list[str]], str]
 #: Firma della funzione che riscrive il `reason` di una tappa sostituita.
 #: Combacia con `rag.reasons.adapt_reason(motivo, segnale)`.
 AdaptReasonFn = Callable[[str, str], str]
+
+#: Firma della funzione di scoring INIETTABILE dal recommender (Wave 3b).
+#: Combacia con la funzione del recommender `(candidate, profile, signal) -> float`.
+#: Il recommender ORDINA ma NON seleziona né filtra: riceve SOLO i candidati
+#: già ammessi dal filtro duro (`passa_filtri_duri`), applicato prima e altrove.
+#: Se non iniettata, il motore usa `rules.calcola_score` (comportamento MVP).
+ScoreFn = Callable[[GraphCandidate, EmotionalProfile, Signal], float]
 
 
 # ---------------------------------------------------------------------------
@@ -120,13 +127,19 @@ def _con_disclosure(reason: str, candidate: GraphCandidate) -> str:
 
 
 def _ordina_per_score(
-    candidates: list[GraphCandidate], profile: EmotionalProfile, signal: Signal
+    candidates: list[GraphCandidate],
+    profile: EmotionalProfile,
+    signal: Signal,
+    score_fn: ScoreFn,
 ) -> list[tuple[float, GraphCandidate]]:
     """Ordina i candidati per (score decrescente, experience_id crescente).
 
-    Il tie-break su `experience_id` rende l'ordinamento TOTALE e stabile:
-    è ciò che garantisce il determinismo richiesto dalla wave."""
-    valutati = [(calcola_score(c, profile, signal), c) for c in candidates]
+    Lo score lo calcola `score_fn` (iniettabile): nell'MVP è `calcola_score`,
+    ma il recommender può fornirne uno alternativo. Riceve SOLO candidati già
+    ammessi dal filtro duro: ordina, non seleziona. Il tie-break su
+    `experience_id` rende l'ordinamento TOTALE e stabile: è ciò che garantisce
+    il determinismo richiesto dalla wave, qualunque sia la `score_fn`."""
+    valutati = [(score_fn(c, profile, signal), c) for c in candidates]
     valutati.sort(key=lambda t: (-t[0], t[1].experience.id))
     return valutati
 
@@ -224,20 +237,28 @@ def compose_itinerary(
     ctx: VisitorContext,
     candidates: list[GraphCandidate],
     reason_fn: ReasonFn | None = None,
+    score_fn: ScoreFn | None = None,
 ) -> Itinerary:
     """Compone un `Itinerary` a regole per il contesto dato.
 
     Pipeline (separata in funzioni pure e testabili):
       1. filtri duri etici  -> `rules.passa_filtri_duri`
-      2. scoring per affinità -> `rules.calcola_score`
+      2. scoring per affinità -> `score_fn` (default: `rules.calcola_score`)
       3. composizione a budget con diversificazione -> `_seleziona_tappe`
       4. `reason` obbligatorio per ogni tappa -> `_costruisci_stops`
+
+    `score_fn` è INIETTABILE (Wave 3b): il recommender può fornire un ranking
+    alternativo. È applicato DOPO il filtro duro, mai prima: riceve solo i
+    candidati già ammessi dai vincoli etici, quindi ORDINA ma non seleziona né
+    filtra — non può "salvare" un candidato escluso. Se `None`, l'MVP usa
+    `rules.calcola_score` (comportamento invariato per ogni chiamante esistente).
 
     Determinismo totale: a parità di score l'ordine è per `experience_id`.
     Due profili diversi possono produrre itinerari diversi — è il criterio
     d'accettazione centrale della wave.
     """
     fn = reason_fn or _fallback_reason
+    score = score_fn or calcola_score
     profile = ctx.profile
 
     ammessi = [
@@ -245,7 +266,7 @@ def compose_itinerary(
         for c in candidates
         if passa_filtri_duri(c, profile, ctx.signal, ctx.luoghi_gia_visti)
     ]
-    valutati = _ordina_per_score(ammessi, profile, ctx.signal)
+    valutati = _ordina_per_score(ammessi, profile, ctx.signal, score)
     selezionati = _seleziona_tappe(valutati, profile.tempo_disponibile_min)
     stops = _costruisci_stops(selezionati, profile, ctx.signal, fn)
 
