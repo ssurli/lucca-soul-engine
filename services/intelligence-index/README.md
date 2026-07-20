@@ -300,6 +300,70 @@ da altri indicatori solo per riempire il campo.
   `urban_memory._env` — per comodità di chi cablerà l'endpoint dashboard (`api-engineer`, fuori
   dal perimetro di questa wave). `calcola_index` non importa mai questo modulo: resta testabile
   senza alcun database.
+- `intelligence_index/dashboard.py` — i due adattatori PURI verso le risposte dashboard
+  (`docs/DATA_CONTRACTS.md` §7, sottosezione "Risposte dashboard"), vedi sotto.
+
+## Adattatori dashboard — `intelligence_index/dashboard.py`
+
+Nessuna logica di calcolo nuova: due funzioni PURE (nessun accesso diretto a Postgres/Neo4j, tutto
+iniettato) che traducono l'uscita di `calcola_index`/degli eventi grezzi nei due contratti di
+`GET /dashboard/*` (`packages/contracts`). Non ancora cablate a nessun endpoint HTTP — quello è il
+passo successivo di `api-engineer`, che si procurerà gli argomenti via `intelligence_index.deps`,
+`intelligence_index.catalogo.esperienze_per_id` e `graph.metrics.GraphMetricsSource.
+grado_semantico()`.
+
+### `indice_per_dashboard(...) -> DashboardIndexResponse`
+
+Wrapper di `calcola_index`: STESSI parametri, nessuna dipendenza nuova. Cattura
+`DatiInsufficientiError` e la traduce in uno stato "dato insufficiente" di prima classe invece di
+propagarla grezza o fabbricare un `UrbanIntelligenceIndex`:
+
+- calcolo riuscito -> `disponibile=True`, `index` popolato, `motivo_indisponibilita=None`;
+- `DatiInsufficientiError` sollevata -> `disponibile=False`, `index=None`,
+  `motivo_indisponibilita=` un messaggio GENERICO, costruito qui a partire SOLO da
+  `exc.contesto` (il nome dell'indicatore, es. `"coinvolgimento"` — non identificante) e
+  `exc.soglia` (la costante k, pubblica e nota) — **MAI `str(eccezione)`, MAI `exc.n_persone`.**
+
+**Bug di privacy corretto in questa wave — MAI riusare `str(eccezione)` così com'è come testo
+pubblico.** `DatiInsufficientiError.__str__()` include `n_persone`: il conteggio ESATTO di persone
+distinte sotto soglia (es. `"3 persone distinte coinvolte"`). Quel messaggio è corretto e utile nei
+log interni/nel debug lato server — ma un'implementazione precedente di `indice_per_dashboard`
+passava `str(eccezione)` direttamente a `motivo_indisponibilita`, che è un campo pubblico di
+`DashboardIndexResponse`, servito da `GET /dashboard/index`. Il risultato: un conteggio grezzo di
+popolazione (`"3 persone"`) raggiungeva la risposta JSON pubblica — la STESSA classe di violazione
+di re-identificazione che il gate k=10 esiste per prevenire su `celle_flusso`/sui valori numerici
+degli indicatori, solo su un canale diverso: la "spiegazione leggibile" invece del "valore". Un
+conteggio sotto soglia è identificante indipendentemente da DOVE compare nella risposta HTTP — in
+una chiave JSON numerica o annidato dentro una frase libera in un campo di testo, il rischio di
+re-identificazione è lo stesso. Per questo `indice_per_dashboard` ricostruisce SEMPRE il messaggio
+pubblico da zero, senza mai propagare `n_persone`. Verificato esplicitamente in
+`tests/test_integration_wave4_privacy.py::test_dashboard_index_popolazione_intera_sotto_soglia_httpreale`,
+che cerca la cifra REALE della popolazione dello scenario come token isolato nella risposta HTTP
+reale (non solo l'assenza di chiavi JSON come `"n_persone"`, che da sola non avrebbe intercettato
+questo bug: il numero non viveva in una chiave, viveva dentro una frase).
+
+Il `model_validator` di `DashboardIndexResponse` verifica per costruzione che i due stati non si
+mescolino mai: questa funzione non ricontrolla da sé quella coerenza.
+
+### `celle_flusso(...) -> DashboardFlowsResponse`
+
+Aggregazione per la heatmap: UNA `FlowCell` per OGNI `place_id` in `grado_semantico` (STESSA fonte
+già iniettata per `attivazione_locale`/`distribuzione_flussi` — le sue chiavi sono l'universo
+completo dei luoghi del grafo, incluso grado zero), anche per i luoghi senza nessuna tappa nel
+periodo/filtro. Per ogni luogo: filtra gli eventi `"stop"` che vi mappano (via
+`esperienze_per_id`), ulteriormente ristretti da `giorno`/`ora` se forniti; poi
+`intelligence_index.soglia.valore_se_soglia(persone, conteggio)` decide `disponibile`/
+`conteggio_tappe`, gate indipendente per cella (k=10 `person_id` distinti).
+
+**Punto critico di correttezza, non negoziabile: zero tappe è indistinguibile da sotto-soglia.**
+Un luogo a ZERO tappe ha anche zero `person_id` distinti, quindi ricade SOTTO k=10 esattamente
+come un luogo con 1-9 persone — `valore_se_soglia` applicato uniformemente, senza alcun ramo
+speciale per il conteggio zero, produce lo STESSO `disponibile=False, conteggio_tappe=None` per
+entrambi i casi. Se lo zero fosse trattato come "provabilmente innocuo" (es. `disponibile=True,
+conteggio_tappe=0`), un osservatore della dashboard potrebbe dedurre PER ESCLUSIONE che ogni cella
+soppressa ha necessariamente TRA 1 e 9 persone — esattamente l'informazione che il gate k=10 deve
+nascondere. Coperto esplicitamente da
+`tests/test_dashboard.py::test_celle_flusso_luogo_a_zero_eventi_e_indistinguibile_dal_soppresso`.
 
 ## Installazione (PowerShell, Windows)
 
@@ -380,9 +444,13 @@ falso verde in locale, stessa trappola già documentata in
 `services/api/tests/test_booking.py`). `tests/test_indicatori.py` e `tests/test_index.py` coprono
 ogni formula (negoziata e proposta) con dati sintetici; `tests/test_distribuzione.py` verifica i
 casi limite dell'entropia (concentrazione totale, distribuzione perfetta, normalizzazione
-sull'universo disponibile). Se in una wave successiva verrà aggiunta una fonte persistita di
-itinerari, servirà un test di integrazione con Postgres/Neo4j reali — segnalato per
-`test-engineer`, non scavalcato qui.
+sull'universo disponibile); `tests/test_dashboard.py` copre i due adattatori
+(`indice_per_dashboard`/`celle_flusso`): i due stati di `DashboardIndexResponse`, e per
+`celle_flusso` un luogo sopra soglia, uno sotto soglia con eventi, uno a zero eventi
+(esplicitamente indistinguibile dal precedente — vedi sopra), il filtro `giorno`/`ora`, e che
+`celle` copra sempre tutti i `place_id` del grafo. Se in una wave successiva verrà aggiunta una
+fonte persistita di itinerari, servirà un test di integrazione con Postgres/Neo4j reali —
+segnalato per `test-engineer`, non scavalcato qui.
 
 ```powershell
 ruff check services/intelligence-index
@@ -390,12 +458,14 @@ ruff check services/intelligence-index
 
 ## Cosa NON fa questo servizio (fuori dal suo perimetro)
 
-- **Nessun endpoint HTTP.** `GET /dashboard/index` (`docs/DATA_CONTRACTS.md` §8) è responsabilità
-  del BFF (`services/api`), in una wave successiva — questo servizio espone solo
-  `calcola_index` e le sue dipendenze iniettabili.
-- **Nessun drill-down per luogo/profilo/fascia oraria.** Solo l'aggregato a 8 campi
-  dell'intero periodo. Il gate `valore_se_soglia` (che ritorna `None` invece di sollevare) è
-  già pronto per queste aggregazioni più fini, ma nessuna funzione di questo servizio le calcola
-  oggi.
+- **Nessun endpoint HTTP.** `GET /dashboard/index` e `GET /dashboard/flows`
+  (`docs/DATA_CONTRACTS.md` §7-§8) sono responsabilità del BFF (`services/api`), in una wave
+  successiva — questo servizio espone solo `calcola_index`, i due adattatori
+  `indice_per_dashboard`/`celle_flusso` (`intelligence_index/dashboard.py`) e le loro dipendenze
+  iniettabili. Nessuno dei due adattatori si procura da sé eventi/catalogo/`grado_semantico`: li
+  riceve per iniezione, esattamente come `calcola_index`.
+- **Nessun drill-down per profilo.** `celle_flusso` copre il drill-down per luogo (e, tramite i
+  filtri opzionali, per luogo×giorno e luogo×ora), ma nessuna funzione di questo servizio
+  aggrega per profilo emozionale — fuori dal perimetro di questa wave.
 - **Nessuna scrittura.** Solo lettura di `behavior_event` (Recommender) e `memory_contribution`
   (Urban Memory); la scrittura resta responsabilità esclusiva di `POST /events` e `POST /memory`.

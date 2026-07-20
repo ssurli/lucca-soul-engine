@@ -243,6 +243,65 @@ class UrbanIntelligenceIndex(BaseModel):
     contributi_memoria: int           # crescita della Urban Memory
 ```
 
+### Risposte dashboard (`GET /dashboard/*`) — soppressione k=10 provata al confine dell'API
+
+Requisito non negoziabile del committente: la soglia k=10 (privacy by design, CLAUDE.md) è provata
+al confine dell'API, a OGNI livello di dettaglio che l'API espone (aggregato per periodo, per
+luogo, per combinazione luogo×giorno×ora). Nessuna cella soppressa può far trapelare — nemmeno
+opzionalmente — un conteggio di popolazione grezzo: solo un booleano `disponibile` e il valore (o
+`None` se soppresso).
+
+```python
+class DashboardIndexResponse(BaseModel):
+    """Wrapper del BFF per GET /dashboard/index.
+
+    `intelligence_index.calcola_index` solleva `DatiInsufficientiError` se un
+    qualunque indicatore dell'intero periodo è sotto k=10 (raro in produzione,
+    possibile su un periodo storico con pochi dati). Il BFF non propaga
+    l'eccezione grezza né fabbrica un `UrbanIntelligenceIndex`: la risposta è
+    sempre uno di due stati espliciti.
+
+    Vincolo di coerenza (applicato per costruzione via `model_validator`, non
+    solo per disciplina di chi popola il modello): `disponibile=True` implica
+    `index is not None` e `motivo_indisponibilita is None`; `disponibile=False`
+    implica il contrario. Nessuno stato intermedio."""
+    periodo: str
+    disponibile: bool
+    index: UrbanIntelligenceIndex | None = None       # popolato SOLO se disponibile=True
+    motivo_indisponibilita: str | None = None          # popolato SOLO se disponibile=False, IT
+
+class FlowCell(BaseModel):
+    """Una riga di heatmap per un luogo. Gated INDIPENDENTEMENTE dalle altre
+    celle sulla soglia k=10 dei person_id distinti di QUESTA cella specifica
+    (intelligence_index.soglia.valore_se_soglia — esiste già, non ancora
+    cablato a nessun chiamante prima di questa wave).
+
+    Espone SOLO `disponibile` e il conteggio (o None se soppressa): MAI un
+    conteggio di popolazione (es. n_persone), nemmeno opzionale. Un conteggio
+    grezzo di persone sarebbe già di per sé la violazione di re-identificazione
+    che il gate deve prevenire, a prescindere dal fatto che il VALORE
+    dell'indicatore venga poi nascosto. Nessun campo di questo modello può
+    esporlo: garanzia strutturale, non disciplina di chi lo popola."""
+    place_id: str
+    disponibile: bool
+    conteggio_tappe: int | None = None   # None se soppressa (sotto k=10 person_id distinti)
+
+class DashboardFlowsResponse(BaseModel):
+    """Risposta di GET /dashboard/flows. SEMPRE una riga per luogo, mai una
+    combinatoria esplosiva luogo×giorno×ora in un solo payload (15 luoghi ×
+    ~30 giorni × 24 ore sarebbero migliaia di righe per una singola
+    chiamata). I filtri opzionali giorno/ora restringono la STESSA lista di
+    celle: così l'API espone la granularità luogo×giorno×ora, un filtro alla
+    volta, non un cubo precalcolato."""
+    periodo: str
+    giorno: date | None = None   # filtro applicato alla richiesta, se presente
+    ora: int | None = None       # 0..23, fascia oraria applicata, se presente
+    celle: list[FlowCell]        # una riga per luogo disponibile nel grafo
+```
+
+Vincolo di coerenza (`FlowCell`, stesso pattern di `DashboardIndexResponse`): `disponibile=True`
+implica `conteggio_tappe is not None`; `disponibile=False` implica `conteggio_tappe is None`.
+
 ## 8. API (BFF) — contratto sintetico
 
 ```
@@ -254,8 +313,11 @@ POST /memory               (MemoryContribution) -> 201   # richiede consenso
 GET  /memory/{place_id}    -> list[MemoryContribution]   # solo contenuti curati
 POST /booking              (BookingRequest) -> Booking   # commissione registrata a parte,
                                                           # DOPO la scelta (CommissionRecord)
-GET  /dashboard/flows      -> heatmap aggregata
-GET  /dashboard/index      -> UrbanIntelligenceIndex
+GET  /dashboard/flows      -> DashboardFlowsResponse     # query: periodo, giorno?, ora?
+                                                          # heatmap aggregata, gate k=10 per cella
+GET  /dashboard/index      -> DashboardIndexResponse     # query: periodo
+                                                          # wrapper di UrbanIntelligenceIndex,
+                                                          # esplicita "dato insufficiente" (k=10)
 ```
 
 Modelli di richiesta:
@@ -309,3 +371,15 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 - `Booking.prezzo_eur` è uno snapshot al momento della richiesta (non il prezzo corrente
   di `ExperienceNode`): la Booking è un contratto tra persona e partner, non deve
   cambiare se il listino cambia dopo la prenotazione.
+- La soglia di aggregazione k=10 è provata al confine dell'API a OGNI livello di dettaglio
+  esposto (`DashboardIndexResponse` per l'aggregato di periodo, `FlowCell` per luogo, ed è
+  a grana ancora più fine — per combinazione luogo×giorno×ora — quando `DashboardFlowsResponse`
+  è filtrata da `giorno`/`ora`). Nessuno dei due modelli espone un conteggio di popolazione
+  grezzo (`n_persone` o simile), nemmeno opzionale: solo un booleano `disponibile` e il valore
+  (`index`/`conteggio_tappe`), o `None` se la cella è soppressa. Un conteggio di popolazione,
+  anche dietro un valore soppresso, sarebbe già di per sé la violazione di re-identificazione
+  che il gate deve prevenire.
+- `DashboardIndexResponse` e `FlowCell` non ammettono stati intermedi tra "disponibile" e "non
+  disponibile" (vincolo di contratto: `model_validator`, non solo convenzione): `disponibile=True`
+  implica il valore valorizzato e l'eventuale motivo assente; `disponibile=False` implica il
+  contrario.

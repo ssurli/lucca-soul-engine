@@ -160,9 +160,32 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   `services/intelligence-index/README.md` e in `docs/LIMITI.md` (insieme al limite noto di
   `tasso_ritorno`, che non cattura la fedeltà cross-periodo). `ethics-guardian` **PASS** finale
   (un FAIL iniziale sul gate mancante su `contributi_memoria`, corretto e riconfermato).
-  **→ ENDPOINT E DASHBOARD ANCORA DA FARE**: `GET /dashboard/*` (BFF, `api-engineer`) e le viste
-  Comune/hotel/museo (`frontend-engineer`) restano fuori dal perimetro di questo passo — il
-  servizio espone solo `calcola_index` e le sue dipendenze iniettabili, nessun accesso HTTP oggi.
+  **→ ENDPOINT SODDISFATTO** (2026-07-20): `GET /dashboard/index?periodo=YYYY-MM` e
+  `GET /dashboard/flows?periodo=YYYY-MM&giorno=&ora=` (`services/api/api/main.py`), wrapper HTTP
+  puri attorno a due nuove funzioni di `services/intelligence-index/intelligence_index/
+  dashboard.py` (`indice_per_dashboard`, `celle_flusso`). Nuovi contratti congelati
+  (`DashboardIndexResponse`, `FlowCell`, `DashboardFlowsResponse`,
+  `packages/contracts/contracts/models.py`) progettati perché una cella soppressa non possa MAI
+  esporre un conteggio di popolazione, nemmeno opzionale (`FlowCell` non ha e non può avere un
+  campo tipo `n_persone`: garanzia strutturale via `extra="forbid"`, non disciplina di chi la
+  popola). Zero eventi e 1-9 persone in una cella producono lo STESSO stato osservabile
+  (`disponibile=False, conteggio_tappe=None`) — altrimenti un osservatore dedurrebbe per esclusione
+  la popolazione di una cella soppressa. Entrambi gli endpoint rispondono sempre 200 (mai un 500
+  per dato insufficiente: `disponibile: bool` nel body); `periodo` malformato o con mese fuori
+  range risponde 422, non 500. **Bug di privacy reale trovato e corretto durante la verifica**
+  (non solo un gap di test): `motivo_indisponibilita` di `GET /dashboard/index` esponeva
+  inizialmente il conteggio ESATTO di persone sotto soglia (`str(DatiInsufficientiError)` include
+  `n_persone`) — corretto per costruire un messaggio pubblico solo da `contesto`/`soglia` (mai il
+  conteggio reale); il test che lo avrebbe dovuto intercettare cercava solo chiavi JSON tra
+  virgolette, non un numero incorporato in una frase libera — rafforzato di conseguenza. Test
+  avversariale end-to-end dedicato (`tests/test_integration_wave4_privacy.py`, via `TestClient`
+  HTTP reale, non funzioni Python dirette): scenario costruito per fallire (una sola persona, un
+  luogo minore, un giorno/un'ora precisi, non uno storico abbondante), verificato a ogni livello di
+  filtro esposto dall'API (aggregato, per giorno, per giorno+ora) e sul confine esatto k=9 vs
+  k=10. `ethics-guardian` **PASS** finale su tutto il livello endpoint, incluso il fix di privacy
+  riverificato da zero (non sulla parola dell'agente che l'ha corretto).
+  **→ DASHBOARD FRONTEND (Comune/hotel/museo) ANCORA DA FARE**: `frontend-engineer` non ancora
+  coinvolto — resta l'ultimo pezzo della wave.
 
 ## Wave 5 — Replica  *(= Fase 4)*
 - **graph-architect**: nuovo seed di contenuto (Siena / Ferrara). Tecnologia invariata.

@@ -66,6 +66,7 @@ dashboard in una wave successiva)::
 from __future__ import annotations
 
 from .catalogo import CONTESTO_NEUTRO_CATALOGO, esperienze_per_id
+from .dashboard import celle_flusso, indice_per_dashboard
 from .distribuzione import distribuzione_flussi
 from .index import calcola_index
 from .periodo import intervallo_periodo
@@ -85,6 +86,8 @@ from .soglia import (
 
 __all__ = [
     "calcola_index",
+    "indice_per_dashboard",
+    "celle_flusso",
     "intervallo_periodo",
     "distribuzione_flussi",
     "esperienze_per_id",

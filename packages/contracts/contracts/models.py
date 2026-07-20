@@ -12,11 +12,11 @@ aggregabili/anonimi.
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import date, datetime, time
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 __all__ = [
     "EmotionalProfile",
@@ -37,6 +37,9 @@ __all__ = [
     "CommissionRecord",
     "BehaviorEvent",
     "UrbanIntelligenceIndex",
+    "DashboardIndexResponse",
+    "FlowCell",
+    "DashboardFlowsResponse",
     "OnboardingAnswer",
     "OnboardingRequest",
     "AdaptRequest",
@@ -330,6 +333,117 @@ class UrbanIntelligenceIndex(ContractModel):
     attivazione_locale: float = Field(ge=0, le=1)  # quanto il territorio minore viene raggiunto
     distribuzione_flussi: float = Field(ge=0, le=1)  # 1 = distribuiti, 0 = overtourism
     contributi_memoria: int = Field(ge=0)  # crescita della Urban Memory
+
+
+# ---------------------------------------------------------------------------
+# 7bis. Urban Intelligence Index — risposte dashboard (BFF)
+# ---------------------------------------------------------------------------
+
+
+class DashboardIndexResponse(ContractModel):
+    """Wrapper del BFF per `GET /dashboard/index`.
+
+    `intelligence_index.calcola_index` solleva `DatiInsufficientiError` se un
+    qualunque indicatore dell'intero periodo è sotto la soglia di
+    aggregazione k=10 (raro in produzione — una città intera, un mese
+    intero — ma possibile, es. un periodo storico con pochi dati di test).
+    Il BFF non può propagare quell'eccezione grezza né restituire un
+    `UrbanIntelligenceIndex` fabbricato: questo wrapper rende esplicito lo
+    stato "dato insufficiente" come risposta di prima classe.
+
+    Vincolo di coerenza (applicato per costruzione, non solo per
+    disciplina di chi popola il modello — vedi `model_validator` sotto):
+    `disponibile=True` implica `index is not None` e
+    `motivo_indisponibilita is None`; `disponibile=False` implica il
+    contrario (`index is None`, `motivo_indisponibilita` una stringa non
+    vuota, leggibile in italiano). Nessuno stato intermedio.
+    """
+
+    periodo: str
+    disponibile: bool
+    index: UrbanIntelligenceIndex | None = None  # popolato SOLO se disponibile=True
+    # popolato SOLO se disponibile=False, leggibile in italiano
+    motivo_indisponibilita: str | None = None
+
+    @model_validator(mode="after")
+    def _coerenza_disponibilita(self) -> DashboardIndexResponse:
+        if self.disponibile:
+            if self.index is None:
+                raise ValueError(
+                    "DashboardIndexResponse: disponibile=True richiede `index` valorizzato"
+                )
+            if self.motivo_indisponibilita is not None:
+                raise ValueError(
+                    "DashboardIndexResponse: disponibile=True non ammette "
+                    "`motivo_indisponibilita`"
+                )
+        else:
+            if self.index is not None:
+                raise ValueError("DashboardIndexResponse: disponibile=False richiede `index=None`")
+            if not self.motivo_indisponibilita:
+                raise ValueError(
+                    "DashboardIndexResponse: disponibile=False richiede "
+                    "`motivo_indisponibilita` non vuoto"
+                )
+        return self
+
+
+class FlowCell(ContractModel):
+    """Una riga di heatmap per un luogo (`GET /dashboard/flows`).
+
+    Gated INDIPENDENTEMENTE dalle altre celle sulla soglia k=10 dei
+    `person_id` distinti coinvolti in QUESTA cella specifica (stesso
+    principio del gate su `UrbanIntelligenceIndex`, ma a grana più fine —
+    per cella, non per l'intero periodo — usando
+    `intelligence_index.soglia.valore_se_soglia`, che ritorna `None` invece
+    di sollevare: pensato esattamente per questo drill-down).
+
+    Espone SOLO un booleano `disponibile` e il conteggio di tappe (o `None`
+    se la cella è soppressa): MAI un conteggio di popolazione (es.
+    `n_persone`), nemmeno opzionale. Un conteggio di popolazione grezzo —
+    "3 persone in questa cella" — sarebbe già di per sé la violazione di
+    re-identificazione che il gate deve prevenire, indipendentemente dal
+    fatto che il VALORE dell'indicatore (`conteggio_tappe`) venga poi
+    nascosto. Non esiste un campo che possa esporlo: è una garanzia
+    strutturale del contratto, non una disciplina di chi lo popola.
+
+    Stesso vincolo di coerenza di `DashboardIndexResponse`:
+    `disponibile=True` implica `conteggio_tappe is not None`;
+    `disponibile=False` implica `conteggio_tappe is None`.
+    """
+
+    place_id: str
+    disponibile: bool
+    conteggio_tappe: int | None = Field(default=None, ge=0)  # None se soppressa (sotto k=10)
+
+    @model_validator(mode="after")
+    def _coerenza_disponibilita(self) -> FlowCell:
+        if self.disponibile and self.conteggio_tappe is None:
+            raise ValueError("FlowCell: disponibile=True richiede `conteggio_tappe` valorizzato")
+        if not self.disponibile and self.conteggio_tappe is not None:
+            raise ValueError("FlowCell: disponibile=False richiede `conteggio_tappe=None`")
+        return self
+
+
+class DashboardFlowsResponse(ContractModel):
+    """Risposta di `GET /dashboard/flows`.
+
+    Design deliberato: SEMPRE una riga per luogo (`celle`), mai una
+    combinatoria esplosiva luogo×giorno×ora in un solo payload — con 15
+    luoghi × ~30 giorni × 24 ore sarebbero migliaia di righe per una singola
+    chiamata. I filtri opzionali `giorno`/`ora` (applicati lato query,
+    riportati qui per trasparenza sulla richiesta effettivamente servita)
+    restringono la STESSA lista di celle a un giorno/una fascia oraria
+    specifici: è così che l'API espone la granularità luogo×giorno×ora,
+    un filtro alla volta, non un cubo precalcolato. Ogni cella è gated
+    indipendentemente dalle altre (vedi `FlowCell`).
+    """
+
+    periodo: str
+    giorno: date | None = None  # filtro applicato alla richiesta, se presente
+    ora: int | None = Field(default=None, ge=0, le=23)  # fascia oraria applicata, se presente
+    # una riga per luogo disponibile nel grafo (place_id da graph.topology/graph.metrics)
+    celle: list[FlowCell]
 
 
 # ---------------------------------------------------------------------------

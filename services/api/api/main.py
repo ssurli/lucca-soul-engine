@@ -67,6 +67,39 @@ Wave 3b aggiunge il Recommender ML (`docs/DATA_CONTRACTS.md` §6/§8):
   `score_fn=None` (il ranking deterministico `calcola_score`, identico al
   comportamento pre-Wave-3b) — vedi il commento in `create_itinerary`.
 
+Wave 4 aggiunge la dashboard dell'Urban Intelligence Index
+(`docs/DATA_CONTRACTS.md` §7/§8), due soli endpoint `GET`, entrambi wrapper
+PURI attorno agli adattatori già pronti in `intelligence_index.dashboard`
+(`indice_per_dashboard`/`celle_flusso`) — nessuna logica di calcolo nuova
+qui, solo assemblaggio dei parametri iniettati:
+- `GET /dashboard/index?periodo=YYYY-MM` -> `DashboardIndexResponse`.
+- `GET /dashboard/flows?periodo=YYYY-MM&giorno=YYYY-MM-DD&ora=0..23` ->
+  `DashboardFlowsResponse`.
+
+`periodo` è SEMPRE obbligatorio (nessun default nascosto: chi guarda la
+dashboard deve essere esplicito su quale mese); `giorno`/`ora` sono opzionali
+(`ora` vincolato `ge=0, le=23` anche a livello di query, non solo nel
+modello Pydantic — un 422 leggibile PRIMA ancora di costruire il payload).
+Entrambi rispondono SEMPRE 200: "dato insufficiente per privacy" (soglia
+k=10, `intelligence_index.soglia`) è uno stato legittimo della risposta
+(`disponibile: bool`), mai un errore HTTP — coerente con la spiegabilità
+obbligatoria (CLAUDE.md), il client distingue "nessun dato" da "errore"
+solo leggendo il campo, mai leggendo lo status code.
+
+Le fonti (`intelligence_index.deps.get_metrics_source`/`get_event_source`
+per il grafo/gli eventi, `api.deps.get_candidate_source`/
+`get_memory_repository` — GLI STESSI già usati da `/itinerary`/`/memory`,
+non una seconda selezione) sono chiamate DIRETTAMENTE nel corpo di questi
+due endpoint, mai tramite `Depends` nella firma — stesso motivo di
+`get_candidate_source()` in `create_itinerary`: sono selettori di sorgente,
+non il contenuto della richiesta. Un fallimento INFRASTRUTTURALE di lettura
+(`intelligence_index.IndexStorageError` da Postgres/Neon,
+`urban_memory.MemoryStorageError` da Urban Memory) è mappato a 503 da
+`index_storage_error_handler`/`memory_storage_error_handler`, mai a un 500
+opaco. `DatiInsufficientiError` (soglia k=10 sull'intero periodo) non arriva
+mai fin qui: `indice_per_dashboard` la cattura già internamente e la
+traduce in `disponibile=False`.
+
 `/health` non richiede alcun database attivo. Gli errori di validazione dei
 payload sono lasciati alla gestione 422 di default di FastAPI/Pydantic.
 Nessun PII: `person_id`/`contributor_id` sono pseudonimi e non compaiono mai
@@ -76,7 +109,7 @@ nei log applicativi; il contenuto di un `MemoryContribution` (`testo`,
 
 from __future__ import annotations
 
-from datetime import time
+from datetime import date, time
 from typing import Annotated
 
 import contracts
@@ -87,6 +120,8 @@ from contracts import (
     BehaviorEvent,
     Booking,
     BookingRequest,
+    DashboardFlowsResponse,
+    DashboardIndexResponse,
     EmotionalProfile,
     Itinerary,
     MemoryContribution,
@@ -95,8 +130,13 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine.engine import adapt_itinerary, compose_itinerary
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
+from intelligence_index import IndexStorageError
+from intelligence_index.catalogo import esperienze_per_id as indice_esperienze_per_id
+from intelligence_index.dashboard import celle_flusso, indice_per_dashboard
+from intelligence_index.deps import get_event_source, get_metrics_source
+from intelligence_index.periodo import intervallo_periodo
 from pydantic import BaseModel
 from rag.onboarding import profile_from_answers
 from rag.reasons import adapt_reason, compose_reason
@@ -233,6 +273,34 @@ def event_storage_error_handler(
     return JSONResponse(
         status_code=503,
         content={"detail": "eventi temporaneamente non disponibili: riprova più tardi"},
+    )
+
+
+@app.exception_handler(IndexStorageError)
+def index_storage_error_handler(request: Request, exc: IndexStorageError) -> JSONResponse:
+    """Mappa un fallimento INFRASTRUTTURALE di lettura dell'Urban Intelligence
+    Index (`intelligence_index.IndexStorageError` — lettura di `behavior_event`
+    da Postgres/Neon irraggiungibile o query fallita, sollevata da
+    `PostgresBehaviorEventSource.events_in_period`) a un **503 Service
+    Unavailable**, MAI a un 500 opaco: stesso stile di
+    `memory_storage_error_handler`/`marketplace_storage_error_handler`/
+    `event_storage_error_handler`.
+
+    Copre `GET /dashboard/index` e `GET /dashboard/flows`: entrambi leggono
+    `get_event_source().events_in_period(...)` direttamente nel corpo
+    dell'endpoint (non tramite `Depends`), quindi un suo fallimento propaga
+    fino a qui, dove viene mappato invece di risalire grezzo. NON è
+    `intelligence_index.DatiInsufficientiError` (quello è un vincolo di
+    dominio/privacy — sotto la soglia k=10 — già catturato internamente da
+    `intelligence_index.dashboard.indice_per_dashboard`, non arriva mai fin
+    qui). Il corpo della risposta è un messaggio italiano generico e fisso:
+    NON include mai `str(exc)` né altro dettaglio interno (DSN, host,
+    credenziali, stack del driver)."""
+    return JSONResponse(
+        status_code=503,
+        content={
+            "detail": "indicatori temporaneamente non disponibili: riprova più tardi"
+        },
     )
 
 
@@ -487,6 +555,119 @@ def submit_behavior_event(
     altrove in questo endpoint — stesso principio di `person_id`/
     `contributor_id` negli altri endpoint di questo BFF."""
     repo.record(event)
+
+
+@app.get("/dashboard/index", response_model=DashboardIndexResponse)
+def dashboard_index(
+    periodo: Annotated[str, Query(pattern=r"^\d{4}-\d{2}$")],
+) -> DashboardIndexResponse:
+    """Aggregato di periodo dell'Urban Intelligence Index (contratto §7,
+    `docs/DATA_CONTRACTS.md`; Wave 4). Wrapper PURO attorno a
+    `intelligence_index.dashboard.indice_per_dashboard`: nessuna logica di
+    calcolo qui, solo assemblaggio dei parametri iniettati (STESSO pattern
+    di `scripts/verifica_index.py`).
+
+    Fonti (tutte lette direttamente, mai tramite `Depends`, stesso motivo di
+    `get_candidate_source()` in `create_itinerary`):
+    - `esperienze_per_id(get_candidate_source())` — catalogo, seed o Neo4j.
+    - `get_metrics_source().grado_semantico()` /
+      `.non_connected_place_pairs(at=inizio)` — grafo, seed o Neo4j.
+    - `get_event_source().events_in_period(inizio, fine)` — eventi
+      comportamentali, in-memory o Postgres.
+    - `get_memory_repository().list_pending() + .list_curated()` — TUTTI i
+      contributi Urban Memory del periodo, non solo i curati (decisione già
+      presa e documentata in `services/intelligence-index/README.md`).
+
+    `itinerari_periodo=[]` sempre esplicito: nessuna persistenza reale di
+    itinerari oggi (buco nei dati dichiarato, `docs/LIMITI.md`), mai un
+    default silenzioso diverso da lista vuota.
+
+    `periodo` è vincolato `pattern=r"^\d{4}-\d{2}$"` a livello di query
+    (stesso principio di `ora: Query(ge=0, le=23)` su `dashboard_flows`
+    sotto): una stringa malformata (es. `"abc"`, `"2026"`) è rifiutata con
+    422 dalla validazione di FastAPI/Pydantic PRIMA di raggiungere
+    `intervallo_periodo`. Il pattern valida solo la FORMA, non il range del
+    mese: un `periodo` sintatticamente valido ma semanticamente assurdo
+    (es. `"2026-13"`) fa sollevare `ValueError` a `intervallo_periodo`,
+    catturato qui sotto e rilanciato come `HTTPException(422)` — stesso
+    esito del client (422), motivo diverso (validazione a monte vs. a
+    valle), mai un 500 opaco.
+
+    Risponde SEMPRE 200 (a valle della validazione di `periodo`):
+    `indice_per_dashboard` cattura già `DatiInsufficientiError`
+    internamente e la traduce in `disponibile=False`, non la lascia mai
+    propagare fin qui. Un fallimento INFRASTRUTTURALE
+    (`IndexStorageError`/`MemoryStorageError`) risponde 503 (vedi
+    `index_storage_error_handler`/`memory_storage_error_handler`), mai un
+    500 opaco."""
+    fonte_metriche = get_metrics_source()
+    catalogo = indice_esperienze_per_id(get_candidate_source())
+    grado = fonte_metriche.grado_semantico()
+    try:
+        inizio, fine = intervallo_periodo(periodo)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    non_connesse, _denominatore = fonte_metriche.non_connected_place_pairs(at=inizio)
+    eventi = get_event_source().events_in_period(inizio, fine)
+    repo_memoria = get_memory_repository()
+    memorie = repo_memoria.list_pending() + repo_memoria.list_curated()
+    return indice_per_dashboard(
+        periodo=periodo,
+        eventi=eventi,
+        esperienze_per_id=catalogo,
+        grado_semantico=grado,
+        n_luoghi_disponibili=len(grado),
+        non_connesse_a_inizio_periodo=non_connesse,
+        itinerari_periodo=[],
+        memorie=memorie,
+    )
+
+
+@app.get("/dashboard/flows", response_model=DashboardFlowsResponse)
+def dashboard_flows(
+    periodo: Annotated[str, Query(pattern=r"^\d{4}-\d{2}$")],
+    giorno: Annotated[date | None, Query()] = None,
+    ora: Annotated[int | None, Query(ge=0, le=23)] = None,
+) -> DashboardFlowsResponse:
+    """Heatmap dei flussi per luogo (contratto §7, `docs/DATA_CONTRACTS.md`;
+    Wave 4). Wrapper PURO attorno a `intelligence_index.dashboard.
+    celle_flusso`: nessuna logica di calcolo qui, solo assemblaggio dei
+    parametri iniettati — STESSE fonti di `dashboard_index` sopra, tranne
+    `non_connected_place_pairs`/Urban Memory (non servono a `celle_flusso`).
+
+    `ora` è vincolato `ge=0, le=23` anche qui a livello di query (oltre che
+    nel modello Pydantic sottostante): un valore fuori range produce un 422
+    leggibile prima ancora di costruire il payload. `periodo` è vincolato
+    `pattern=r"^\d{4}-\d{2}$"` sullo STESSO principio (vedi `dashboard_index`
+    sopra per il dettaglio validazione a monte/a valle): forma malformata ->
+    422 dal `Query`, mese fuori range (es. `"2026-13"`) -> `ValueError` di
+    `intervallo_periodo` catturato qui sotto e rilanciato come
+    `HTTPException(422)`.
+
+    Una `FlowCell` per OGNI luogo del grafo (`grado_semantico`), gated
+    indipendentemente a k=10 sui `person_id` distinti di ciascuna cella —
+    zero tappe e 1-9 persone producono lo STESSO stato osservabile
+    (`disponibile=False`), mai distinguibili dall'esterno (vedi
+    `intelligence_index.dashboard.celle_flusso`). Risponde SEMPRE 200 (a
+    valle della validazione di `periodo`): non esiste, per questo endpoint,
+    alcuno stato "dato insufficiente" a livello di intera risposta (solo per
+    singola cella, già rappresentato nel contratto)."""
+    fonte_metriche = get_metrics_source()
+    catalogo = indice_esperienze_per_id(get_candidate_source())
+    grado = fonte_metriche.grado_semantico()
+    try:
+        inizio, fine = intervallo_periodo(periodo)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    eventi = get_event_source().events_in_period(inizio, fine)
+    return celle_flusso(
+        periodo=periodo,
+        eventi_periodo=eventi,
+        esperienze_per_id=catalogo,
+        grado_semantico=grado,
+        giorno=giorno,
+        ora=ora,
+    )
 
 
 def _profilo_neutro_per_candidati() -> EmotionalProfile:

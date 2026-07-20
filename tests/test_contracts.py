@@ -11,15 +11,18 @@ white paper) — segnalalo a `contract-keeper`.
 
 from __future__ import annotations
 
-from datetime import datetime, time
+from datetime import date, datetime, time
 
 import contracts
 import pytest
 from contracts import (
     BehaviorEvent,
+    DashboardFlowsResponse,
+    DashboardIndexResponse,
     EmotionalProfile,
     ExperienceCandidate,
     ExperienceNode,
+    FlowCell,
     Itinerary,
     ItineraryStop,
     MemoryContribution,
@@ -32,7 +35,7 @@ from contracts import (
 from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
-# 1. I 12 tipi canonici sono importabili da `contracts`
+# 1. I 15 tipi canonici sono importabili da `contracts`
 # ---------------------------------------------------------------------------
 
 CANONICAL_TYPES = [
@@ -48,11 +51,14 @@ CANONICAL_TYPES = [
     "MemoryContribution",
     "BehaviorEvent",
     "UrbanIntelligenceIndex",
+    "DashboardIndexResponse",
+    "FlowCell",
+    "DashboardFlowsResponse",
 ]
 
 
-def test_dodici_tipi_canonici_importabili() -> None:
-    assert len(CANONICAL_TYPES) == 12
+def test_quindici_tipi_canonici_importabili() -> None:
+    assert len(CANONICAL_TYPES) == 15
     for name in CANONICAL_TYPES:
         assert hasattr(contracts, name), f"{name} non importabile da `contracts`"
 
@@ -185,6 +191,36 @@ def make_index(**overrides: object) -> UrbanIntelligenceIndex:
     return UrbanIntelligenceIndex(**base)  # type: ignore[arg-type]
 
 
+def make_dashboard_index_response(**overrides: object) -> DashboardIndexResponse:
+    base: dict[str, object] = dict(
+        periodo="2026-07",
+        disponibile=True,
+        index=make_index(),
+        motivo_indisponibilita=None,
+    )
+    base.update(overrides)
+    return DashboardIndexResponse(**base)  # type: ignore[arg-type]
+
+
+def make_flow_cell(**overrides: object) -> FlowCell:
+    base: dict[str, object] = dict(
+        place_id="piazza-anfiteatro",
+        disponibile=True,
+        conteggio_tappe=42,
+    )
+    base.update(overrides)
+    return FlowCell(**base)  # type: ignore[arg-type]
+
+
+def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse:
+    base: dict[str, object] = dict(
+        periodo="2026-07",
+        celle=[make_flow_cell()],
+    )
+    base.update(overrides)
+    return DashboardFlowsResponse(**base)  # type: ignore[arg-type]
+
+
 # ---------------------------------------------------------------------------
 # 2. Campi canonici presenti (model_fields) per ogni modello
 # ---------------------------------------------------------------------------
@@ -275,6 +311,18 @@ def make_index(**overrides: object) -> UrbanIntelligenceIndex:
                 "distribuzione_flussi",
                 "contributi_memoria",
             },
+        ),
+        (
+            DashboardIndexResponse,
+            {"periodo", "disponibile", "index", "motivo_indisponibilita"},
+        ),
+        (
+            FlowCell,
+            {"place_id", "disponibile", "conteggio_tappe"},
+        ),
+        (
+            DashboardFlowsResponse,
+            {"periodo", "giorno", "ora", "celle"},
         ),
     ],
 )
@@ -558,3 +606,139 @@ def test_nessun_campo_pii_esplicito(model_name: str) -> None:
     campi = set(model.model_fields.keys())
     trovati = campi & VIETATI
     assert not trovati, f"{model_name} espone campi PII: {trovati}"
+
+
+# ---------------------------------------------------------------------------
+# 10. Dashboard: soppressione k=10 provata al confine dell'API
+#     (DashboardIndexResponse, FlowCell, DashboardFlowsResponse)
+# ---------------------------------------------------------------------------
+
+
+def test_dashboard_index_response_disponibile_richiede_index() -> None:
+    with pytest.raises(ValidationError):
+        make_dashboard_index_response(disponibile=True, index=None)
+
+
+def test_dashboard_index_response_disponibile_rifiuta_motivo() -> None:
+    with pytest.raises(ValidationError):
+        make_dashboard_index_response(
+            disponibile=True, motivo_indisponibilita="dato insufficiente"
+        )
+
+
+def test_dashboard_index_response_non_disponibile_richiede_index_none() -> None:
+    with pytest.raises(ValidationError):
+        make_dashboard_index_response(
+            disponibile=False, index=make_index(), motivo_indisponibilita="dato insufficiente"
+        )
+
+
+def test_dashboard_index_response_non_disponibile_richiede_motivo() -> None:
+    with pytest.raises(ValidationError):
+        make_dashboard_index_response(disponibile=False, index=None, motivo_indisponibilita=None)
+
+
+def test_dashboard_index_response_disponibile_true_valido() -> None:
+    risposta = make_dashboard_index_response()
+    assert risposta.disponibile is True
+    assert risposta.index is not None
+    assert risposta.motivo_indisponibilita is None
+
+
+def test_dashboard_index_response_disponibile_false_valido() -> None:
+    risposta = make_dashboard_index_response(
+        disponibile=False,
+        index=None,
+        motivo_indisponibilita="popolazione sotto la soglia minima di aggregazione (k=10)",
+    )
+    assert risposta.disponibile is False
+    assert risposta.index is None
+    assert risposta.motivo_indisponibilita is not None
+
+
+def test_flow_cell_disponibile_richiede_conteggio_tappe() -> None:
+    with pytest.raises(ValidationError):
+        make_flow_cell(disponibile=True, conteggio_tappe=None)
+
+
+def test_flow_cell_non_disponibile_richiede_conteggio_tappe_none() -> None:
+    with pytest.raises(ValidationError):
+        make_flow_cell(disponibile=False, conteggio_tappe=42)
+
+
+def test_flow_cell_soppressa_valida() -> None:
+    cella = make_flow_cell(disponibile=False, conteggio_tappe=None)
+    assert cella.disponibile is False
+    assert cella.conteggio_tappe is None
+
+
+def test_flow_cell_disponibile_valida() -> None:
+    cella = make_flow_cell()
+    assert cella.disponibile is True
+    assert cella.conteggio_tappe == 42
+
+
+def test_flow_cell_non_espone_mai_conteggio_di_popolazione() -> None:
+    # Nessun campo tipo `n_persone`/`persone_coinvolte` deve poter esistere,
+    # nemmeno opzionale: la garanzia è strutturale (extra="forbid"), non una
+    # disciplina di chi popola il modello. Anche a cella soppressa, un
+    # conteggio di popolazione grezzo sarebbe già la violazione di
+    # re-identificazione che il gate deve prevenire.
+    campi_vietati = {"n_persone", "persone_coinvolte", "person_ids", "contributor_ids"}
+    assert campi_vietati.isdisjoint(set(FlowCell.model_fields.keys()))
+    with pytest.raises(ValidationError):
+        FlowCell(place_id="p", disponibile=False, conteggio_tappe=None, n_persone=3)
+
+
+def test_dashboard_flows_response_filtri_giorno_ora_opzionali() -> None:
+    risposta = make_dashboard_flows_response()
+    assert risposta.giorno is None
+    assert risposta.ora is None
+
+
+def test_dashboard_flows_response_accetta_filtro_giorno_e_ora() -> None:
+    risposta = make_dashboard_flows_response(giorno=date(2026, 7, 20), ora=15)
+    assert risposta.giorno == date(2026, 7, 20)
+    assert risposta.ora == 15
+
+
+def test_dashboard_flows_response_ora_rifiuta_fuori_range() -> None:
+    with pytest.raises(ValidationError):
+        make_dashboard_flows_response(ora=24)
+    with pytest.raises(ValidationError):
+        make_dashboard_flows_response(ora=-1)
+
+
+def test_dashboard_flows_response_celle_e_una_riga_per_luogo() -> None:
+    risposta = make_dashboard_flows_response(
+        celle=[
+            make_flow_cell(place_id="piazza-anfiteatro"),
+            make_flow_cell(place_id="mura-urbane", disponibile=False, conteggio_tappe=None),
+        ]
+    )
+    assert [c.place_id for c in risposta.celle] == ["piazza-anfiteatro", "mura-urbane"]
+
+
+def test_extra_forbid_su_dashboard_index_response() -> None:
+    with pytest.raises(ValidationError):
+        DashboardIndexResponse(
+            periodo="2026-07",
+            disponibile=True,
+            index=make_index(),
+            motivo_indisponibilita=None,
+            n_persone_totale=100,  # extra non canonico: fuga di dato grezzo
+        )
+
+
+def test_round_trip_json_dashboard_index_response() -> None:
+    original = make_dashboard_index_response()
+    dumped = original.model_dump_json()
+    restored = DashboardIndexResponse.model_validate_json(dumped)
+    assert restored == original
+
+
+def test_round_trip_json_dashboard_flows_response() -> None:
+    original = make_dashboard_flows_response(giorno=date(2026, 7, 20), ora=10)
+    dumped = original.model_dump_json()
+    restored = DashboardFlowsResponse.model_validate_json(dumped)
+    assert restored == original

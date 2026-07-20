@@ -16,27 +16,51 @@ dependencies = [
 
 # NOTA — pacchetti locali (packages/contracts, services/graph, services/rag,
 # services/experience-engine, services/urban-memory, services/marketplace,
-# services/recommender): sono la single source of truth per gli schemi
-# (docs/DATA_CONTRACTS.md), per la CandidateSource del grafo, per
-# l'onboarding conversazionale e per la composizione dei `reason`, per l'AI
-# Experience Engine che decide le tappe, per i vincoli non negoziabili della
-# Urban Memory (Wave 2: consenso, licenza, pseudonimo, curatela —
-# `lucca-urban-memory`), per il Marketplace (Wave 3a, `lucca-marketplace`:
-# prenotazioni, stato iniziale RICHIESTA, commissione calcolata SOLO dopo la
-# conferma — non esposta da questo BFF in questa wave) e per il Recommender
-# ML (Wave 3b, `lucca-recommender`: `score_fn` che rerankano i candidati
-# vincolando la pertinenza alla distribuzione dei flussi — mai esposto come
-# endpoint proprio, solo cablato dentro `POST /itinerary`). NON vanno
-# aggiunti qui come dipendenze pip (non sono pubblicati su un indice). Vanno
-# installati a parte, in editable mode, insieme a questo pacchetto:
+# services/recommender, services/intelligence-index): sono la single source
+# of truth per gli schemi (docs/DATA_CONTRACTS.md), per la CandidateSource
+# del grafo, per l'onboarding conversazionale e per la composizione dei
+# `reason`, per l'AI Experience Engine che decide le tappe, per i vincoli non
+# negoziabili della Urban Memory (Wave 2: consenso, licenza, pseudonimo,
+# curatela — `lucca-urban-memory`), per il Marketplace (Wave 3a,
+# `lucca-marketplace`: prenotazioni, stato iniziale RICHIESTA, commissione
+# calcolata SOLO dopo la conferma — non esposta da questo BFF in questa
+# wave), per il Recommender ML (Wave 3b, `lucca-recommender`: `score_fn` che
+# rerankano i candidati vincolando la pertinenza alla distribuzione dei
+# flussi — mai esposto come endpoint proprio, solo cablato dentro
+# `POST /itinerary`) e per l'Urban Intelligence Index (Wave 4,
+# `lucca-intelligence-index`: gli 8 indicatori aggregati k=10-anonimi dietro
+# `GET /dashboard/index`/`GET /dashboard/flows` — vedi
+# `services/intelligence-index/README.md`, sezione "Adattatori dashboard").
+# NON vanno aggiunti qui come dipendenze pip (non sono pubblicati su un
+# indice). Vanno installati a parte, in editable mode, insieme a questo
+# pacchetto:
 #
 #   pip install -e packages/contracts -e services/graph -e services/rag \
 #               -e services/experience-engine -e services/urban-memory \
-#               -e services/marketplace -e services/recommender -e services/api
+#               -e services/marketplace -e services/recommender \
+#               -e services/intelligence-index -e services/api
 #
 # Il codice di `api` importa da `contracts`, `graph`, `rag`,
-# `experience_engine`, `urban_memory`, `marketplace` e `recommender`
-# assumendo che siano già installati nell'ambiente attivo.
+# `experience_engine`, `urban_memory`, `marketplace`, `recommender` e
+# `intelligence_index` assumendo che siano già installati nell'ambiente
+# attivo.
+#
+# NOTA — lettura dell'Urban Intelligence Index (Wave 4): stesso schema delle
+# note sopra, con `lucca-intelligence-index` (`services/intelligence-index/
+# pyproject.toml`) che espone `intelligence_index.dashboard.
+# indice_per_dashboard`/`celle_flusso` (adattatori PURI verso
+# `DashboardIndexResponse`/`DashboardFlowsResponse`) e
+# `intelligence_index.deps.get_metrics_source`/`get_event_source` (selezione
+# Seed/Neo4j e In-Memory/Postgres dal `.env`, STESSO pattern di `api.deps`,
+# duplicato in quel servizio per lo stesso motivo). `GET /dashboard/index` e
+# `GET /dashboard/flows` (`api.main`) riusano `api.deps.get_candidate_source`/
+# `get_memory_repository` — GLI STESSI già cablati per `/itinerary`/`/memory`
+# — non una seconda selezione. Un fallimento di lettura
+# (`intelligence_index.IndexStorageError`) è mappato da
+# `api.main.index_storage_error_handler` a un 503, mai a un 500 opaco;
+# `DatiInsufficientiError` (soglia k=10 sull'intero periodo) non arriva mai
+# al BFF — è catturata internamente da `indice_per_dashboard` e tradotta in
+# `disponibile=False`.
 #
 # NOTA — persistenza della Urban Memory (Wave 2): il driver Postgres
 # (`psycopg[binary]`) NON è una dipendenza di `services/api`. Lo porta

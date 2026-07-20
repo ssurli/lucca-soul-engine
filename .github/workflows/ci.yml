@@ -29,5 +29,5 @@ jobs:
       - name: Test (pytest)
         run: pytest
 
-      - name: Test services (graph, experience-engine, urban-memory, marketplace, recommender, intelligence-index)
-        run: pytest services/graph/tests services/experience-engine/tests services/urban-memory/tests services/marketplace/tests services/recommender/tests services/intelligence-index/tests
+      - name: Test services (graph, experience-engine, urban-memory, marketplace, recommender, intelligence-index, api)
+        run: pytest services/graph/tests services/experience-engine/tests services/urban-memory/tests services/marketplace/tests services/recommender/tests services/intelligence-index/tests services/api/tests
