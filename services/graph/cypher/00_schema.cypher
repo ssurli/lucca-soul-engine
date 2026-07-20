@@ -5,7 +5,12 @@
 // Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li
 // richiede esplicitamente):
 //   (:Artista)-[:LEGATO_A]->(:Luogo)
-//   (:Luogo)-[:VICINO {metri}]->(:Luogo)              -- non orientata nel dominio
+//   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;
+//     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale
+//     ('sempre esistiti', non una data vera — vedi graph/seed_lucca.py), un vero
+//     datetime.now(UTC) per ogni arco scritto dopo il seed. Serve a congelare uno
+//     snapshot di connettività a un istante T (graph/topology.py,
+//     cypher/12_non_connected_pairs.cypher) per l'indicatore nuovi_percorsi.
 //   (:Bottega)-[:OFFRE]->(:Esperienza)
 //   (:Esperienza)-[:SI_SVOLGE_A]->(:Luogo)
 //   (:Esperienza)-[:EVOCA]->(:Tema)

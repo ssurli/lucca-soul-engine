@@ -339,118 +339,118 @@ SET p.nome = 'Antica Stamperia Lucchese — abbonamento presenza', p.abbonamento
 // --- Relazioni: VICINO (Luogo -> Luogo) --------------------------------
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'baluardo-san-paolino'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 50;
+SET r.metri = 50, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'orto-botanico'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 100;
+SET r.metri = 100, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'piazza-napoleone'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 400;
+SET r.metri = 400, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 450;
+SET r.metri = 450, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'palazzo-pfanner'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 350;
+SET r.metri = 350, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'san-frediano'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 400;
+SET r.metri = 400, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'torre-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 600;
+SET r.metri = 600, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'casa-puccini'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 550;
+SET r.metri = 550, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'torre-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 300;
+SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'san-frediano'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 250;
+SET r.metri = 250, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'via-fillungo'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 150;
+SET r.metri = 150, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 500;
+SET r.metri = 500, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'piazza-anfiteatro'}), (b:Luogo {id: 'san-michele-in-foro'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 350;
+SET r.metri = 350, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'torre-delle-ore'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 100;
+SET r.metri = 100, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'san-michele-in-foro'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 200;
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'casa-puccini'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 200;
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'torre-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 250;
+SET r.metri = 250, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'via-fillungo'}), (b:Luogo {id: 'piazza-napoleone'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 300;
+SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'san-michele-in-foro'}), (b:Luogo {id: 'duomo-san-martino'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 300;
+SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'san-michele-in-foro'}), (b:Luogo {id: 'piazza-napoleone'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 250;
+SET r.metri = 250, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'san-michele-in-foro'}), (b:Luogo {id: 'torre-delle-ore'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 200;
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'san-michele-in-foro'}), (b:Luogo {id: 'teatro-del-giglio'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 350;
+SET r.metri = 350, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'duomo-san-martino'}), (b:Luogo {id: 'casa-puccini'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 200;
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'duomo-san-martino'}), (b:Luogo {id: 'torre-delle-ore'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 350;
+SET r.metri = 350, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'duomo-san-martino'}), (b:Luogo {id: 'piazza-napoleone'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 450;
+SET r.metri = 450, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'duomo-san-martino'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 600;
+SET r.metri = 600, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'casa-puccini'}), (b:Luogo {id: 'teatro-del-giglio'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 400;
+SET r.metri = 400, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'teatro-del-giglio'}), (b:Luogo {id: 'piazza-napoleone'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 100;
+SET r.metri = 100, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'teatro-del-giglio'}), (b:Luogo {id: 'torre-delle-ore'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 300;
+SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'piazza-napoleone'}), (b:Luogo {id: 'torre-delle-ore'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 250;
+SET r.metri = 250, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'torre-delle-ore'}), (b:Luogo {id: 'torre-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 300;
+SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'torre-guinigi'}), (b:Luogo {id: 'palazzo-pfanner'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 400;
+SET r.metri = 400, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'palazzo-pfanner'}), (b:Luogo {id: 'san-frediano'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 150;
+SET r.metri = 150, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'palazzo-pfanner'}), (b:Luogo {id: 'baluardo-san-paolino'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 300;
+SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'san-frediano'}), (b:Luogo {id: 'baluardo-san-paolino'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 350;
+SET r.metri = 350, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'san-frediano'}), (b:Luogo {id: 'orto-botanico'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 500;
+SET r.metri = 500, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'baluardo-san-paolino'}), (b:Luogo {id: 'orto-botanico'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 400;
+SET r.metri = 400, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'orto-botanico'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
 MERGE (a)-[r:VICINO]->(b)
-SET r.metri = 700;
+SET r.metri = 700, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 
 // --- Relazioni: LEGATO_A (Artista -> Luogo) ----------------------------
 MATCH (a:Artista {id: 'artista-puccini'}), (l:Luogo {id: 'casa-puccini'})

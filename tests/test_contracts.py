@@ -176,7 +176,7 @@ def make_index(**overrides: object) -> UrbanIntelligenceIndex:
         coinvolgimento=0.6,
         soddisfazione=4.2,
         tasso_ritorno=0.3,
-        nuovi_percorsi=5,
+        nuovi_percorsi=0.3,
         attivazione_locale=0.4,
         distribuzione_flussi=0.7,
         contributi_memoria=12,
@@ -319,7 +319,13 @@ def test_index_distribuzione_flussi_rifiuta_fuori_range(bad_value: float) -> Non
 @pytest.mark.parametrize("bad_value", [1.5, -0.1])
 @pytest.mark.parametrize(
     "field",
-    ["coinvolgimento", "tasso_ritorno", "attivazione_locale", "distribuzione_flussi"],
+    [
+        "coinvolgimento",
+        "tasso_ritorno",
+        "attivazione_locale",
+        "distribuzione_flussi",
+        "nuovi_percorsi",
+    ],
 )
 def test_index_campi_0_1_rifiutano_fuori_range(field: str, bad_value: float) -> None:
     with pytest.raises(ValidationError):
@@ -334,6 +340,13 @@ def test_soddisfazione_accetta_5() -> None:
 def test_soddisfazione_rifiuta_5_1() -> None:
     with pytest.raises(ValidationError):
         make_index(soddisfazione=5.1)
+
+
+def test_soddisfazione_accetta_none() -> None:
+    # Nessuna fonte dati reale oggi (niente recensioni/survey in prodotto):
+    # None è un valore legittimo e atteso, non un'eccezione da gestire altrove.
+    idx = make_index(soddisfazione=None)
+    assert idx.soddisfazione is None
 
 
 # ---------------------------------------------------------------------------

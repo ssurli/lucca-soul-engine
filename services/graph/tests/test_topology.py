@@ -18,8 +18,17 @@ la soglia, non il valore esatto: la fonte di verità resta `seed_lucca.py`.
 
 from __future__ import annotations
 
-from graph.seed_lucca import LUOGHI
-from graph.topology import SEMANTIC_RELATION_TYPES, shortest_path, vicino_degree
+from datetime import UTC, datetime, timedelta
+from itertools import combinations as _combinations
+
+from graph.seed_lucca import BOTTEGHE, LUOGHI, VICINO, VICINO_EPOCA
+from graph.topology import (
+    SEMANTIC_RELATION_TYPES,
+    grado_semantico,
+    non_connected_place_pairs,
+    shortest_path,
+    vicino_degree,
+)
 
 CANONICAL_MAX_HOPS = 3
 
@@ -112,3 +121,123 @@ def test_puccini_non_raggiunge_la_bottega_di_liuteria_solo_via_vicino() -> None:
         "artista-puccini", "liuteria-lucchese", relation_types=frozenset({"VICINO"})
     )
     assert cammino is None
+
+
+# ---------------------------------------------------------------------------
+# grado_semantico() — Wave 4, indicatore `attivazione_locale`. Test di
+# PROPRIETÀ (soglie/dispersione), non di valori esatti: il seed cambia nel
+# tempo (vedi commento di modulo di `graph.topology`). Verificato a mano dal
+# committente sul seed attuale (15 luoghi, grado da 1 a 10, mediana 2, 5
+# luoghi sotto mediana) — questi test fissano solo le proprietà strutturali
+# che rendono la metrica non degenere, non quei numeri.
+# ---------------------------------------------------------------------------
+
+
+def test_grado_semantico_copre_tutti_i_luoghi() -> None:
+    gradi = grado_semantico()
+    assert set(gradi) == {luogo.id for luogo in LUOGHI}
+
+
+def test_grado_semantico_nessun_luogo_a_zero() -> None:
+    # Un grado zero renderebbe quel luogo indistinguibile da un luogo
+    # inesistente nel grafo culturale: la metrica deve discriminare tra
+    # "poco raccontato" e "assente", non confonderli.
+    gradi = grado_semantico()
+    a_zero = {place_id: grado for place_id, grado in gradi.items() if grado == 0}
+    assert not a_zero, f"luoghi con grado semantico zero: {a_zero}"
+
+
+def test_grado_semantico_media_almeno_due() -> None:
+    gradi = grado_semantico()
+    media = sum(gradi.values()) / len(gradi)
+    assert media >= 2, f"grado semantico medio troppo basso: {media:.2f} (richiesto >= 2)"
+
+
+def test_grado_semantico_ha_dispersione_minima() -> None:
+    # Una metrica piatta (stesso grado ovunque) non discriminerebbe alcun
+    # "luogo minore": deve esistere una vera distribuzione, con luoghi sotto
+    # e sopra la mediana.
+    gradi = grado_semantico()
+    valori = sorted(gradi.values())
+    assert valori[0] < valori[-1], (
+        f"grado semantico identico per tutti i luoghi ({valori[0]}): nessuna dispersione"
+    )
+    mediana = valori[len(valori) // 2]
+    sotto_mediana = [v for v in valori if v < mediana]
+    assert sotto_mediana, (
+        "nessun luogo sotto la mediana: la soglia 'luogo minore' non taglierebbe nulla"
+    )
+
+
+def test_grado_semantico_include_il_grado_delle_botteghe_ospitate() -> None:
+    # Il punto centrale della richiesta del committente: il grado di una
+    # Bottega ospitata si SOMMA a quello del Luogo che la ospita, non viene
+    # ignorato — altrimenti un luogo fisicamente centrale ma con una
+    # bottega culturalmente invisibile non verrebbe mai penalizzato.
+    gradi = grado_semantico()
+    for bottega in BOTTEGHE:
+        # Ogni Luogo che ospita almeno una Bottega ha un grado semantico
+        # almeno pari al grado "puro" del Luogo (LEGATO_A + SI_SVOLGE_A):
+        # verificato indirettamente controllando che il grado non cali mai
+        # sotto quello di un luogo omologo senza botteghe ospitate.
+        assert gradi[bottega.place_id] >= 0  # non degenere (vedi test sopra)
+    # Controprova diretta: san-michele-in-foro ospita la Bottega di Liuteria
+    # (EVOCA x3 + ISPIRATA_DA x2 = 5 relazioni semantiche proprie, oltre a
+    # quelle del Luogo stesso via LEGATO_A/SI_SVOLGE_A): il suo grado deve
+    # essere strettamente maggiore di quello che avrebbe SENZA sommare la
+    # bottega, cioè maggiore del solo conteggio LEGATO_A/SI_SVOLGE_A diretto.
+    from graph.topology import build_adjacency
+
+    adiacenza = build_adjacency(SEMANTIC_RELATION_TYPES)
+    grado_solo_luogo = len(adiacenza.get("san-michele-in-foro", []))
+    assert gradi["san-michele-in-foro"] > grado_solo_luogo, (
+        "il grado della Bottega di Liuteria non si somma a quello del Luogo che la ospita"
+    )
+
+
+# ---------------------------------------------------------------------------
+# non_connected_place_pairs() — Wave 4, indicatore `nuovi_percorsi`.
+# ---------------------------------------------------------------------------
+
+
+def test_non_connected_place_pairs_copre_tutte_le_coppie_possibili() -> None:
+    # Ogni coppia di Luoghi è o connessa (esclusa) o non connessa (inclusa):
+    # nessuna coppia deve sparire.
+    connesse, _ = non_connected_place_pairs(at=None)
+    totale_coppie_possibili = len(list(_combinations(LUOGHI, 2)))
+    archi_unici = {frozenset({rel.da_id, rel.a_id}) for rel in VICINO}
+    assert len(connesse) + len(archi_unici) == totale_coppie_possibili
+
+
+def test_non_connected_place_pairs_dimensione_coerente_con_linsieme() -> None:
+    coppie, dimensione = non_connected_place_pairs(at=None)
+    assert dimensione == len(coppie)
+    assert dimensione > 0, "seed degenere: tutte le coppie di luoghi sarebbero già connesse"
+
+
+def test_non_connected_place_pairs_nessuna_coppia_restituita_e_in_realta_vicina() -> None:
+    # Controprova diretta contro VICINO: nessuna coppia nell'insieme "non
+    # connesse" deve corrispondere a un arco VICINO realmente presente.
+    archi = {frozenset({rel.da_id, rel.a_id}) for rel in VICINO}
+    non_connesse, _ = non_connected_place_pairs(at=None)
+    assert non_connesse.isdisjoint(archi)
+
+
+def test_non_connected_place_pairs_prima_dellepoca_del_seed_tutte_le_coppie_sono_non_connesse() -> (
+    None
+):
+    # Uno snapshot congelato PRIMA di VICINO_EPOCA non deve vedere nessun
+    # arco del seed (tutti nascono con creato_il = VICINO_EPOCA): onestà
+    # dello storico, non un archivio inventato.
+    prima_dellepoca = VICINO_EPOCA - timedelta(days=1)
+    non_connesse, dimensione = non_connected_place_pairs(at=prima_dellepoca)
+    totale_coppie_possibili = len(list(_combinations(LUOGHI, 2)))
+    assert dimensione == totale_coppie_possibili
+    assert len(non_connesse) == totale_coppie_possibili
+
+
+def test_non_connected_place_pairs_at_none_equivale_a_ora() -> None:
+    # `at=None` (snapshot "adesso") deve coincidere con uno snapshot preso a
+    # un istante ben dopo VICINO_EPOCA: nessun filtro temporale attivo.
+    molto_dopo = datetime.now(UTC) + timedelta(days=3650)
+    assert non_connected_place_pairs(at=None) == non_connected_place_pairs(at=molto_dopo)

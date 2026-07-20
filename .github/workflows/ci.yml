@@ -20,7 +20,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install -e packages/contracts -e services/graph -e services/rag -e services/experience-engine -e services/urban-memory -e services/marketplace -e services/recommender -e services/api
+          pip install -e packages/contracts -e services/graph -e services/rag -e services/experience-engine -e services/urban-memory -e services/marketplace -e services/recommender -e services/intelligence-index -e services/api
           pip install pytest ruff httpx
 
       - name: Lint (ruff)
@@ -29,5 +29,5 @@ jobs:
       - name: Test (pytest)
         run: pytest
 
-      - name: Test services (graph, experience-engine, urban-memory, marketplace, recommender)
-        run: pytest services/graph/tests services/experience-engine/tests services/urban-memory/tests services/marketplace/tests services/recommender/tests
+      - name: Test services (graph, experience-engine, urban-memory, marketplace, recommender, intelligence-index)
+        run: pytest services/graph/tests services/experience-engine/tests services/urban-memory/tests services/marketplace/tests services/recommender/tests services/intelligence-index/tests

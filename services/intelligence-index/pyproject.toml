@@ -1,0 +1,45 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "lucca-intelligence-index"
+version = "0.1.0"
+description = "Lucca Soul Lab — Engine: Urban Intelligence Index (Wave 4). Calcola gli 8 indicatori di UrbanIntelligenceIndex per un periodo, da BehaviorEvent (Postgres/Neon), dal grafo (grado semantico, snapshot VICINO) e da Urban Memory (contributi curati). Nessun dato commerciale/partner come input: la salute CULTURALE della città, non quella economica."
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2",
+    "psycopg[binary]>=3",
+    "neo4j>=5",
+]
+
+# NOTA — pacchetti locali (non pubblicati su un indice pip): vanno installati
+# a parte, in editable mode, insieme a questo pacchetto:
+#
+#   pip install -e packages/contracts -e services/graph \
+#               -e services/urban-memory -e services/intelligence-index
+#
+# NOTA — confine di import (deliberato, diverso da `services/recommender`):
+# questo servizio DIPENDE da `services/graph` (grado_semantico,
+# non_connected_place_pairs, il catalogo di ExperienceNode) e da
+# `services/urban-memory` (MemoryRepository.list_curated, per
+# `contributi_memoria`) — è un livello di REPORTING/aggregazione, non il
+# percorso di ranking in tempo reale (quello resta il confine stretto di
+# `recommender`, che non importa `graph` per non introdurre un accoppiamento
+# nel percorso caldo). Nessuna dipendenza da `services/api`: il BFF dipende
+# da questo pacchetto, mai il contrario.
+#
+# NOTA — persistenza: questo servizio NON possiede né migra alcuna tabella.
+# `intelligence_index.repository.PostgresBehaviorEventSource` è un NUOVO
+# percorso di SOLA LETTURA sulla tabella `behavior_event`, già creata e
+# migrata da `recommender.migrate` (`services/recommender/sql/
+# 00_events_schema.sql`) — deve essere applicata a monte. I contributi di
+# Urban Memory si leggono tramite `urban_memory.MemoryRepository`
+# (`PostgresMemoryRepository`/`InMemoryMemoryRepository`), mai una seconda
+# implementazione di quello storage.
+
+[tool.hatch.build.targets.wheel]
+packages = ["intelligence_index"]
+
+[tool.hatch.metadata]
+allow-direct-references = true

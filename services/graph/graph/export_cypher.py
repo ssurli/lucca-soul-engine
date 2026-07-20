@@ -19,6 +19,7 @@ Uso (dalla radice del repo, dopo `pip install -e services/graph`):
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 
 from contracts import ExperienceNode, Partner
@@ -83,6 +84,14 @@ def _cypher_bool(value: bool) -> str:
     return "true" if value else "false"
 
 
+def _cypher_datetime(value: datetime) -> str:
+    """`datetime('...')` — tipo temporale nativo di Neo4j (non una stringa),
+    così `cypher/12_non_connected_pairs.cypher` può confrontarlo con
+    `datetime($at)` senza cast. `value` deve essere timezone-aware
+    (`RelazioneVicino._validate()` in `graph.seed_lucca` lo garantisce)."""
+    return f"datetime({_cypher_str(value.isoformat())})"
+
+
 def _cypher_str_list(values: list[str]) -> str:
     return "[" + ", ".join(_cypher_str(v) for v in values) + "]"
 
@@ -91,7 +100,12 @@ _RELATION_TYPES_COMMENT = (
     "// Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li\n"
     "// richiede esplicitamente):\n"
     "//   (:Artista)-[:LEGATO_A]->(:Luogo)\n"
-    "//   (:Luogo)-[:VICINO {metri}]->(:Luogo)              -- non orientata nel dominio\n"
+    "//   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;\n"
+    "//     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale\n"
+    "//     ('sempre esistiti', non una data vera — vedi graph/seed_lucca.py), un vero\n"
+    "//     datetime.now(UTC) per ogni arco scritto dopo il seed. Serve a congelare uno\n"
+    "//     snapshot di connettività a un istante T (graph/topology.py,\n"
+    "//     cypher/12_non_connected_pairs.cypher) per l'indicatore nuovi_percorsi.\n"
     "//   (:Bottega)-[:OFFRE]->(:Esperienza)\n"
     "//   (:Esperienza)-[:SI_SVOLGE_A]->(:Luogo)\n"
     "//   (:Esperienza)-[:EVOCA]->(:Tema)\n"
@@ -166,7 +180,7 @@ def _vicino_statement(rel) -> str:
         f"MATCH (a:Luogo {{id: {_cypher_str(rel.da_id)}}}), "
         f"(b:Luogo {{id: {_cypher_str(rel.a_id)}}})\n"
         f"MERGE (a)-[r:VICINO]->(b)\n"
-        f"SET r.metri = {rel.metri};"
+        f"SET r.metri = {rel.metri}, r.creato_il = {_cypher_datetime(rel.creato_il)};"
     )
 
 

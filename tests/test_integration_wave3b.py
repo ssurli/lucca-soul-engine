@@ -31,10 +31,7 @@ passare, segnala il bug al subagent competente (vedi CLAUDE.md).
 
 from __future__ import annotations
 
-import math
 import random
-from collections import Counter
-from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime, time
 from typing import Any
@@ -51,6 +48,7 @@ from contracts import (
 from experience_engine.engine import compose_itinerary
 from graph.seed_lucca import ESPERIENZE, LUOGHI
 from graph.source import SeedCandidateSource
+from intelligence_index.distribuzione import distribuzione_flussi as _distribuzione_flussi
 from rag.reasons import compose_reason
 from recommender import PESI_TIPO, InMemoryBehaviorEventRepository, costruisci_score_fn
 
@@ -66,42 +64,15 @@ SIGNALE_BASE = Signal(meteo="sereno", affollamento={}, stanchezza=0.2, ora=time(
 
 # ---------------------------------------------------------------------------
 # Helper 1: metrica di distribuzione (entropia di Shannon normalizzata)
+#
+# ESTRATTA in `intelligence_index.distribuzione.distribuzione_flussi` (Wave
+# 4, Urban Intelligence Index): questo test è dove la formula è nata come
+# criterio di accettazione del Recommender (Wave 3b), ma da qui in poi è
+# un'UNICA fonte di verità — importata sopra come `_distribuzione_flussi`
+# (alias locale, invariato per non toccare i call site sotto), MAI
+# ridefinita qui. Vedi `intelligence_index/distribuzione.py` per la
+# docstring completa della formula.
 # ---------------------------------------------------------------------------
-
-
-def _distribuzione_flussi(place_ids: Iterable[str], n_luoghi_disponibili: int) -> float:
-    """Indice di distribuzione dei flussi in [0, 1], STESSA semantica di
-    `UrbanIntelligenceIndex.distribuzione_flussi`
-    (`packages/contracts/contracts/models.py`): 1 = perfettamente
-    distribuiti, 0 = completamente concentrati.
-
-    Formula: entropia di Shannon normalizzata sul numero di luoghi
-    DISPONIBILI (non su quelli effettivamente comparsi)::
-
-        H(p) = - sum_i p_i * log(p_i)      p_i = frequenza del place_id i
-                                            tra le tappe osservate
-        distribuzione = H(p) / log(n)      n = N_LUOGHI_DISPONIBILI
-
-    Normalizzare sull'intero universo di `place_id` che il grafo può
-    proporre — non sul numero di luoghi distinti effettivamente comparsi —
-    è la scelta deliberata che rende le due configurazioni (A:
-    deterministica, B: con recommender) confrontabili A PARITÀ DI METRICA:
-    usare invece il numero di luoghi comparsi premierebbe artificialmente
-    una selezione che ne ignora la maggioranza ma distribuisce "bene" i
-    pochi che tocca.
-
-    - Massimo (1.0): ogni luogo disponibile compare con la stessa frequenza.
-    - Minimo (0.0): un solo `place_id` concentra tutte le tappe (H = 0).
-    """
-    ids = list(place_ids)
-    if not ids:
-        return 1.0  # nessuna tappa osservata: nessuna concentrazione da penalizzare
-    if n_luoghi_disponibili <= 1:
-        return 1.0  # normalizzazione indefinita (log(1) == 0): caso degenere
-    conteggi = Counter(ids)
-    totale = sum(conteggi.values())
-    entropia = -sum((n / totale) * math.log(n / totale) for n in conteggi.values())
-    return entropia / math.log(n_luoghi_disponibili)
 
 
 # ---------------------------------------------------------------------------

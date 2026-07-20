@@ -226,9 +226,18 @@ class UrbanIntelligenceIndex(BaseModel):
     periodo: str                      # es. "2026-07"
     tempo_medio_esperienza_min: float
     coinvolgimento: float             # 0..1
-    soddisfazione: float              # 0..5
+    soddisfazione: float | None = None  # 0..5, opzionale: nessuna fonte dati reale
+                                       # oggi (niente recensioni/survey in prodotto);
+                                       # None finché non esiste, mai un valore stimato
     tasso_ritorno: float              # 0..1
-    nuovi_percorsi: int               # itinerari emergenti e inattesi
+    # tasso in [0,1], non conteggio grezzo: coppie consecutive di un
+    # itinerario NON collegate nel grafo, allo snapshot preso a INIZIO
+    # periodo, sul totale delle coppie non collegate disponibili in quello
+    # stesso snapshot. Un conteggio grezzo scenderebbe da solo man mano che
+    # il grafo cresce (più relazioni = meno coppie "non collegate"),
+    # confondendo la crescita del grafo con un calo dell'esplorazione
+    # spontanea.
+    nuovi_percorsi: float              # 0..1 — itinerari emergenti e inattesi
     attivazione_locale: float         # 0..1 quanto il territorio minore viene raggiunto
     distribuzione_flussi: float       # 0..1  1 = distribuiti, 0 = concentrati (overtourism)
     contributi_memoria: int           # crescita della Urban Memory

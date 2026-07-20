@@ -138,6 +138,31 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
 - **ethics-guardian**: soglie di aggregazione, non re-identificabilità.
 - ✅ **Accettazione:** nessun PII derivabile e nessuna cella re-identificante; gli 8 indicatori
   calcolati; `distribuzione_flussi` visibile e non nascosto.
+  **→ CALCOLO SODDISFATTO** (2026-07-20): nuovo servizio `services/intelligence-index` —
+  `calcola_index(periodo, ...)` produce `contracts.UrbanIntelligenceIndex` per un periodo, funzione
+  PURA (nessun accesso diretto a Postgres/Neo4j, dipendenze iniettate — stesso principio di
+  `recommender.costruisci_score_fn`). Due formule negoziate col committente respingendo la prima
+  proposta tecnica: `attivazione_locale` usa il grado SEMANTICO di un luogo (relazioni culturali,
+  nuova funzione `graph.topology.grado_semantico()`), non il grado nella rete `VICINO` (prossimità
+  fisica, respinto — misura la pianta della città, non la cultura); `nuovi_percorsi` è un TASSO
+  (contratto cambiato int→float) su uno snapshot del grafo congelato a inizio periodo, non un
+  conteggio grezzo che scenderebbe da solo mano a mano che il grafo cresce. `distribuzione_flussi`
+  (entropia di Shannon) estratta dal test Wave 3b in un'unica fonte di verità condivisa. Gate di
+  privacy k=10 (`intelligence_index.soglia`) applicato in un solo punto centrale a **tutti e 8** gli
+  indicatori senza eccezioni — inclusa la correzione post-review su `contributi_memoria` (conta
+  TUTTI i contributi del periodo, curati e pending, per non sottostimare la partecipazione civica
+  dietro il ritardo fisiologico della curatela; il gate impedisce comunque la pubblicazione sotto
+  10 `contributor_id` distinti, anche a fronte di un conteggio grezzo alto ma concentrato su
+  poche persone). `soddisfazione` reso esplicitamente opzionale nel contratto (nessuna fonte reale
+  oggi, mai un valore stimato). Buco nei dati dichiarato, non aggirato: `nuovi_percorsi` richiede
+  `itinerari_periodo`, che oggi non ha alcuna persistenza reale (`compose_itinerary` produce
+  `Itinerary` solo in memoria per la singola richiesta HTTP) — documentato in
+  `services/intelligence-index/README.md` e in `docs/LIMITI.md` (insieme al limite noto di
+  `tasso_ritorno`, che non cattura la fedeltà cross-periodo). `ethics-guardian` **PASS** finale
+  (un FAIL iniziale sul gate mancante su `contributi_memoria`, corretto e riconfermato).
+  **→ ENDPOINT E DASHBOARD ANCORA DA FARE**: `GET /dashboard/*` (BFF, `api-engineer`) e le viste
+  Comune/hotel/museo (`frontend-engineer`) restano fuori dal perimetro di questo passo — il
+  servizio espone solo `calcola_index` e le sue dipendenze iniettabili, nessun accesso HTTP oggi.
 
 ## Wave 5 — Replica  *(= Fase 4)*
 - **graph-architect**: nuovo seed di contenuto (Siena / Ferrara). Tecnologia invariata.

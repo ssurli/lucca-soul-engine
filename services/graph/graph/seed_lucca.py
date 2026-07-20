@@ -58,8 +58,25 @@ Marketplace (Wave 3a — `docs/DATA_CONTRACTS.md` §5):
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from contracts import ExperienceNode, Partner
+
+# `VICINO` non porta uno storico reale: il seed non ha mai registrato QUANDO
+# un arco di prossimità fisica è stato scritto. Wave 4 (Urban Intelligence
+# Index, indicatore `nuovi_percorsi`) ha bisogno di poter "congelare" uno
+# snapshot del grafo a un istante T (vedi `graph.topology.
+# non_connected_place_pairs`), quindi ogni arco `VICINO` porta ora
+# `creato_il`. Onestà del dato: non si inventa una data reale per gli archi
+# del seed iniziale (nessuno ce l'ha), quindi tutti condividono questa unica
+# EPOCA convenzionale — "sempre esistiti", non una data vera di scrittura.
+# Un futuro arco `VICINO` aggiunto dopo il seed (es. da una curatela che
+# arricchisce la prossimità fisica, fuori dal perimetro di questa wave) deve
+# invece portare `datetime.now(UTC)` al momento della scrittura: solo da lì
+# in poi la data ha un significato storico reale, ed è quello che rende
+# possibile distinguere "già connesso all'inizio del periodo" da "connesso
+# DA POCO" — la definizione stessa di "nuovo percorso".
+VICINO_EPOCA: datetime = datetime(2026, 1, 1, tzinfo=UTC)
 
 # ---------------------------------------------------------------------------
 # Nodi: tipi minimi, locali a questo servizio (non sono contratti
@@ -98,14 +115,22 @@ class Tema:
 
 @dataclass(frozen=True)
 class RelazioneVicino:
-    """`(:Luogo)-[:VICINO {metri}]->(:Luogo)`. Non direzionale nel dominio
-    (la distanza vale nei due sensi): una riga sola per coppia, le API di
-    lettura (`graph.source`, `cypher/10_candidates.cypher`) la trattano come
-    non orientata."""
+    """`(:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)`. Non direzionale nel
+    dominio (la distanza vale nei due sensi): una riga sola per coppia, le
+    API di lettura (`graph.source`, `cypher/10_candidates.cypher`) la
+    trattano come non orientata.
+
+    `creato_il`: default `VICINO_EPOCA` per tutti gli archi del seed
+    iniziale ("sempre esistiti", non una data vera — vedi commento su
+    `VICINO_EPOCA`). Un arco scritto dopo il seed dovrebbe passare
+    `datetime.now(UTC)` esplicitamente: è ciò che rende possibile
+    `graph.topology.non_connected_place_pairs` congelare uno snapshot di
+    connettività a un istante T per l'indicatore `nuovi_percorsi`."""
 
     da_id: str
     a_id: str
     metri: int
+    creato_il: datetime = VICINO_EPOCA
 
 
 @dataclass(frozen=True)
@@ -648,6 +673,10 @@ def _validate() -> None:
         assert rel.da_id in luoghi_ids, f"VICINO: luogo sconosciuto {rel.da_id!r}"
         assert rel.a_id in luoghi_ids, f"VICINO: luogo sconosciuto {rel.a_id!r}"
         assert rel.metri >= 0, f"VICINO {rel.da_id}->{rel.a_id}: metri negativi"
+        assert rel.creato_il.tzinfo is not None, (
+            f"VICINO {rel.da_id}->{rel.a_id}: creato_il non timezone-aware "
+            "(serve per confrontarlo con datetime.now(UTC) negli snapshot)"
+        )
 
     for rel in LEGATO_A:
         assert rel.artista_id in artisti_ids, f"LEGATO_A: artista sconosciuto {rel.artista_id!r}"
