@@ -227,6 +227,25 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   rispondono 200 (non più 500). `pytest` su `services/graph/tests` + `tests/` +
   `services/api/tests` + `services/intelligence-index/tests`: 240 passed, 11 skipped (motivi non
   correlati), nessuna regressione.
+  **→ WAVE 4 CHIUSA — vincolo bloccante k=10 verificato dal committente, dal vivo** (2026-07-21):
+  prova eseguita dal committente sulla propria macchina, `GET /dashboard/flows` contro Neon+Aura
+  reali (dopo il fix Cypher sopra), sullo stesso schema avversariale di
+  `tests/test_integration_wave4_privacy.py` (confine esatto k=9 vs k=10, a tutti e tre i livelli
+  di filtro che l'endpoint espone — periodo, periodo+giorno, periodo+giorno+ora): con 9 persone
+  distinte, `disponibile=false` e `conteggio_tappe=null` a TUTTI e tre i livelli; con la decima
+  persona, `disponibile=true` e `conteggio_tappe=10` — confine esatto, mai un arrotondamento
+  approssimativo. In nessun caso la cella soppressa è stata mostrata come zero né omessa dalla
+  lista: lo stesso comportamento già provato via `TestClient` in `tests/`, ora confermato anche
+  contro l'infrastruttura cloud reale del committente, non solo contro doppi in-process. Eventi
+  sintetici della prova ripuliti da `behavior_event` con `scripts/pulisci_eventi_prefisso.py`
+  subito dopo, coerente col limite documentato in `docs/LIMITI.md` (nessuno scoping temporale
+  nel Recommender). Con questo, il vincolo BLOCCANTE della wave — soppressione k=10 al confine
+  dell'API, provata contro Neon/Aura reali, non solo in CI — è soddisfatto. **Wave 4 chiusa.**
+  Limiti dichiarati non chiusi da questa verifica (restano aperti, per design — vedi
+  `docs/LIMITI.md`): `soddisfazione` senza fonte dati reale; `nuovi_percorsi` con
+  `itinerari_periodo=[]` (nessuna persistenza itinerari); `tasso_ritorno` solo intra-periodo;
+  dashboard Flutter non compilata/testata (SDK assente in questa sessione); `behavior_event` senza
+  flag sintetico né retention.
 
 ## Wave 5 — Replica  *(= Fase 4)*
 - **graph-architect**: nuovo seed di contenuto (Siena / Ferrara). Tecnologia invariata.
