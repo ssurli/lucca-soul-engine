@@ -255,3 +255,74 @@ Questo limite va riletto prima di:
   modelli, che aggraverebbe il buco invece di chiuderlo se non verificato incrementalmente;
 - decidere di investire nel job CI del punto 3, che è l'unico modo per non ripetere questo stesso
   limite ad ogni wave successiva che tocchi l'app.
+
+---
+
+## `behavior_event` non distingue eventi reali da sintetici/di test, e non ha retention
+
+**Introdotto:** Wave 3b. **Componente:** `services/recommender`. **Trovato durante:** la verifica
+manuale della Wave 4 (voce precedente in questo file) contro Neon/Aura reali.
+
+### Cosa è garantito oggi
+
+`intelligence_index` (Wave 4, `GET /dashboard/*`) filtra SEMPRE `behavior_event` per periodo
+(`events_in_period(inizio, fine)`): un evento con `ts` fuori dall'intervallo richiesto non entra
+nel calcolo di quella dashboard. Fin qui, isolare una prova manuale su un periodo futuro (es.
+"2027-01") protegge davvero le metriche del mese corrente che un Comune/hotel/museo starebbe
+guardando oggi.
+
+### Cosa NON è garantito
+
+`recommender.repository.PostgresBehaviorEventRepository.conteggio_per_esperienza()` — la query
+che alimenta la correzione di quota storica di `recommender.ranking.costruisci_score_fn`, applicata
+a OGNI `POST /itinerary` reale — NON ha alcun filtro temporale:
+
+```sql
+SELECT tipo, experience_id, COUNT(*) FROM behavior_event GROUP BY tipo, experience_id
+```
+
+Legge tutta la tabella, sempre. Conseguenza: **ogni riga che entra in `behavior_event` influenza
+il ranking per sempre**, indipendentemente da quale `ts` porta — un evento datato nel futuro
+inquina la quota storica ADESSO, non "quando arriva quella data". Non esiste, oggi, alcun modo di:
+- marcare una riga come sintetica/di test e farla escludere automaticamente
+  dall'aggregazione (nessun campo `sintetico`/`is_test` in `BehaviorEvent`/`behavior_event`);
+- limitare `conteggio_per_esperienza()` a una finestra recente: non c'è retention né a livello di
+  query né a livello di schema (nessun job di pulizia/scadenza).
+
+Su un dataset piccolo e in fase iniziale (come questo), anche una manciata di eventi sintetici non
+ripuliti sposta il ranking reale in modo misurabile — non è un problema che si manifesta solo a
+grande scala. L'unica difesa esistente oggi è disciplina manuale: cancellare esplicitamente e
+SUBITO ogni evento sintetico con uno strumento dedicato (`scripts/pulisci_eventi_prefisso.py`), non
+una garanzia strutturale del sistema.
+
+### Cosa servirebbe per chiudere il buco (proposte, NON implementate ora)
+
+1. **Un flag `sintetico`/`is_test`** su `BehaviorEvent` (`packages/contracts`, campo nuovo con
+   default `False`, retro-compatibile) e sulla colonna corrispondente di `behavior_event`
+   (`00_events_schema.sql`), escluso per costruzione da `conteggio_per_esperienza()`
+   (`WHERE sintetico = false`) e da qualunque altro consumatore aggregato presente o futuro.
+   Limite di questa strada: sposta l'onere da "ricordarsi di pulire" a "ricordarsi di marcare" —
+   non lo elimina strutturalmente, solo lo rende meno distruttivo se dimenticato (la riga resta,
+   ma esclusa dall'aggregazione).
+2. **Una finestra temporale nella query di quota storica** (es. `WHERE ts >= now() - INTERVAL
+   '...'`), che limiterebbe il danno di QUALUNQUE riga anomala — sintetica o reale ma vecchia — a
+   una finestra finita invece che "per sempre". Cambierebbe anche la semantica di prodotto del
+   Recommender (la quota storica diventerebbe "storia recente", non "tutta la storia mai
+   registrata"): è una decisione da negoziare col committente, non solo un dettaglio tecnico —
+   stessa classe di decisione già rimandata per `tasso_ritorno` sopra in questo file ("quanto
+   indietro guardare").
+3. Le due proposte sono ortogonali, non alternative: la (1) risolve "sintetico vs reale", la (2)
+   risolve "vecchio vs recente"; un sistema maturo probabilmente le vuole entrambe.
+
+### Decisione
+
+Non implementato ora. Finché non esiste (1) o (2), qualunque evento inserito manualmente in
+`behavior_event` per una verifica contro Neon/Aura reali — questa o una wave futura — deve essere
+ripulito ESPLICITAMENTE e SUBITO dopo la prova (`scripts/pulisci_eventi_prefisso.py` o equivalente),
+mai rimandato con la motivazione "tanto è nel futuro" o "tanto sono pochi eventi": entrambe le
+attenuanti valgono per `intelligence_index`, NESSUNA delle due vale per il Recommender. Questo
+limite va riletto prima di:
+- generare un altro batch di eventi sintetici contro Neon reale per qualunque verifica manuale
+  futura (stessa disciplina di pulizia immediata, non posticipabile);
+- decidere se investire in (1) e/o (2) — a quel punto rileggere anche la voce `tasso_ritorno` sopra,
+  stessa classe di decisione ("quanto indietro guardare").

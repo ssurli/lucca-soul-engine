@@ -202,6 +202,16 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   Stesso principio di `soddisfazione`/`nuovi_percorsi` sopra: un buco dichiarato, non un verde
   presunto — dettaglio completo (cosa servirebbe per chiudere il buco, comandi esatti) in
   `docs/LIMITI.md`.
+  **→ LIMITE TROVATO DURANTE LA VERIFICA MANUALE CONTRO NEON/AURA REALI** (2026-07-21): il gate
+  k=10 di `GET /dashboard/*` è periodo-scoped e si è confermato reale (evento sintetico su un
+  periodo futuro, "2027-01", isolato dal mese corrente). Ma `recommender.repository.
+  PostgresBehaviorEventRepository.conteggio_per_esperienza()` legge `behavior_event` SENZA alcun
+  filtro temporale — ogni riga, sintetica o reale, influenza la quota storica del ranking di
+  `POST /itinerary` da subito e per sempre, a prescindere dal `ts`. Nessun modo oggi di marcare un
+  evento come sintetico né alcuna retention. Nuovo strumento `scripts/pulisci_eventi_prefisso.py`
+  (cancella per prefisso di `person_id`, stampa il conteggio cancellato) per ripulire SUBITO dopo
+  ogni verifica manuale con dati reali. Limite documentato per esteso, con cosa servirebbe (flag
+  `sintetico`/finestra temporale nella query), in `docs/LIMITI.md`.
 
 ## Wave 5 — Replica  *(= Fase 4)*
 - **graph-architect**: nuovo seed di contenuto (Siena / Ferrara). Tecnologia invariata.
