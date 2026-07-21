@@ -212,6 +212,21 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   (cancella per prefisso di `person_id`, stampa il conteggio cancellato) per ripulire SUBITO dopo
   ogni verifica manuale con dati reali. Limite documentato per esteso, con cosa servirebbe (flag
   `sintetico`/finestra temporale nella query), in `docs/LIMITI.md`.
+  **→ BUG REALE TROVATO E CORRETTO, RIVERIFICATO LIVE** (2026-07-21): `cypher/11_grado_semantico.
+  cypher` costruiva `botteghe_ospitate` con una pattern comprehension a pattern nodo-solo
+  (`[(b:Bottega {place_id: l.id}) | b]`) — sintassi Cypher 5 non valida in Cypher 25
+  (GQL-conformant, una pattern comprehension richiede un PATH, non un singolo nodo), riprodotta
+  identica su Aura reale (`CypherSyntaxError` a riga/offset esatti) e bloccante: faceva rispondere
+  500 a `GET /dashboard/flows`, impedendo la verifica del vincolo k=10. Riscritta con
+  `OPTIONAL MATCH` + `collect(b)`, nessuna pattern comprehension. Scansionati tutti i `.cypher`
+  versionati e le query inline nei `.py`: nessun'altra occorrenza di pattern comprehension né di
+  altri costrutti Cypher 5 non validi in Cypher 25. Riverificato DAL VIVO, non solo staticamente:
+  `Neo4jMetricsSource.grado_semantico()` contro Aura reale non solleva più l'errore e produce un
+  risultato IDENTICO, luogo per luogo, al calcolo offline (`graph.topology.grado_semantico()`);
+  `GET /dashboard/flows`/`GET /dashboard/index` avviati dal `.venv` contro Neon+Aura reali
+  rispondono 200 (non più 500). `pytest` su `services/graph/tests` + `tests/` +
+  `services/api/tests` + `services/intelligence-index/tests`: 240 passed, 11 skipped (motivi non
+  correlati), nessuna regressione.
 
 ## Wave 5 — Replica  *(= Fase 4)*
 - **graph-architect**: nuovo seed di contenuto (Siena / Ferrara). Tecnologia invariata.

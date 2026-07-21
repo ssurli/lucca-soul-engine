@@ -24,11 +24,24 @@
 // fallback locale (profilo "PC fisso con Docker").
 //
 // Nessun parametro. Una riga per Luogo: place_id, grado.
+//
+// FIX (2026-07-21, bug reale su Aura CYPHER 25): `botteghe_ospitate` era
+// costruita con una pattern comprehension a pattern nodo-solo,
+// `[(b:Bottega {place_id: l.id}) | b]` — sintassi Cypher 5, non valida in
+// Cypher 25 (GQL-conformant: `CypherSyntaxError: Invalid input '|': expected
+// an expression`, riprodotto identico su Aura reale). Una pattern
+// comprehension richiede un PATH (almeno una relazione); un pattern di solo
+// nodo non è un path valido per quella forma. Riscritta con
+// `OPTIONAL MATCH` + `collect(b)`, che non usa affatto la sintassi di
+// pattern comprehension: stesso risultato (lista vuota se nessuna Bottega ha
+// `place_id = l.id`, esattamente come la vecchia `[]`), portabile su
+// qualunque versione Cypher, nessuna seconda fonte di verità introdotta.
 MATCH (l:Luogo)
 WITH l,
      COUNT { (l)<-[:LEGATO_A]-(:Artista) } AS legato_a,
-     COUNT { (l)<-[:SI_SVOLGE_A]-(:Esperienza) } AS si_svolge_a,
-     [(b:Bottega {place_id: l.id}) | b] AS botteghe_ospitate
+     COUNT { (l)<-[:SI_SVOLGE_A]-(:Esperienza) } AS si_svolge_a
+OPTIONAL MATCH (b:Bottega {place_id: l.id})
+WITH l, legato_a, si_svolge_a, collect(b) AS botteghe_ospitate
 WITH l,
      legato_a + si_svolge_a AS grado_luogo,
      reduce(
