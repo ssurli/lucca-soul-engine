@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'api/bff_client.dart';
 import 'screens/citizen_screen.dart';
+import 'screens/dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'util/person_id.dart';
 
@@ -46,12 +47,14 @@ class _LuccaSoulAppState extends State<LuccaSoulApp> {
 }
 
 /// Punto di ingresso: sceglie tra il percorso Turista (onboarding
-/// conversazionale) e la vista Cittadino (Urban Memory).
+/// conversazionale), la vista Cittadino (Urban Memory) e la dashboard
+/// Comune/Operatori (Urban Intelligence Index, Wave 4).
 ///
 /// "Il Cittadino non paga: alimenta la Urban Memory ed è la condizione di
 /// sostenibilità sociale del sistema" (CLAUDE.md) — è un percorso di prima
 /// classe fin dalla radice dell'app, non una funzione nascosta dentro
-/// quello del turista.
+/// quello del turista. La dashboard non porta `person_id`: gli indicatori
+/// sono aggregati e anonimi, non un dato di sessione di una persona.
 class _HomeScreen extends StatelessWidget {
   final BffClient bffClient;
   final String personId;
@@ -99,6 +102,17 @@ class _HomeScreen extends StatelessWidget {
                       MaterialPageRoute(
                         builder: (_) => CitizenScreen(bffClient: bffClient, personId: personId),
                       ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.bar_chart_outlined),
+                    label: const Text('Dashboard Comune / Operatori'),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => DashboardScreen(bffClient: bffClient)),
                     ),
                   ),
                 ),

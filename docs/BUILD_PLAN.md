@@ -184,8 +184,24 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   filtro esposto dall'API (aggregato, per giorno, per giorno+ora) e sul confine esatto k=9 vs
   k=10. `ethics-guardian` **PASS** finale su tutto il livello endpoint, incluso il fix di privacy
   riverificato da zero (non sulla parola dell'agente che l'ha corretto).
-  **→ DASHBOARD FRONTEND (Comune/hotel/museo) ANCORA DA FARE**: `frontend-engineer` non ancora
-  coinvolto — resta l'ultimo pezzo della wave.
+  **→ DASHBOARD FRONTEND SODDISFATTA, MA NON VERIFICATA A COMPILAZIONE** (2026-07-20):
+  `apps/lucca_soul_app` — nuova schermata `DashboardScreen` (Comune: tutti e 8 gli indicatori;
+  Hotel/Museo: solo `distribuzione_flussi` + `attivazione_locale`, stesso substrato dati, taglio
+  lato client), client verso i due endpoint (`BffClient.dashboardIndex`/`dashboardFlows` — l'app
+  non parla mai direttamente con `services/intelligence-index`), modelli con costruttore privato
+  (`fromJson` è l'unico modo di ottenere un'istanza, così il vincolo di coerenza
+  `disponibile`⇔valore non è aggirabile lato client). Vincolo non negoziabile rispettato: una cella/
+  indicatore soppresso da k=10 è SEMPRE un badge esplicito ("dato insufficiente per garantire
+  l'anonimato"), mai uno zero né confuso con `soddisfazione=null` (buco dati diverso, testo
+  diverso). `distribuzione_flussi` è sempre la card più prominente, in entrambe le viste.
+  **Limite dichiarato**: né `frontend-engineer` né l'orchestratore hanno potuto eseguire `flutter
+  analyze`/`flutter test` in questa sessione (SDK Flutter/Dart non installato in questo ambiente) —
+  verificata solo con lettura manuale del codice (struttura, tipi, rispetto del vincolo di
+  visualizzazione). Da compilare e testare con `flutter analyze && flutter test` su una macchina
+  con Flutter installato prima di considerare la UI definitivamente verificata — non solo scritta.
+  Stesso principio di `soddisfazione`/`nuovi_percorsi` sopra: un buco dichiarato, non un verde
+  presunto — dettaglio completo (cosa servirebbe per chiudere il buco, comandi esatti) in
+  `docs/LIMITI.md`.
 
 ## Wave 5 — Replica  *(= Fase 4)*
 - **graph-architect**: nuovo seed di contenuto (Siena / Ferrara). Tecnologia invariata.

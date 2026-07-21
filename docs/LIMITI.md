@@ -173,3 +173,85 @@ funzione, nel README del servizio e qui. Questo limite va riletto prima di:
   valore misurato;
 - decidere di investire nella tabella `itinerary`/`itinerary_stop` sopra, che chiuderebbe il buco
   senza richiedere alcuna modifica alla formula già scritta e testata.
+
+---
+
+## La dashboard Flutter (Wave 4) è scritta ma non verificata a compilazione/esecuzione
+
+**Introdotto:** Wave 4. **Componente:** `apps/lucca_soul_app`.
+
+### Cosa è garantito oggi
+
+`DashboardScreen` e i quattro modelli che rispecchiano `docs/DATA_CONTRACTS.md` §7
+(`UrbanIntelligenceIndex`, `DashboardIndexResponse`, `FlowCell`, `DashboardFlowsResponse`) sono
+scritti seguendo fedelmente le convenzioni già in uso nel resto dell'app (stesso stile di
+`fromJson`/`toJson` di `MemoryContribution`/`Itinerary`, stesso pattern di stato
+caricamento/errore/dati di `ItineraryScreen`/`CitizenScreen`). `BffClient.dashboardIndex`/
+`dashboardFlows` sono l'unico punto di rete verso `GET /dashboard/*` (nessuna chiamata diretta a
+`services/intelligence-index`). `DashboardIndexResponse`/`FlowCell` hanno un costruttore privato
+(`._`): l'unico modo di ottenere un'istanza è `fromJson`, così il vincolo di coerenza
+`disponibile ⇔ valore` del contratto non è aggirabile componendo l'oggetto a mano lato client.
+Sono stati scritti anche due file di test (`test/dashboard_models_test.dart`,
+`test/periodo_test.dart`) nello stesso stile "puro" già in uso (`test/models_test.dart`,
+`test/itinerary_diff_test.dart`): nessuna dipendenza da widget/device, solo round-trip JSON e
+funzioni di formattazione data.
+
+Tutto questo è stato prodotto e revisionato **solo per lettura**: struttura, nomi dei campi
+JSON (confrontati riga per riga con `docs/DATA_CONTRACTS.md`), tipi, generics, presenza di
+`const`/`required` dove atteso.
+
+### Cosa NON è garantito
+
+Nessuno di questi file è mai stato **compilato**. In questa sessione non era disponibile né
+`flutter` né `dart` (`which flutter`/`which dart` falliscono, `apps/lucca_soul_app` non ha mai
+visto un `flutter pub get`). Di conseguenza:
+- Non è provato che il codice sia sintatticamente valido oltre la lettura manuale: un refuso di
+  generics, un import mancante, un parametro posizionale scambiato per nominale — niente di
+  tutto ciò sarebbe stato per forza notato a occhio.
+- Le icone `Icons.*` usate in `dashboard_screen.dart` sono state scelte "alla cieca", preferendo
+  deliberatamente nomi storici e ben noti dell'icon font Material (es. `Icons.favorite_border`
+  invece di `Icons.favorite_outline`, `Icons.pie_chart_outline` invece di
+  `Icons.scatter_plot_outlined`) proprio perché non era possibile verificare con l'analyzer se un
+  nome esiste nella versione del pacchetto `flutter` risolta dal `pubspec.yaml`.
+- I due nuovi file di test non sono mai stati **eseguiti**: `flutter test` non è mai girato, quindi
+  non c'è nessuna prova che le asserzioni scritte in `dashboard_models_test.dart`/
+  `periodo_test.dart` passino — potrebbero fallire per un dettaglio di formattazione o di
+  arrotondamento mai osservato perché mai fatto girare.
+- `flutter analyze` non è mai girato: le regole di `apps/lucca_soul_app/analysis_options.yaml`
+  (`strict-casts`, `strict-inference`, `require_trailing_commas`, `prefer_const_constructors`) non
+  sono mai state applicate al nuovo codice, solo emulate a mano nella lettura.
+
+Questo è esattamente lo stesso tipo di buco di `soddisfazione` sopra (Wave 4,
+`services/intelligence-index`): un dato/uno stato dichiarato assente, non un valore fabbricato per
+sembrare completo. Qui il "valore fabbricato" sarebbe presentare la dashboard come "fatta" quando
+in realtà è "scritta, non provata".
+
+### Cosa servirebbe per chiudere il buco
+
+1. **Flutter SDK** installato su una macchina (versione compatibile col vincolo
+   `flutter: ">=3.19.0"` di `apps/lucca_soul_app/pubspec.yaml`; `dart >=3.3.0 <4.0.0`).
+2. Nell'ordine, da `apps/lucca_soul_app/`:
+   - `flutter pub get` — risolve le dipendenze (`http`, `flutter_lints`), scarica il toolchain.
+   - `flutter analyze` — verifica statica reale: tipi, generics, regole di
+     `analysis_options.yaml`, nomi di icone/API inesistenti.
+   - `flutter test` — esegue TUTTA la suite (`test/models_test.dart`, `test/memory_test.dart`,
+     `test/itinerary_diff_test.dart`, e i due nuovi `test/dashboard_models_test.dart`,
+     `test/periodo_test.dart`), non solo i file nuovi: un regressione sui modelli esistenti
+     sarebbe altrettanto grave di un test nuovo che fallisce.
+3. **Eventualmente**, un job CI dedicato (es. GitHub Actions, `actions/flutter-action` più
+   `flutter pub get && flutter analyze && flutter test`) che scatti automaticamente ad ogni push
+   che tocca `apps/lucca_soul_app/**`. Senza CI, questo buco si ripresenterà identico ad ogni wave
+   futura che tocchi l'app Flutter in una sessione senza una macchina con Flutter disponibile —
+   una CI lo renderebbe strutturalmente impossibile da ignorare, non affidato alla memoria di chi
+   orchestra la wave successiva.
+
+### Decisione
+
+Non verificato ora. Il codice della dashboard resta nello stato "scritto, non compilato" finché
+qualcuno non esegue i tre comandi del punto 2 sopra su una macchina con Flutter SDK installato.
+Questo limite va riletto prima di:
+- presentare la dashboard Comune/Operatori come pronta a un cliente reale (Comune, hotel, museo);
+- aggiungere altro codice sopra `apps/lucca_soul_app/lib/screens/dashboard_screen.dart` e i suoi
+  modelli, che aggraverebbe il buco invece di chiuderlo se non verificato incrementalmente;
+- decidere di investire nel job CI del punto 3, che è l'unico modo per non ripetere questo stesso
+  limite ad ogni wave successiva che tocchi l'app.

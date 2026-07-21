@@ -110,4 +110,86 @@ class AppStrings {
   String get citizenEmpty => _isEn
       ? 'No curated memories yet for this place.'
       : 'Ancora nessun ricordo curato per questo luogo.';
+
+  // --- Dashboard Urban Intelligence Index (Wave 4) --------------------------
+  String get dashboardTitle => _isEn ? 'Urban dashboard' : 'Dashboard urbana';
+  String get dashboardAudienceComune => _isEn ? 'Municipality' : 'Comune';
+  String get dashboardAudienceHotel => 'Hotel';
+  String get dashboardAudienceMuseo => _isEn ? 'Museum' : 'Museo';
+  String get dashboardAudienceComuneHint => _isEn
+      ? 'The overall cultural health of the city: flow distribution first, '
+          'then the full dashboard of the eight indicators.'
+      : 'La salute culturale complessiva della città: prima la distribuzione '
+          'dei flussi, poi il cruscotto completo degli otto indicatori.';
+  String get dashboardAudienceOperatorHint => _isEn
+      ? 'Same data as the Municipality view, focused on the two indicators '
+          'that show how this place can help spread visitor flows.'
+      : 'Gli stessi dati della vista Comune, con il taglio sui due indicatori '
+          'che mostrano come questo luogo può contribuire a distribuire i flussi.';
+
+  String get dashboardPeriodLabel => _isEn ? 'Period' : 'Periodo';
+  String get dashboardPreviousPeriod => _isEn ? 'Previous month' : 'Mese precedente';
+  String get dashboardNextPeriod => _isEn ? 'Next month' : 'Mese successivo';
+
+  String get dashboardLoadingIndex =>
+      _isEn ? 'Computing the index…' : 'Sto calcolando l\'index…';
+  String get dashboardLoadingFlows =>
+      _isEn ? 'Computing the flow heatmap…' : 'Sto calcolando la heatmap dei flussi…';
+  String get dashboardErrorIndex =>
+      _isEn ? 'Could not reach the BFF for the index.' : 'Non riesco a contattare il BFF per l\'index.';
+  String get dashboardErrorFlows => _isEn
+      ? 'Could not reach the BFF for the flow heatmap.'
+      : 'Non riesco a contattare il BFF per la heatmap dei flussi.';
+
+  // Stato "dato insufficiente" (soglia k=10, privacy by design): MAI uno
+  // zero, MAI un errore — uno stato esplicito e leggibile, distinto dai due
+  // sopra.
+  String get dashboardIndexUnavailableTitle =>
+      _isEn ? 'Insufficient data for this period' : 'Dato insufficiente per questo periodo';
+  String get dashboardIndexUnavailableFallback => _isEn
+      ? 'Not enough aggregated activity this period to publish the index '
+          'while keeping visitors anonymous.'
+      : 'Non c\'è ancora abbastanza attività aggregata in questo periodo per '
+          'pubblicare l\'index garantendo l\'anonimato dei visitatori.';
+  String get dashboardCellUnavailableBadge => _isEn
+      ? 'Insufficient data to guarantee anonymity'
+      : 'Dato insufficiente per garantire l\'anonimato';
+
+  String get dashboardIndexSectionTitle =>
+      _isEn ? 'Urban Intelligence Index indicators' : 'Indicatori dell\'Urban Intelligence Index';
+  String get dashboardFlowsTitle =>
+      _isEn ? 'Flow distribution by place' : 'Distribuzione dei flussi per luogo';
+  String get dashboardFlowsEmpty =>
+      _isEn ? 'No place in the graph yet.' : 'Ancora nessun luogo nel grafo.';
+  String get dashboardFlowsFilterDay => _isEn ? 'Day' : 'Giorno';
+  String get dashboardFlowsFilterHour => _isEn ? 'Hour' : 'Ora';
+  String get dashboardFlowsClearFilters => _isEn ? 'Clear filters' : 'Rimuovi filtri';
+  String get dashboardFlowsAnyDay => _isEn ? 'Whole period' : 'Tutto il periodo';
+  String get dashboardFlowsAnyHour => _isEn ? 'All hours' : 'Tutte le ore';
+
+  // L'indicatore che ci giudica (CLAUDE.md): sempre in evidenza, mai
+  // rimpicciolito.
+  String get dashboardHeroLabel =>
+      _isEn ? 'Flow distribution' : 'Distribuzione dei flussi';
+  String get dashboardHeroDescription => _isEn
+      ? 'How evenly visitor flows spread across the city: 1 = well '
+          'distributed, 0 = concentrated (overtourism). This is the '
+          'indicator this dashboard exists to show.'
+      : '1 = flussi ben distribuiti in città, 0 = concentrati (overtourism). '
+          'È l\'indicatore che questa dashboard esiste per mostrare a '
+          'un\'amministrazione.';
+
+  String get indicatorTempoMedioLabel =>
+      _isEn ? 'Average experience time' : 'Tempo medio esperienza';
+  String get indicatorCoinvolgimentoLabel => _isEn ? 'Engagement' : 'Coinvolgimento';
+  String get indicatorSoddisfazioneLabel => _isEn ? 'Satisfaction' : 'Soddisfazione';
+  String get indicatorSoddisfazioneUnavailable => _isEn
+      ? 'No data source yet (no reviews/surveys in production)'
+      : 'Nessuna fonte dati ancora (nessuna recensione/survey in produzione)';
+  String get indicatorTassoRitornoLabel => _isEn ? 'Return rate' : 'Tasso di ritorno';
+  String get indicatorNuoviPercorsiLabel => _isEn ? 'New paths' : 'Nuovi percorsi';
+  String get indicatorAttivazioneLocaleLabel =>
+      _isEn ? 'Local activation' : 'Attivazione locale';
+  String get indicatorContributiMemoriaLabel =>
+      _isEn ? 'Urban Memory contributions' : 'Contributi alla Urban Memory';
 }
