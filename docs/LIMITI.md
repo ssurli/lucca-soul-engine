@@ -326,3 +326,70 @@ limite va riletto prima di:
   futura (stessa disciplina di pulizia immediata, non posticipabile);
 - decidere se investire in (1) e/o (2) — a quel punto rileggere anche la voce `tasso_ritorno` sopra,
   stessa classe di decisione ("quanto indietro guardare").
+
+---
+
+## Il BFF ha CORS aperto (`allow_origins="*"`) su `/dashboard/*` — va ristretto prima di un deploy pubblico
+
+**Introdotto:** Wave 4. **Componente:** `services/api` (`api.main.dashboard_readonly_cors`).
+
+Questa NON è una nota estetica: è un cambio di postura di sicurezza del BFF, e va trattato come
+tale da chiunque tocchi questo file in futuro.
+
+### Cosa è garantito oggi
+
+Per far funzionare `scripts/dashboard_viewer.html` (pagina statica, senza build, aperta con un
+doppio clic da `file://` — origin `"null"` per il browser — mentre il BFF gira in locale), è stato
+aggiunto un middleware scritto a mano (non `fastapi.middleware.cors.CORSMiddleware` di libreria,
+che si applicherebbe all'INTERA app senza scoping per path) che apre `Access-Control-Allow-Origin:
+*` SOLO quando **entrambe** le condizioni valgono:
+- il metodo è `GET` (o `OPTIONS` di preflight per una `GET`);
+- il path inizia per `/dashboard/`.
+
+Verificato con richieste HTTP reali (`Origin: null`, sia `GET` che `OPTIONS` di preflight): la
+risposta ha l'intestazione CORS su `GET /dashboard/index`/`GET /dashboard/flows`, e NE È PRIVA su
+`GET /health`, `GET /contracts/version`, `GET /memory/{place_id}` e su qualunque `POST` (`/memory`,
+`/booking`, `/events`, `/session/onboarding`, `/itinerary*`) — questi ultimi restano IRRAGGIUNGIBILI
+da una pagina web di origine diversa, wildcard o no. Un browser applica CORS SOLO alle richieste
+che parte lui stesso: questo non ha alcun effetto sull'app Flutter (client HTTP nativo) né su
+chiamate server-to-server.
+
+### Cosa NON è garantito
+
+`allow_origins="*"` significa letteralmente "qualunque sito web che il browser dell'utente visita
+può leggere `GET /dashboard/*` di QUESTO BFF, se l'utente ha anche questo BFF raggiungibile in
+rete (es. `localhost` durante lo sviluppo, ma anche una porta esposta per errore, o un domani un
+deploy pubblico)". Oggi il rischio pratico è basso: `/dashboard/*` espone solo dati già aggregati e
+gated a k=10 (mai PII), e in locale il "sito web arbitrario" nello stesso browser è comunque un
+rischio marginale rispetto a un dev in ambiente controllato. Ma **il wildcard non sa distinguere
+"BFF locale di sviluppo" da "BFF esposto pubblicamente"**: è una proprietà del codice, non
+dell'ambiente in cui gira oggi. Se questo servizio finisce online così com'è, `allow_origins="*"`
+resta attivo esattamente allo stesso modo, e a quel punto permette a QUALUNQUE sito di terzi di
+leggere gli aggregati pubblici del Comune tramite il browser di un visitatore ignaro — non uno
+scenario catastrofico (i dati sono già aggregati e pensati per essere pubblici), ma comunque una
+postura che nessuno ha deciso esplicitamente per un contesto di produzione: è nata per far
+funzionare uno strumento locale, non è mai stata valutata per un deploy pubblico.
+
+### Cosa servirebbe per chiudere il buco
+
+- **Restringere `Access-Control-Allow-Origin` a origin specifici**, non `"*"`, nel momento in cui
+  il BFF smette di essere "solo locale": una lista esplicita (dominio della dashboard Comune
+  ufficiale, se/quando esiste) invece del wildcard — richiede una decisione di deploy (quali
+  origin sono legittimi), non solo un cambio di codice.
+- In alternativa, **se il viewer HTML locale non serve più in quel contesto** (es. sostituito
+  definitivamente dall'app Flutter compilata), il modo più semplice di chiudere il buco è
+  rimuovere `dashboard_readonly_cors` del tutto: nessun endpoint applicativo dell'app Flutter (un
+  client nativo, non un browser) ne ha mai avuto bisogno.
+- Qualunque delle due scelte richiede una decisione umana esplicita al momento del deploy — questo
+  file esiste apposta perché quella decisione non venga presa per omissione (il wildcard
+  "funzionava in locale, non l'ho più guardato").
+
+### Decisione
+
+Non ristretto ora: `allow_origins="*"` resta per uno strumento di sviluppo locale
+(`scripts/dashboard_viewer.html`), scoped comunque a `GET`/`OPTIONS` su `/dashboard/*` (mai
+l'intera app, mai i path di scrittura). Questo limite va riletto — non ignorato — prima di:
+- esporre `services/api` (il BFF) su una rete diversa da `localhost`/una rete di sviluppo fidata,
+  per qualunque motivo (demo pubblica, staging raggiungibile da internet, produzione);
+- rimuovere `scripts/dashboard_viewer.html` dal repo (a quel punto il middleware non ha più un
+  consumatore: valutare se rimuoverlo insieme, non lasciarlo "per sicurezza" senza uno scopo).

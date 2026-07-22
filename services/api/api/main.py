@@ -131,7 +131,7 @@ from contracts import (
 )
 from experience_engine.engine import adapt_itinerary, compose_itinerary
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from intelligence_index import IndexStorageError
 from intelligence_index.catalogo import esperienze_per_id as indice_esperienze_per_id
 from intelligence_index.dashboard import celle_flusso, indice_per_dashboard
@@ -158,6 +158,66 @@ from api.deps import (
 from api.settings import get_settings
 
 app = FastAPI(title="Lucca Soul — BFF")
+
+
+# MODIFICA DI POSTURA DI SICUREZZA (non un dettaglio estetico — vedi
+# docs/LIMITI.md): CORS aperto, ma ristretto al minimo indispensabile su
+# TRE assi contemporaneamente, non solo uno:
+#   1. SOLO `GET` (mai `POST /memory`, `POST /booking`, `POST /events`,
+#      `POST /session/onboarding`, `POST /itinerary*`: quelli restano
+#      IRRAGGIUNGIBILI da una pagina web di origine diversa, wildcard o no);
+#   2. SOLO i path `/dashboard/*` (NON `/memory/{place_id}`, non `/health`,
+#      non `/contracts/version`: `fastapi.middleware.cors.CORSMiddleware` di
+#      libreria si applica all'INTERA app, senza scoping per path — per
+#      questo qui c'è un middleware scritto a mano, non quello di libreria);
+#   3. Serve a UN SOLO consumatore concreto: `scripts/dashboard_viewer.html`,
+#      una pagina statica senza build aperta con un doppio clic da `file://`
+#      (quindi origin "null" per il browser) mentre il BFF gira in locale.
+#
+# Un browser applica CORS SOLO alle richieste che parte lui stesso: questo
+# non ha alcun effetto sull'app Flutter (client HTTP nativo, non un
+# browser) né su chiamate server-to-server. `GET /dashboard/*` espone solo
+# dati già aggregati e gated a k=10 (mai PII): allargarne la lettura a un
+# client locale non introduce, DI PER SÉ, una superficie nuova di privacy.
+#
+# NON è comunque un `*` da lasciare dimenticato: `allow_origins="*"` va bene
+# per uno strumento locale, MAI per un deploy pubblico del BFF — il giorno
+# in cui questo servizio finisce online, l'origine va ristretta a domini
+# specifici (o il middleware rimosso, se il viewer HTML non serve più in
+# quel contesto). Vedi `docs/LIMITI.md` per il dettaglio.
+_DASHBOARD_PATH_PREFIX = "/dashboard/"
+
+
+@app.middleware("http")
+async def dashboard_readonly_cors(request: Request, call_next):  # type: ignore[no-untyped-def]
+    is_dashboard_path = request.url.path.startswith(_DASHBOARD_PATH_PREFIX)
+
+    # Preflight CORS (`OPTIONS`) per una GET verso `/dashboard/*`: risposto
+    # direttamente qui, PRIMA di raggiungere qualunque route — un browser lo
+    # manda per verificare il permesso prima della richiesta vera.
+    if (
+        request.method == "OPTIONS"
+        and is_dashboard_path
+        and request.headers.get("access-control-request-method", "").upper() == "GET"
+    ):
+        return Response(
+            status_code=200,
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET",
+                "Access-Control-Allow-Headers": "*",
+            },
+        )
+
+    response = await call_next(request)
+
+    # Intestazione CORS aggiunta SOLO su una GET reale verso `/dashboard/*`:
+    # ogni altro path/metodo (incluso un domani nuovo endpoint GET non
+    # ancora previsto oggi) resta SENZA questa intestazione per costruzione,
+    # non per disciplina di chi aggiunge un endpoint in futuro.
+    if request.method == "GET" and is_dashboard_path:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    return response
 
 # Iniezione FastAPI standard (`Annotated[..., Depends(...)]`, non
 # `= Depends(...)` in default d'argomento: quella forma è flaggata da

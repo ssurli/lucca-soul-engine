@@ -246,6 +246,19 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   `itinerari_periodo=[]` (nessuna persistenza itinerari); `tasso_ritorno` solo intra-periodo;
   dashboard Flutter non compilata/testata (SDK assente in questa sessione); `behavior_event` senza
   flag sintetico né retention.
+  **→ ADDENDUM POST-CHIUSURA — viewer HTML statico + CORS aperto su `/dashboard/*`**
+  (2026-07-22): `scripts/dashboard_viewer.html`, un solo file senza build né dipendenze, per
+  vedere la dashboard senza compilare Flutter (stesse scelte di visualizzazione di
+  `DashboardScreen`: `distribuzione_flussi` in evidenza, celle soppresse SEMPRE un badge esplicito,
+  mai uno zero, `soddisfazione` assente mostrata come "non ancora misurabile", distinta dal badge
+  k=10). Richiede CORS lato BFF (una pagina `file://` ha origin "null"): aggiunto
+  `api.main.dashboard_readonly_cors`, un middleware scritto a mano — NON il `CORSMiddleware` di
+  libreria, che si applicherebbe all'intera app — scoped a `GET`/`OPTIONS` SOLO su `/dashboard/*`;
+  verificato con richieste HTTP reali che l'intestazione CORS è assente su `/health`,
+  `/contracts/version`, `/memory/{place_id}` e su ogni `POST`. **Cambio di postura di sicurezza,
+  non un dettaglio estetico**: `allow_origins="*"` va bene per uno strumento locale, MAI lasciato
+  com'è per un deploy pubblico del BFF — dettaglio completo (cosa NON è garantito, cosa servirebbe)
+  in `docs/LIMITI.md`.
 
 ## Wave 5 — Replica  *(= Fase 4)*
 - **graph-architect**: nuovo seed di contenuto (Siena / Ferrara). Tecnologia invariata.
