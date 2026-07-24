@@ -126,6 +126,18 @@ contribuisce con un peso, definito in `recommender.features.PESI_TIPO`:
 | `skip` | 0.0 | rifiuto esplicito: un contatore di concentrazione non deve mai premiare un luogo perché è stato ignorato molte volte. Zero (non negativo) per restare in `[0, 1]` e facilmente spiegabile in italiano nel `reason` ("skip non conta come presenza"). |
 | `memory_contrib` | 1.5 | un contributo alla Urban Memory è un segnale di coinvolgimento volontario profondo (più di una vista, meno di una presenza fisica già contata da `stop`/`booking`); peso moderato perché è un evento raro e pochi contributi non devono dominare la quota storica di un luogo. Si conta **solo che l'evento sia avvenuto**, mai il contenuto della `MemoryContribution` associata. |
 
+**Su cosa poggia questa tabella, esplicitamente**: il peso 2.0 di `stop` (il più alto della
+tabella insieme a `booking`) è giustificato sopra come "presenza fisica reale e prolungata in
+quel luogo" — ma oggi NESSUN codice verifica che un evento `stop` corrisponda a una presenza
+fisica reale. `POST /events` accetta qualunque `BehaviorEvent` sintatticamente valido, senza
+prova di presenza (GPS, check-in, QR, conferma operatore), senza autenticazione, senza rate
+limiting: chiunque raggiunga il BFF può generare eventi `stop` fabbricati, gratis, quanti ne
+vuole. Chi legge questa tabella per capire perché un luogo pesa nella distribuzione dei flussi
+deve sapere che il peso riflette un'assunzione di autenticità, non un fatto verificato —
+dettaglio completo, coi quattro punti verificati uno per uno e le proposte di rimedio (non
+implementate), in `docs/LIMITI.md` ("`POST /events` non ha alcuna prova di presenza,
+autenticazione o rate limiting — prerequisito del Living Lab").
+
 Questi pesi alimentano **solo** il calcolo della quota storica di
 concentrazione per `place_id` (`recommender.ranking._quota_storica_per_place`,
 con smoothing di Laplace — vedi sopra), usata poi esclusivamente per

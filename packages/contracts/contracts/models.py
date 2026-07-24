@@ -23,6 +23,7 @@ __all__ = [
     "Signal",
     "PersonKind",
     "VisitorContext",
+    "FasciaApertura",
     "ExperienceNode",
     "GraphCandidate",
     "ExperienceCandidate",
@@ -43,6 +44,7 @@ __all__ = [
     "OnboardingAnswer",
     "OnboardingRequest",
     "AdaptRequest",
+    "rientra_in_orario",
 ]
 
 
@@ -83,6 +85,17 @@ class Signal(ContractModel):
     affollamento: dict[str, float]  # place_id -> 0..1 (validato: ogni valore in [0,1])
     stanchezza: float = Field(ge=0, le=1)  # sale durante la giornata
     ora: time
+    # Giorno della settimana (0=lunedì...6=domenica, coerente con
+    # `datetime.date.weekday()`), per valutare `ExperienceNode.orari_apertura`
+    # (Wave 3a+, validazione minima — vedi FasciaApertura sotto). OPZIONALE,
+    # default None: MAI un giorno fabbricato quando il chiamante non lo
+    # specifica — un default silenzioso (es. "sempre lunedì") escluderebbe
+    # candidati per un motivo che nessuno ha davvero dichiarato, lo stesso
+    # errore che `soddisfazione`/`UrbanIntelligenceIndex` evita restando
+    # esplicitamente `None` invece di stimare. Se `None`,
+    # `rientra_in_orario` (sotto) non esclude mai nulla per giorno:
+    # comportamento INVARIATO finché il chiamante non lo popola.
+    giorno_settimana: int | None = Field(default=None, ge=0, le=6)
     eventi_attivi: list[str] = []
 
     @field_validator("affollamento")
@@ -135,6 +148,83 @@ class Partner(ContractModel):
     abbonamento_attivo: bool = True
 
 
+class FasciaApertura(ContractModel):
+    """Una fascia settimanale RICORRENTE in cui un'esperienza è aperta.
+
+    Validazione MINIMA (Wave 3a+, richiesta esplicitamente prima del Living
+    Lab dopo che si è trovato lo scarto tra il White Paper — che promette
+    "gestisce disponibilità" nel Marketplace — e il codice, che non lo
+    faceva: vedi `docs/LIMITI.md`). Modella SOLO un pattern che si ripete
+    ogni settimana: NON eccezioni calendariali, NON festività, NON chiusure
+    straordinarie, NON capienza/conflitti di slot. Costruire quelle cose
+    ORA, senza una bottega reale davanti che ne dichiari il bisogno, sarebbe
+    una scelta di modellazione arbitraria — lo stesso principio già
+    applicato in questo repo a `tasso_ritorno`/`nuovi_percorsi`
+    (`docs/LIMITI.md`): si disegnano quando un caso reale le forza, non
+    prima.
+    """
+
+    giorno_settimana: int = Field(ge=0, le=6)  # 0=lunedì ... 6=domenica (date.weekday())
+    apertura: time
+    chiusura: time
+
+    @model_validator(mode="after")
+    def _chiusura_dopo_apertura(self) -> FasciaApertura:
+        # Niente turni a cavallo di mezzanotte in questa versione minima:
+        # una fascia vive interamente dentro UN giorno. Un turno notturno
+        # reale (es. 22:00->02:00) andrebbe modellato con una decisione
+        # esplicita in più (due fasce? un giorno "esteso"?) — la stessa
+        # classe di scelta che questo contratto rimanda finché non c'è una
+        # bottega reale che la richiede.
+        if self.chiusura <= self.apertura:
+            raise ValueError(
+                f"FasciaApertura: chiusura ({self.chiusura}) deve essere DOPO "
+                f"apertura ({self.apertura}) — niente turni a cavallo di "
+                "mezzanotte in questa versione minima del contratto"
+            )
+        return self
+
+
+def rientra_in_orario(
+    orari_apertura: list[FasciaApertura], giorno_settimana: int | None, ora: time
+) -> bool:
+    """Vero se `ora` (nel giorno `giorno_settimana`) rientra in almeno una
+    fascia di `orari_apertura` — oppure se non c'è alcun vincolo da
+    applicare.
+
+    Due casi fanno passare SEMPRE, per costruzione, mai un'esclusione
+    fabbricata per un dato che il chiamante non ha fornito:
+    - `orari_apertura` vuota: nessun orario dichiarato per questa
+      esperienza (default di `ExperienceNode.orari_apertura` — ogni
+      esperienza del seed oggi, comportamento INVARIATO);
+    - `giorno_settimana` è `None`: il chiamante non ha specificato il
+      giorno (default di `Signal.giorno_settimana`) — non si inventa un
+      giorno per applicare un filtro che nessuno ha chiesto.
+
+    Funzione PURA, riusata IDENTICA (stessa informazione, un solo modello,
+    due usi) da:
+    - `experience_engine.rules.passa_filtri_duri` — quinto filtro duro
+      sull'itinerario, con `giorno_settimana`/`ora` da `Signal`;
+    - `marketplace.service.request_booking` — validazione della
+      prenotazione, con `giorno_settimana`/`ora` derivati da
+      `BookingRequest.quando` (`.weekday()`/`.time()`, sempre presenti: una
+      `datetime` concreta non è mai "giorno sconosciuto").
+
+    Vive qui, in `packages/contracts` — non in `experience_engine` né in
+    `marketplace` — perché nessuno dei due servizi importa l'altro
+    (verificato da `services/marketplace/tests/test_marketplace_service.py::
+    test_service_non_importa_experience_engine`): un'unica fonte di verità
+    su cosa significa "aperto" che entrambi possono importare senza
+    introdurre una dipendenza diretta tra loro.
+    """
+    if not orari_apertura or giorno_settimana is None:
+        return True
+    return any(
+        fascia.giorno_settimana == giorno_settimana and fascia.apertura <= ora < fascia.chiusura
+        for fascia in orari_apertura
+    )
+
+
 class ExperienceNode(ContractModel):
     id: str
     titolo: str
@@ -160,6 +250,14 @@ class ExperienceNode(ContractModel):
     # partner può essere prenotabile (posti limitati); un'esperienza con
     # partner può non esserlo.
     prenotabile: bool = False
+    # Fasce settimanali RICORRENTI in cui l'esperienza è aperta (validazione
+    # minima, vedi `FasciaApertura`). Lista VUOTA (default) = nessun vincolo
+    # dichiarato: l'esperienza resta SEMPRE considerata aperta, per
+    # costruzione — comportamento INVARIATO per ogni esperienza che non
+    # dichiara orari (tutte quelle del seed oggi). Letta da
+    # `rientra_in_orario`, mai altrove: un solo punto interpreta questo
+    # campo, sia in composizione d'itinerario sia in prenotazione.
+    orari_apertura: list[FasciaApertura] = []
 
 
 class GraphCandidate(ContractModel):

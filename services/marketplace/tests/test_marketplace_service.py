@@ -10,11 +10,13 @@ calcolabile prima della conferma.
 from __future__ import annotations
 
 import inspect
+from datetime import UTC, datetime, time
 
 import pytest
-from contracts import BookingStatus, CommissionRecord
+from contracts import BookingStatus, CommissionRecord, FasciaApertura
 from marketplace import (
     BookingNotFoundError,
+    ExperienceNotAvailableError,
     ExperienceNotBookableError,
     InMemoryBookingRepository,
     InvalidBookingStateError,
@@ -93,6 +95,129 @@ def test_request_booking_conserva_person_id_experience_id_quando(
     assert prenotazione.person_id == "pseudonimo-x"
     assert prenotazione.experience_id == "esperienza-y"
     assert prenotazione.quando == richiesta.quando
+
+
+# --- orari di apertura (Wave 3a+, validazione minima) -----------------------
+#
+# `booking_request_factory` di default produce `quando=datetime(2026, 8, 1,
+# 15, 0, tzinfo=UTC)` — un sabato (weekday()==5) alle 15:00.
+
+
+def test_request_booking_accetta_quando_dentro_una_fascia_dichiarata(
+    repo, booking_request_factory
+) -> None:
+    fascia_sabato_pomeriggio = FasciaApertura(
+        giorno_settimana=5, apertura=time(14, 0), chiusura=time(19, 0)
+    )
+    prenotazione = request_booking(
+        repo,
+        booking_request_factory(),  # sabato 15:00 -> dentro 14:00-19:00
+        prezzo_eur=20.0,
+        prenotabile=True,
+        orari_apertura=[fascia_sabato_pomeriggio],
+    )
+    assert prenotazione.stato == BookingStatus.RICHIESTA
+
+
+def test_request_booking_rifiuta_quando_fuori_da_ogni_fascia_dichiarata(
+    repo, booking_request_factory
+) -> None:
+    fascia_sabato_mattina = FasciaApertura(
+        giorno_settimana=5, apertura=time(9, 0), chiusura=time(13, 0)
+    )
+    with pytest.raises(ExperienceNotAvailableError):
+        request_booking(
+            repo,
+            booking_request_factory(),  # sabato 15:00 -> fuori da 9:00-13:00
+            prezzo_eur=20.0,
+            prenotabile=True,
+            orari_apertura=[fascia_sabato_mattina],
+        )
+
+
+def test_request_booking_rifiuta_quando_in_un_giorno_diverso_da_quello_dichiarato(
+    repo, booking_request_factory
+) -> None:
+    fascia_domenica = FasciaApertura(giorno_settimana=6, apertura=time(9, 0), chiusura=time(19, 0))
+    with pytest.raises(ExperienceNotAvailableError):
+        request_booking(
+            repo,
+            booking_request_factory(),  # sabato, non domenica
+            prezzo_eur=20.0,
+            prenotabile=True,
+            orari_apertura=[fascia_domenica],
+        )
+
+
+def test_request_booking_fuori_orario_non_persiste_nulla(
+    repo, booking_request_factory, monkeypatch
+) -> None:
+    """Stesso principio di `prenotabile=False`: il rifiuto per orario avviene
+    PRIMA di qualunque scrittura."""
+    chiamato = []
+    monkeypatch.setattr(repo, "create", lambda booking: chiamato.append(booking) or booking)
+    fascia_sabato_mattina = FasciaApertura(
+        giorno_settimana=5, apertura=time(9, 0), chiusura=time(13, 0)
+    )
+
+    with pytest.raises(ExperienceNotAvailableError):
+        request_booking(
+            repo,
+            booking_request_factory(),
+            prezzo_eur=20.0,
+            prenotabile=True,
+            orari_apertura=[fascia_sabato_mattina],
+        )
+
+    assert chiamato == []
+
+
+def test_request_booking_senza_orari_dichiarati_non_rifiuta_mai_per_questo(
+    repo, booking_request_factory
+) -> None:
+    """`orari_apertura` omesso (default `None`/nessun vincolo dichiarato):
+    comportamento INVARIATO, nessuna esperienza esistente oggi dichiara
+    orari, quindi nessuna prenotazione deve rompersi per questo motivo."""
+    prenotazione = request_booking(
+        repo,
+        booking_request_factory(quando=datetime(2026, 1, 1, 3, 0, tzinfo=UTC)),  # ora improbabile
+        prezzo_eur=20.0,
+        prenotabile=True,
+    )
+    assert prenotazione.stato == BookingStatus.RICHIESTA
+
+
+def test_request_booking_orari_apertura_esplicitamente_vuota_non_rifiuta_mai(
+    repo, booking_request_factory
+) -> None:
+    prenotazione = request_booking(
+        repo,
+        booking_request_factory(quando=datetime(2026, 1, 1, 3, 0, tzinfo=UTC)),
+        prezzo_eur=20.0,
+        prenotabile=True,
+        orari_apertura=[],
+    )
+    assert prenotazione.stato == BookingStatus.RICHIESTA
+
+
+def test_request_booking_prenotabile_falso_ha_priorita_sullorario(
+    repo, booking_request_factory
+) -> None:
+    """Se un'esperienza non è prenotabile E l'orario è comunque fuori fascia,
+    l'errore sollevato è SEMPRE `ExperienceNotBookableError` (controllato
+    per primo): un ordine di controllo deterministico, non un dettaglio
+    implementativo lasciato al caso."""
+    fascia_sabato_mattina = FasciaApertura(
+        giorno_settimana=5, apertura=time(9, 0), chiusura=time(13, 0)
+    )
+    with pytest.raises(ExperienceNotBookableError):
+        request_booking(
+            repo,
+            booking_request_factory(),  # sabato 15:00, fuori fascia E non prenotabile
+            prezzo_eur=20.0,
+            prenotabile=False,
+            orari_apertura=[fascia_sabato_mattina],
+        )
 
 
 # --- IL VINCOLO CARDINE: nessuna commissione prima della conferma -----------

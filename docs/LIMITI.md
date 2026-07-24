@@ -393,3 +393,280 @@ l'intera app, mai i path di scrittura). Questo limite va riletto — non ignorat
   per qualunque motivo (demo pubblica, staging raggiungibile da internet, produzione);
 - rimuovere `scripts/dashboard_viewer.html` dal repo (a quel punto il middleware non ha più un
   consumatore: valutare se rimuoverlo insieme, non lasciarlo "per sicurezza" senza uno scopo).
+
+---
+
+## Il White Paper promette "gestisce disponibilità" nel Marketplace; il codice Wave 3a non lo faceva
+
+**Introdotto:** Wave 3a. **Componente:** `services/marketplace`. **Trovato:** verifica manuale
+(2026-07-22/23) prima di onboardare botteghe reali per il Living Lab.
+
+### Cosa diceva il materiale di pitch
+
+Il White Paper (`docs/LUCCA_SOUL_LAB_Portfolio_v1.0.pdf`, pagina Marketplace) promette
+esplicitamente: *"La piattaforma mette in rete chi crea cultura e **gestisce disponibilità**,
+prenotazioni, pagamenti, recensioni e statistiche."* — "gestisce disponibilità" è una capacità
+dichiarata del concept, non una frase generica.
+
+### Cosa faceva il codice, prima di questa correzione
+
+Niente. `marketplace.service.request_booking` accettava `BookingRequest.quando` (un `datetime`
+libero) e non applicava ALCUNA validazione contro di esso: nessun controllo di orario, nessuna
+verifica di conflitto/doppia prenotazione sullo stesso slot, nessuna gestione di capienza.
+L'unico gate era — ed è tuttora — un booleano tutto-o-niente, `ExperienceNode.prenotabile`
+(prenotabile in assoluto, mai per fascia/giorno). Non era un'assenza silenziosa: era uno scarto
+misurabile tra la narrativa del pitch (che già dichiara "gestisce disponibilità") e il codice
+Wave 3a effettivamente costruito.
+
+### Cosa è stato chiuso ora (validazione MINIMA, non il calendario completo)
+
+`ExperienceNode.orari_apertura` (fasce settimanali RICORRENTI, `FasciaApertura`:
+`giorno_settimana` + `apertura` + `chiusura`), `Signal.giorno_settimana` (opzionale, mai
+fabbricato), e la funzione pura condivisa `contracts.rientra_in_orario` — riusata IDENTICA da
+`experience_engine.rules.passa_filtri_duri` (quinto filtro duro sull'itinerario) e da
+`marketplace.service.request_booking` (rifiuta con `ExperienceNotAvailableError` PRIMA di
+persistere, stesso schema di `ExperienceNotBookableError`). Lista `orari_apertura` vuota o
+`giorno_settimana` assente = nessun vincolo, mai un'esclusione fabbricata: comportamento
+invariato per ogni esperienza del seed di oggi, che non dichiara ancora orari.
+
+### Cosa resta fuori scope, deliberatamente — vedi la voce successiva
+
+Capienza (posti disponibili per slot), conflitti tra due prenotazioni sullo stesso slot,
+eccezioni calendariali e festività: NON sono stati fabbricati ora. Vedi la voce successiva in
+questo file per il dettaglio e il perché.
+
+### Decisione
+
+Il gate "gestisce disponibilità" del pitch è ora PARZIALMENTE vero: orari settimanali sì,
+capienza/conflitti/eccezioni no. Questo limite va riletto prima di:
+- presentare il Marketplace come "gestisce disponibilità" senza qualificare esplicitamente che
+  oggi significa "fasce settimanali ricorrenti", non un calendario completo;
+- onboardare una bottega reale il cui modello di disponibilità non è rappresentabile con fasce
+  settimanali ricorrenti (turni irregolari, chiusure straordinarie frequenti) — a quel punto
+  rileggere anche la voce successiva.
+
+---
+
+## Orari di apertura: capienza, conflitti di slot ed eccezioni calendariali restano fuori scope
+
+**Introdotto:** Wave 3a+. **Componente:** `packages/contracts`, `services/marketplace`,
+`services/experience-engine`.
+
+### Cosa è garantito oggi
+
+`FasciaApertura` (fasce settimanali ricorrenti) e la validazione minima descritta nella voce
+precedente: un'esperienza dichiara QUANDO è aperta nella settimana tipo, e sia la composizione
+dell'itinerario sia la prenotazione rispettano quel vincolo, con un solo modello
+(`rientra_in_orario`) condiviso tra i due usi.
+
+### Cosa NON è garantito
+
+- **Capienza**: nessun conteggio di posti disponibili per slot. Due, dieci, cento persone
+  possono richiedere lo stesso identico `quando` per la stessa esperienza: tutte vengono accolte
+  in stato `RICHIESTA` (poi eventualmente confermate a mano da chi gestisce la bottega). Non
+  esiste un numero massimo dichiarato né un contatore che lo faccia rispettare.
+- **Conflitti di slot**: nessuna verifica che due prenotazioni sullo stesso `experience_id` allo
+  stesso `quando` (o in una finestra sovrapposta, se l'esperienza dura più del singolo istante)
+  siano compatibili tra loro. `request_booking` valuta ogni richiesta in isolamento.
+- **Eccezioni calendariali e festività**: `FasciaApertura` è RICORRENTE per costruzione (un
+  giorno della settimana, non una data): non esiste un modo di dichiarare "chiuso il 25
+  dicembre" o "chiuso per ferie dal 10 al 20 agosto" senza disattivare l'intera fascia
+  settimanale che coprirebbe anche i giorni non eccezionali.
+- **Turni a cavallo di mezzanotte**: `FasciaApertura` richiede `chiusura > apertura` nello
+  stesso giorno (vincolo di contratto, `model_validator`): un turno reale 22:00->02:00 non è
+  rappresentabile con una singola fascia.
+
+### Trovato da un giro DEDICATO di ethics-guardian (2026-07-24), non da un'autovalutazione
+
+Un'autovalutazione dell'implementatore aveva dichiarato questo lavoro "PASS". Un giro separato,
+esplicitamente adversariale, ha trovato quattro cose che l'implementatore non aveva visto — lo
+stesso ruolo che il gate ha già avuto in Wave 1 (attribuzione mescolata nello score) e Wave 3b/4
+(gate mancante su `contributi_memoria`; fuga del conteggio esatto in `motivo_indisponibilita`).
+
+1. **BUG REALE, CORRETTO in questa stessa verifica**: `experience_engine.engine.
+   _migliore_alternativa` (usata da `adapt_itinerary` per sostituire una tappa su pioggia/
+   affollamento) aveva una sua logica di filtro scritta a mano — non chiamava
+   `rules.passa_filtri_duri` né `contracts.rientra_in_orario`. Una riscrittura per pioggia
+   poteva quindi sostituire una tappa con un'esperienza CHIUSA in quel momento, anche se la
+   composizione iniziale la escludeva correttamente. Riprodotto con uno scenario minimo
+   (tappa all'aperto sotto pioggia, unica alternativa al chiuso aperta solo 20:00-23:00,
+   segnale delle 10:00): la sostituzione avveniva. Corretto aggiungendo lo stesso controllo
+   (`rientra_in_orario`) a `_migliore_alternativa`; test di regressione permanente
+   `test_adapt_non_sostituisce_con_unalternativa_chiusa_in_quellorario`
+   (`services/experience-engine/tests/test_engine.py`). Riverificato: l'intera suite
+   combinata (`tests/` + ogni `services/*/tests`) resta verde dopo la correzione.
+2. **GAP PRE-ESISTENTE, TROVATO INCIDENTALMENTE, NON CORRETTO qui (fuori scope di questa
+   verifica)**: la stessa `_migliore_alternativa` non verifica NEMMENO
+   `partner_abbonamento_attivo` — un partner con abbonamento non attivo, escluso sempre in
+   composizione iniziale da `passa_filtri_duri` (Wave 3a), può quindi essere reintrodotto
+   come alternativa durante un adattamento. Non è stato introdotto da questo lavoro sugli
+   orari (esisteva già da quando è stato aggiunto il filtro sull'abbonamento in Wave 3a, mai
+   esteso ad `adapt`): segnalato qui perché "va tracciato, non lasciato implicito", non
+   corretto perché la richiesta di questa verifica riguardava gli orari, non l'abbonamento.
+3. **LIMITE DI PROGETTAZIONE, non un bug isolato**: `passa_filtri_duri` (e quindi anche il
+   controllo sugli orari) valuta OGNI candidato contro un SINGOLO istante — `signal.ora`/
+   `signal.giorno_settimana` al momento in cui la composizione INIZIA — non contro l'orario
+   effettivo in cui quella tappa verrebbe visitata più avanti nella sequenza (che
+   `_costruisci_stops` calcola solo DOPO aver scelto e ordinato le tappe). Su un itinerario
+   di più ore, questo può escludere per errore un'esperienza che aprirebbe in tempo per
+   quando l'itinerario la raggiungerebbe, o includerne una che nel frattempo avrebbe già
+   chiuso. Non è un problema NUOVO introdotto dagli orari: lo stesso limite vale già per il
+   filtro sull'affollamento (`signal.affollamento`, valutato anch'esso su un solo istante) —
+   ma è molto più visibile per gli orari, dove "aperto/chiuso" cambia in modo netto nell'arco
+   di poche ore, mentre l'affollamento cambia con più continuità. Risolverlo davvero
+   richiederebbe filtrare/schedulare in un unico passo (sapere l'orario di visita PRIMA di
+   escludere un candidato), un cambio di architettura della pipeline di composizione, non un
+   aggiustamento locale.
+4. **ASSUNZIONE DI INTEGRITÀ NON VERIFICATA, della stessa famiglia del limite su
+   `POST /events`** (voce successiva in questo file): `orari_apertura` è interamente
+   auto-dichiarato da chi cura il grafo/la bottega, senza alcuna verifica. Non è un problema
+   NUOVO (la stessa fiducia non verificata vale già per `accessibile`, `al_chiuso`,
+   `prenotabile`) ma ha un incentivo asimmetrico specifico: dichiarare orari più ampi del
+   vero PUÒ SOLO aumentare le occasioni in cui un'esperienza è considerata (mai diminuirle,
+   perché il campo esclude soltanto, non assegna punteggio) — quindi l'unico incentivo a
+   mentire va in una direzione sola, "dichiarati sempre aperto". Nessuna verifica, nessuna
+   conseguenza tracciata per una dichiarazione falsa.
+
+### Cosa servirebbe per chiudere questi buchi (proposte, NON implementate ora)
+
+1. **Capienza**: un campo `capienza: int | None` su `ExperienceNode` o su una nuova entità
+   "slot" collegata alla prenotazione, più un conteggio delle prenotazioni `RICHIESTA`/
+   `CONFERMATA` già esistenti per lo stesso `quando` prima di accettarne una nuova. Decisione
+   da prendere: la capienza è per ESPERIENZA (stesso numero ogni volta che si tiene) o per
+   OCCORRENZA specifica (una volta con più posti, un'altra con meno)?
+2. **Conflitti di slot**: richiede prima la capienza (senza un numero massimo, "conflitto" non è
+   definibile) e una decisione su cosa succede quando lo slot è pieno — la richiesta viene
+   rifiutata subito (`ExperienceNotAvailableError` esteso, o un nuovo errore dedicato?) o messa
+   in lista d'attesa?
+3. **Eccezioni calendariali**: un secondo modello, es. `EccezioneApertura {data: date, chiuso:
+   bool, apertura: time | None, chiusura: time | None}`, che sovrascrive `FasciaApertura` per una
+   data specifica — verificato PRIMA della fascia ricorrente in `rientra_in_orario`. Aggiunge una
+   seconda lista da mantenere per ogni esperienza: vale la complessità solo se una bottega reale
+   ha davvero bisogno di dichiarare chiusure straordinarie oltre al pattern settimanale.
+4. **Turni a cavallo di mezzanotte**: o si accettano due fasce (es. 22:00-23:59 + 00:00-02:00 il
+   giorno dopo, un'approssimazione già disponibile con il modello attuale) o si estende
+   `FasciaApertura` con un giorno "esteso" — una scelta di modellazione, non solo un fix.
+5. **`partner_abbonamento_attivo` in `_migliore_alternativa`** (trovato al punto 2 sopra):
+   aggiungere lo stesso controllo già presente in `passa_filtri_duri`. A differenza degli
+   orari (appena corretti in questa verifica), non è stato fatto qui perché fuori scope
+   della richiesta — ma è la correzione più economica di questa lista: stesso pattern già
+   scritto, un'unica riga in più.
+6. **Filtro consapevole dell'orario di visita effettivo** (trovato al punto 3 sopra):
+   richiede di invertire l'ordine attuale "filtra poi schedula" in qualcosa che sappia, PRIMA
+   di escludere un candidato, a che ora verrebbe effettivamente visitato — un cambio di
+   architettura della pipeline di `compose_itinerary`, non un aggiustamento locale. Vale la
+   pena solo se un itinerario reale, di più ore, mostra davvero il problema (un'esperienza
+   esclusa che sarebbe stata aperta in tempo, o inclusa quando ormai avrebbe già chiuso).
+
+### Decisione
+
+Nessuno di questi sei punti è implementato ora. I primi quattro, DELIBERATAMENTE: costruirli
+senza una bottega reale che ne dichiari il bisogno specifico (quale capienza? quali eccezioni?
+quali turni notturni?) sarebbe fabbricare una scelta di modellazione arbitraria — lo stesso
+principio già applicato in questo file a `tasso_ritorno`/`nuovi_percorsi`. Il quinto e il sesto,
+perché fuori dallo scope della verifica che li ha trovati (rispettivamente: l'abbonamento
+partner, non gli orari; un cambio di architettura, non un fix locale) — non perché siano meno
+reali dei primi quattro. Questo limite va riletto quando il
+Living Lab onboarda la prima bottega reale che dichiara uno di questi bisogni (per i primi
+quattro punti) o prima di estendere ulteriormente `adapt_itinerary`/la pipeline di composizione
+(per il quinto e il sesto) — a quel punto la richiesta reale guida quale delle sei proposte (o
+quale variante) implementare, non il contrario.
+
+---
+
+## `POST /events` non ha alcuna prova di presenza, autenticazione o rate limiting — prerequisito del Living Lab
+
+**Introdotto:** Wave 3b. **Componente:** `services/api` (`POST /events`), `services/recommender`.
+**Trovato:** verifica manuale (2026-07-23), dopo che il committente ha inviato 10 eventi `stop`
+fabbricati dal terminale contro il BFF reale senza che il sistema rilevasse o rifiutasse nulla
+(stesso meccanismo già usato, con pulizia esplicita, per la prova del gate k=10 in Wave 4 —
+vedi la voce precedente su `scripts/pulisci_eventi_prefisso.py`).
+
+### Cosa è garantito oggi
+
+`BehaviorEvent` è validato SOLO nella FORMA (Pydantic: `person_id: str`, `tipo:
+Literal["view","stop","photo","booking","review","skip","memory_contrib"]`, `experience_id:
+str`, `ts: datetime`), non nel CONTENUTO. `api.main.submit_behavior_event` fa esattamente
+`repo.record(event)` — nessun controllo aggiuntivo. Nessuna PII: `person_id` resta uno
+pseudonimo, mai loggato.
+
+### Cosa NON è garantito — i quattro punti richiesti, verificati uno per uno
+
+1. **Nessun meccanismo di prova di presenza, in nessuna forma.** Cercato in tutto il repo
+   (contratti, grafo, BFF, recommender, app Flutter) e nel White Paper
+   (`docs/LUCCA_SOUL_LAB_Portfolio_v1.0.pdf`): zero occorrenze di GPS, check-in, QR,
+   conferma operatore, geolocalizzazione, beacon, NFC. `services/recommender/README.md`
+   DOCUMENTA esplicitamente l'assunzione su cui poggia l'intero schema di pesi
+   (`PESI_TIPO`): `tipo="stop"` vale il doppio di `view` perché significa "presenza fisica
+   reale e prolungata in quel luogo" — un'assunzione filosofica, verificata da NULLA nel
+   codice.
+2. **Nessun codice, nemmeno abbozzato, genera eventi lato app.** `apps/lucca_soul_app` non ha
+   ALCUN riferimento a "events"/"BehaviorEvent" in nessun file: `BffClient` non ha un metodo
+   per `POST /events`. Le uniche righe mai scritte in `behavior_event` in questa
+   collaborazione sono arrivate da chiamate HTTP dirette (terminale/script), mai dall'app —
+   l'unico modo che esiste OGGI per generare un evento è bypassare completamente l'app.
+3. **Nessun modo per registrare un luogo NON presente nel grafo — nessun percorso di
+   scoperta reale.** `BehaviorEvent.experience_id` non è validato contro il catalogo al
+   momento dell'invio (nessun vincolo di chiave esterna a livello di contratto o di
+   endpoint): un id sconosciuto non genera un errore, viene silenziosamente IGNORATO più
+   tardi in aggregazione (`intelligence_index.dashboard.celle_flusso`: "un `experience_id`
+   assente dal catalogo non è mappabile: ignorato"). `MemoryContribution.riguarda` PUÒ
+   referenziare un id inesistente al momento del conferimento (per design: il Cittadino può
+   sempre conferire, anche con Aura in pausa) — ma quel contributo non raggiungerà MAI
+   `curato=True` (la curatela verifica i target, `InvalidTargetsError`), quindi non
+   comparirà mai via `GET /memory/{place_id}`: un vicolo cieco permanente, non un percorso
+   di scoperta. L'unico modo in cui un luogo realmente nuovo diventa un nodo di prima classe
+   oggi è il seed versionato (`graph.seed_lucca`), scritto a mano da chi cura il grafo — mai
+   a runtime, mai da un contributo di campo.
+4. **Nessuna autenticazione, nessun rate limiting.** Verificato per ricerca testuale:
+   zero occorrenze di auth/Authorization/api_key/rate limit in tutto `services/api`;
+   l'unico middleware registrato sull'app è quello CORS (Wave 4, scoped a `GET
+   /dashboard/*`, niente a che vedere con `/events`). Chiunque raggiunga il BFF in rete può
+   inviare un numero illimitato di eventi fabbricati, con qualunque `person_id` a piacere.
+
+Il punto 4 AGGRAVA il limite già documentato sopra in questo file ("`behavior_event` non
+distingue eventi reali da sintetici/di test, e non ha retention"): lì il problema era che un
+evento GENUINO di verifica inquinava il ranking senza scadenza temporale nel Recommender; qui
+il problema è A MONTE — non c'è nemmeno un modo di distinguere un evento genuino da uno
+fabbricato dal nulla, e chiunque può generarne quanti ne vuole, senza friction, senza
+autenticazione, senza limite di frequenza. Le due lacune si compongono: un solo abuso non
+autenticato altera il ranking reale per sempre, non per una finestra limitata.
+
+### Cosa servirebbe (proposte, NON implementate — richiesta esplicita di non farlo ora)
+
+1. **Autenticazione minima su `POST /events`**: anche solo una chiave per client noto (l'app
+   ufficiale), non un sistema di identità completo — sposta il rischio da "chiunque in rete"
+   a "chiunque abbia la chiave dell'app": un primo filtro, non una soluzione contro un abuso
+   deliberato che estrae la chiave dall'app stessa.
+2. **Rate limiting** per IP e/o per pseudonimo (es. N eventi/minuto): riduce il danno di un
+   abuso automatizzato ingenuo, non lo elimina (un pseudonimo diverso ad ogni richiesta lo
+   aggira facilmente).
+3. **Un segnale minimo di presenza reale**: legare l'evento a qualcosa che richieda essere
+   fisicamente nel luogo — un QR affisso in loco, un check-in geolocalizzato (richiede la
+   posizione del dispositivo: un dato sensibile, da trattare coerentemente con "niente
+   storage di PII sul device" già vincolante per il client Flutter), o una conferma
+   dell'operatore/bottega (il più debole tecnicamente ma il più coerente con un pilota
+   piccolo e supervisionato). Tre modelli diversi, costi e implicazioni di privacy diversi:
+   una decisione di prodotto prima che tecnica, non una scelta tecnica isolata.
+4. **Un percorso di scoperta per un luogo nuovo**: oggi non esiste in nessuna forma.
+   Servirebbe un flusso esplicito (es. una proposta di nuovo nodo che un umano/la curatela
+   approva prima che entri nel grafo) — non un tipo di `BehaviorEvent`/`MemoryContribution`
+   esistente riadattato: un luogo non ancora nel grafo non ha nemmeno un `place_id` a cui
+   agganciare un contributo.
+
+### Decisione
+
+Nessuno dei quattro punti è implementato — non era la richiesta di questa verifica. Ma è un
+PREREQUISITO del Living Lab, non solo un miglioramento futuro rimandabile: il momento in cui
+persone reali (non solo chi verifica manualmente da terminale, con la disciplina di ripulire
+subito dopo) iniziano a generare eventi è esattamente il momento in cui l'assenza di TUTTI E
+QUATTRO questi controlli smette di essere un rischio teorico. Questo limite va riletto — non
+ignorato — prima di:
+- aprire `POST /events` a un pubblico reale, anche in un pilota piccolo e supervisionato;
+- decidere quale delle quattro proposte sopra (o quale combinazione) implementare — ciascuna
+  ha un costo e un'implicazione di privacy diversi, non sono intercambiabili né equivalenti;
+- fidarsi di `distribuzione_flussi`/di qualunque indicatore dell'Urban Intelligence Index
+  derivato da eventi non verificati, in un contesto dove il risultato informa decisioni reali
+  di un'amministrazione (CLAUDE.md: "le Smart City raccolgono dati, le città intelligenti
+  generano significato" — un significato costruito su eventi non verificati è un significato
+  fabbricato, non generato).

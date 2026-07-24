@@ -15,10 +15,19 @@ riceve iniettati, non li importa.
 from __future__ import annotations
 
 import inspect
-from datetime import time
+from datetime import datetime, time
 
 import pytest
-from contracts import EmotionalProfile, GraphCandidate, Signal, VisitorContext
+from contracts import (
+    EmotionalProfile,
+    ExperienceNode,
+    FasciaApertura,
+    GraphCandidate,
+    Itinerary,
+    ItineraryStop,
+    Signal,
+    VisitorContext,
+)
 from experience_engine import adapt_itinerary, compose_itinerary, rules
 from graph.source import SeedCandidateSource
 from rag.reasons import adapt_reason, compose_reason
@@ -291,6 +300,7 @@ def _candidato(
     attribuzione: str | None = None,
     partner_abbonamento_attivo: bool = True,
     prenotabile: bool = False,
+    orari_apertura: list | None = None,
 ) -> GraphCandidate:
     """Costruisce a mano un candidato identico salvo i campi commerciali.
 
@@ -303,6 +313,7 @@ def _candidato(
         durata_min=40, al_chiuso=True, accessibile=True,
         partner_id=partner_id, prezzo_eur=prezzo_eur,
         partner_abbonamento_attivo=partner_abbonamento_attivo, prenotabile=prenotabile,
+        orari_apertura=orari_apertura or [],
     )
     return GraphCandidate(
         experience=exp, place_nome="Luogo", connessioni=['Evoca il tema "Arte".'],
@@ -385,6 +396,137 @@ def test_partner_non_attivo_escluso_dai_filtri_duri() -> None:
     assert rules.passa_filtri_duri(attivo, profile, signal, []) is True
     assert rules.passa_filtri_duri(non_attivo, profile, signal, []) is False
     assert rules.passa_filtri_duri(senza_partner, profile, signal, []) is True
+
+
+# --- orari di apertura (Wave 3a+, validazione minima) -----------------------
+
+
+def test_esperienza_chiusa_in_quel_giorno_ora_esclusa_dai_filtri_duri() -> None:
+    """Quinto filtro duro: un'esperienza con `orari_apertura` dichiarati che
+    NON coprono il giorno/ora del segnale corrente è esclusa — stessa
+    informazione di `marketplace.service.request_booking`, un solo modello
+    (`contracts.rientra_in_orario`), due usi."""
+    fascia_sabato_mattina = FasciaApertura(
+        giorno_settimana=5, apertura=time(9, 0), chiusura=time(13, 0)
+    )
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    candidato = _candidato(orari_apertura=[fascia_sabato_mattina])
+
+    dentro = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0), giorno_settimana=5
+    )
+    fuori_ora = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(15, 0), giorno_settimana=5
+    )
+    fuori_giorno = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0), giorno_settimana=2
+    )
+
+    assert rules.passa_filtri_duri(candidato, profile, dentro, []) is True
+    assert rules.passa_filtri_duri(candidato, profile, fuori_ora, []) is False
+    assert rules.passa_filtri_duri(candidato, profile, fuori_giorno, []) is False
+
+
+def test_esperienza_senza_orari_dichiarati_mai_esclusa_per_questo_motivo() -> None:
+    """Comportamento INVARIATO: un'esperienza senza `orari_apertura`
+    dichiarati (il default, ogni esperienza del seed oggi) non viene MAI
+    esclusa per questo filtro, qualunque giorno/ora porti il segnale."""
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    candidato = _candidato()  # orari_apertura di default: []
+    for ora, giorno in [(time(3, 0), 0), (time(23, 59), 6), (time(12, 0), None)]:
+        signal = Signal(
+            meteo="sereno", affollamento={}, stanchezza=0.0, ora=ora, giorno_settimana=giorno
+        )
+        assert rules.passa_filtri_duri(candidato, profile, signal, []) is True
+
+
+def test_segnale_senza_giorno_settimana_non_esclude_per_orario() -> None:
+    """`Signal.giorno_settimana=None` (il default, es. per ogni chiamante che
+    non lo popola ancora): il filtro non esclude MAI un'esperienza per
+    questo motivo, anche se dichiara orari — non si inventa un giorno per
+    applicare un vincolo che nessuno ha chiesto."""
+    fascia = FasciaApertura(giorno_settimana=5, apertura=time(9, 0), chiusura=time(13, 0))
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    candidato = _candidato(orari_apertura=[fascia])
+    signal_senza_giorno = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(15, 0))
+
+    assert rules.passa_filtri_duri(candidato, profile, signal_senza_giorno, []) is True
+
+
+# --- FIX ethics-guardian (2026-07-24): adapt_itinerary poteva reintrodurre --
+# --- un'esperienza CHIUSA come alternativa (bug reale, trovato dal gate) ---
+
+
+def test_adapt_non_sostituisce_con_unalternativa_chiusa_in_quellorario() -> None:
+    """Bug reale trovato da un giro DEDICATO di ethics-guardian, separato
+    dall'implementazione (non un'autovalutazione): `_migliore_alternativa`
+    (usata da `adapt_itinerary` per sostituire una tappa su pioggia/
+    affollamento) aveva la sua logica di filtro scritta a mano e non
+    chiamava affatto `rientra_in_orario` -- una sostituzione poteva quindi
+    reintrodurre un'esperienza chiusa nel giorno/ora del segnale, anche se
+    `passa_filtri_duri` la escludeva gia' correttamente in composizione
+    iniziale. Riprodotto e corretto: ora `_migliore_alternativa` applica lo
+    STESSO controllo, stessa funzione `contracts.rientra_in_orario`.
+
+    Scenario: piove, la tappa originale (all'aperto) va sostituita; l'UNICA
+    alternativa al chiuso disponibile e' aperta solo 20:00-23:00, mentre il
+    segnale e' delle 10:00 di sabato -- quindi NESSUNA alternativa valida
+    esiste, e la tappa originale deve restare invariata (mai una tappa
+    chiusa sostituita al posto suo)."""
+    fascia_solo_sera = FasciaApertura(
+        giorno_settimana=5, apertura=time(20, 0), chiusura=time(23, 0)
+    )
+    esperienza_chiusa_ora = ExperienceNode(
+        id="exp-chiusa-ora", titolo="Museo", place_id="luogo-b", temi=[],
+        durata_min=30, al_chiuso=True, accessibile=True,
+        orari_apertura=[fascia_solo_sera],
+    )
+    esperienza_originale = ExperienceNode(
+        id="exp-originale", titolo="Passeggiata", place_id="luogo-a", temi=[],
+        durata_min=30, al_chiuso=False, accessibile=True,
+    )
+    candidati = [
+        GraphCandidate(experience=esperienza_originale, place_nome="A", connessioni=[]),
+        GraphCandidate(
+            experience=esperienza_chiusa_ora, place_nome="B",
+            connessioni=["Unica alternativa al chiuso disponibile"],
+        ),
+    ]
+    itinerario = Itinerary(
+        person_id="p",
+        stops=[ItineraryStop(experience_id="exp-originale", arrivo=time(10, 0), durata_min=30,
+                              reason="motivo iniziale")],
+        generated_at=datetime.now(),
+    )
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.5, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    # Sabato (giorno_settimana=5) alle 10:00: la tappa all'aperto va sostituita
+    # (piove), ma l'unica candidata al chiuso apre solo alle 20:00.
+    segnale_pioggia = Signal(
+        meteo="pioggia", affollamento={}, stanchezza=0.0, ora=time(10, 0), giorno_settimana=5
+    )
+
+    risultato = adapt_itinerary(
+        itinerario, segnale_pioggia, candidati, profile,
+        reason_fn=compose_reason, adapt_reason_fn=adapt_reason,
+    )
+
+    assert risultato.stops[0].experience_id == "exp-originale", (
+        "l'unica alternativa al chiuso e' chiusa in questo orario: l'itinerario "
+        "non deve sostituire la tappa con un'esperienza chiusa"
+    )
+    assert risultato.adattato_da_segnale is False
 
 
 def test_reason_contiene_attribuzione_ma_score_invariato() -> None:

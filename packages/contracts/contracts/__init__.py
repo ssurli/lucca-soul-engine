@@ -16,6 +16,7 @@ from .models import (
     EmotionalProfile,
     ExperienceCandidate,
     ExperienceNode,
+    FasciaApertura,
     FlowCell,
     GraphCandidate,
     Itinerary,
@@ -29,6 +30,7 @@ from .models import (
     Signal,
     UrbanIntelligenceIndex,
     VisitorContext,
+    rientra_in_orario,
 )
 
 __all__ = [
@@ -43,6 +45,7 @@ __all__ = [
     "EmotionalProfile",
     "ExperienceCandidate",
     "ExperienceNode",
+    "FasciaApertura",
     "FlowCell",
     "GraphCandidate",
     "Itinerary",
@@ -56,5 +59,6 @@ __all__ = [
     "Signal",
     "UrbanIntelligenceIndex",
     "VisitorContext",
+    "rientra_in_orario",
 ]
 

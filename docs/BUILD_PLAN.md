@@ -92,6 +92,47 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   connessione Aura chiusa dal server) è una fragilità pre-esistente di `Neo4jCandidateSource`
   (driver cache-ato per l'intera sessione pytest, nessun retry su errori di connessione
   transitori) — non introdotta da questa wave, tracciata come debito tecnico separato.*
+  **→ SCARTO TROVATO E CHIUSO IN PARTE, PRIMA DEL LIVING LAB** (2026-07-23): il White Paper
+  promette che il Marketplace "gestisce disponibilità"; `request_booking` non applicava alcuna
+  validazione su `BookingRequest.quando` (né orari, né capienza, né conflitti). Aggiunta
+  validazione MINIMA: `ExperienceNode.orari_apertura` (fasce settimanali ricorrenti,
+  `FasciaApertura`), `Signal.giorno_settimana` (opzionale, mai fabbricato), e
+  `contracts.rientra_in_orario` — una sola funzione pura riusata IDENTICA dal quinto filtro duro
+  di `experience_engine.rules.passa_filtri_duri` (itinerario) e da
+  `marketplace.service.request_booking` (`ExperienceNotAvailableError`, stesso schema di
+  `ExperienceNotBookableError`, rifiuta PRIMA di persistere). Nessuna esperienza esistente
+  dichiara ancora orari: comportamento invariato per il seed di oggi (lista vuota/giorno assente
+  = nessun vincolo, mai un'esclusione fabbricata). Capienza, conflitti di slot, eccezioni
+  calendariali e festività restano DELIBERATAMENTE fuori scope — non fabbricati senza una
+  bottega reale davanti (`docs/LIMITI.md`, due voci dedicate). `contract-keeper`: nuovi campi
+  in `packages/contracts`/`docs/DATA_CONTRACTS.md`. Test aggiunti in `tests/test_contracts.py`,
+  `services/experience-engine/tests/test_engine.py`, `services/marketplace/tests/
+  test_marketplace_service.py`; suite combinata rilanciata (`tests/` + ogni `services/*/tests`),
+  nessuna regressione; `ruff check .` e `mypy` sui moduli toccati puliti.
+  **ethics-guardian** (2026-07-24, giro DEDICATO e separato, non un'autovalutazione — richiesto
+  esplicitamente dal committente perché "un'autovalutazione non lo sostituisce"): **FAIL
+  iniziale**, un bug REALE trovato che l'implementatore non aveva visto —
+  `experience_engine.engine._migliore_alternativa` (la sostituzione di tappa in
+  `adapt_itinerary` su pioggia/affollamento) aveva una logica di filtro scritta a mano, non
+  chiamava `rientra_in_orario`: una riscrittura poteva reintrodurre un'esperienza CHIUSA come
+  alternativa, anche se la composizione iniziale la escludeva correttamente. Riprodotto con
+  uno scenario minimo, corretto (stesso controllo aggiunto a `_migliore_alternativa`), test di
+  regressione permanente aggiunto
+  (`test_adapt_non_sostituisce_con_unalternativa_chiusa_in_quellorario`), suite combinata
+  rilanciata da zero: verde. **PASS** dopo la correzione. Il gate ha inoltre segnalato, senza
+  correggerli (fuori scope di questa verifica), due punti ulteriori — entrambi tracciati in
+  `docs/LIMITI.md`, non lasciati impliciti: (a) la stessa `_migliore_alternativa` non verifica
+  nemmeno `partner_abbonamento_attivo` (gap Wave 3a pre-esistente, mai esteso ad `adapt`,
+  scoperto incidentalmente); (b) tutti i filtri duri (non solo gli orari) valutano ogni
+  candidato contro un singolo istante di `Signal`, non contro l'orario in cui la tappa verrebbe
+  effettivamente visitata più avanti nella sequenza — limite di progettazione della pipeline,
+  molto più visibile per gli orari che per l'affollamento. Nessun canale commerciale toccato dal
+  filtro sugli orari (letto solo da `passa_filtri_duri`/`_migliore_alternativa`, mai da
+  `calcola_score`); nessuna capienza fabbricata; il vincolo resta in un solo modello
+  (`rientra_in_orario`) per tutti e tre gli usi (composizione, adattamento, prenotazione).
+  Aggiunta anche una nota in `services/recommender/README.md`, accanto alla tabella dei pesi:
+  il peso 2.0 di `stop` poggia su un'assunzione di presenza fisica che nessun codice verifica
+  oggi (rimanda a `docs/LIMITI.md`, voce su `POST /events`).
 
 ## Wave 3b — Recommender ML  *(separata, non iniziare senza via libera)*
 - **recommender-engineer**: modello su `BehaviorEvent` che riordina i candidati (con `reason`).

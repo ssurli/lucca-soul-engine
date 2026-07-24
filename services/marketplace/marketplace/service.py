@@ -38,13 +38,21 @@ from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from contracts import Booking, BookingRequest, BookingStatus, CommissionRecord
+from contracts import (
+    Booking,
+    BookingRequest,
+    BookingStatus,
+    CommissionRecord,
+    FasciaApertura,
+    rientra_in_orario,
+)
 
 from .repository import BookingRepository
 
 __all__ = [
     "MarketplaceError",
     "ExperienceNotBookableError",
+    "ExperienceNotAvailableError",
     "BookingNotFoundError",
     "InvalidBookingStateError",
     "request_booking",
@@ -67,6 +75,18 @@ class ExperienceNotBookableError(MarketplaceError):
     partner sono concetti distinti, docs/DATA_CONTRACTS.md §2)."""
 
 
+class ExperienceNotAvailableError(MarketplaceError):
+    """`BookingRequest.quando` cade fuori dalle fasce settimanali dichiarate
+    in `ExperienceNode.orari_apertura` (validazione MINIMA, Wave 3a+: fasce
+    ricorrenti soltanto — niente capienza, conflitti di slot o eccezioni
+    calendariali, vedi `docs/LIMITI.md`). Distinta da
+    `ExperienceNotBookableError`: quella dice "questa esperienza non si
+    prenota mai", questa dice "non in QUESTO momento". Un'esperienza che non
+    dichiara orari (`orari_apertura` vuota, il default) non solleva MAI
+    questo errore — nessun vincolo fabbricato per un'esperienza che non ne
+    ha dichiarato uno."""
+
+
 class BookingNotFoundError(MarketplaceError):
     """`booking_id` non esiste nel repository. Sottoclasse di
     `MarketplaceError` (non un `KeyError` nudo) così il BFF la mappa a un
@@ -84,6 +104,7 @@ def request_booking(
     *,
     prezzo_eur: float,
     prenotabile: bool,
+    orari_apertura: list[FasciaApertura] | None = None,
     id_generator: Callable[[], str] | None = None,
 ) -> Booking:
     """Crea una `Booking` in stato `RICHIESTA` e la persiste.
@@ -101,6 +122,20 @@ def request_booking(
     partner (docs/DATA_CONTRACTS.md §2), lo decide solo questo flag,
     verificato in un solo punto.
 
+    `orari_apertura` (validazione MINIMA, Wave 3a+): stesso pattern di
+    `prezzo_eur`/`prenotabile`, arriva da chi chiama, letto
+    dall'`ExperienceNode` corrente. Rifiuta SUBITO (`ExperienceNotAvailableError`,
+    nessuna scrittura) se `request.quando` cade fuori da TUTTE le fasce
+    dichiarate — usa `contracts.rientra_in_orario`, la STESSA funzione
+    riusata dal quinto filtro duro di `experience_engine.rules.
+    passa_filtri_duri` (stessa informazione, un solo modello, due usi).
+    `None`/lista vuota (default) = nessun orario dichiarato: non solleva mai
+    questo errore per un'esperienza che non ha dichiarato vincoli — nessuna
+    esclusione fabbricata per un dato assente. Capienza, conflitti di slot,
+    eccezioni calendariali e festività restano DELIBERATAMENTE fuori da
+    questa validazione (`docs/LIMITI.md`): si disegnano quando una bottega
+    reale ne dichiara il bisogno, non prima.
+
     `id_generator` — di default un id `booking-<uuid4>`; sovrascrivibile per
     id deterministici (usato da `marketplace.verify` per un round-trip
     riproducibile).
@@ -109,6 +144,16 @@ def request_booking(
         raise ExperienceNotBookableError(
             f"esperienza id={request.experience_id!r} non è prenotabile "
             "(ExperienceNode.prenotabile=False): richiesta rifiutata, "
+            "nessuna prenotazione creata."
+        )
+
+    if not rientra_in_orario(
+        orari_apertura or [], request.quando.weekday(), request.quando.time()
+    ):
+        raise ExperienceNotAvailableError(
+            f"esperienza id={request.experience_id!r} richiesta per "
+            f"{request.quando.isoformat()!r}, fuori dalle fasce di apertura "
+            "dichiarate (ExperienceNode.orari_apertura): richiesta rifiutata, "
             "nessuna prenotazione creata."
         )
 

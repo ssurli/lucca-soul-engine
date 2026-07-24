@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import math
 
-from contracts import EmotionalProfile, GraphCandidate, Signal
+from contracts import EmotionalProfile, GraphCandidate, Signal, rientra_in_orario
 
 # ---------------------------------------------------------------------------
 # Costanti nominate
@@ -123,6 +123,17 @@ def passa_filtri_duri(
       concorre esattamente come tutti gli altri — il suo punteggio non cambia
       di un bit. Verificato dal booleano denormalizzato `partner_abbonamento_attivo`
       (popolato a monte dal grafo); `calcola_score` non lo legge mai.
+    - Esclude un'esperienza CHIUSA nel giorno/ora del segnale corrente
+      (validazione minima Wave 3a+, `ExperienceNode.orari_apertura`, fasce
+      settimanali ricorrenti — vedi `docs/LIMITI.md` per cosa resta fuori
+      scope: capienza, conflitti di slot, eccezioni calendariali). Usa
+      `contracts.rientra_in_orario`, la STESSA funzione riusata da
+      `marketplace.service.request_booking` per validare una prenotazione:
+      un solo modello di "cosa significa aperto", due usi. Se l'esperienza
+      non dichiara orari (lista vuota, il caso di ogni esperienza del seed
+      oggi) o se `signal.giorno_settimana` è `None` (il chiamante non l'ha
+      specificato), questo filtro non esclude MAI nulla — comportamento
+      invariato finché non c'è un dato reale da applicare.
     """
     esperienza = candidate.experience
     if profile.accessibilita_richiesta and not esperienza.accessibile:
@@ -132,6 +143,8 @@ def passa_filtri_duri(
     if signal.affollamento.get(esperienza.place_id, 0.0) >= SOGLIA_AFFOLLAMENTO_CRITICO:
         return False
     if esperienza.partner_id is not None and not esperienza.partner_abbonamento_attivo:
+        return False
+    if not rientra_in_orario(esperienza.orari_apertura, signal.giorno_settimana, signal.ora):
         return False
     return True
 

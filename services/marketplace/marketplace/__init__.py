@@ -63,6 +63,7 @@ from .repository import (
 )
 from .service import (
     BookingNotFoundError,
+    ExperienceNotAvailableError,
     ExperienceNotBookableError,
     InvalidBookingStateError,
     MarketplaceError,
@@ -77,6 +78,7 @@ __all__ = [
     "MarketplaceStorageError",
     "MarketplaceError",
     "ExperienceNotBookableError",
+    "ExperienceNotAvailableError",
     "BookingNotFoundError",
     "InvalidBookingStateError",
     "request_booking",

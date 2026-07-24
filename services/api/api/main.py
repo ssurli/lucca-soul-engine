@@ -586,6 +586,7 @@ def create_booking(
         request,
         prezzo_eur=candidato.experience.prezzo_eur or 0.0,
         prenotabile=candidato.experience.prenotabile,
+        orari_apertura=candidato.experience.orari_apertura,
     )
 
 

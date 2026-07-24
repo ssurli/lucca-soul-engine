@@ -26,6 +26,12 @@ class Signal(BaseModel):              # stato del mondo, ORA
     affollamento: dict[str, float]    # place_id -> 0..1 (validato: ogni valore in [0,1])
     stanchezza: float                 # 0..1, sale durante la giornata
     ora: time
+    # 0=lunedì...6=domenica (date.weekday()). Opzionale, default None: MAI un
+    # giorno fabbricato quando il chiamante non lo specifica. Se None,
+    # `rientra_in_orario` (§2) non esclude mai nulla per giorno — comportamento
+    # invariato finché il chiamante non lo popola. Usato per valutare
+    # `ExperienceNode.orari_apertura`.
+    giorno_settimana: int | None = None      # se presente: 0..6
     eventi_attivi: list[str] = []
 
     # `field_validator` su `affollamento`: rigetta con errore in italiano (che
@@ -69,6 +75,16 @@ class Partner(BaseModel):
     nome: str
     abbonamento_attivo: bool = True
 
+class FasciaApertura(BaseModel):
+    """Una fascia settimanale RICORRENTE in cui un'esperienza è aperta.
+    Validazione MINIMA (Wave 3a+): solo un pattern che si ripete ogni
+    settimana. NON modella eccezioni calendariali, festività, chiusure
+    straordinarie, capienza o conflitti di slot — si disegnano quando una
+    bottega reale ne dichiara il bisogno, non prima (docs/LIMITI.md)."""
+    giorno_settimana: int              # 0=lunedì ... 6=domenica (date.weekday())
+    apertura: time
+    chiusura: time                     # deve essere > apertura: niente turni a cavallo di mezzanotte
+
 class ExperienceNode(BaseModel):
     id: str
     titolo: str
@@ -94,6 +110,16 @@ class ExperienceNode(BaseModel):
     # partner può essere prenotabile (posti limitati); un'esperienza con
     # partner può non esserlo.
     prenotabile: bool = False
+    # Fasce settimanali ricorrenti in cui l'esperienza è aperta. Lista VUOTA
+    # (default) = nessun vincolo dichiarato: SEMPRE considerata aperta, per
+    # costruzione — comportamento invariato per ogni esperienza che non
+    # dichiara orari (tutte quelle del seed oggi). Letta da
+    # `rientra_in_orario(orari_apertura, giorno_settimana, ora) -> bool`
+    # (packages/contracts), riusata IDENTICA da `experience_engine.rules.
+    # passa_filtri_duri` (quinto filtro duro) e da
+    # `marketplace.service.request_booking` (validazione della
+    # prenotazione): stessa informazione, un solo modello, due usi.
+    orari_apertura: list[FasciaApertura] = []
 
 class GraphCandidate(BaseModel):
     """Ciò che il grafo PROPONE all'Experience Engine.
@@ -205,6 +231,12 @@ class CommissionRecord(BaseModel):
     percentuale: float = 0.15             # in [0,1]; commissione sul prezzo, non sul ranking
     registrata_il: datetime
 ```
+
+`marketplace.service.request_booking` (validazione minima, Wave 3a+) rifiuta PRIMA di persistere
+— nessuna scrittura, stesso stile del rifiuto su `prenotabile=False` — se `BookingRequest.quando`
+cade fuori dalle `ExperienceNode.orari_apertura` dichiarate: solleva `ExperienceNotAvailableError`,
+stesso schema di `ExperienceNotBookableError`. Usa `rientra_in_orario` (§2) derivando
+`giorno_settimana`/`ora` da `quando.weekday()`/`quando.time()`.
 
 ## 6. Eventi comportamentali (per il recommender e l'Index)
 
@@ -383,3 +415,10 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   disponibile" (vincolo di contratto: `model_validator`, non solo convenzione): `disponibile=True`
   implica il valore valorizzato e l'eventuale motivo assente; `disponibile=False` implica il
   contrario.
+- `ExperienceNode.orari_apertura` (lista vuota di default) e `Signal.giorno_settimana`
+  (`None` di default) non escludono MAI nulla quando non dichiarati: `rientra_in_orario`
+  ritorna sempre `True` in assenza di uno dei due dati — nessuna esclusione fabbricata per
+  un'informazione che il chiamante non ha fornito. La stessa funzione, lo stesso modello,
+  alimenta sia il quinto filtro duro di `experience_engine.rules.passa_filtri_duri` sia la
+  validazione di `marketplace.service.request_booking`: un vincolo su "cosa significa aperto"
+  applicato in un solo punto, non duplicato con la possibilità di divergere.

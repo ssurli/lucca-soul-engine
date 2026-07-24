@@ -22,6 +22,7 @@ from contracts import (
     EmotionalProfile,
     ExperienceCandidate,
     ExperienceNode,
+    FasciaApertura,
     FlowCell,
     Itinerary,
     ItineraryStop,
@@ -31,11 +32,12 @@ from contracts import (
     Signal,
     UrbanIntelligenceIndex,
     VisitorContext,
+    rientra_in_orario,
 )
 from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
-# 1. I 15 tipi canonici sono importabili da `contracts`
+# 1. I 16 tipi canonici sono importabili da `contracts`
 # ---------------------------------------------------------------------------
 
 CANONICAL_TYPES = [
@@ -43,6 +45,7 @@ CANONICAL_TYPES = [
     "Signal",
     "PersonKind",
     "VisitorContext",
+    "FasciaApertura",
     "ExperienceNode",
     "ExperienceCandidate",
     "ItineraryStop",
@@ -57,8 +60,8 @@ CANONICAL_TYPES = [
 ]
 
 
-def test_quindici_tipi_canonici_importabili() -> None:
-    assert len(CANONICAL_TYPES) == 15
+def test_sedici_tipi_canonici_importabili() -> None:
+    assert len(CANONICAL_TYPES) == 16
     for name in CANONICAL_TYPES:
         assert hasattr(contracts, name), f"{name} non importabile da `contracts`"
 
@@ -244,7 +247,7 @@ def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse
         ),
         (
             Signal,
-            {"meteo", "affollamento", "stanchezza", "ora", "eventi_attivi"},
+            {"meteo", "affollamento", "stanchezza", "ora", "giorno_settimana", "eventi_attivi"},
         ),
         (
             VisitorContext,
@@ -263,7 +266,12 @@ def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse
                 "alimenta_memoria",
                 "partner_id",
                 "prezzo_eur",
+                "orari_apertura",
             },
+        ),
+        (
+            FasciaApertura,
+            {"giorno_settimana", "apertura", "chiusura"},
         ),
         (
             ExperienceCandidate,
@@ -511,6 +519,115 @@ def test_default_partner_id_e_prezzo_eur_none_se_omessi() -> None:
 def test_experience_node_prezzo_eur_negativo_rifiutato() -> None:
     with pytest.raises(ValidationError):
         make_experience_node(prezzo_eur=-1)
+
+
+def test_default_orari_apertura_lista_vuota_se_omesso() -> None:
+    # Nessun vincolo dichiarato = SEMPRE considerata aperta (comportamento
+    # invariato per ogni esperienza esistente, che oggi non dichiara orari).
+    assert make_experience_node().orari_apertura == []
+
+
+def test_default_giorno_settimana_none_se_omesso() -> None:
+    # Mai un giorno fabbricato: il chiamante che non lo specifica ottiene
+    # `None`, non un giorno arbitrario (es. sempre lunedì).
+    assert make_signal().giorno_settimana is None
+
+
+# ---------------------------------------------------------------------------
+# 5bis. `FasciaApertura` e `rientra_in_orario` — validazione minima degli
+# orari di apertura (Wave 3a+, richiesta esplicitamente prima del Living
+# Lab dopo lo scarto trovato tra il White Paper e il codice, vedi
+# docs/LIMITI.md). Fasce settimanali RICORRENTI soltanto: niente eccezioni
+# calendariali, niente capienza, niente conflitti di slot.
+# ---------------------------------------------------------------------------
+
+
+def make_fascia_apertura(**overrides: object) -> FasciaApertura:
+    base: dict[str, object] = dict(
+        giorno_settimana=5,  # sabato
+        apertura=time(10, 0),
+        chiusura=time(13, 0),
+    )
+    base.update(overrides)
+    return FasciaApertura(**base)  # type: ignore[arg-type]
+
+
+def test_fascia_apertura_giorno_fuori_range_rifiutato() -> None:
+    with pytest.raises(ValidationError):
+        make_fascia_apertura(giorno_settimana=7)
+    with pytest.raises(ValidationError):
+        make_fascia_apertura(giorno_settimana=-1)
+
+
+def test_fascia_apertura_chiusura_prima_di_apertura_rifiutata() -> None:
+    with pytest.raises(ValidationError):
+        make_fascia_apertura(apertura=time(18, 0), chiusura=time(10, 0))
+
+
+def test_fascia_apertura_chiusura_uguale_apertura_rifiutata() -> None:
+    # Niente fasce di durata zero: `chiusura` deve essere STRETTAMENTE dopo
+    # `apertura`.
+    with pytest.raises(ValidationError):
+        make_fascia_apertura(apertura=time(10, 0), chiusura=time(10, 0))
+
+
+def test_fascia_apertura_valida() -> None:
+    fascia = make_fascia_apertura()
+    assert fascia.giorno_settimana == 5
+    assert fascia.apertura == time(10, 0)
+    assert fascia.chiusura == time(13, 0)
+
+
+def test_rientra_in_orario_nessuna_fascia_dichiarata_passa_sempre() -> None:
+    # Lista vuota = nessun vincolo: nessuna esclusione fabbricata.
+    assert rientra_in_orario([], 5, time(3, 0)) is True
+    assert rientra_in_orario([], None, time(3, 0)) is True
+
+
+def test_rientra_in_orario_giorno_sconosciuto_passa_sempre() -> None:
+    # `giorno_settimana=None`: il chiamante non l'ha specificato, non si
+    # inventa un giorno per applicare il filtro.
+    fascia = make_fascia_apertura()
+    assert rientra_in_orario([fascia], None, time(11, 0)) is True
+
+
+def test_rientra_in_orario_dentro_fascia() -> None:
+    fascia = make_fascia_apertura(giorno_settimana=5, apertura=time(10, 0), chiusura=time(13, 0))
+    assert rientra_in_orario([fascia], 5, time(10, 0)) is True  # limite inferiore incluso
+    assert rientra_in_orario([fascia], 5, time(12, 59)) is True
+
+
+def test_rientra_in_orario_al_limite_di_chiusura_esclusa() -> None:
+    # `chiusura` è un limite ESCLUSO: alle 13:00 in punto l'esperienza è
+    # già chiusa, non nell'ultimo minuto della fascia.
+    fascia = make_fascia_apertura(giorno_settimana=5, apertura=time(10, 0), chiusura=time(13, 0))
+    assert rientra_in_orario([fascia], 5, time(13, 0)) is False
+
+
+def test_rientra_in_orario_fuori_fascia_stesso_giorno() -> None:
+    fascia = make_fascia_apertura(giorno_settimana=5, apertura=time(10, 0), chiusura=time(13, 0))
+    assert rientra_in_orario([fascia], 5, time(9, 59)) is False
+    assert rientra_in_orario([fascia], 5, time(15, 0)) is False
+
+
+def test_rientra_in_orario_giorno_diverso_da_quello_dichiarato() -> None:
+    fascia = make_fascia_apertura(giorno_settimana=5, apertura=time(10, 0), chiusura=time(13, 0))
+    assert rientra_in_orario([fascia], 2, time(11, 0)) is False
+
+
+def test_rientra_in_orario_almeno_una_fascia_tra_piu_basta() -> None:
+    # Più fasce nella stessa settimana (es. mattina e pomeriggio, o giorni
+    # diversi): basta rientrare in UNA qualunque.
+    mattina_sabato = make_fascia_apertura(
+        giorno_settimana=5, apertura=time(9, 0), chiusura=time(12, 0)
+    )
+    pomeriggio_domenica = make_fascia_apertura(
+        giorno_settimana=6, apertura=time(15, 0), chiusura=time(18, 0)
+    )
+    fasce = [mattina_sabato, pomeriggio_domenica]
+    assert rientra_in_orario(fasce, 5, time(10, 0)) is True
+    assert rientra_in_orario(fasce, 6, time(16, 0)) is True
+    assert rientra_in_orario(fasce, 5, time(16, 0)) is False  # sabato pomeriggio: non dichiarato
 
 
 # ---------------------------------------------------------------------------
