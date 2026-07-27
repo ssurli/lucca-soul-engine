@@ -21,6 +21,29 @@ class EmotionalProfile(BaseModel):
     ha_gia_visto_firenze: bool = False
     lingue: list[str] = ["it"]
 
+class SegnaleFluttuante(BaseModel):
+    """Qualcosa che accade ORA e domani non c'è (un violinista in piazza,
+    artisti di strada) — vive in Signal.eventi_attivi, stato del mondo in
+    questo momento, NON un nodo del grafo, NON il livello "programmato"
+    (:Evento, con data e organizzatore — fuori scope, vedi docs/LIMITI.md).
+    Scade da solo: Signal è transitorio, non serve una scadenza esplicita."""
+    id: str
+    descrizione: str                  # "un violinista suona in piazza" — alimenta il reason (min 1 carattere)
+    temi: list[str]                   # stessa forma di ExperienceNode.temi (min 1 elemento)
+    place_id: str                     # dove accade, il luogo vicino
+    # OBBLIGATORIO, nessun default: garanzia esplicita di non-commercialità.
+    # "Artista davanti alla nostra gelateria" è pubblicità, non ammessa —
+    # bloccato per costruzione da segnale_fluttuante_ammissibile, mai
+    # lasciato al buon senso di chi consuma il segnale.
+    non_commerciale: bool
+
+def segnale_fluttuante_ammissibile(segnale: SegnaleFluttuante) -> bool:
+    """Filtro duro unico: `segnale.non_commerciale`. "Visibilità non
+    acquistabile" applicata al vettore "segnalare invece di pagare una
+    commissione" — un solo punto, riusato da
+    experience_engine.rules.segnali_fluttuanti_pertinenti."""
+    return segnale.non_commerciale
+
 class Signal(BaseModel):              # stato del mondo, ORA
     meteo: Literal["sereno","pioggia","caldo","freddo"]
     affollamento: dict[str, float]    # place_id -> 0..1 (validato: ogni valore in [0,1])
@@ -32,7 +55,12 @@ class Signal(BaseModel):              # stato del mondo, ORA
     # invariato finché il chiamante non lo popola. Usato per valutare
     # `ExperienceNode.orari_apertura`.
     giorno_settimana: int | None = None      # se presente: 0..6
-    eventi_attivi: list[str] = []
+    # Segnali FLUTTUANTI attivi ORA. Era `list[str]` (dichiarato nel
+    # contratto, mai letto da nessuna logica — verificato prima di questo
+    # cambio): un interruttore già cablato, mai acceso. Lista vuota
+    # (default) = nessun segnale attivo, comportamento invariato per ogni
+    # chiamante che non lo popola.
+    eventi_attivi: list[SegnaleFluttuante] = []
 
     # `field_validator` su `affollamento`: rigetta con errore in italiano (che
     # indica il place_id incriminato) qualunque valore fuori [0,1]. Motivo:
@@ -422,3 +450,10 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   alimenta sia il quinto filtro duro di `experience_engine.rules.passa_filtri_duri` sia la
   validazione di `marketplace.service.request_booking`: un vincolo su "cosa significa aperto"
   applicato in un solo punto, non duplicato con la possibilità di divergere.
+- `SegnaleFluttuante.non_commerciale` è OBBLIGATORIO, nessun default (vincolo di contratto:
+  campo richiesto, non `bool = False`/`bool = True`): chi genera un segnale fluttuante deve
+  dichiararlo esplicitamente. `segnale_fluttuante_ammissibile` è l'UNICO punto che lo legge
+  per decidere ammissibilità; `experience_engine.rules.calcola_score` non legge mai
+  `Signal.eventi_attivi`, in nessuna forma — un'aggiunta di tappa fluttuante non altera lo
+  score di nessuna esperienza permanente: "visibilità non acquistabile" applicata anche al
+  vettore "segnalare invece di pagare una commissione".

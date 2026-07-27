@@ -15,7 +15,14 @@ from __future__ import annotations
 
 import math
 
-from contracts import EmotionalProfile, GraphCandidate, Signal, rientra_in_orario
+from contracts import (
+    EmotionalProfile,
+    GraphCandidate,
+    SegnaleFluttuante,
+    Signal,
+    rientra_in_orario,
+    segnale_fluttuante_ammissibile,
+)
 
 # ---------------------------------------------------------------------------
 # Costanti nominate
@@ -48,6 +55,12 @@ DURATA_LUNGA_MIN = 90
 #: Tolleranza di score entro cui si preferisce una tappa a tema diverso dalla
 #: precedente (diversificazione), senza tradire l'ordinamento per affinità.
 TOLLERANZA_DIVERSITA = 0.05
+
+#: Durata (min) di una tappa aggiunta da un segnale fluttuante: per
+#: definizione "breve" (un violinista in piazza non è una visita guidata),
+#: quindi una costante della FEATURE, non un campo dichiarato dal segnale —
+#: `SegnaleFluttuante` resta minimale (`docs/LIMITI.md` spiega la scelta).
+DURATA_TAPPA_FLUTTUANTE_MIN = 15
 
 # --- Pesi dello scoring (documentati: nessuno tocca partner_id/prezzo_eur) ---
 
@@ -228,3 +241,53 @@ def segnali_rilevanti(candidate: GraphCandidate, signal: Signal) -> list[str]:
         segnali.append("stanchezza")
 
     return segnali
+
+
+# ---------------------------------------------------------------------------
+# Segnali FLUTTUANTI (Signal.eventi_attivi) — livello "accade ora", diverso
+# dal livello "programmato" (:Evento, fuori scope: docs/LIMITI.md).
+# ---------------------------------------------------------------------------
+
+
+def _coerente_col_profilo(temi: list[str], profile: EmotionalProfile) -> bool:
+    """Un tema del segnale fluttuante appartiene a un gruppo la cui
+    dimensione di profilo corrispondente è > 0 — STESSO ragionamento per
+    connessioni già usato da `calcola_score` per le esperienze permanenti
+    (`affinita_temi` contro `TEMI_CONTEMPLATIVI`/`TEMI_ARTE`/`TEMI_INSOLITI`/
+    `TEMA_BAMBINI`), non un secondo criterio inventato per l'occasione: "il
+    segnale evoca un tema, il tema raggiunge chi è affine"."""
+    if profile.contemplazione > 0 and affinita_temi(temi, TEMI_CONTEMPLATIVI) > 0:
+        return True
+    if profile.arte > 0 and affinita_temi(temi, TEMI_ARTE) > 0:
+        return True
+    if profile.curiosita > 0 and affinita_temi(temi, TEMI_INSOLITI) > 0:
+        return True
+    if profile.con_bambini and TEMA_BAMBINI in temi:
+        return True
+    return False
+
+
+def segnali_fluttuanti_pertinenti(
+    eventi_attivi: list[SegnaleFluttuante], profile: EmotionalProfile
+) -> list[SegnaleFluttuante]:
+    """Segnali fluttuanti pertinenti per QUESTO profilo, nell'ordine in cui
+    sono arrivati (determinismo: nessun riordino inventato qui).
+
+    Due condizioni, ENTRAMBE necessarie:
+    1. `contracts.segnale_fluttuante_ammissibile` — filtro DURO, MAI
+       un'eccezione: un segnale commerciale non è mai pertinente, qualunque
+       sia la sua coerenza col profilo. Verificato PRIMA, non dopo: un
+       segnale commerciale ma incoerente col profilo e uno commerciale ma
+       perfettamente coerente sono scartati allo stesso identico modo.
+    2. `_coerente_col_profilo` — un tema in comune con almeno una dimensione
+       a cui il profilo tiene davvero (peso > 0).
+
+    NON legge né tocca `calcola_score`: nessuna esperienza permanente vede
+    il proprio punteggio cambiare in base a `eventi_attivi` — questa
+    funzione produce solo la lista di CANDIDATI fluttuanti da aggiungere,
+    mai un input allo scoring delle esperienze del grafo."""
+    return [
+        segnale
+        for segnale in eventi_attivi
+        if segnale_fluttuante_ammissibile(segnale) and _coerente_col_profilo(segnale.temi, profile)
+    ]

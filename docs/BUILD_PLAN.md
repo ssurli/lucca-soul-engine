@@ -133,8 +133,68 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   Aggiunta anche una nota in `services/recommender/README.md`, accanto alla tabella dei pesi:
   il peso 2.0 di `stop` poggia su un'assunzione di presenza fisica che nessun codice verifica
   oggi (rimanda a `docs/LIMITI.md`, voce su `POST /events`).
-
-## Wave 3b — Recommender ML  *(separata, non iniziare senza via libera)*
+  **→ LIVELLO FLUTTUANTE ATTIVATO** (2026-07-27): `Signal.eventi_attivi` era `list[str]`,
+  dichiarato nel contratto dalla Wave 1, mai letto da nessuna logica (verificato prima di
+  attivarlo) — un interruttore già cablato, mai acceso. Diventato `list[SegnaleFluttuante]`
+  (`id`, `descrizione`, `temi`, `place_id`, `non_commerciale` — quest'ultimo OBBLIGATORIO,
+  nessun default, stesso principio di `MemoryContribution.consenso`). Due funzioni pure, un
+  solo punto ciascuna: `contracts.segnale_fluttuante_ammissibile` (filtro duro sul
+  commerciale — "visibilità non acquistabile" applicato al vettore "segnalare invece di
+  pagare una commissione") ed `experience_engine.rules.segnali_fluttuanti_pertinenti`
+  (coerenza col profilo, STESSO ragionamento per connessioni/gruppi tematici già usato da
+  `calcola_score`, non un secondo criterio). `experience_engine.engine.compose_itinerary`
+  aggiunge, IN CODA e mai in sostituzione, le tappe fluttuanti pertinenti, rispettando il
+  budget residuo (`profile.tempo_disponibile_min`) — namespace `experience_id` separato
+  (`fluttuante-<id>`) dal reale (`exp-...`), nessuna collisione strutturale. `calcola_score`
+  non importa né legge `Signal.eventi_attivi` in nessuna forma: bit-identico con e senza
+  segnali attivi (test dedicato). `git diff --stat` tocca SOLO `packages/contracts`,
+  `services/experience-engine` e i loro test — né `services/graph` né `services/recommender`,
+  come richiesto esplicitamente in verifica. Suite combinata rilanciata da zero (`tests/` +
+  ogni `services/*/tests`): 497 passed, 57 skipped (stessi motivi ambientali di sempre), 0
+  failed — 20 test in più rispetto a prima di questa attivazione. `ruff check .` e `mypy` sui
+  moduli toccati puliti. Verificato anche dal vivo, non solo in CI: `POST /itinerary` contro
+  Neon+Aura reali con un `Signal.eventi_attivi` popolato — un segnale non commerciale coerente
+  col profilo (`temi=["musica"]`, profilo con `arte=0.9`) produce una tappa
+  `fluttuante-violinista-anfiteatro` in coda, con `reason` che nomina correttamente il luogo
+  reale letto dal grafo ("Piazza dell'Anfiteatro"); un secondo segnale identico ma
+  `non_commerciale=false` non compare mai, nello stesso itinerario.
+  **ethics-guardian** (giro DEDICATO e separato, non un'autovalutazione): **verdetto esplicito
+  sul vettore "visibilità comprata via segnalazione" — PASS**, verificato non per lettura ma
+  con un test comportamentale bit-identico (`test_segnale_fluttuante_non_altera_score_esperienze_permanenti`)
+  che prova sia `calcola_score` sia le tappe reali scelte da `compose_itinerary` invariati con
+  e senza segnali attivi. Nessun FAIL bloccante questa volta (a differenza del giro precedente
+  su `adapt_itinerary`), ma sei punti trovati e segnalati esplicitamente — tracciati in
+  `docs/LIMITI.md`, non lasciati impliciti: (1) `non_commerciale` è auto-dichiarato, senza
+  verifica — un segnale può mentire; (2) `temi` è ALTRETTANTO auto-dichiarato, un vettore
+  distinto (non "se compare" ma "a chi compare", dichiarando temi larghi per massimizzare la
+  pertinenza); (3) `adapt_itinerary` non rivaluta mai i segnali fluttuanti — un segnale nuovo
+  apparso dopo la composizione iniziale non entra mai in un itinerario già composto; (4) una
+  tappa fluttuante già aggiunta è strutturalmente immune a pioggia/affollamento in un adapt
+  successivo (il fallback `_stub_da_stop` la forza sempre `al_chiuso=True`); (5) nessun tetto
+  al numero di tappe fluttuanti aggiungibili; (6) nessun filtro di affollamento/accessibilità
+  sulla tappa fluttuante (`SegnaleFluttuante` non porta questi campi, forma minimale
+  deliberata). Nessuno dei sei è stato fabbricato/corretto senza un caso reale che ne mostri
+  il bisogno — stesso principio già applicato al resto di questo file. Promozione a
+  permanente (un fluttuante ricorrente diventa un'esperienza o un `:Evento` programmato) e il
+  livello "programmato" stesso restano fuori scope, annotati come evoluzione prevista.
+  **Nessuno dei sei è bloccante ora** — restano annotati in `docs/LIMITI.md` così come
+  trovati. Due di loro, però, non sono debito isolato: ricadono su lavoro già previsto altrove,
+  e va detto esplicitamente per non perdere il collegamento:
+  - **(1) e (2), l'auto-dichiarazione di `non_commerciale`/`temi`**, sono esattamente il
+    problema che una coda di curatela dovrebbe risolvere — lo stesso principio già
+    operativo per Urban Memory (`urban_memory.service`, un contributo raggiunge `curato=True`
+    solo dopo revisione umana). La curatela per il livello fluttuante non esiste ancora
+    (`docs/LIMITI.md` la elenca come evoluzione prevista, non progettata): quando verrà
+    disegnata, deve coprire ANCHE la verifica di queste due autodichiarazioni, non solo la
+    promozione a permanente — sono la stessa esigenza ("qualcuno deve controllare cosa viene
+    dichiarato"), non due problemi distinti da progettare due volte.
+  - **(3) e (4), la mancata rivalutazione dei fluttuanti in `adapt_itinerary`**, sono il passo
+    naturale successivo del livello fluttuante, e toccano la STESSA logica del bug orari
+    corretto in questa stessa collaborazione (`_migliore_alternativa`/`_stub_da_stop`, la voce
+    precedente in questo changelog): quel fix ha insegnato dove intervenire (il punto in cui
+    `adapt_itinerary` ricostruisce le tappe); estenderlo ai segnali fluttuanti — rivalutare
+    `eventi_attivi` ad ogni adapt, non solo forzare `al_chiuso=True` sullo stub — è la
+    continuazione diretta di quel lavoro, non un fronte nuovo scollegato.
 - **recommender-engineer**: modello su `BehaviorEvent` che riordina i candidati (con `reason`).
 - **ethics-guardian**: gate sull'obiettivo — mai click/vendite; nessuna visibilità acquistabile.
 - **test-engineer**: test che il recommender rispetti i vincoli etici.

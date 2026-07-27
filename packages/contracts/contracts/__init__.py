@@ -27,10 +27,12 @@ from .models import (
     OnboardingRequest,
     Partner,
     PersonKind,
+    SegnaleFluttuante,
     Signal,
     UrbanIntelligenceIndex,
     VisitorContext,
     rientra_in_orario,
+    segnale_fluttuante_ammissibile,
 )
 
 __all__ = [
@@ -56,9 +58,11 @@ __all__ = [
     "OnboardingRequest",
     "Partner",
     "PersonKind",
+    "SegnaleFluttuante",
     "Signal",
     "UrbanIntelligenceIndex",
     "VisitorContext",
     "rientra_in_orario",
+    "segnale_fluttuante_ammissibile",
 ]
 

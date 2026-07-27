@@ -670,3 +670,105 @@ ignorato — prima di:
   di un'amministrazione (CLAUDE.md: "le Smart City raccolgono dati, le città intelligenti
   generano significato" — un significato costruito su eventi non verificati è un significato
   fabbricato, non generato).
+
+---
+
+## Livello FLUTTUANTE attivato (`Signal.eventi_attivi`): cosa resta fuori scope
+
+**Introdotto:** Wave 1 (campo dormiente nel contratto), attivato Wave 3a+. **Componente:**
+`packages/contracts`, `services/experience-engine`.
+
+### Cosa è garantito oggi
+
+`Signal.eventi_attivi` (era `list[str]`, mai letto da nessuna logica — verificato prima di
+attivarlo, non un campo nuovo) ora porta `list[SegnaleFluttuante]`: qualcosa che accade ORA e
+domani non c'è (un violinista in piazza), diverso dal livello "programmato" (vedi sotto).
+`experience_engine.engine.compose_itinerary` aggiunge, IN CODA e mai in sostituzione, le tappe
+fluttuanti pertinenti (coerenti col tema di almeno una dimensione di profilo con peso > 0, MAI
+un segnale commerciale — `contracts.segnale_fluttuante_ammissibile`, filtro duro, nessuna
+eccezione), rispettando il budget di tempo residuo. Non tocca `calcola_score`: nessuna
+esperienza permanente cambia punteggio in base a `eventi_attivi` (test comportamentale
+dedicato, bit-identico con e senza segnali attivi). Namespace dell'`experience_id` fittizio
+(`fluttuante-<id>`) separato da quello reale (`exp-...`): nessuna collisione strutturale con
+un'esperienza permanente.
+
+### Cosa NON è garantito — deliberatamente, per esplicita richiesta di non fabbricare
+
+- **Il livello "programmato"** (`:Evento` come nodo del grafo, con data e organizzatore — la
+  stessa etichetta riservata ma mai popolata già documentata altrove in questo file) resta
+  fuori scope: altra cosa, altra wave. Il livello fluttuante non lo sostituisce né lo anticipa
+  — sono due meccanismi diversi per due nozioni diverse di "evento" (istantaneo vs
+  calendarizzato).
+- **La PROMOZIONE** (un segnale fluttuante che si ripete più volte, nello stesso luogo, con lo
+  stesso tema, diventa un'esperienza permanente o un `:Evento` programmato) NON esiste in
+  nessuna forma. Richiederebbe una coda di curatela — verifica umana prima che un pattern
+  ricorrente diventi un'entità di prima classe nel grafo — che oggi non esiste per questo
+  scopo (la curatela di Urban Memory, `urban_memory.service`, verifica CONTRIBUTI a nodi già
+  esistenti, non promuove segnali a nodi nuovi: un problema diverso). **Evoluzione prevista,
+  non implementata**: quando/se serve, andrebbe costruita come un nuovo flusso di curatela
+  dedicato, con una soglia esplicita da negoziare ("quante ripetizioni bastano?", la stessa
+  classe di decisione già rimandata per `tasso_ritorno` — vedi sopra in questo file).
+- **Come i segnali fluttuanti entrano nel sistema nel mondo reale** (chi segnala il violinista,
+  con quale prova che sia successo davvero) NON è stato costruito qui: è ESATTAMENTE il
+  problema già documentato nella voce precedente di questo file (`POST /events` senza prova di
+  presenza, autenticazione, rate limiting). Questa attivazione ASSUME che
+  `Signal.eventi_attivi` arrivi già popolato onestamente nella richiesta — non costruisce, e
+  non doveva costruire, il canale d'ingresso.
+- **`SegnaleFluttuante.non_commerciale` è interamente auto-dichiarato, senza alcuna verifica**
+  — stessa famiglia di fiducia non verificata già accettata per `ExperienceNode.orari_apertura`
+  (vedi sopra in questo file) e per `POST /events`: nessun controllo impedisce a chi genera un
+  segnale di dichiarare falsamente `non_commerciale=True` per un'attività che in realtà lo è.
+  Il filtro duro (`segnale_fluttuante_ammissibile`) protegge SOLO contro un segnale onestamente
+  marcato commerciale, non contro uno mentito. Trovato durante un giro dedicato di
+  ethics-guardian su questa stessa funzionalità (vedi changelog in `docs/BUILD_PLAN.md`).
+- **`SegnaleFluttuante.temi` è ALTRETTANTO auto-dichiarato**, e il vettore di gioco è diverso da
+  quello sul commerciale: non "farsi passare per non commerciale" ma "dichiarare temi larghi
+  (es. sempre `arte`, il gruppo più popolato) per massimizzare a chi il segnale risulta
+  pertinente" — anche per un segnale onestamente non commerciale. Nessun controllo lo impedisce.
+  Trovato nello stesso giro di ethics-guardian, distinto dal punto sopra (quello riguarda SE il
+  segnale compare; questo riguarda A CHI compare).
+- **`adapt_itinerary` non rivaluta MAI i segnali fluttuanti**: due conseguenze, non correggibili
+  senza uscire dallo scope di questa attivazione. (1) Un segnale fluttuante nuovo, apparso dopo
+  la composizione iniziale, non entra MAI in un itinerario già composto — solo un successivo
+  `compose_itinerary` da zero lo vedrebbe. (2) Una tappa fluttuante già aggiunta è STRUTTURALMENTE
+  immune a pioggia/affollamento in un adapt successivo (il meccanismo di fallback per tappe
+  "sconosciute", `_stub_da_stop`, la forza sempre `al_chiuso=True`): un violinista all'aperto
+  aggiunto prima che iniziasse a piovere resta in programma anche sotto la pioggia, mai
+  riscritto verso un'alternativa al chiuso. Coerente con "si infila senza togliere nulla" per
+  la sola aggiunta iniziale, ma non è una garanzia che la tappa resti sensata per tutta la
+  giornata.
+- **Nessun limite al numero di tappe fluttuanti aggiunte**: finché il budget di tempo lo
+  consente, TUTTI i segnali pertinenti vengono aggiunti, in ordine di arrivo. Non è stato
+  fabbricato un tetto arbitrario (es. "massimo 2 al giorno") senza un caso reale che ne mostri
+  il bisogno — stesso principio già applicato altrove in questo file.
+- **Nessun filtro di affollamento/accessibilità sulla tappa fluttuante**: `SegnaleFluttuante`
+  non porta `accessibile`/`al_chiuso` (scelta di forma minimale, `docs/BUILD_PLAN.md`
+  documenta il perché): una tappa fluttuante può quindi essere aggiunta anche se il suo luogo
+  è affollato, e non è mai esclusa per un profilo che richiede accessibilità.
+
+### Cosa servirebbe per chiudere questi buchi (proposte, NON implementate ora)
+
+1. **Coda di curatela per la promozione**: un nuovo modello (es. `segnale fluttuante osservato N
+   volte, stesso place_id/tema, negli ultimi M giorni`) e una soglia esplicita da negoziare col
+   committente, non stimata qui.
+2. **Verifica di `non_commerciale`**: nessuna proposta tecnica specifica oltre a quanto già
+   scritto per `POST /events` (autenticazione, un segnale minimo di presenza reale) — lo stesso
+   canale d'ingresso irrisolto copre anche questo campo, non è un problema separato da
+   risolvere due volte.
+3. **Tetto al numero di tappe fluttuanti** e **filtro di affollamento/accessibilità sulla tappa
+   fluttuante**: entrambi richiedono prima un caso reale (un pilota con più segnali attivi
+   contemporaneamente, o un profilo con accessibilità richiesta che incontra un segnale) che ne
+   mostri il bisogno concreto.
+
+### Decisione
+
+Il livello fluttuante è attivato con lo scope minimo esplicitamente richiesto: aggiunta,
+pertinenza per tema, filtro duro sul commerciale, rispetto del budget. Il livello programmato,
+la promozione, la verifica del canale d'ingresso e i due affinamenti del punto 3 restano fuori,
+deliberatamente. Questo limite va riletto prima di:
+- costruire il livello "programmato" (`:Evento`) — a quel punto va deciso anche se/come si
+  collega al fluttuante (la promozione);
+- aprire la generazione di segnali fluttuanti a un pubblico reale, per lo stesso motivo già
+  scritto per `POST /events`: la fiducia non verificata (qui: `non_commerciale`) smette di
+  essere un rischio teorico nel momento in cui persone reali, non solo chi verifica a mano,
+  possono generare segnali.

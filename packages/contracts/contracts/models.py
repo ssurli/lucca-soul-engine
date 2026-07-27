@@ -21,6 +21,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 __all__ = [
     "EmotionalProfile",
     "Signal",
+    "SegnaleFluttuante",
+    "segnale_fluttuante_ammissibile",
     "PersonKind",
     "VisitorContext",
     "FasciaApertura",
@@ -78,6 +80,51 @@ class EmotionalProfile(ContractModel):
     lingue: list[str] = ["it"]
 
 
+class SegnaleFluttuante(ContractModel):
+    """Un segnale FLUTTUANTE: qualcosa che accade ORA e domani non c'è (un
+    violinista in piazza, artisti di strada) — vive in `Signal.eventi_attivi`,
+    accanto a meteo/affollamento: stato del mondo in questo momento, non
+    struttura. NON è un nodo del grafo, NON è il livello "programmato"
+    (`:Evento`, con data e organizzatore — fuori scope qui, vedi
+    `docs/LIMITI.md`). Scade da solo: `Signal` è transitorio (costruito per
+    la singola richiesta, mai persistito), quindi non serve una scadenza
+    esplicita — chi genera la richiesta include un segnale SOLO finché è
+    davvero attivo. Come questo segnale entra nel mondo (chi lo segnala, con
+    quale prova) è il problema di `POST /events`, già documentato in
+    `docs/LIMITI.md`: qui si assume che il segnale arrivi già com'è.
+    """
+
+    id: str
+    # "un violinista suona in piazza" — alimenta il `reason` della tappa
+    # aggiunta, mai un testo fabbricato dal motore.
+    descrizione: str = Field(min_length=1)
+    # Stessa forma di `ExperienceNode.temi`: riusa l'identica logica di
+    # affinità (`experience_engine.rules.affinita_temi`) già usata per lo
+    # scoring delle esperienze permanenti — un solo modo di intendere
+    # "a chi parla questo tema", non un secondo criterio inventato qui.
+    temi: list[str] = Field(min_length=1)
+    place_id: str  # dove accade, il luogo vicino
+    # OBBLIGATORIO, nessun default: garanzia ESPLICITA che il segnale non
+    # riferisce un'attività commerciale. "Artista davanti alla nostra
+    # gelateria" è pubblicità travestita da segnale, non ammessa — il filtro
+    # duro (`segnale_fluttuante_ammissibile` sotto) la blocca per
+    # costruzione, mai lasciato al buon senso di chi consuma il segnale.
+    # Nessun default: chi genera il segnale deve dichiararlo esplicitamente,
+    # stesso principio di `MemoryContribution.consenso`.
+    non_commerciale: bool
+
+
+def segnale_fluttuante_ammissibile(segnale: SegnaleFluttuante) -> bool:
+    """Filtro duro, unico e centrale: un segnale fluttuante che riferisce
+    un'attività commerciale non è MAI ammissibile, qualunque sia la sua
+    coerenza con un profilo. "Visibilità non acquistabile" applicata a un
+    vettore nuovo (segnalare invece di pagare una commissione): un solo
+    punto verificabile, riusato da chi consuma `Signal.eventi_attivi` —
+    `experience_engine.rules.segnali_fluttuanti_pertinenti` applica QUESTO
+    controllo prima, mai un controllo scritto una seconda volta altrove."""
+    return segnale.non_commerciale
+
+
 class Signal(ContractModel):
     """Stato del mondo, ORA."""
 
@@ -96,7 +143,14 @@ class Signal(ContractModel):
     # `rientra_in_orario` (sotto) non esclude mai nulla per giorno:
     # comportamento INVARIATO finché il chiamante non lo popola.
     giorno_settimana: int | None = Field(default=None, ge=0, le=6)
-    eventi_attivi: list[str] = []
+    # Segnali FLUTTUANTI attivi ORA (vedi `SegnaleFluttuante` sopra). Era
+    # `list[str]` — dichiarato nel contratto, mai letto da nessuna logica
+    # (né `experience_engine.rules`, né `.engine`, né l'adattamento):
+    # verificato prima di questo cambio, non un campo nuovo ma un
+    # interruttore già cablato, mai acceso. Default lista vuota = nessun
+    # segnale attivo, comportamento INVARIATO per ogni chiamante che non lo
+    # popola (tutti, oggi).
+    eventi_attivi: list[SegnaleFluttuante] = []
 
     @field_validator("affollamento")
     @classmethod

@@ -25,17 +25,21 @@ from contracts import (
     GraphCandidate,
     Itinerary,
     ItineraryStop,
+    SegnaleFluttuante,
     Signal,
     VisitorContext,
     rientra_in_orario,
 )
 
 from .rules import (
+    DURATA_TAPPA_FLUTTUANTE_MIN,
     SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
     SOGLIA_STANCHEZZA_ALTA,
+    TEMPO_TRASFERIMENTO_DEFAULT_MIN,
     TOLLERANZA_DIVERSITA,
     calcola_score,
     passa_filtri_duri,
+    segnali_fluttuanti_pertinenti,
     segnali_rilevanti,
     stima_trasferimento_min,
 )
@@ -230,6 +234,86 @@ def _costruisci_stops(
 
 
 # ---------------------------------------------------------------------------
+# Segnali FLUTTUANTI (Signal.eventi_attivi) — AGGIUNTA in coda, mai una
+# sostituzione. Livello "accade ora" (violinista in piazza): diverso dal
+# livello "programmato" (:Evento, fuori scope — docs/LIMITI.md).
+# ---------------------------------------------------------------------------
+
+#: Prefisso dell'`experience_id` fittizio con cui una tappa fluttuante entra
+#: in `Itinerary.stops`. Namespace SEPARATO da quello reale del seed
+#: (`exp-...`): evita per costruzione che l'id di un segnale fluttuante
+#: possa mai collidere con un'esperienza permanente vera (es. durante un
+#: successivo `adapt_itinerary`, che risale a `GraphCandidate` proprio da
+#: `experience_id`).
+_PREFISSO_TAPPA_FLUTTUANTE = "fluttuante-"
+
+
+def _minuti_trascorsi(inizio: time, fine: time) -> int:
+    """Minuti tra due orari nella stessa giornata (mai negativo per come è
+    usata qui: `fine` è sempre `>= inizio`, costruita avanzando `inizio`)."""
+    base_inizio = datetime(2000, 1, 1, inizio.hour, inizio.minute, inizio.second)
+    base_fine = datetime(2000, 1, 1, fine.hour, fine.minute, fine.second)
+    return int((base_fine - base_inizio).total_seconds() // 60)
+
+
+def _reason_fluttuante(segnale: SegnaleFluttuante, place_nome: str) -> str:
+    """`reason` sempre non vuoto (spiegabilità obbligatoria) per una tappa
+    fluttuante: racconta COSA (la descrizione dichiarata dal segnale) e DOVE
+    (il nome del luogo, se noto tra i candidati; altrimenti il `place_id`
+    grezzo — mai un nome fabbricato)."""
+    return f"{segnale.descrizione} a {place_nome}: un'aggiunta per oggi, non era già in programma."
+
+
+def _aggiungi_tappe_fluttuanti(
+    stops: list[ItineraryStop],
+    candidates: list[GraphCandidate],
+    profile: EmotionalProfile,
+    signal: Signal,
+) -> list[ItineraryStop]:
+    """Aggiunge, IN CODA, le tappe fluttuanti pertinenti — mai una
+    sostituzione (le tappe 1-4 restano esattamente come composte). Rispetta
+    il budget di tempo residuo: se non c'è spazio, la tappa fluttuante NON
+    si aggiunge — mai forzata oltre `profile.tempo_disponibile_min`.
+
+    Ogni tappa fluttuante costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessuna
+    `distanza_m` nota per un segnale, stessa stima prudente già usata
+    altrove per una distanza sconosciuta) + `DURATA_TAPPA_FLUTTUANTE_MIN`
+    (una tappa "breve" per definizione)."""
+    pertinenti = segnali_fluttuanti_pertinenti(signal.eventi_attivi, profile)
+    if not pertinenti:
+        return stops
+
+    place_nomi = {c.experience.place_id: c.place_nome for c in candidates}
+
+    if stops:
+        minuti_usati = _minuti_trascorsi(signal.ora, stops[-1].arrivo) + stops[-1].durata_min
+        orario_corrente = _somma_minuti(stops[-1].arrivo, stops[-1].durata_min)
+    else:
+        minuti_usati = 0
+        orario_corrente = signal.ora
+
+    nuove_tappe = list(stops)
+    for segnale in pertinenti:
+        costo = TEMPO_TRASFERIMENTO_DEFAULT_MIN + DURATA_TAPPA_FLUTTUANTE_MIN
+        if minuti_usati + costo > profile.tempo_disponibile_min:
+            continue  # niente budget: non si forza, si passa al prossimo segnale
+        orario_corrente = _somma_minuti(orario_corrente, TEMPO_TRASFERIMENTO_DEFAULT_MIN)
+        place_nome = place_nomi.get(segnale.place_id, segnale.place_id)
+        nuove_tappe.append(
+            ItineraryStop(
+                experience_id=f"{_PREFISSO_TAPPA_FLUTTUANTE}{segnale.id}",
+                arrivo=orario_corrente,
+                durata_min=DURATA_TAPPA_FLUTTUANTE_MIN,
+                reason=_reason_fluttuante(segnale, place_nome),
+            )
+        )
+        orario_corrente = _somma_minuti(orario_corrente, DURATA_TAPPA_FLUTTUANTE_MIN)
+        minuti_usati += costo
+
+    return nuove_tappe
+
+
+# ---------------------------------------------------------------------------
 # API pubblica
 # ---------------------------------------------------------------------------
 
@@ -247,12 +331,20 @@ def compose_itinerary(
       2. scoring per affinità -> `score_fn` (default: `rules.calcola_score`)
       3. composizione a budget con diversificazione -> `_seleziona_tappe`
       4. `reason` obbligatorio per ogni tappa -> `_costruisci_stops`
+      5. segnali FLUTTUANTI pertinenti, in CODA -> `_aggiungi_tappe_fluttuanti`
 
     `score_fn` è INIETTABILE (Wave 3b): il recommender può fornire un ranking
     alternativo. È applicato DOPO il filtro duro, mai prima: riceve solo i
     candidati già ammessi dai vincoli etici, quindi ORDINA ma non seleziona né
     filtra — non può "salvare" un candidato escluso. Se `None`, l'MVP usa
     `rules.calcola_score` (comportamento invariato per ogni chiamante esistente).
+
+    Il passo 5 (`Signal.eventi_attivi`, segnali "accade ora" — violinista in
+    piazza, non un nodo del grafo) è un'AGGIUNTA, mai una sostituzione: non
+    tocca i passi 1-4, non tocca `score_fn`/`calcola_score`, non altera quali
+    esperienze permanenti sono scelte né il loro punteggio. Se non c'è alcun
+    segnale attivo (`eventi_attivi=[]`, ogni chiamante oggi), il passo 5 è un
+    no-op — comportamento invariato.
 
     Determinismo totale: a parità di score l'ordine è per `experience_id`.
     Due profili diversi possono produrre itinerari diversi — è il criterio
@@ -270,6 +362,7 @@ def compose_itinerary(
     valutati = _ordina_per_score(ammessi, profile, ctx.signal, score)
     selezionati = _seleziona_tappe(valutati, profile.tempo_disponibile_min)
     stops = _costruisci_stops(selezionati, profile, ctx.signal, fn)
+    stops = _aggiungi_tappe_fluttuanti(stops, candidates, profile, ctx.signal)
 
     return Itinerary(
         person_id=ctx.person_id,

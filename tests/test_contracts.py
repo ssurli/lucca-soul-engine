@@ -29,20 +29,23 @@ from contracts import (
     MemoryContribution,
     MemoryKind,
     PersonKind,
+    SegnaleFluttuante,
     Signal,
     UrbanIntelligenceIndex,
     VisitorContext,
     rientra_in_orario,
+    segnale_fluttuante_ammissibile,
 )
 from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
-# 1. I 16 tipi canonici sono importabili da `contracts`
+# 1. I 17 tipi canonici sono importabili da `contracts`
 # ---------------------------------------------------------------------------
 
 CANONICAL_TYPES = [
     "EmotionalProfile",
     "Signal",
+    "SegnaleFluttuante",
     "PersonKind",
     "VisitorContext",
     "FasciaApertura",
@@ -60,8 +63,8 @@ CANONICAL_TYPES = [
 ]
 
 
-def test_sedici_tipi_canonici_importabili() -> None:
-    assert len(CANONICAL_TYPES) == 16
+def test_diciassette_tipi_canonici_importabili() -> None:
+    assert len(CANONICAL_TYPES) == 17
     for name in CANONICAL_TYPES:
         assert hasattr(contracts, name), f"{name} non importabile da `contracts`"
 
@@ -92,6 +95,18 @@ def make_signal(**overrides: object) -> Signal:
     )
     base.update(overrides)
     return Signal(**base)  # type: ignore[arg-type]
+
+
+def make_segnale_fluttuante(**overrides: object) -> SegnaleFluttuante:
+    base: dict[str, object] = dict(
+        id="fluttuante-1",
+        descrizione="un violinista suona in piazza",
+        temi=["musica"],
+        place_id="piazza-anfiteatro",
+        non_commerciale=True,
+    )
+    base.update(overrides)
+    return SegnaleFluttuante(**base)  # type: ignore[arg-type]
 
 
 def make_visitor_context(**overrides: object) -> VisitorContext:
@@ -248,6 +263,10 @@ def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse
         (
             Signal,
             {"meteo", "affollamento", "stanchezza", "ora", "giorno_settimana", "eventi_attivi"},
+        ),
+        (
+            SegnaleFluttuante,
+            {"id", "descrizione", "temi", "place_id", "non_commerciale"},
         ),
         (
             VisitorContext,
@@ -628,6 +647,80 @@ def test_rientra_in_orario_almeno_una_fascia_tra_piu_basta() -> None:
     assert rientra_in_orario(fasce, 5, time(10, 0)) is True
     assert rientra_in_orario(fasce, 6, time(16, 0)) is True
     assert rientra_in_orario(fasce, 5, time(16, 0)) is False  # sabato pomeriggio: non dichiarato
+
+
+# ---------------------------------------------------------------------------
+# 5ter. `SegnaleFluttuante` e `segnale_fluttuante_ammissibile` — livello
+# "accade ora" (Signal.eventi_attivi), diverso dal livello "programmato"
+# (:Evento, fuori scope: docs/LIMITI.md). Il campo era `list[str]`, mai letto
+# da nessuna logica: un interruttore già cablato, mai acceso prima d'ora.
+# ---------------------------------------------------------------------------
+
+
+def test_segnale_fluttuante_valido() -> None:
+    segnale = make_segnale_fluttuante()
+    assert segnale.id == "fluttuante-1"
+    assert segnale.descrizione == "un violinista suona in piazza"
+    assert segnale.temi == ["musica"]
+    assert segnale.place_id == "piazza-anfiteatro"
+    assert segnale.non_commerciale is True
+
+
+def test_segnale_fluttuante_descrizione_vuota_rifiutata() -> None:
+    with pytest.raises(ValidationError):
+        make_segnale_fluttuante(descrizione="")
+
+
+def test_segnale_fluttuante_temi_vuoti_rifiutati() -> None:
+    with pytest.raises(ValidationError):
+        make_segnale_fluttuante(temi=[])
+
+
+def test_segnale_fluttuante_non_commerciale_obbligatorio_nessun_default() -> None:
+    # Nessun default (a differenza di `orari_apertura=[]`): chi genera il
+    # segnale DEVE dichiararlo esplicitamente, stesso principio di
+    # `MemoryContribution.consenso` — mai un'eccezione lasciata al buon senso.
+    with pytest.raises(ValidationError):
+        SegnaleFluttuante(
+            id="x", descrizione="d", temi=["musica"], place_id="p"
+        )  # type: ignore[call-arg]
+
+
+def test_extra_forbid_su_segnale_fluttuante() -> None:
+    with pytest.raises(ValidationError):
+        make_segnale_fluttuante(campo_fantasma="x")
+
+
+def test_segnale_fluttuante_ammissibile_vero_se_non_commerciale() -> None:
+    assert segnale_fluttuante_ammissibile(make_segnale_fluttuante(non_commerciale=True)) is True
+
+
+def test_segnale_fluttuante_ammissibile_falso_se_commerciale() -> None:
+    assert segnale_fluttuante_ammissibile(make_segnale_fluttuante(non_commerciale=False)) is False
+
+
+def test_signal_eventi_attivi_default_lista_vuota() -> None:
+    # Comportamento INVARIATO: nessun chiamante esistente popola questo
+    # campo oggi, quindi resta vuoto finché non viene dichiarato esplicitamente.
+    assert make_signal().eventi_attivi == []
+
+
+def test_signal_eventi_attivi_accetta_segnali_fluttuanti() -> None:
+    segnale = make_segnale_fluttuante()
+    signal = make_signal(eventi_attivi=[segnale])
+    assert signal.eventi_attivi == [segnale]
+
+
+def test_round_trip_json_segnale_fluttuante() -> None:
+    segnale = make_segnale_fluttuante()
+    ricostruito = SegnaleFluttuante.model_validate_json(segnale.model_dump_json())
+    assert ricostruito == segnale
+
+
+def test_round_trip_json_signal_con_eventi_attivi() -> None:
+    signal = make_signal(eventi_attivi=[make_segnale_fluttuante()])
+    ricostruito = Signal.model_validate_json(signal.model_dump_json())
+    assert ricostruito == signal
 
 
 # ---------------------------------------------------------------------------

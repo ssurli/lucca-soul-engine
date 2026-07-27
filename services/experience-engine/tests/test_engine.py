@@ -25,6 +25,7 @@ from contracts import (
     GraphCandidate,
     Itinerary,
     ItineraryStop,
+    SegnaleFluttuante,
     Signal,
     VisitorContext,
 )
@@ -699,3 +700,200 @@ def test_disclosure_non_duplicata_in_adapt() -> None:
     adattato = adapt_itinerary(base, crowd, [cand], profile, compose_reason, adapt_reason)
     reason = adattato.stops[0].reason if adattato.stops else base.stops[0].reason
     assert reason.count(attribuzione) == 1
+
+
+# ---------------------------------------------------------------------------
+# Segnali FLUTTUANTI (Signal.eventi_attivi) — livello "accade ora" (un
+# violinista in piazza), diverso dal livello "programmato" (:Evento, fuori
+# scope: docs/LIMITI.md). AGGIUNTA in coda, mai una sostituzione.
+# ---------------------------------------------------------------------------
+
+
+def _candidato_arte(durata_min: int = 30) -> GraphCandidate:
+    """Un solo candidato reale, a tema "arte", su un luogo fisso — usato per
+    controllare con precisione il budget di tempo residuo nei test sotto."""
+    esperienza = ExperienceNode(
+        id="exp-fisso", titolo="Facciata Barocca", place_id="luogo-fisso",
+        temi=["arte"], durata_min=durata_min, al_chiuso=False, accessibile=True,
+    )
+    return GraphCandidate(
+        experience=esperienza, place_nome="Piazza Fissa", connessioni=['Evoca il tema "Arte".'],
+    )
+
+
+def _violinista(non_commerciale: bool = True) -> SegnaleFluttuante:
+    return SegnaleFluttuante(
+        id="violinista-1", descrizione="un violinista suona in piazza",
+        temi=["musica"], place_id="luogo-fisso", non_commerciale=non_commerciale,
+    )
+
+
+def test_segnale_fluttuante_coerente_aggiunge_tappa_con_reason() -> None:
+    """(a) segnale coerente col profilo -> tappa aggiunta, con reason non
+    vuoto che racconta cosa e dove."""
+    profile = EmotionalProfile(
+        curiosita=0.1, contemplazione=0.1, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    signal = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0),
+        eventi_attivi=[_violinista()],
+    )
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason)
+
+    assert len(it.stops) == 2
+    tappa = it.stops[-1]
+    assert tappa.experience_id == "fluttuante-violinista-1"
+    assert tappa.reason  # spiegabilità obbligatoria: mai vuoto
+    assert "violinista" in tappa.reason
+    assert "Piazza Fissa" in tappa.reason  # place_nome risolto dai candidati reali
+
+
+def test_segnale_fluttuante_non_coerente_non_aggiunge_tappa() -> None:
+    """(b) segnale NON coerente col profilo (nessuna dimensione del profilo
+    engaged sui suoi temi) -> non aggiunta."""
+    profile = EmotionalProfile(
+        curiosita=0.0, contemplazione=0.0, arte=0.0, con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    segnale = SegnaleFluttuante(
+        id="storico-1", descrizione="una guida racconta la storia della torre",
+        temi=["storia"], place_id="luogo-fisso", non_commerciale=True,
+    )
+    signal = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0), eventi_attivi=[segnale]
+    )
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason)
+
+    assert len(it.stops) == 1
+    assert all(not s.experience_id.startswith("fluttuante-") for s in it.stops)
+
+
+def test_segnale_fluttuante_commerciale_mai_aggiunto_anche_se_coerente() -> None:
+    """(c) segnale commerciale -> MAI aggiunto, anche se coerente col
+    profilo (filtro duro, nessuna eccezione)."""
+    profile = EmotionalProfile(
+        curiosita=0.1, contemplazione=0.1, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    signal = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0),
+        eventi_attivi=[_violinista(non_commerciale=False)],
+    )
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason)
+
+    assert len(it.stops) == 1
+    assert all(not s.experience_id.startswith("fluttuante-") for s in it.stops)
+
+
+def test_segnale_fluttuante_non_altera_score_esperienze_permanenti() -> None:
+    """(d) VISIBILITÀ NON ACQUISTABILE via segnalazione: `calcola_score` è
+    bit-identico con e senza segnali fluttuanti attivi, e le tappe REALI
+    scelte (nessuna coda fluttuante) sono bit-identiche a loro volta."""
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    cand = _candidato_arte()
+    signal_senza = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
+    signal_con = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0),
+        eventi_attivi=[_violinista()],
+    )
+
+    # `==` su float è voluto: bit-identico, non prossimità.
+    assert rules.calcola_score(cand, profile, signal_senza) == rules.calcola_score(
+        cand, profile, signal_con
+    )
+
+    ctx_senza = VisitorContext(person_id="p", profile=profile, signal=signal_senza)
+    ctx_con = VisitorContext(person_id="p", profile=profile, signal=signal_con)
+    it_senza = compose_itinerary(ctx_senza, [cand], compose_reason)
+    it_con = compose_itinerary(ctx_con, [cand], compose_reason)
+    reali_con = [s for s in it_con.stops if not s.experience_id.startswith("fluttuante-")]
+
+    assert [s.experience_id for s in it_senza.stops] == [s.experience_id for s in reali_con]
+    assert [s.reason for s in it_senza.stops] == [s.reason for s in reali_con]
+    assert [s.arrivo for s in it_senza.stops] == [s.arrivo for s in reali_con]
+
+
+def test_segnale_fluttuante_non_forzato_senza_budget() -> None:
+    """(e) niente budget residuo -> la tappa fluttuante NON si forza, anche
+    se pertinente."""
+    profile = EmotionalProfile(
+        curiosita=0.1, contemplazione=0.1, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=30,
+    )
+    signal = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0),
+        eventi_attivi=[_violinista()],
+    )
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+    # L'unico candidato reale (30 min) consuma TUTTO il budget da solo.
+    it = compose_itinerary(ctx, [_candidato_arte(durata_min=30)], compose_reason)
+
+    assert len(it.stops) == 1
+    assert not it.stops[0].experience_id.startswith("fluttuante-")
+
+
+def test_eventi_attivi_vuoto_di_default_non_aggiunge_nulla() -> None:
+    """Comportamento INVARIATO: `Signal.eventi_attivi=[]` (il default, ogni
+    chiamante oggi) non aggiunge alcuna tappa fluttuante."""
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason)
+
+    assert len(it.stops) == 1
+    assert all(not s.experience_id.startswith("fluttuante-") for s in it.stops)
+
+
+def test_tappa_fluttuante_sopravvive_invariata_a_un_adapt_successivo() -> None:
+    """Una tappa fluttuante non è tra i `candidates` di un successivo
+    `adapt_itinerary` (il suo `experience_id` non esiste in nessun
+    `GraphCandidate`): il percorso di fallback già esistente per una tappa
+    "sconosciuta" (`_stub_da_stop`) la conserva intatta — mai riscritta, mai
+    rimossa da un adattamento successivo. Il segnale usato qui forza una
+    VERA sostituzione della tappa reale (luogo affollato + un'alternativa
+    scorrevole disponibile), cosicché `adapt_itinerary` ricostruisca
+    davvero gli stop (`_ricostruisci_stops`) invece di limitarsi a
+    ritornare l'itinerario originale invariato — la coda fluttuante deve
+    sopravvivere anche a QUESTO percorso, non solo al caso banale in cui
+    l'adapt non tocca nulla."""
+    profile = EmotionalProfile(
+        curiosita=0.1, contemplazione=0.1, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    signal = Signal(
+        meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0),
+        eventi_attivi=[_violinista()],
+    )
+    cand = _candidato_arte()
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+    base = compose_itinerary(ctx, [cand], compose_reason)
+    assert base.stops[-1].experience_id == "fluttuante-violinista-1"
+
+    alternativa = ExperienceNode(
+        id="exp-alternativa", titolo="Alternativa", place_id="luogo-alternativo",
+        temi=["arte"], durata_min=30, al_chiuso=False, accessibile=True,
+    )
+    cand_alt = GraphCandidate(experience=alternativa, place_nome="Altro Luogo", connessioni=[])
+
+    crowd = Signal(
+        meteo="sereno", affollamento={"luogo-fisso": 0.9}, stanchezza=0.0, ora=time(10, 0)
+    )
+    adattato = adapt_itinerary(
+        base, crowd, [cand, cand_alt], profile, compose_reason, adapt_reason
+    )
+
+    assert adattato.adattato_da_segnale is True  # prova che una VERA ricostruzione è avvenuta
+    fluttuanti_dopo = [s for s in adattato.stops if s.experience_id.startswith("fluttuante-")]
+    assert len(fluttuanti_dopo) == 1
+    assert fluttuanti_dopo[0].experience_id == "fluttuante-violinista-1"
+    assert fluttuanti_dopo[0].reason == base.stops[-1].reason
