@@ -112,6 +112,18 @@ prenotazioni, pagamenti, recensioni e statistiche». Il codice oggi gestisce pre
 commissioni; disponibilità solo nella forma minima; recensioni no. **La riga del documento va
 allineata** — è l'unica cosa che espone davvero in una presentazione.
 
+**Due limiti trovati dal gate etico (verificati, tracciati):**
+- L'adattamento dell'itinerario (`_migliore_alternativa`, usato su pioggia e affollamento) aveva
+  una logica di filtro scritta a mano che **non chiamava** il controllo orari: la sostituzione
+  poteva reintrodurre un'esperienza chiusa. **Corretto**, con test di regressione permanente.
+  Lo stesso metodo non verifica nemmeno `partner_abbonamento_attivo` — un gap pre-esistente mai
+  esteso all'adattamento, ancora aperto.
+- Tutti i filtri duri valutano ogni candidato contro **un singolo istante** di `Signal`, non
+  contro l'ora in cui la tappa verrà davvero visitata più avanti nell'itinerario. Se il giro
+  parte alle 10 e la terza tappa cade alle 15, il controllo avviene alle 10. Per l'affollamento
+  è tollerabile; per gli orari è un errore vero. È un limite di progettazione della pipeline,
+  da disegnare con un caso reale davanti.
+
 ---
 
 ## 6. La distribuzione dei flussi: robusta, non garantita
@@ -187,6 +199,34 @@ luoghi sono stime, non misurazioni.
 
 Adeguato per un proof of concept. Insufficiente il giorno in cui una persona segue quell'itinerario
 e trova la bottega chiusa.
+
+---
+
+## 12. Il livello fluttuante: attivo, con sei confini dichiarati
+
+**Cosa è garantito oggi:** il motore legge i segnali fluttuanti (`Signal.eventi_attivi`) e aggiunge
+una tappa breve quando c'è qualcosa di attivo, coerente col profilo e non commerciale. Verificato
+dal vivo: il violinista in Anfiteatro entra, la «gelateria» che si auto-segnala non entra mai, e
+lo score delle esperienze permanenti resta bit-identico con e senza segnali.
+
+**Cosa NON è garantito — i sei confini, dal più serio:**
+1. **`non_commerciale` e `temi` sono auto-dichiarati, senza verifica.** Due vettori distinti —
+   *«se compare»* e *«a chi compare»*. Chi emette il segnale può mentire su entrambi. Il filtro
+   commerciale è perfetto contro chi dice la verità, inutile contro chi mente. **Si chiude col
+   curatore**, non con un flag: chi verifica che un segnale sia davvero non commerciale è una
+   persona.
+2. **L'adattamento non rivaluta i fluttuanti.** Un violinista apparso *dopo* la composizione non
+   entra mai; uno già aggiunto è immune a pioggia e affollamento (resta anche se si mette a
+   diluviare su una piazza aperta). È il prossimo passo naturale, e tocca la stessa logica del
+   bug orari appena corretto.
+3. Nessun tetto al numero di tappe fluttuanti aggiunte.
+4. Nessun filtro affollamento o accessibilità sulla tappa fluttuante.
+5-6. Il canale che *popola* i segnali nel mondo reale non esiste (è il problema di `POST /events`,
+   voce 1): oggi si assume che il segnale arrivi, non si costruisce chi lo emette né con quale prova.
+
+**Perché è comunque solido:** il vettore «compro visibilità segnalando invece di pagare» è chiuso
+per costruzione — filtro commerciale duro + score bit-identico, verificati da un gate etico
+separato. I sei confini sono di completezza e di fiducia-sull-input, non di tenuta del vincolo.
 
 ---
 
