@@ -148,6 +148,57 @@ la regola vale anche quando adatta.
 
 ---
 
+# PARTE 3 — I tre livelli del tempo
+
+Una città non offre solo cose che ci sono sempre. Ci sono cose che accadono una volta, e cose
+che ci sono adesso e domani no. Il motore le distingue per **dove vivono**, non per quanto durano.
+
+| Livello | Esempio | Dove vive | Come entra | Stato |
+|---|---|---|---|---|
+| **Permanente** | la bottega del liutaio | nel grafo | seed curato a mano | costruito |
+| **Programmato** | il concerto di sabato alle 21 | nel grafo, con una data | inserito con data + organizzatore | **da costruire** |
+| **Fluttuante** | il violinista che suona adesso | nel segnale | segnalato, scade da solo | costruito |
+
+La distinzione non è la durata: è che il permanente e il programmato sono **struttura** (stanno
+nel grafo), il fluttuante è **stato del mondo** (sta nel `Signal`, accanto a meteo e affollamento).
+
+## Il fluttuante, in dettaglio
+
+Il violinista in Anfiteatro non è un nodo del grafo: è una nota temporanea attaccata a un luogo.
+Quando ce n'è uno attivo e coerente col profilo della persona, il motore **aggiunge** una tappa
+breve all'itinerario — non sostituisce, non compete.
+
+Tre regole lo tengono onesto:
+- **aggiunge solo se coerente** — il violinista entra nel giro di chi il grafo collega alla
+  musica, non di chi cerca artigianato;
+- **mai un'attività commerciale** — un violinista in piazza sì, «artista davanti alla nostra
+  gelateria» no: quello è pubblicità travestita da segnale, bloccata per costruzione;
+- **non tocca il punteggio** di nessun'altra esperienza — è un'aggiunta, verificata bit-identica.
+
+**Perché scade da solo:** il `Signal` è transitorio, mai salvato. Non serve cancellare il
+violinista — semplicemente, alla richiesta successiva, non c'è più. Il costo di un errore
+effimero è basso, ed è per questo che il fluttuante può essere alimentato senza curatela
+preventiva, mentre il permanente no.
+
+## Dove finisce una locandina — la domanda che ti faranno
+
+Una locandina appesa a un muro **non è fluttuante**: annuncia in anticipo qualcosa con una data.
+È l'esempio tipico del livello **programmato**. Il fluttuante è «sta succedendo adesso»; la
+locandina è «succederà, segnatelo» — struttura opposta.
+
+La domanda che scioglie ogni dubbio è una sola: **c'è una data futura precisa?**
+- sì → programmato (il concerto di sabato)
+- no, è «adesso e presto finisce» → fluttuante (il violinista)
+
+Unica eccezione: una locandina *vaga* — «artisti di strada oggi in centro», senza data —
+segnala una condizione temporanea della città, ed è aria di fluttuante.
+
+**Il livello programmato oggi non è ancora costruito** (`:Evento` è un'etichetta predisposta nello
+schema ma senza nodi). Le locandine vivono lì: sono il prossimo pezzo, e passano dalla curatela —
+perché qualcuno deve leggere la locandina e decidere che è vera.
+
+---
+
 ## Nota sui numeri
 
 Tutti i dati di queste slide vengono da `docs/SINTESI_FATTUALE.md`, ricontati o rieseguiti,
