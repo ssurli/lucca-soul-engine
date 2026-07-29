@@ -11,6 +11,21 @@
 >
 > Per i fatti verificati sul motore delle esperienze (non sulla curatela), vedi
 > `docs/ENGINE_INVARIANTS.md` — perimetro diverso, non duplicato qui.
+>
+> **Fase 3 (Promozione & Traccia, `docs/brief_fase3_promozione_traccia.md`)** ha chiuso tre
+> punti che questo documento lasciava aperti — §7.1 (`approved → agganciato`, ora
+> automatico), §7.11 (tipo dell'entità promossa, ora `:Evento`) e §7.14 (il ciclo di vita del
+> pattern promosso dopo la promozione, chiuso con DUE meccanismi distinti — frizione
+> automatica a cadenza e freno di emergenza, §4-bis sotto; una prima bozza di questa
+> chiusura, un "ritiro manuale" generico, è stata **abbandonata**, non congelata) — e ha
+> aggiunto un effetto collaterale a `expired` nella corsia fluttuanti (§4 sotto). §7.14.1
+> (item 16 in §7, il livello di autorità del freno) è **CHIUSA anch'essa nel principio**:
+> permesso individuale nominale, ristretto a un sottoinsieme di Promotori, mai l'intero
+> ruolo — resta solo un residuo di dettaglio implementativo (chi amministra la lista),
+> stessa classe di tuning degli item 12/15, non una domanda di design ancora aperta. Il
+> design esteso (ledger delle tracce, bagliore, pipeline ricorrenza→promozione→dormienza)
+> vive in `docs/PROMOZIONE_TRACCIA.md`, non duplicato qui: questo file resta la macchina a
+> stati, quello il meccanismo che si aggancia a `expired`.
 
 ## 0. Punto di partenza — cosa fa la curatela OGGI (verificato nel codice, non assunto)
 
@@ -248,13 +263,38 @@ submit (NUOVO — prerequisito non risolto qui: oggi Signal.eventi_attivi
  │     └─── non risolvibile in tempo ──► "expired"
  │
  ▼
-┌────────┬─────────┬──────────┐
-▼        ▼         ▼          ▼
-approved rejected  expired  (nessuna azione entro la finestra)
-(Guardiano) (+reason  (automatico,     │
-            category)  clock-based,    ▼
-                        terminale,  "expired"
-                        SEMPRE in audit — mai silenzioso)
+┌────────┬──────────┐
+▼        ▼          
+approved rejected  (nessuna azione entro la finestra ──► anch'essa expired, sotto)
+(Guardiano) (+reason
+            category)
+   │        │
+   │        └──────────────────────────────┐
+   │  (clock: la finestra scade,             │
+   │   stesso orologio per tutti)            │
+   ▼                                          ▼
+"expired"  (automatico, clock-based, terminale, SEMPRE in audit — mai silenzioso)
+   │
+   │  effetto collaterale, condizionato da COME si è arrivati qui
+   │  (Fase 3, `docs/PROMOZIONE_TRACCIA.md` — non più "nessuna scrittura"
+   │  come accettato in Fase 2: `expired` ora biforca sul proprio passato)
+   │
+┌──┴──────────────────────┐
+▼                          ▼
+[l'occorrenza era         [l'occorrenza NON era mai stata
+ "approved" prima          "approved" — mai decisa, o "rejected"]
+ di scadere]                     │
+   │                             ▼
+   ▼                      NESSUNA scrittura (come in Fase 2:
+deposita UNA riga nel      un'occorrenza mai approvata non lascia
+ledger delle tracce        traccia — §5 del brief: "le rifiutate
+(place_id, temi,           non fanno traccia", estende "le
+creato_il — timbrato       rifiutate non fanno pattern" di Fase 2)
+dal SERVER in questo
+istante, automatico,
+in `services/urban-memory`
+o servizio dedicato,
+vedi PROMOZIONE_TRACCIA §1)
 ```
 
 `expired` è deliberatamente **distinto** da `rejected`: uno è un giudizio sul contenuto,
@@ -262,9 +302,13 @@ l'altro è un fatto di processo (nessuno è arrivato in tempo). Confonderli nasc
 problema di capacità del team dietro una metrica di qualità dei contenuti.
 
 **Nessun `agganciato` in questa corsia**, per scelta esplicita: un'occorrenza approvata non
-scrive nulla nel grafo — resta un fatto di runtime (il motore la usa per una composizione
-di itinerario, poi scompare con la richiesta, come oggi). Solo la promozione (sotto) scrive
-struttura permanente.
+scrive nulla nel grafo AL MOMENTO DELL'APPROVAZIONE — resta un fatto di runtime (il motore
+la usa per una composizione di itinerario). A differenza di quanto valeva in Fase 2, però,
+non "scompare" senza lasciare traccia: quando la sua finestra si chiude (`expired`), se era
+approvata deposita l'anagrafica minima nel ledger (sopra) — un fatto in Postgres, non nel
+grafo (il ledger non è topologia, è diario del luogo, `docs/PROMOZIONE_TRACCIA.md` §1). La
+promozione (sotto) resta l'unica che scrive struttura PERMANENTE nel grafo (`:Evento`); il
+ledger è il fatto che rende quella promozione possibile da rilevare.
 
 ### Ricorrenza → promozione
 
@@ -288,12 +332,134 @@ entro una finestra
 "promosso"          "ignorato"
 (Promotore — crea   (il pattern resta noto ma non diventa permanente;
  un'entità PERMANENTE le occorrenze future continuano a essere curate
- nel grafo; QUALE tipo  individualmente sulla corsia normale —
- esattamente — Esperienza "ignorato" non tocca retroattivamente le
- o :Evento "programmato" — occorrenze già approvate)
- domanda aperta, non
- chiusa qui)
+ nel grafo: famiglia  individualmente sulla corsia normale —
+ `:Evento`, ANCORATA   "ignorato" non tocca retroattivamente le
+ al `:Luogo` esistente occorrenze già approvate)
+ — non un nuovo
+ `:Luogo` — CHIUSO dal
+ check §3.4 del brief
+ Fase 3: la label
+ esiste già nello
+ schema del grafo,
+ riservata ma vuota,
+ vedi `docs/
+ PROMOZIONE_TRACCIA.md`
+ §3)
+   │
+   │  ciclo di vita ordinario dopo la promozione — CHIUSO (§4-bis
+   │  sotto): frizione automatica a cadenza, non più un singolo
+   │  invecchiamento assoluto di `ultima_traccia_il`
+   ▼
+"attivo" ⇄ "sospeso" → "dormiente"    (§4-bis(a) — battiti di
+                                        cadenza mancati, non tempo
+                                        assoluto; gestisce la
+                                        stagionalità nativamente)
 ```
+
+Nessuno stato `"ritirato"` in questa sequenza: il freno di emergenza (§4-bis(b)) è un
+override ortogonale, non una quarta voce di `stato` — dettaglio completo sotto.
+
+## 4-bis. Il ciclo di vita del pattern promosso — CHIUSA (brief §7.2, item 14 §7)
+
+Chiude con **due meccanismi distinti**, non un singolo "ritiro manuale" come una prima bozza
+di questa chiusura ipotizzava (**abbandonata**, non congelata — non vive altrove in questo
+repo). Uno è il ciclo di vita ORDINARIO di ogni pattern promosso (automatico, sempre attivo);
+l'altro è un override di SICUREZZA (manuale, eccezionale, ortogonale al primo). Non vanno
+confusi né nella forma né nell'autorità che li governa.
+
+### (a) Frizione automatica a cadenza — il ciclo di vita normale
+
+Sostituisce il modello iniziale di `docs/PROMOZIONE_TRACCIA.md` §3 ("`ultima_traccia_il`
+invecchia oltre una soglia assoluta → `dormiente`") con un modello sensibile al **ritmo** del
+pattern, non al tempo assoluto:
+
+- Il pattern promosso salva la propria **cadenza** (il ritmo delle occorrenze che lo hanno
+  fatto rilevare come ricorrente — es. "ogni sabato") al momento della promozione.
+  **Da verificare quando il rilevamento ricorrenza sarà implementato**: se la funzione che
+  produce `"ricorrente"` (`docs/PROMOZIONE_TRACCIA.md` §3, soglia N/finestra W) calcola già
+  un ritmo o solo un conteggio grezzo di occorrenze in una finestra. Se calcola solo il
+  conteggio, la cadenza è un campo **nuovo** da persistere sull'`:Evento` al momento della
+  promozione, non deducibile a posteriori dal solo conteggio. **Non verificabile oggi contro
+  codice reale**: il rilevamento ricorrenza non esiste ancora (`docs/FASE3_VERIFICHE.md`,
+  check 1) — annotato qui come vincolo di progettazione per quando verrà implementato, non
+  come fatto verificato.
+- **`attivo → sospeso`**: dopo **K battiti mancati** della cadenza attesa — non un numero di
+  giorni assoluto. Un pattern settimanale che salta due sabati e uno mensile che salta due
+  mesi attraversano la stessa soglia *logica* (K battiti), non la stessa soglia in giorni.
+- **`sospeso → attivo`**: automatico, non appena arriva una traccia fresca — il pattern si
+  "risveglia" da solo quando ricompare, nessuna azione del curatore richiesta.
+- **`sospeso → dormiente`**: se la sospensione supera un **orizzonte lungo** (assoluto, non
+  in battiti — a un certo punto anche un pattern annuale va dichiarato dormiente se non si
+  ripresenta più).
+- **Gestisce nativamente la stagionalità**: un pattern annuale (es. un mercatino di Natale)
+  vive `sospeso` per undici mesi ogni anno senza mai essere dichiarato morto — il modello
+  precedente (invecchiamento assoluto di `ultima_traccia_il`) lo avrebbe spento ogni anno,
+  confondendo "stagionale" con "cessato" — lo stesso errore concettuale che
+  `docs/LIMITI.md` documenta altrove per `tasso_ritorno` (finestra sbagliata = fenomeno
+  travisato).
+- **Numeri non decisi qui**: K (battiti mancati per sospendere), l'orizzonte lungo (per
+  dormire da sospeso), la tolleranza sul ritmo (quanto una cadenza può slittare prima di
+  contare come "mancata") sono tuning — stessa classe di scelta già rimandata per la soglia
+  N/finestra W della ricorrenza (§7 item 12) e per la curva di decadimento del bagliore
+  (§7 item 15).
+
+### (b) Freno di emergenza — override di sicurezza, non uno stato — CHIUSA (§7.14.1)
+
+Ortogonale al ciclo di vita (a): **non** una quarta voce di `stato`, un overlay applicabile
+in qualunque momento indipendentemente da dove il pattern si trovi (`attivo`/`sospeso`/
+`dormiente`).
+
+- **Permesso individuale, non capacità del ruolo — il PRINCIPIO, deciso.** Il freno non è
+  esercitabile da chiunque abbia il ruolo Promotore: è un potere ristretto a un sottoinsieme
+  NOMINALE, modellato come permesso concesso a persone specifiche, non come proprietà del
+  livello. Un Promotore senza il permesso-freno vede l'azione (nell'interfaccia, nel modello)
+  ma **l'esecuzione gli è negata** — l'azione esiste, il potere no.
+- **La concessione/revoca del permesso è essa stessa un atto tracciato e reversibile**,
+  append-only (concesso da chi/quando, revocato da chi/quando) — "chi può tirare il freno" è
+  in ogni momento una lista nominale auditabile: requisito di governance per un contesto
+  istituzionale pubblico (un Comune deve poter rispondere "chi aveva il potere di frenare
+  questo pattern il giorno X").
+- **Nessun doppio-occhio (due firme) sul singolo tiro.** Il freno vive sull'immediatezza
+  (zero latenza), incompatibile con un'approvazione a due firme. La restrizione è
+  sull'ACCESSO (chi può — lista nominale), non sulla PROCEDURA (quante firme servono per un
+  singolo tiro): due meccanismi di governance distinti, non intercambiabili — uno limita CHI,
+  l'altro rallenterebbe OGNI esecuzione.
+- **Tiro e rilascio sono entrambi manuali.** A differenza della frizione (a), che si
+  auto-recupera da sola su una traccia fresca, il freno **non si rilascia mai da solo**:
+  resta tirato finché qualcuno con permesso non lo rilascia esplicitamente, anche se nel
+  frattempo il pattern continuasse a manifestarsi.
+- **Sopprime la RACCOMANDAZIONE, non il deposito della traccia.** Mentre il freno è tirato,
+  il motore smette di proporre il pattern — ma se un'occorrenza viene comunque segnalata e
+  approvata sulla corsia fluttuanti nel frattempo, la sua traccia si deposita normalmente nel
+  ledger (`docs/PROMOZIONE_TRACCIA.md` §1). **Il ledger resta veritiero**: non mente su cosa
+  è successo solo perché il pattern è temporaneamente silenziato lato raccomandazione.
+- **Al rilascio, il pattern torna allo stato che il ciclo di vita (a) indica IN QUEL
+  MOMENTO** — mai forzato ad `attivo`. Se durante il periodo frenato la frizione automatica
+  avrebbe comunque portato il pattern a `sospeso` o `dormiente` (perché nessuna traccia si è
+  depositata), è quello lo stato che riemerge al rilascio: il freno non "congela" il ciclo di
+  vita sottostante, lo sovrasta solo lato raccomandazione.
+- **Append-only su due livelli distinti**: (i) ogni tiro/rilascio del freno è una riga
+  permanente (chi, quando, motivazione), (ii) ogni concessione/revoca del permesso stesso è
+  anch'essa una riga permanente (chi ha concesso/revocato, quando) — due log append-only
+  separati, coerenti con l'invariante A (`docs/ENGINE_INVARIANTS.md` §11) applicato qui non
+  ai nodi del grafo ma a due sequenze di governance.
+- **Motivazione testuale obbligatoria** su ogni tiro — non un campo opzionale — e **log a
+  salienza massima**, distinguibile in audit da una transizione ordinaria della frizione (a):
+  chi audita deve poter separare a colpo d'occhio "il pattern si è spento da solo" da
+  "qualcuno lo ha spento apposta, e perché".
+- **Scopo scoped stretto**: sicurezza, legale, immediatezza, causa esterna (es. il Comune
+  vieta i busker con effetto immediato). **Usarlo per "il pattern è semplicemente finito" è
+  un uso improprio** — quello è esattamente il compito della frizione (a), che lo gestisce
+  già senza intervento umano.
+
+**Residuo — dettaglio implementativo, non domanda di design (§7.14.1, item 16 in §7):** chi
+amministra concretamente la lista nominale (chi ha l'autorità di concedere/revocare il
+permesso-freno stesso — un Admin di piattaforma? il Comune? il Promotore più anziano?), dove
+tecnicamente vive la lista, con quale meccanismo esatto si registra grant/revoke. Il
+PRINCIPIO è chiuso (permesso individuale, ristretto, tracciato, reversibile, nessun
+doppio-occhio sul tiro); questo è tuning/implementazione, stessa classe di K/orizzonte/
+tolleranza sopra — non una decisione di governance ancora da prendere sul CHI del freno, solo
+su come si amministra concretamente l'elenco.
 
 ## 5. Il gate contro l'auto-approvazione — strutturale, non convenzionale
 
@@ -326,11 +492,16 @@ questa esclusione, non aggiungerla come eccezione a posteriori.
 | `submitted → deferred` | Guardiano | chi, quando |
 | `blocked`, per-id: redirect / rimuovi da riguarda | Guardiano | chi, quando, perché (a quale id) |
 | `blocked`, per-id: crea nodo e aggancia | **Costruttore** | chi, quando, perché |
-| `approved → agganciato` | **APERTO — non assegnato** (§7.1) | chi/cosa, quando |
+| `approved → agganciato` | **automatico (sistema)** — CHIUSO, brief Fase 3 §1.7 | chi/cosa=sistema, quando |
 | `ricorrente → promosso` | **Promotore** | chi, quando, perché |
 | imposta flag `richiede_revisione_umana` | Guardiano (chiunque) | chi, quando |
 | `submitted/blocked → approved/rejected` (fluttuante) | Guardiano | chi, quando, perché |
 | `submitted/blocked → expired` (fluttuante) | automatico (clock) | quando, sistema, sempre in audit |
+| `expired` (da `approved`) → deposita traccia | automatico (sistema) | quando (=`creato_il` della traccia), sistema, perché="finestra scaduta, occorrenza era approvata" — **non** è il log della traccia stessa (che resta anonima, senza contributor, `docs/PROMOZIONE_TRACCIA.md` §1): è il log della TRANSIZIONE, due record distinti (§1.4 non fa eccezione per l'automatico; §5 del brief impone comunque l'anagrafica minima sulla traccia) |
+| `attivo → sospeso` / `sospeso → dormiente` (frizione, §4-bis(a)) | automatico (K battiti mancati / orizzonte lungo superato) | quando si rileva, sistema, perché="cadenza mancata" / "sospensione oltre orizzonte" |
+| `sospeso → attivo` (frizione, §4-bis(a)) | automatico (traccia fresca depositata) | quando, sistema |
+| tira / rilascia freno di emergenza (§4-bis(b)) | **titolare di permesso-freno individuale** (sottoinsieme nominale di Promotori, MAI l'intero ruolo — CHIUSA) | chi, quando, motivazione testuale OBBLIGATORIA — salienza massima, distinguibile in audit dalle righe automatiche della frizione |
+| concedi / revoca permesso-freno (§4-bis(b)) | **APERTO — dettaglio implementativo (§7.14.1, item 16)**: chi amministra la lista, non deciso | chi, quando — append-only, reversibile |
 
 **Ordine verticale**: `approva < aggancia < crea < promuovi` — tenuto nell'ordine dato dal
 brief originario, non riordinato. L'accountability (colonna destra) è **identica a ogni
@@ -341,11 +512,12 @@ un'identità loggata come un'altra, non un'esenzione.
 
 ## 7. Domande aperte — sollevate, non risolte (consolidate)
 
-1. **`approved → agganciato`: chi/cosa la esegue.** È un'azione MECCANICA (nessun giudizio
-   nuovo rispetto a `approved`, dato che l'esistenza dei target è già stata giudicata) più
-   che un giudizio umano — candidata a esecuzione automatica di sistema, gated solo da
-   "l'approvazione è avvenuta e i target erano validi in quel momento". Non deciso: tiene
-   insieme il dubbio se debba essere autorità *umana* affatto.
+1. ~~`approved → agganciato`: chi/cosa la esegue.~~ **CHIUSA** (brief Fase 3 §1.7, tenuta
+   visibile invece di cancellata — stessa disciplina della correzione di provenienza in
+   §2): è automatica, esecuzione di sistema. Conseguenza load-bearing: "curato ma non
+   agganciato" cessa di essere uno stato di riposo raggiungibile in produzione — diventa un
+   transitorio, o un `aggancio_fallito` esplicito se Aura è irraggiungibile. Chiude il bug
+   curato-ma-orfano rendendolo non producibile, non gestendolo.
 2. **Il "perché" di un'approvazione banale.** Per un rifiuto il "perché" è naturale (reason
    category). Per un'approvazione con un solo clic (il caso comune di Fase 1), forzare una
    giustificazione esplicita rischia di rompere quel flusso — non deciso se "perché" sia il
@@ -374,12 +546,38 @@ un'identità loggata come un'altra, non un'esenzione.
 10. **Tensione strutturale nella corsia fluttuanti**: `blocked` lì condivide la meccanica
     di risoluzione del target fantasma con la corsia principale, ma non condivide il tempo
     disponibile per usarla (§4) — non risolta.
-11. **Tipo dell'entità promossa**: Esperienza (nel senso di `ExperienceNode`) o `:Evento`
-    "programmato" (esplicitamente fuori scope nel resto del progetto) — non chiuso.
+11. ~~**Tipo dell'entità promossa**: Esperienza o `:Evento` "programmato" — non chiuso.~~
+    **CHIUSA** (brief Fase 3, check §3.4): `:Evento`. La label esiste già nello schema del
+    grafo (`00_schema.cypher`, constraint di unicità su `id`) ma senza seed/proprietà —
+    riservata in anticipo per esattamente questo momento (`seed_lucca.py`: "Evento arriva
+    con i segnali reali"). Dettagli in `docs/PROMOZIONE_TRACCIA.md` §3.
 12. **Soglia N e finestra per la rilevazione di "ricorrente"** — non decise, stessa classe
     di scelta già rimandata altrove nel progetto (es. `tasso_ritorno`).
 13. **Richiamo automatico per tempo di `deferred`** (`deferred_until`) — deliberatamente
     omesso per ora, nessun caso reale a giustificarlo oggi.
+14. ~~**Ritiro manuale di un `:Evento` promosso**: la dormienza è *solo* da silenzio del
+    ledger (automatica), o un curatore può ritirare a mano un pattern che sa morto *prima*
+    che il ledger taccia da solo?~~ **CHIUSA** (brief Fase 3 §7.2, §4-bis sopra): non un
+    singolo "ritiro manuale" (bozza abbandonata), ma DUE meccanismi distinti — la **frizione
+    automatica a cadenza** (§4-bis(a), il ciclo di vita ordinario: `attivo ⇄ sospeso →
+    dormiente`, sensibile al ritmo del pattern, non al tempo assoluto) e il **freno di
+    emergenza** (§4-bis(b), override di sicurezza manuale, ortogonale, non uno stato — CHIUSO
+    anche il livello di autorità, §7.14.1: permesso individuale nominale, mai l'intero ruolo
+    Promotore). Lascia solo un residuo implementativo, item 16 sotto — non una domanda di
+    design ancora aperta.
+15. **Soglia di invecchiamento per `ultima_traccia_il → dormiente`, e forma esatta della
+    curva di decadimento del bagliore** (brief Fase 3 §7.3): la FORMA è disegnata in
+    `docs/PROMOZIONE_TRACCIA.md` §2 (decadimento verso un pavimento positivo, mai zero); i
+    numeri (tasso, pavimento, soglia di dormienza) sono tuning, stessa classe rimandata
+    dell'item 12 — non decisi qui.
+16. ~~**§7.14.1 — Livello di autorità del freno di emergenza**: intero ruolo Promotore o
+    sottoinsieme ristretto?~~ **CHIUSA nel principio** (§4-bis(b) sopra): permesso
+    individuale nominale, ristretto a un sottoinsieme di Promotori, MAI l'intero ruolo —
+    concessione/revoca tracciata e reversibile, nessun doppio-occhio sul singolo tiro (la
+    restrizione è sull'accesso, non sulla procedura). **Residuo, dettaglio implementativo,
+    stessa classe di tuning di K/orizzonte/tolleranza (item 15) — non una domanda di design
+    ancora da decidere**: chi amministra concretamente la lista (chi concede/revoca il
+    permesso-freno stesso), dove vive tecnicamente, con quale meccanismo esatto.
 
 ## 8. Cosa questo documento NON è
 

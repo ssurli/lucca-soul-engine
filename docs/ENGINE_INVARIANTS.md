@@ -13,6 +13,11 @@ racconta»). Non copre i fatti su Urban Memory / aggancio al grafo / curatela: q
 in `docs/STATE_MACHINE.md` §1, verificati per uno scopo diverso (progettare il curatore),
 non duplicati qui.
 
+**Eccezione esplicita (§11 sotto)**: due fatti sul grafo, emersi progettando la curatela
+(Fase 3, `docs/brief_fase3_promozione_traccia.md` §2) ma veri a prescindere da quale
+servizio tocca il grafo — non specifici di `experience-engine`, non specifici della
+curatela. Vivono qui perché sono *verità di sistema*, non design di un componente.
+
 ## 1. Un solo punto di decisione, pipeline a 5 passi
 
 `compose_itinerary` (`engine.py:321`):
@@ -162,3 +167,37 @@ un'informazione che il motore etico può vedere o usare per decidere.
 Ogni `ItineraryStop` — incluse le tappe fluttuanti (`_reason_fluttuante`, `engine.py:259`)
 e le tappe non toccate da un adattamento — porta un `reason` non vuoto (`min_length=1` nel
 contratto). Nessun path del motore produce una tappa senza spiegazione in italiano.
+
+## 11. Invarianti del grafo — repo-wide, non specifici di `experience-engine` (Fase 3)
+
+Due fatti emersi progettando il curatore (`docs/STATE_MACHINE.md`) ma che riguardano il
+grafo nel suo insieme, non un componente — annotati qui perché sopravvivano oltre la
+sessione che li ha scoperti, come impone `docs/brief_fase3_promozione_traccia.md` §2.
+**Stato epistemico diverso tra i due — non confonderli:**
+
+- **A — Append-only sui target di `riguarda`. VERO OGGI, verificato nel codice.** Un grep
+  dell'intero repository per `DETACH DELETE|DELETE \(|REMOVE \(|DROP CONSTRAINT` produce
+  **una sola occorrenza** in tutto il repo: un comando Cypher documentato (non eseguibile
+  da codice applicativo) in `services/urban-memory/README.md`, per pulizia manuale una
+  tantum — colpisce SOLO nodi `:Memoria` orfani, MAI `:Luogo`/`:Bottega`/`:Artista`. Nessun
+  percorso di codice applicativo cancella questi tre tipi di nodo, oggi. Conseguenza: una
+  race "il target esisteva quando riferito, non esiste più dopo" è impossibile via codice
+  applicativo in questo repository (resta teoricamente possibile solo fuori dal codebase,
+  via accesso diretto a Neo4j Browser — rischio di governance dell'accesso, non proprietà
+  della macchina a stati).
+- **B — "Curato tira aggancio": DECISIONE CONGELATA (brief Fase 3 §1.7), NON ancora vera
+  nel codice oggi.** Unica eccezione voluta alla regola di questo documento (header:
+  "fatti... riletto nel codice al momento in cui è stato scritto, non presunto") — marcata
+  esplicitamente come tale per non confondere chi legge questo file aspettandosi solo fatti
+  verificati. Oggi, verificato (`docs/STATE_MACHINE.md` §0): `curate_contribution` e
+  `link_to_graph` sono **due atti separati**, nessun percorso applicativo li incatena;
+  `link_to_graph` è chiamato da un solo punto in tutto il repo (`urban_memory/verify.py`,
+  passo 5, esplicitamente dopo e distinto da `curate_contribution`). La Fase 3 ha deciso che
+  questo deve cambiare: ogni `approved` dovrà innescare meccanicamente il proprio
+  `link_to_graph`, rendendo "curato ma non agganciato" un transitorio — mai più uno stato di
+  riposo raggiungibile in produzione (o un `aggancio_fallito` esplicito se Aura è
+  irraggiungibile). **Quando questa automazione sarà implementata**, questa voce va
+  riverificata contro il codice (stessa disciplina di `STATE_MACHINE.md`: "se il codice
+  cambia, va riverificato, non aggiornato per analogia") e la qualifica "DECISIONE
+  CONGELATA, non ancora vera" va rimossa o confermata contro ciò che il codice fa
+  davvero — mai lasciata per assunzione.
