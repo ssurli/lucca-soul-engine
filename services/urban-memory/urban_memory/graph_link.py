@@ -74,13 +74,24 @@ class MemoryLinkError(Exception):
     creato. NON è una sottoclasse di `urban_memory.service.UrbanMemoryError`
     (quella famiglia riguarda i vincoli sul CONTRIBUTO stesso: consenso,
     licenza, pseudonimo): questa riguarda lo STATO DEL GRAFO al momento
-    dell'aggancio — un id in `riguarda` che non esiste (ancora, o più) come
-    `:Luogo`/`:Bottega`/`:Artista`, o una `riguarda` vuota arrivata fin qui
-    nonostante il contratto la vieti.
+    dell'aggancio. Due cause, ENTRAMBE arrivano come questo stesso tipo
+    (vedi `link_to_graph`):
 
-    Sollevata SEMPRE prima di qualunque scrittura (vedi `_link_transaction`):
-    quando arriva a chi chiama, nessun nodo `:Memoria` orfano è stato
-    creato — è la garanzia che questa eccezione esiste per dare.
+    - un id in `riguarda` che non esiste (ancora, o più) come `:Luogo`/
+      `:Bottega`/`:Artista`, o una `riguarda` vuota arrivata fin qui
+      nonostante il contratto la vieti — sollevata da `_link_transaction`
+      PRIMA di qualunque scrittura;
+    - il grafo è IRRAGGIUNGIBILE (Aura in pausa, rete assente, credenziali
+      non valide): l'eccezione nativa del driver Neo4j è ri-sollevata come
+      `MemoryLinkError` da `link_to_graph` (incatenata con `from`, la causa
+      originale resta ispezionabile). In questo repository, per via
+      dell'invariante A (append-only sui target — `docs/ENGINE_INVARIANTS.md`
+      §11-A), questa è nella pratica l'UNICA causa possibile una volta che
+      un contributo ha già superato la verifica dei target una prima volta
+      (es. alla curatela): un target non sparisce mai da sotto.
+
+    In entrambi i casi vale la stessa garanzia: quando arriva a chi chiama,
+    nessun nodo `:Memoria` orfano è stato creato.
     """
 
 
@@ -249,6 +260,19 @@ def link_to_graph(
     FINTO nei test, o uno già aperto e condiviso da chi chiama (vedi
     `Neo4jMemoryLinker`) — il ciclo di vita resta di chi lo possiede: non
     viene chiuso qui.
+
+    ATTENZIONE (colmato in questa sessione): un grafo IRRAGGIUNGIBILE (Aura
+    in pausa, rete assente) fa sollevare al driver Neo4j la SUA eccezione
+    nativa (es. `neo4j.exceptions.ServiceUnavailable`), non `MemoryLinkError`
+    — `_link_transaction` la solleva SOLO per target mancanti. Chi chiama
+    (`urban_memory.service.curate_contribution`/`retry_link_contribution`,
+    l'automazione che rende vero l'invariante "curato tira aggancio",
+    `docs/ENGINE_INVARIANTS.md` §11-B) deve poter trattare "grafo
+    irraggiungibile" come `MemoryLinkError` — la stessa famiglia usata per
+    "target mancante" — quindi QUALUNQUE eccezione sollevata aprendo la
+    sessione o eseguendo la transazione (tranne `MemoryLinkError` stessa,
+    che attraversa invariata) viene ri-sollevata come `MemoryLinkError`,
+    incatenata (`from exc`) per non perdere la causa originale.
     """
     if not contribution.riguarda:
         raise MemoryLinkError(
@@ -269,6 +293,18 @@ def link_to_graph(
     try:
         with driver.session(database=database) as session:
             session.execute_write(_link_transaction, contribution)
+    except MemoryLinkError:
+        raise  # già il tipo giusto (target mancante/riguarda vuoto): non ri-avvolgere
+    except Exception as exc:
+        # Qualunque altro errore qui è, per costruzione, un problema di
+        # RAGGIUNGIBILITÀ del grafo (connessione, autenticazione, timeout —
+        # mai un target sparito: quello è coperto dal ramo sopra), non un
+        # bug di questa funzione: uniformato a MemoryLinkError così chi
+        # chiama ha UNA SOLA famiglia di eccezioni da gestire per "aggancio
+        # non riuscito".
+        raise MemoryLinkError(
+            f"grafo irraggiungibile durante l'aggancio (id={contribution.id!r}): {exc}"
+        ) from exc
     finally:
         if driver_aperto_qui:
             driver.close()

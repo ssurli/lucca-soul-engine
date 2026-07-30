@@ -17,7 +17,7 @@ from datetime import UTC, datetime
 
 import psycopg
 import pytest
-from contracts import MemoryContribution, MemoryKind, PersonKind
+from contracts import MemoryContribution, MemoryKind, MemoryLinkState, PersonKind
 from urban_memory import InMemoryMemoryRepository, MemoryRepository, PostgresMemoryRepository
 from urban_memory.migrate import migrate
 from urban_memory.repository import MemoryStorageError
@@ -50,6 +50,8 @@ def test_in_memory_repository_implementa_il_protocollo() -> None:
     assert hasattr(repo, "curate")
     assert hasattr(repo, "get")
     assert hasattr(repo, "list_curated")
+    assert hasattr(repo, "set_stato_aggancio")
+    assert hasattr(repo, "list_aggancio_fallito")
 
 
 def test_submit_ritorna_il_contributo_persistito() -> None:
@@ -135,6 +137,54 @@ def test_in_memory_get_riflette_lo_stato_curato_aggiornato() -> None:
     assert repo.get("mem-curabile").curato is True  # type: ignore[union-attr]
 
 
+# --- set_stato_aggancio / list_aggancio_fallito (InMemory) ------------------
+
+
+def test_in_memory_stato_aggancio_e_none_di_default() -> None:
+    repo = InMemoryMemoryRepository()
+    repo.submit(_contributo(id="a"))
+    assert repo.get("a").stato_aggancio is None  # type: ignore[union-attr]
+
+
+def test_in_memory_set_stato_aggancio_lo_imposta_e_lo_restituisce() -> None:
+    repo = InMemoryMemoryRepository()
+    repo.submit(_contributo(id="a", curato=True))
+
+    aggiornato = repo.set_stato_aggancio("a", MemoryLinkState.AGGANCIATO)
+
+    assert aggiornato.stato_aggancio == MemoryLinkState.AGGANCIATO
+    assert repo.get("a").stato_aggancio == MemoryLinkState.AGGANCIATO  # type: ignore[union-attr]
+
+
+def test_in_memory_set_stato_aggancio_id_sconosciuto_solleva_keyerror() -> None:
+    repo = InMemoryMemoryRepository()
+    with pytest.raises(KeyError):
+        repo.set_stato_aggancio("non-esiste", MemoryLinkState.AGGANCIATO)
+
+
+def test_in_memory_set_stato_aggancio_puo_tornare_da_fallito_ad_agganciato() -> None:
+    """Il percorso di RETRY: nessun vincolo impedisce di aggiornare uno
+    stato già impostato — `AGGANCIO_FALLITO` è un'attesa recuperabile."""
+    repo = InMemoryMemoryRepository()
+    repo.submit(_contributo(id="a", curato=True))
+    repo.set_stato_aggancio("a", MemoryLinkState.AGGANCIO_FALLITO)
+
+    riprovato = repo.set_stato_aggancio("a", MemoryLinkState.AGGANCIATO)
+
+    assert riprovato.stato_aggancio == MemoryLinkState.AGGANCIATO
+
+
+def test_in_memory_list_aggancio_fallito_filtra_curato_e_stato() -> None:
+    repo = InMemoryMemoryRepository()
+    repo.submit(_contributo(id="a", riguarda=["luogo-a"], curato=True))
+    repo.submit(_contributo(id="b", riguarda=["luogo-b"], curato=True))
+    repo.submit(_contributo(id="c", riguarda=["luogo-c"], curato=False))  # non curato: mai in coda
+    repo.set_stato_aggancio("a", MemoryLinkState.AGGANCIO_FALLITO)
+    repo.set_stato_aggancio("b", MemoryLinkState.AGGANCIATO)  # riuscito: fuori dalla coda
+
+    assert [c.id for c in repo.list_aggancio_fallito()] == ["a"]
+
+
 # --- PostgresMemoryRepository: interfaccia e costruzione -------------------
 
 
@@ -146,6 +196,8 @@ def test_postgres_repository_ha_linterfaccia_attesa() -> None:
     assert hasattr(repo, "curate")
     assert hasattr(repo, "get")
     assert hasattr(repo, "list_curated")
+    assert hasattr(repo, "set_stato_aggancio")
+    assert hasattr(repo, "list_aggancio_fallito")
 
 
 def test_postgres_repository_dsn_arriva_sempre_dal_costruttore(
@@ -200,6 +252,8 @@ def test_postgres_repository_implementa_il_protocollo(pg_repo: PostgresMemoryRep
     assert hasattr(repo, "curate")
     assert hasattr(repo, "get")
     assert hasattr(repo, "list_curated")
+    assert hasattr(repo, "set_stato_aggancio")
+    assert hasattr(repo, "list_aggancio_fallito")
 
 
 def test_postgres_submit_poi_get_curated_e_vuoto_finche_non_curato(
@@ -277,6 +331,84 @@ def test_postgres_list_curated_contiene_solo_i_curati(
     # A DIFFERENZA di get_curated(place_id): nessun filtro per place — è
     # ciò che serve a `urban_memory.audit` per scandagliare OGNI curato.
     assert sorted(c.id for c in pg_repo.list_curated()) == ["c1", "c2"]
+
+
+# --- set_stato_aggancio / list_aggancio_fallito (Postgres reale) -----------
+
+
+def test_postgres_stato_aggancio_e_none_di_default(pg_repo: PostgresMemoryRepository) -> None:
+    contributo = _contributo(
+        id="mem-pg-stato-default", creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC)
+    )
+    pg_repo.submit(contributo)
+    trovato = pg_repo.get("mem-pg-stato-default")
+    assert trovato is not None
+    assert trovato.stato_aggancio is None
+
+
+def test_postgres_set_stato_aggancio_lo_imposta_e_lo_restituisce(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    contributo = _contributo(
+        id="mem-pg-aggancio-1",
+        curato=True,
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    pg_repo.submit(contributo)
+
+    aggiornato = pg_repo.set_stato_aggancio("mem-pg-aggancio-1", MemoryLinkState.AGGANCIATO)
+
+    assert aggiornato.stato_aggancio == MemoryLinkState.AGGANCIATO
+    trovato = pg_repo.get("mem-pg-aggancio-1")
+    assert trovato is not None
+    assert trovato.stato_aggancio == MemoryLinkState.AGGANCIATO
+
+
+def test_postgres_set_stato_aggancio_id_sconosciuto_solleva_keyerror(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    with pytest.raises(KeyError):
+        pg_repo.set_stato_aggancio("non-esiste-su-postgres", MemoryLinkState.AGGANCIATO)
+
+
+def test_postgres_list_aggancio_fallito_filtra_curato_e_stato(
+    pg_repo: PostgresMemoryRepository,
+) -> None:
+    creato_il = datetime(2026, 7, 14, 9, 0, tzinfo=UTC)
+    pg_repo.submit(
+        _contributo(id="pg-a", riguarda=["luogo-pg-a"], curato=True, creato_il=creato_il)
+    )
+    pg_repo.submit(
+        _contributo(id="pg-b", riguarda=["luogo-pg-b"], curato=True, creato_il=creato_il)
+    )
+    pg_repo.submit(
+        _contributo(id="pg-c", riguarda=["luogo-pg-c"], curato=False, creato_il=creato_il)
+    )
+    pg_repo.set_stato_aggancio("pg-a", MemoryLinkState.AGGANCIO_FALLITO)
+    pg_repo.set_stato_aggancio("pg-b", MemoryLinkState.AGGANCIATO)
+
+    assert [c.id for c in pg_repo.list_aggancio_fallito()] == ["pg-a"]
+
+
+def test_postgres_stato_aggancio_sopravvive_a_una_nuova_connessione(pg_dsn: str) -> None:
+    """Stessa garanzia di persistenza reale del resto del modulo, applicata
+    a `stato_aggancio`: sopravvive alla chiusura/riapertura del processo che
+    lo scrive (non solo di quello che lo legge)."""
+    migrate(pg_dsn)
+    scrittore = PostgresMemoryRepository(pg_dsn)
+    contributo = _contributo(
+        id="mem-pg-stato-persist",
+        curato=True,
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    scrittore.submit(contributo)
+    scrittore.set_stato_aggancio("mem-pg-stato-persist", MemoryLinkState.AGGANCIO_FALLITO)
+    del scrittore
+
+    lettore = PostgresMemoryRepository(pg_dsn)
+    trovato = lettore.get("mem-pg-stato-persist")
+    assert trovato is not None
+    assert trovato.stato_aggancio == MemoryLinkState.AGGANCIO_FALLITO
 
 
 def test_postgres_persistenza_sopravvive_a_una_nuova_connessione(pg_dsn: str) -> None:
@@ -458,3 +590,33 @@ def test_protocollo_submit_get_curated_curate_su_entrambe_le_implementazioni(
 
     with pytest.raises(KeyError):
         repo.curate("non-esiste-in-nessuna-implementazione")
+
+
+def test_protocollo_set_stato_aggancio_e_list_aggancio_fallito_su_entrambe_le_implementazioni(
+    any_memory_repository: MemoryRepository,
+) -> None:
+    """Stessa garanzia di `test_protocollo_submit_get_curated_curate_...`
+    per il ciclo di vita dell'aggancio automatico: identico su
+    `InMemoryMemoryRepository` e `PostgresMemoryRepository`, opera solo
+    attraverso il `Protocol`."""
+    repo = any_memory_repository
+    contributo = _contributo(
+        id="mem-protocollo-aggancio",
+        riguarda=["luogo-protocollo-aggancio"],
+        curato=True,
+        creato_il=datetime(2026, 7, 14, 9, 0, tzinfo=UTC),
+    )
+    repo.submit(contributo)
+    assert repo.get("mem-protocollo-aggancio").stato_aggancio is None  # type: ignore[union-attr]
+    assert repo.list_aggancio_fallito() == []
+
+    fallito = repo.set_stato_aggancio("mem-protocollo-aggancio", MemoryLinkState.AGGANCIO_FALLITO)
+    assert fallito.stato_aggancio == MemoryLinkState.AGGANCIO_FALLITO
+    assert [c.id for c in repo.list_aggancio_fallito()] == ["mem-protocollo-aggancio"]
+
+    riprovato = repo.set_stato_aggancio("mem-protocollo-aggancio", MemoryLinkState.AGGANCIATO)
+    assert riprovato.stato_aggancio == MemoryLinkState.AGGANCIATO
+    assert repo.list_aggancio_fallito() == []  # uscito dalla coda di retry
+
+    with pytest.raises(KeyError):
+        repo.set_stato_aggancio("non-esiste-in-nessuna-implementazione", MemoryLinkState.AGGANCIATO)

@@ -21,6 +21,13 @@ un solo punto verificabile. Il repository sa solo leggere e scrivere ciò
 che il servizio gli passa già validato — i due `CHECK` in
 `00_memory_schema.sql` sono l'unica eccezione, ed esistono apposta come
 seconda barriera, non come prima.
+
+`set_stato_aggancio`/`list_aggancio_fallito` registrano/interrogano
+`MemoryContribution.stato_aggancio` (`contracts.MemoryLinkState`): l'ESITO
+di un tentativo di aggancio al grafo, MAI la decisione di curatela in sé.
+Scritti SOLO da `urban_memory.service` (`curate_contribution` quando riceve
+un `linker`, `retry_link_contribution`) — invariante "curato tira aggancio",
+`docs/ENGINE_INVARIANTS.md` §11-B.
 """
 
 from __future__ import annotations
@@ -29,7 +36,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 import psycopg
-from contracts import MemoryContribution
+from contracts import MemoryContribution, MemoryLinkState
 from psycopg.rows import dict_row
 
 from ._env import database_url_from_env
@@ -54,6 +61,7 @@ _COLUMNS = (
     "licenza",
     "creato_il",
     "curato",
+    "stato_aggancio",
 )
 _COLUMNS_SQL = ", ".join(_COLUMNS)
 
@@ -98,6 +106,25 @@ class MemoryRepository(Protocol):
         target di OGNI contributo pubblicato, non di uno alla volta."""
         ...
 
+    def set_stato_aggancio(
+        self, memory_id: str, stato: MemoryLinkState
+    ) -> MemoryContribution:
+        """Registra l'ESITO di un tentativo di aggancio al grafo
+        (`AGGANCIATO`/`AGGANCIO_FALLITO`) sul contributo `memory_id` e lo
+        restituisce aggiornato. Scritto SOLO da `urban_memory.service`
+        (`curate_contribution`/`retry_link_contribution`), mai dal
+        conferimento o dalla curatela in sé: è un fatto sull'ESECUZIONE
+        dell'aggancio, non sulla revisione umana. Solleva `KeyError` se
+        `memory_id` non esiste."""
+        ...
+
+    def list_aggancio_fallito(self) -> list[MemoryContribution]:
+        """Contributi CURATI (`curato=True`) il cui ultimo tentativo di
+        aggancio al grafo è fallito (`stato_aggancio=AGGANCIO_FALLITO`): la
+        coda di retry (`urban_memory.service.retry_link_contribution`) —
+        stato di attesa recuperabile, mai un vicolo cieco."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # In-memory — percorso di test e di default finché DATABASE_URL non c'è
@@ -140,6 +167,25 @@ class InMemoryMemoryRepository:
 
     def list_curated(self) -> list[MemoryContribution]:
         risultato = [c for c in self._store.values() if c.curato]
+        return sorted(risultato, key=lambda c: (c.creato_il, c.id))
+
+    def set_stato_aggancio(
+        self, memory_id: str, stato: MemoryLinkState
+    ) -> MemoryContribution:
+        try:
+            corrente = self._store[memory_id]
+        except KeyError:
+            raise KeyError(f"nessun contributo con id={memory_id!r}") from None
+        aggiornato = corrente.model_copy(update={"stato_aggancio": stato})
+        self._store[memory_id] = aggiornato
+        return aggiornato
+
+    def list_aggancio_fallito(self) -> list[MemoryContribution]:
+        risultato = [
+            c
+            for c in self._store.values()
+            if c.curato and c.stato_aggancio == MemoryLinkState.AGGANCIO_FALLITO
+        ]
         return sorted(risultato, key=lambda c: (c.creato_il, c.id))
 
 
@@ -205,7 +251,7 @@ class PostgresMemoryRepository:
             f"INSERT INTO memory_contribution ({_COLUMNS_SQL}) "
             f"VALUES (%(id)s, %(kind)s, %(testo)s, %(media_uri)s, %(riguarda)s, "
             f"%(contributor_id)s, %(contributor_kind)s, %(esperienza_id)s, "
-            f"%(consenso)s, %(licenza)s, %(creato_il)s, %(curato)s) "
+            f"%(consenso)s, %(licenza)s, %(creato_il)s, %(curato)s, %(stato_aggancio)s) "
             f"RETURNING {_COLUMNS_SQL}"
         )
         params = _to_params(contribution)
@@ -273,6 +319,35 @@ class PostgresMemoryRepository:
         righe = self._select(query, {})
         return [_from_row(riga) for riga in righe]
 
+    def set_stato_aggancio(
+        self, memory_id: str, stato: MemoryLinkState
+    ) -> MemoryContribution:
+        query = (
+            f"UPDATE memory_contribution SET stato_aggancio = %(stato)s "
+            f"WHERE id = %(id)s RETURNING {_COLUMNS_SQL}"
+        )
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, {"id": memory_id, "stato": stato.value})
+                    riga = cur.fetchone()
+                conn.commit()
+        except psycopg.Error as exc:
+            raise MemoryStorageError(
+                f"impossibile registrare l'esito dell'aggancio per id={memory_id!r}: {exc}"
+            ) from exc
+        if riga is None:
+            raise KeyError(f"nessun contributo con id={memory_id!r}")
+        return _from_row(riga)
+
+    def list_aggancio_fallito(self) -> list[MemoryContribution]:
+        query = (
+            f"SELECT {_COLUMNS_SQL} FROM memory_contribution "
+            "WHERE curato = true AND stato_aggancio = %(stato)s ORDER BY creato_il, id"
+        )
+        righe = self._select(query, {"stato": MemoryLinkState.AGGANCIO_FALLITO.value})
+        return [_from_row(riga) for riga in righe]
+
     # -- interno ------------------------------------------------------------
 
     def _select(self, query: str, params: dict[str, Any]) -> list[dict[str, Any]]:
@@ -299,6 +374,9 @@ def _to_params(contribution: MemoryContribution) -> dict[str, Any]:
         "licenza": contribution.licenza,
         "creato_il": contribution.creato_il,
         "curato": contribution.curato,
+        "stato_aggancio": (
+            contribution.stato_aggancio.value if contribution.stato_aggancio is not None else None
+        ),
     }
 
 
@@ -316,4 +394,5 @@ def _from_row(riga: dict[str, Any]) -> MemoryContribution:
         licenza=riga["licenza"],
         creato_il=riga["creato_il"],
         curato=riga["curato"],
+        stato_aggancio=riga.get("stato_aggancio"),
     )

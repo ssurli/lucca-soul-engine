@@ -239,6 +239,48 @@ def test_link_to_graph_con_target_inesistente_non_esegue_mai_la_scrittura() -> N
     assert not any("MERGE (m:Memoria" in q for q, _ in driver.query_eseguite)
 
 
+def test_link_to_graph_con_grafo_irraggiungibile_solleva_memory_link_error() -> None:
+    """Scarto reale, colmato in questa sessione: PRIMA di questa correzione,
+    un grafo irraggiungibile (Aura in pausa) faceva propagare l'eccezione
+    NATIVA del driver Neo4j, non `MemoryLinkError` — `docs/STATE_MACHINE.md`
+    §3 assumeva già (per l'automazione "curato tira aggancio") che
+    `aggancio_fallito` derivasse da un `MemoryLinkError` infrastrutturale;
+    il codice non lo garantiva ancora. `FakeDriver.session_error` simula il
+    driver che rifiuta la connessione."""
+    driver = FakeDriver(session_error=ConnectionError("Aura non raggiungibile (simulato)"))
+    contributo = _contributo()
+
+    with pytest.raises(MemoryLinkError, match="Aura non raggiungibile"):
+        link_to_graph(contributo, driver=driver)
+
+    assert driver.query_eseguite == []  # nessuna query: la sessione non si è mai aperta
+
+
+def test_link_to_graph_con_grafo_irraggiungibile_non_scrive_nulla() -> None:
+    driver = FakeDriver(session_error=TimeoutError("connessione scaduta (simulato)"))
+    contributo = _contributo()
+
+    with pytest.raises(MemoryLinkError):
+        link_to_graph(contributo, driver=driver)
+
+    assert not any("MERGE (m:Memoria" in q for q, _ in driver.query_eseguite)
+
+
+def test_link_to_graph_con_target_mancante_non_viene_riavvolto_due_volte() -> None:
+    """Il ramo `except MemoryLinkError: raise` (aggiunto per il caso sopra)
+    non deve alterare il messaggio del `MemoryLinkError` "storico" per
+    target mancanti: resta esattamente quello sollevato da
+    `_link_transaction`, non un doppio wrapping."""
+    driver = FakeDriver(mancanti=["bottega-fantasma"])
+    contributo = _contributo(riguarda=["bottega-fantasma"])
+
+    with pytest.raises(MemoryLinkError) as errore:
+        link_to_graph(contributo, driver=driver)
+
+    assert "target inesistenti nel grafo" in str(errore.value)
+    assert "irraggiungibile" not in str(errore.value)
+
+
 def test_link_to_graph_con_piu_target_inesistenti_li_nomina_tutti() -> None:
     driver = FakeDriver(mancanti=["luogo-fantasma", "bottega-fantasma"])
     contributo = _contributo(riguarda=["luogo-fantasma", "bottega-fantasma"])

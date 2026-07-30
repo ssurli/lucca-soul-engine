@@ -9,10 +9,11 @@ uno pseudonimo obbligatorio; solo i contributi curati sono pubblici.
 from __future__ import annotations
 
 import inspect
+import logging
 from datetime import UTC, datetime
 
 import pytest
-from contracts import MemoryContribution, MemoryKind, PersonKind
+from contracts import MemoryContribution, MemoryKind, MemoryLinkState, PersonKind
 from urban_memory import (
     ConsentRequiredError,
     InMemoryMemoryRepository,
@@ -26,6 +27,7 @@ from urban_memory import (
     publish_pending,
     submit_contribution,
 )
+from urban_memory.graph_link import MemoryLinkError
 
 
 @pytest.fixture
@@ -104,6 +106,39 @@ def test_submit_forza_curato_false_anche_se_in_ingresso_e_true(
     persistito = submit_contribution(repo, contributo)
     assert persistito.curato is False
     assert contributions_for_place(repo, "bottega-liuteria-1") == []
+
+
+def test_submit_azzera_stato_aggancio_fabbricato_in_ingresso(
+    repo, valid_contribution_factory
+) -> None:
+    """Bug reale trovato da `ethics-guardian`: `submit_contribution` forzava
+    `curato=False` ma NON azzerava `stato_aggancio` — un client (es.
+    `POST /memory`, che accetta un `MemoryContribution` grezzo) poteva
+    fabbricare `stato_aggancio=AGGANCIATO` fin dal conferimento, e quel
+    valore sarebbe sopravvissuto indisturbato perché `curate_contribution`
+    chiamata senza `linker` (il percorso di produzione reale oggi,
+    `urban_memory.verify`) non lo tocca né lo valida — riproducendo lo
+    scenario "nodo :Memoria sembra scritto ma non lo è" da un vettore
+    diverso (input fabbricato, non assenza di automazione)."""
+    contributo = valid_contribution_factory(
+        stato_aggancio=MemoryLinkState.AGGANCIATO  # tentativo di aggancio fabbricato
+    )
+    persistito = submit_contribution(repo, contributo)
+    assert persistito.stato_aggancio is None
+    riletto = repo.get(persistito.id)
+    assert riletto is not None
+    assert riletto.stato_aggancio is None
+
+
+def test_submit_azzera_anche_stato_aggancio_fallito_fabbricato_in_ingresso(
+    repo, valid_contribution_factory
+) -> None:
+    """Stessa garanzia per l'altro valore possibile del campo (non solo
+    `AGGANCIATO`): nessun valore fabbricato di `stato_aggancio` sopravvive
+    al conferimento, qualunque esso sia."""
+    contributo = valid_contribution_factory(stato_aggancio=MemoryLinkState.AGGANCIO_FALLITO)
+    persistito = submit_contribution(repo, contributo)
+    assert persistito.stato_aggancio is None
 
 
 # --- ciclo di vita: submit -> pending -> curate -> pubblico -----------------
@@ -324,22 +359,80 @@ def test_submit_non_stampa_il_contenuto_del_contributo(
     assert catturato.out == ""
 
 
-def test_service_non_chiama_print_ne_logging() -> None:
+def test_service_non_chiama_print() -> None:
     """Test-guard (come `test_scoring_non_usa_partner_id_ne_prezzo` in
     experience-engine): nessuna riga ESEGUITA di `urban_memory.service` deve
-    chiamare `print()` o importare/usare `logging`. Ispeziona l'AST (non la
-    sorgente grezza, che includerebbe anche le parole nella docstring che
-    SPIEGA la regola) — il modo più sicuro di garantire che il contenuto di
-    un contributo non finisca mai in un log è non chiamarli affatto."""
+    chiamare `print()` — il contenuto di un contributo non deve mai finire
+    su stdout. Ispeziona l'AST (non la sorgente grezza, che includerebbe
+    anche le parole nella docstring che SPIEGA la regola).
+
+    Da questa wave (Fase 3, invariante "curato tira aggancio") il modulo usa
+    LEGITTIMAMENTE `logging` per le transizioni automatiche dell'aggancio
+    (`approved -> agganciato`/`approved -> aggancio_fallito`,
+    `docs/STATE_MACHINE.md` §1: "anche l'automatico logga"): la garanzia
+    "mai il contenuto in un log" resta, ma si verifica sugli ARGOMENTI delle
+    chiamate di log (vedi `test_log_delle_transizioni_non_espone_mai_attributi_di_contenuto`
+    e il test comportamentale con `caplog` sotto), non più vietando
+    `logging` in blocco."""
     import ast
 
     import urban_memory.service as service_module
 
     albero = ast.parse(inspect.getsource(service_module))
     for nodo in ast.walk(albero):
-        if isinstance(nodo, ast.Import):
-            assert not any(alias.name.split(".")[0] == "logging" for alias in nodo.names)
-        elif isinstance(nodo, ast.ImportFrom):
-            assert nodo.module is None or nodo.module.split(".")[0] != "logging"
-        elif isinstance(nodo, ast.Call) and isinstance(nodo.func, ast.Name):
+        if isinstance(nodo, ast.Call) and isinstance(nodo.func, ast.Name):
             assert nodo.func.id != "print"
+
+
+def test_log_delle_transizioni_non_espone_mai_attributi_di_contenuto() -> None:
+    """Test-guard sui SOLI argomenti delle chiamate `_logger.<livello>(...)`:
+    nessun accesso ad attributo `.testo`/`.media_uri`/`.contributor_id` può
+    comparire tra gli argomenti di una chiamata di log — il modo più sicuro
+    di garantire che il contenuto di un contributo non finisca mai in un log
+    è che il codice non possa nemmeno leggerlo lì dentro quella chiamata."""
+    import ast
+
+    import urban_memory.service as service_module
+
+    vietati = {"testo", "media_uri", "contributor_id"}
+    albero = ast.parse(inspect.getsource(service_module))
+    for nodo in ast.walk(albero):
+        e_chiamata_di_log = (
+            isinstance(nodo, ast.Call)
+            and isinstance(nodo.func, ast.Attribute)
+            and isinstance(nodo.func.value, ast.Name)
+            and nodo.func.value.id == "_logger"
+        )
+        if not e_chiamata_di_log:
+            continue
+        for sotto_nodo in ast.walk(nodo):
+            if isinstance(sotto_nodo, ast.Attribute):
+                assert sotto_nodo.attr not in vietati
+
+
+def test_transizioni_automatiche_loggano_memory_id_ed_esito_mai_il_contenuto(
+    repo, valid_contribution_factory, caplog
+) -> None:
+    """Garanzia comportamentale (non solo AST): dopo una transizione
+    automatica `approved -> aggancio_fallito`, i log CATTURATI DAVVERO non
+    contengono `testo`/`contributor_id` del contributo, ma contengono l'id
+    del contributo e l'esito — coerente con "anche l'automatico logga"
+    (`docs/STATE_MACHINE.md` §1)."""
+    contributo = valid_contribution_factory(
+        id="mem-log-transizione",
+        testo="Segreto: la nonna raccontava della bottega del nonno.",
+        contributor_id="pseudonimo-riservato-log",
+    )
+    submit_contribution(repo, contributo)
+
+    def linker_che_fallisce(c: MemoryContribution) -> None:
+        raise MemoryLinkError("grafo irraggiungibile (simulato)")
+
+    with caplog.at_level(logging.INFO, logger="urban_memory.service"):
+        curate_contribution(repo, contributo.id, linker=linker_che_fallisce)
+
+    messaggi = "\n".join(record.getMessage() for record in caplog.records)
+    assert contributo.testo not in messaggi
+    assert contributo.contributor_id not in messaggi
+    assert contributo.id in messaggi
+    assert "aggancio_fallito" in messaggi

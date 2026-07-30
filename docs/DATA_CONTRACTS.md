@@ -198,6 +198,15 @@ class MemoryKind(str, Enum):
     DIALETTO = "dialetto"
     TESTIMONIANZA = "testimonianza"
 
+class MemoryLinkState(str, Enum):
+    """Esito dell'aggancio automatico al Knowledge Graph, innescato quando
+    curato diventa True (invariante "curato tira aggancio",
+    docs/ENGINE_INVARIANTS.md §11-B). NON una macchina a stati completa
+    (docs/STATE_MACHINE.md resta design): solo il minimo per distinguere un
+    aggancio riuscito da uno da riprovare."""
+    AGGANCIATO = "agganciato"
+    AGGANCIO_FALLITO = "aggancio_fallito"       # attesa recuperabile, retry quando il grafo torna su
+
 class MemoryContribution(BaseModel):
     """Ogni esperienza vissuta può alimentare la memoria della città.
     Non è un archivio da riempire una volta: cresce con l'uso."""
@@ -218,6 +227,9 @@ class MemoryContribution(BaseModel):
     creato_il: datetime
     curato: bool = False              # revisione; curabile solo se tutti i target di
                                        # `riguarda` esistono nel grafo
+    stato_aggancio: MemoryLinkState | None = None  # esito dell'aggancio automatico al grafo,
+                                       # impostato SOLO da urban_memory dopo un tentativo reale
+                                       # (None finché curato=False, o mai tentato)
 ```
 
 ## 5. Marketplace — prenotazioni e ricavo (dato contabile, mai input di scoring)
@@ -418,6 +430,12 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   Knowledge Graph: la curatela verifica i target (`InvalidTargetsError`), il linker resta
   atomico al link-time. Il submit NON dipende dal grafo: il conferimento del Cittadino è
   sempre possibile.
+- "Curato tira aggancio" (`docs/ENGINE_INVARIANTS.md` §11-B): quando `curate_contribution`/
+  `publish_pending` riceve un `linker`, l'aggancio al grafo è innescato automaticamente
+  dopo `curato=True`, nella stessa chiamata — `MemoryContribution.stato_aggancio` diventa
+  `AGGANCIATO` o `AGGANCIO_FALLITO` (mai lasciato `None` in modo silenzioso quando un
+  `linker` è stato passato). `AGGANCIO_FALLITO` è uno stato di attesa recuperabile
+  (`retry_link_contribution`), mai un vicolo cieco.
 - Nessun campo esprime "priorità a pagamento": la visibilità non è acquistabile.
 - `Partner.abbonamento_attivo` è l'UNICA leva che decide presenza/assenza di un'esperienza
   tra i candidati (filtro duro booleano su `ExperienceNode.partner_abbonamento_attivo`),

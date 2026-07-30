@@ -65,6 +65,17 @@ from_env()` — e sollevano `InvalidTargetsError` (nominando gli id mancanti,
 senza toccare il repository) se il grafo non li conosce ancora.
 `python -m urban_memory.audit` scova, su Neon+Aura, i contributi curati
 PRIMA di questa correzione che sono rimasti con target invalidi.
+
+"Curato tira aggancio" (`docs/ENGINE_INVARIANTS.md` §11-B): `curate_
+contribution`/`publish_pending` accettano ANCHE un `linker` (tipicamente
+`Neo4jMemoryLinker.link`) — se fornito, l'aggancio al grafo è innescato
+AUTOMATICAMENTE subito dopo `curato=True`, nella stessa chiamata, per
+ENTRAMBI i repository. `MemoryContribution.stato_aggancio` (`contracts.
+MemoryLinkState`) registra l'esito: `AGGANCIATO`, o `AGGANCIO_FALLITO` — uno
+stato di ATTESA RECUPERABILE (in questo repository sempre di causa
+infrastrutturale: l'invariante A esclude un target sparito), mai un vicolo
+cieco: `retry_link_contribution(repo, memory_id, linker=...)` riprova più
+tardi, quando il grafo torna raggiungibile.
 """
 
 from __future__ import annotations
@@ -98,6 +109,7 @@ from .service import (
     curate_contribution,
     pending_contributions,
     publish_pending,
+    retry_link_contribution,
     submit_contribution,
 )
 
@@ -114,6 +126,7 @@ __all__ = [
     "submit_contribution",
     "curate_contribution",
     "publish_pending",
+    "retry_link_contribution",
     "pending_contributions",
     "contributions_for_place",
     "riguarda_to_cypher",

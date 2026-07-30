@@ -90,10 +90,20 @@ class FakeDriver:
     isolamento. Se `None` (default), il conteggio è DINAMICO: riflette le
     scritture DAVVERO eseguite su questo driver — comodo per dimostrare
     "prima" (0, 0) e "dopo" (N, M) un `.link()` reale (`urban_memory.link`).
+
+    `session_error`: se passata, `.session(...)` la solleva IMMEDIATAMENTE
+    invece di aprire una sessione — simula un grafo IRRAGGIUNGIBILE (Aura in
+    pausa, rete assente), la causa infrastrutturale di `MemoryLinkError` che
+    `link_to_graph` ri-solleva (vedi `urban_memory.graph_link`). Nessuna
+    query viene mai eseguita in questo caso: coerente con "nessun nodo
+    :Memoria orfano" anche quando il grafo non risponde affatto.
     """
 
     def __init__(
-        self, mancanti: list[str] | None = None, valore_single: dict[str, Any] | None = None
+        self,
+        mancanti: list[str] | None = None,
+        valore_single: dict[str, Any] | None = None,
+        session_error: Exception | None = None,
     ) -> None:
         self.query_eseguite: list[tuple[str, dict[str, Any] | None]] = []
         self.database_richiesti: list[str | None] = []
@@ -101,6 +111,7 @@ class FakeDriver:
         self.closed = False
         self.mancanti = mancanti if mancanti is not None else []
         self.valore_single = valore_single
+        self.session_error = session_error
         self._memoria_ids: set[str] = set()
         self._relazioni = 0
 
@@ -141,6 +152,8 @@ class FakeDriver:
 
     def session(self, database: str | None = None) -> FakeSession:
         self.database_richiesti.append(database)
+        if self.session_error is not None:
+            raise self.session_error
         sessione = FakeSession(self)
         self.sessioni_aperte.append(sessione)
         return sessione

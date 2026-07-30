@@ -772,3 +772,77 @@ deliberatamente. Questo limite va riletto prima di:
   scritto per `POST /events`: la fiducia non verificata (qui: `non_commerciale`) smette di
   essere un rischio teorico nel momento in cui persone reali, non solo chi verifica a mano,
   possono generare segnali.
+
+---
+
+## Un contributo `curato=True` ma non ancora agganciato resta comunque visibile via API
+
+**Introdotto:** Fase 3, Task 1. **Componente:** `services/urban-memory`. **Trovato durante:**
+il giro dedicato di `ethics-guardian` sull'automazione "curato tira aggancio"
+(`docs/ENGINE_INVARIANTS.md` §11-B).
+
+### Cosa è garantito oggi
+
+`get_curated`/`contributions_for_place` (`InMemoryMemoryRepository` e
+`PostgresMemoryRepository`, `services/urban-memory/urban_memory/repository.py`) filtrano
+SOLO su `curato=True`, mai su `stato_aggancio`. Verificato che nessun consumatore odierno
+attraversa `(:Memoria)-[:RIGUARDA]->(...)` dal grafo per decisioni utente: l'Urban
+Intelligence Index legge `MemoryContribution` da Postgres, non dal grafo;
+`experience-engine` non tocca `:Memoria` in nessuna forma. L'inconsistenza descritta sotto
+non è quindi sfruttabile da nessun percorso reale oggi.
+
+### Cosa NON è garantito
+
+Un contributo con `curato=True` e `stato_aggancio` in `AGGANCIO_FALLITO` (o `None`, un
+contributo curato prima che questa automazione esistesse) compare comunque via
+`GET /memory/{place_id}` — indistinguibile, per chi consuma quell'endpoint, da un
+contributo già effettivamente scritto nel grafo. Se in futuro una feature interrogasse il
+grafo direttamente per gli stessi dati (es. per arricchire un candidato esperienza con le
+memorie collegate), potrebbe non trovare quello che l'API pubblica sta già mostrando.
+
+### Cosa servirebbe per chiudere il buco
+
+Filtrare `get_curated`/`contributions_for_place` anche su `stato_aggancio=AGGANCIATO`,
+oppure esporre `stato_aggancio` nel payload dell'endpoint così che chi consuma l'API possa
+distinguere i due casi. Nessuna delle due è stata fatta ora: non fabbricare un filtro
+aggiuntivo senza un consumatore reale che ne mostri il bisogno (stesso principio già
+applicato altrove in questo file).
+
+### Decisione
+
+Non chiuso ora — verificato non sfruttabile oggi (nessun consumatore attraversa il grafo per
+questi dati). Questo limite va riletto prima di costruire qualunque feature che legga
+`(:Memoria)-[:RIGUARDA]->(...)` dal grafo invece che `MemoryContribution` da Postgres.
+
+---
+
+## `retry_link_contribution` non ha rate limit
+
+**Introdotto:** Fase 3, Task 1. **Componente:** `services/urban-memory`. **Trovato durante:**
+lo stesso giro di `ethics-guardian` sopra.
+
+### Cosa è garantito oggi
+
+`retry_link_contribution` (`services/urban-memory/urban_memory/service.py:289`) è invocato
+oggi SOLO manualmente, dalla CLI `python -m urban_memory.verify` (passo 5,
+`_verifica_aggancio_idempotente`) — nessun loop automatico, nessun job schedulato lo
+richiama.
+
+### Cosa NON è garantito
+
+Se in futuro si costruisse un processo che scorre `list_aggancio_fallito()` e richiama
+`retry_link_contribution` su ciascuno (il caso d'uso naturale per cui la coda di retry
+esiste), non c'è oggi alcun backoff o limite di frequenza: un Aura persistentemente
+irraggiungibile produrrebbe tentativi ripetuti senza attenuazione.
+
+### Cosa servirebbe per chiudere il buco
+
+Un backoff (es. esponenziale, con un tetto) sul processo che consuma
+`list_aggancio_fallito()`, quando quel processo verrà scritto — non prima: non fabbricare un
+rate limit senza un job reale che lo richieda.
+
+### Decisione
+
+Non implementato ora — nessun rischio attivo (nessun loop automatico esiste). Questo limite
+va riletto prima di costruire un job/endpoint che consumi `list_aggancio_fallito()` in modo
+automatico e ripetuto.

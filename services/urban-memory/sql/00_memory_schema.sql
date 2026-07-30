@@ -34,6 +34,11 @@ CREATE TABLE IF NOT EXISTS memory_contribution (
     licenza           TEXT NOT NULL,
     creato_il         TIMESTAMPTZ NOT NULL,
     curato            BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Esito dell'aggancio automatico al grafo (invariante "curato tira
+    -- aggancio", docs/ENGINE_INVARIANTS.md §11-B): NULL finché mai
+    -- tentato, altrimenti 'agganciato' o 'aggancio_fallito' (attesa
+    -- recuperabile — retry quando il grafo torna raggiungibile).
+    stato_aggancio    TEXT,
 
     -- Nessuna eccezione (docs/DATA_CONTRACTS.md §4): un contributo senza
     -- consenso non deve poter persistere, nemmeno per un bug futuro nel
@@ -44,6 +49,28 @@ CREATE TABLE IF NOT EXISTS memory_contribution (
     CONSTRAINT memory_contribution_licenza_check CHECK (char_length(licenza) >= 1)
 );
 
+-- `ADD COLUMN IF NOT EXISTS` (a differenza di un CHECK inline in un ALTER)
+-- è supportato da Postgres ed è idempotente da sé: se la tabella è stata
+-- creata da una versione precedente di questo schema (senza
+-- `stato_aggancio`), questa riga la aggiunge senza toccare nient'altro; se
+-- la tabella è nuova (CREATE TABLE sopra l'ha già creata), è un no-op.
+ALTER TABLE memory_contribution ADD COLUMN IF NOT EXISTS stato_aggancio TEXT;
+
+-- Postgres non supporta `ADD CONSTRAINT ... IF NOT EXISTS` per i CHECK
+-- (stesso limite documentato sopra per consenso/licenza): il blocco DO
+-- rende l'aggiunta del vincolo idempotente controllando `pg_constraint`
+-- prima di aggiungerlo.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'memory_contribution_stato_aggancio_check'
+    ) THEN
+        ALTER TABLE memory_contribution
+            ADD CONSTRAINT memory_contribution_stato_aggancio_check
+            CHECK (stato_aggancio IS NULL OR stato_aggancio IN ('agganciato', 'aggancio_fallito'));
+    END IF;
+END $$;
+
 -- `get_curated(place_id)` (curato=True e place_id in riguarda) è la query
 -- più frequente: indice mirato su entrambi gli accessi.
 CREATE INDEX IF NOT EXISTS memory_contribution_curato_idx
@@ -51,3 +78,9 @@ CREATE INDEX IF NOT EXISTS memory_contribution_curato_idx
 
 CREATE INDEX IF NOT EXISTS memory_contribution_riguarda_gin_idx
     ON memory_contribution USING GIN (riguarda);
+
+-- Coda di retry: `list_aggancio_fallito()` (curato=True e
+-- stato_aggancio='aggancio_fallito') è l'unico accesso mirato su questa
+-- colonna oltre alla lettura per id.
+CREATE INDEX IF NOT EXISTS memory_contribution_stato_aggancio_idx
+    ON memory_contribution (stato_aggancio);

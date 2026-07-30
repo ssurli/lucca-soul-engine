@@ -32,6 +32,7 @@ __all__ = [
     "ItineraryStop",
     "Itinerary",
     "MemoryKind",
+    "MemoryLinkState",
     "MemoryContribution",
     "Partner",
     "BookingStatus",
@@ -374,6 +375,25 @@ class MemoryKind(str, Enum):
     TESTIMONIANZA = "testimonianza"
 
 
+class MemoryLinkState(str, Enum):
+    """Esito dell'aggancio automatico al Knowledge Graph, innescato quando
+    un contributo diventa `curato=True` (invariante "curato tira aggancio",
+    `docs/ENGINE_INVARIANTS.md` §11-B). NON è una macchina a stati completa
+    (`docs/STATE_MACHINE.md` resta design, non codice): solo il minimo per
+    distinguere un aggancio riuscito da uno da riprovare.
+
+    - `AGGANCIATO`: `(:Memoria)-[:RIGUARDA]->(...)` scritto nel grafo.
+    - `AGGANCIO_FALLITO`: l'aggancio non è riuscito (in questo repository,
+      per costruzione, SEMPRE una causa infrastrutturale — Aura
+      irraggiungibile: l'invariante A, append-only sui target, esclude un
+      target sparito). Stato di ATTESA RECUPERABILE: un retry successivo
+      può portarlo ad `AGGANCIATO`, mai un vicolo cieco.
+    """
+
+    AGGANCIATO = "agganciato"
+    AGGANCIO_FALLITO = "aggancio_fallito"
+
+
 class MemoryContribution(ContractModel):
     """Ogni esperienza vissuta può alimentare la memoria della città.
     Non è un archivio da riempire una volta: cresce con l'uso."""
@@ -394,6 +414,11 @@ class MemoryContribution(ContractModel):
     licenza: str = Field(min_length=1)  # es. "CC-BY-SA-4.0" — sempre tracciata
     creato_il: datetime
     curato: bool = False  # revisione prima della pubblicazione
+    # `None` finché l'aggancio al grafo non è mai stato tentato (mai curato,
+    # o curato prima che questa automazione esistesse). Impostato SOLO da
+    # `urban_memory` dopo un tentativo reale di `link_to_graph` — mai
+    # dall'esterno: submit/curatela non lo toccano mai direttamente.
+    stato_aggancio: MemoryLinkState | None = None
 
 
 # ---------------------------------------------------------------------------

@@ -13,6 +13,10 @@ applicato in un solo punto è verificabile, distribuito no"):
   nome scelto, mai con PII.
 - `curato` è sempre `False` alla creazione: la pubblicazione richiede
   revisione umana (`curate_contribution`), mai auto-pubblicazione.
+  `stato_aggancio` è SEMPRE azzerato a `None` insieme a `curato`, per lo
+  STESSO motivo: un client potrebbe altrimenti fabbricare
+  `stato_aggancio="agganciato"` fin dal conferimento (bug reale corretto,
+  trovato da `ethics-guardian` — vedi `submit_contribution`).
 - i `riguarda` di un contributo CURATO devono esistere nel grafo — ma
   questa verifica sta ALLA CURATELA (`curate_contribution`/
   `publish_pending`, tramite `target_checker`), MAI al conferimento
@@ -22,20 +26,37 @@ applicato in un solo punto è verificabile, distribuito no"):
   il gate di pubblicazione: è lì che un riferimento invalido va bloccato
   (bug reale corretto: un contributo con `riguarda=['bottega-liuteria-1']`,
   un id INESISTENTE nel grafo, era arrivato a `curato=True`).
+- **"Curato tira aggancio"** (invariante `docs/ENGINE_INVARIANTS.md` §11-B):
+  quando `curate_contribution`/`publish_pending` riceve anche un `linker`
+  (oltre al `target_checker`), l'aggancio al grafo è innescato
+  AUTOMATICAMENTE subito dopo `curato=True`, nella stessa chiamata — mai un
+  passo separato che qualcuno può dimenticare. "Curato ma non agganciato"
+  resta un TRANSITORIO interno a questa chiamata, mai uno stato di riposo:
+  l'esito (`MemoryContribution.stato_aggancio`, `contracts.MemoryLinkState`)
+  è sempre `AGGANCIATO` o `AGGANCIO_FALLITO` — quest'ultimo un'attesa
+  RECUPERABILE (vedi `retry_link_contribution`), mai un vicolo cieco.
+  `linker=None` (default): comportamento IDENTICO a prima — nessun
+  aggancio tentato, `stato_aggancio` resta `None`. Stesso pattern già
+  stabilito per `target_checker`: opt-in esplicito, obbligatorio per chi
+  cura per pubblicare DAVVERO.
 
-Il servizio non logga MAI il contenuto di un contributo (`testo`,
+Il servizio non logga MAI il CONTENUTO di un contributo (`testo`,
 `media_uri`, `contributor_id`): nessuna riga di questo modulo chiama
-`print`/`logging` sul payload. Un contributo può portare un racconto privato
-o l'identità scelta di un cittadino — non è materiale da log, e il modo più
-sicuro di garantirlo per sempre è non chiamare quelle funzioni affatto.
+`print()`, né passa quei tre campi a `logging`. Le uniche righe di log che
+questo modulo produce sono le transizioni AUTOMATICHE dell'aggancio
+(`approved -> agganciato` / `approved -> aggancio_fallito`,
+`docs/STATE_MACHINE.md` §1: "anche l'automatico logga") — solo
+`memory_id` (non PII: un id di contributo) ed esito, mai il payload.
 """
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Callable
 
-from contracts import MemoryContribution
+from contracts import MemoryContribution, MemoryLinkState
 
+from .graph_link import MemoryLinkError
 from .repository import MemoryRepository
 
 __all__ = [
@@ -47,9 +68,19 @@ __all__ = [
     "submit_contribution",
     "curate_contribution",
     "publish_pending",
+    "retry_link_contribution",
     "pending_contributions",
     "contributions_for_place",
 ]
+
+_logger = logging.getLogger(__name__)
+
+#: Tipo del `linker`: riceve il `MemoryContribution` GIÀ curato e lo
+#: aggancia al grafo (o solleva `MemoryLinkError`) — esattamente la firma di
+#: `Neo4jMemoryLinker.link` (metodo legato) o di `functools.partial(
+#: link_to_graph, driver=...)`. Nessun valore di ritorno: l'esito si legge
+#: dall'assenza/presenza di `MemoryLinkError`, mai da un booleano.
+_Linker = Callable[[MemoryContribution], None]
 
 
 class UrbanMemoryError(Exception):
@@ -114,7 +145,18 @@ def submit_contribution(
     `curato` è SEMPRE forzato a `False` nell'oggetto persistito,
     indipendentemente da cosa porta l'oggetto in ingresso: la curatela è un
     passo successivo, umano, mai automatico — nessun conferimento si
-    autopubblica.
+    autopubblica. Per lo STESSO motivo, `stato_aggancio` è SEMPRE forzato a
+    `None`: un client (es. `POST /memory`, che accetta un `MemoryContribution`
+    grezzo — `services/api`) potrebbe altrimenti fabbricare
+    `stato_aggancio="agganciato"` fin dal conferimento. Senza questo azzeramento
+    quel valore fabbricato sopravviverebbe indisturbato, perché
+    `curate_contribution` chiamata senza `linker` (il percorso di produzione
+    reale oggi, `urban_memory.verify`) non lo tocca né lo valida —
+    riproducendo esattamente lo scenario "nodo :Memoria sembra scritto ma
+    non lo è" che l'intera automazione (`docs/ENGINE_INVARIANTS.md` §11-B)
+    esiste per rendere impossibile, solo raggiunto da un vettore diverso
+    (input fabbricato in ingresso, non assenza di automazione). Bug reale
+    trovato da `ethics-guardian`, corretto qui.
     """
     if contribution.consenso is not True:
         raise ConsentRequiredError(
@@ -134,7 +176,7 @@ def submit_contribution(
             "forma anonima."
         )
 
-    da_persistere = contribution.model_copy(update={"curato": False})
+    da_persistere = contribution.model_copy(update={"curato": False, "stato_aggancio": None})
     return repo.submit(da_persistere)
 
 
@@ -143,6 +185,7 @@ def curate_contribution(
     memory_id: str,
     *,
     target_checker: Callable[[list[str]], list[str]] | None = None,
+    linker: _Linker | None = None,
 ) -> MemoryContribution:
     """Revisione umana che porta `curato=True`. Solo dopo questo passo il
     contributo compare in `get_curated`/`contributions_for_place`: la
@@ -171,6 +214,33 @@ def curate_contribution(
       lista ritornata non è vuota, solleva `InvalidTargetsError` (nomina
       gli id) e NON tocca il repository — `curato` resta `False`, nessuna
       scrittura avviene (né `repo.curate`, né altro).
+
+    `linker` — invariante "curato tira aggancio" (`docs/ENGINE_INVARIANTS.md`
+    §11-B): se fornito, SUBITO dopo che `repo.curate(memory_id)` ha portato
+    `curato=True`, questa funzione tenta l'aggancio al grafo chiamando
+    `linker(contribution)` — stesso seam per `InMemoryMemoryRepository` e
+    `PostgresMemoryRepository` (opera solo attraverso il `Protocol
+    MemoryRepository`, non conosce l'implementazione concreta).
+
+    - `linker=None` (default): comportamento IDENTICO a prima di questa
+      automazione — nessun aggancio tentato, `stato_aggancio` resta `None`.
+      Pensato SOLO per test di dominio puri. Chi cura per pubblicare DAVVERO
+      DEVE passare un `linker` reale — tipicamente `Neo4jMemoryLinker.link`
+      (metodo legato).
+    - `linker` fornito e l'aggancio RIESCE: `stato_aggancio` diventa
+      `MemoryLinkState.AGGANCIATO`.
+    - `linker` fornito e l'aggancio FALLISCE (`MemoryLinkError` — in questo
+      repository sempre infrastrutturale: l'invariante A, append-only sui
+      target, esclude un target sparito dopo il pre-check di
+      `target_checker` sopra): `stato_aggancio` diventa
+      `MemoryLinkState.AGGANCIO_FALLITO`. NON solleva l'eccezione: è uno
+      stato di ATTESA RECUPERABILE (vedi `retry_link_contribution`), non un
+      errore da propagare a chi chiama `curate_contribution` — il contributo
+      resta comunque `curato=True` (la revisione umana è avvenuta ed è
+      irrevocabile da qui), semplicemente non ancora agganciato.
+
+    In ENTRAMBI i casi la transizione è loggata (chi=sistema, quando,
+    esito) — mai il contenuto del contributo, solo `memory_id`.
     """
     if target_checker is not None:
         contribution = repo.get(memory_id)
@@ -180,17 +250,87 @@ def curate_contribution(
         if mancanti:
             raise InvalidTargetsError(memory_id, mancanti)
 
-    return repo.curate(memory_id)
+    curato = repo.curate(memory_id)
+
+    if linker is not None:
+        curato = _innesca_aggancio(repo, curato, linker)
+
+    return curato
 
 
 #: Alias: nel BUILD_PLAN (Wave 2) la stessa revisione umana è indicata sia
 #: come "curatela" (`curate_contribution`) sia come "pubblicazione della
 #: coda" (`publish_pending`) — è lo stesso passo di dominio, un solo nome
 #: interno (`curate_contribution`) evita di duplicare la logica. Essendo un
-#: alias (non un wrapper), `publish_pending` eredita `target_checker`
-#: automaticamente — anche curando in un ciclo su più `memory_id` (batch): è
-#: la STESSA funzione, non una copia con una firma divergente.
+#: alias (non un wrapper), `publish_pending` eredita `target_checker`/
+#: `linker` automaticamente — anche curando in un ciclo su più `memory_id`
+#: (batch): è la STESSA funzione, non una copia con una firma divergente.
 publish_pending = curate_contribution
+
+
+def _innesca_aggancio(
+    repo: MemoryRepository, contribution: MemoryContribution, linker: _Linker
+) -> MemoryContribution:
+    """Seam UNICO che innesca `link_to_graph` dopo che `curato` è diventato
+    `True` — chiamato SOLO da `curate_contribution` (subito dopo
+    `repo.curate`) e da `retry_link_contribution` (sullo stesso contributo
+    già curato, per riprovare). Opera esclusivamente attraverso il
+    `Protocol MemoryRepository`: nessuna logica duplicata tra
+    `InMemoryMemoryRepository` e `PostgresMemoryRepository`.
+
+    Registra l'esito con `repo.set_stato_aggancio` e logga la transizione
+    (chi=sistema, quando, esito — MAI `testo`/`media_uri`/`contributor_id`):
+    coerente con "anche l'automatico logga" (`docs/STATE_MACHINE.md` §1).
+    """
+    try:
+        linker(contribution)
+    except MemoryLinkError:
+        aggiornato = repo.set_stato_aggancio(contribution.id, MemoryLinkState.AGGANCIO_FALLITO)
+        _logger.info(
+            "transizione automatica: approved -> aggancio_fallito "
+            "(memory_id=%s, chi=sistema)",
+            contribution.id,
+        )
+        return aggiornato
+
+    aggiornato = repo.set_stato_aggancio(contribution.id, MemoryLinkState.AGGANCIATO)
+    _logger.info(
+        "transizione automatica: approved -> agganciato (memory_id=%s, chi=sistema)",
+        contribution.id,
+    )
+    return aggiornato
+
+
+def retry_link_contribution(
+    repo: MemoryRepository, memory_id: str, *, linker: _Linker
+) -> MemoryContribution:
+    """Ritenta l'aggancio al grafo di un contributo GIÀ curato — tipicamente
+    uno in `stato_aggancio=AGGANCIO_FALLITO`, il percorso di RECUPERO che
+    rende `aggancio_fallito` un'attesa recuperabile e non un vicolo cieco
+    (`docs/ENGINE_INVARIANTS.md` §11-B). Riusa lo stesso seam
+    (`_innesca_aggancio`) di `curate_contribution`: nessuna logica duplicata.
+
+    Funziona su QUALUNQUE contributo curato, non solo su quelli in
+    `AGGANCIO_FALLITO` (rieseguirlo su un già `AGGANCIATO` è innocuo:
+    `link_to_graph` è idempotente, `MERGE` non duplica nulla) — comodo per
+    un retry "a tappeto" su `repo.list_aggancio_fallito()` senza dover
+    ricontrollare lo stato prima di chiamare.
+
+    Solleva `KeyError` se `memory_id` non esiste. Solleva `UrbanMemoryError`
+    se il contributo esiste ma NON è ancora curato: il retry dell'aggancio
+    ha senso solo per un contributo APPROVATO — riaganciare un pending
+    significherebbe agganciare qualcosa che la curatela non ha ancora
+    revisionato.
+    """
+    contribution = repo.get(memory_id)
+    if contribution is None:
+        raise KeyError(f"nessun contributo con id={memory_id!r}")
+    if not contribution.curato:
+        raise UrbanMemoryError(
+            f"contributo id={memory_id!r} non è curato: il retry dell'aggancio "
+            "si applica solo a contributi già approvati (curato=True)."
+        )
+    return _innesca_aggancio(repo, contribution, linker)
 
 
 def pending_contributions(repo: MemoryRepository) -> list[MemoryContribution]:

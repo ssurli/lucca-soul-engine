@@ -12,6 +12,15 @@
 > Per i fatti verificati sul motore delle esperienze (non sulla curatela), vedi
 > `docs/ENGINE_INVARIANTS.md` — perimetro diverso, non duplicato qui.
 >
+> **Eccezione al "design, non codice" del titolo**: l'invariante B (`approved → agganciato`
+> automatico) è passata da design a **codice reale** durante la Fase 3 (Task 1) — l'unico
+> pezzo di questo intero documento che oggi esiste anche come comportamento eseguibile, non
+> solo come piano. §0 sotto è stato riverificato e riscritto contro il codice per riflettere
+> questo. Tutto il resto del documento (`blocked`/`deferred`/`rejected`, le tre uscite dal
+> target fantasma, la corsia fluttuanti, promozione/frizione/freno) resta design puro,
+> invariato. Dettaglio dell'implementazione e delle sue verifiche:
+> `docs/ENGINE_INVARIANTS.md` §11-B.
+>
 > **Fase 3 (Promozione & Traccia, `docs/brief_fase3_promozione_traccia.md`)** ha chiuso tre
 > punti che questo documento lasciava aperti — §7.1 (`approved → agganciato`, ora
 > automatico), §7.11 (tipo dell'entità promossa, ora `:Evento`) e §7.14 (il ciclo di vita del
@@ -36,7 +45,10 @@
   `curato=True`. Prende un `target_checker` opzionale (tipicamente
   `Neo4jMemoryLinker.targets_mancanti`): se un id in `riguarda` non esiste come
   `:Luogo`/`:Bottega`/`:Artista`, solleva `InvalidTargetsError` e **non scrive nulla**.
-  Verifica SOLO esistenza — non crea mai un nodo mancante.
+  Verifica SOLO esistenza — non crea mai un nodo mancante. **Aggiornato in Fase 3**: prende
+  anche un `linker` opzionale — se fornito, incatena l'aggancio al grafo (sotto) subito
+  dopo `curato=True`, nello stesso passo. `target_checker=None`/`linker=None` (i default)
+  riproducono il comportamento pre-Fase-3, riservato ai test di dominio puri.
 - **Cosa scrive esattamente** (letto testualmente in entrambe le implementazioni, non
   presunto):
   ```python
@@ -45,13 +57,24 @@
   # PostgresMemoryRepository.curate
   "UPDATE memory_contribution SET curato = true WHERE id = %(id)s RETURNING ..."
   ```
-  **Un booleano. Nessun'altra colonna, nessuna scrittura verso Neo4j.** Verificato con un
-  grep degli import di `service.py`/`repository.py`: nessuno dei due importa `graph_link`.
-- **L'aggancio al grafo esiste, ma altrove**: `urban_memory.graph_link.link_to_graph()`
-  (o `Neo4jMemoryLinker.link()`) è la SOLA funzione che scrive
-  `MERGE (m:Memoria)-[:RIGUARDA]->(target)`. **Chiamata da un solo punto in tutto il
-  repo**: `urban_memory/verify.py`, come passo 5, esplicitamente separato dal passo 3
-  (`curate_contribution`). Nessun percorso di produzione le incatena.
+  Un booleano, nessun'altra colonna — QUESTO passo specifico (`repo.curate`) non è
+  cambiato. **Ma se `curate_contribution` ha ricevuto un `linker`**, appena dopo scrive
+  anche `stato_aggancio` (colonna reale, non più solo design: `AGGANCIATO`/
+  `AGGANCIO_FALLITO`) tramite `repo.set_stato_aggancio` — vedi punto successivo.
+- **L'aggancio al grafo — CHIUSO IN CODICE (Fase 3), non più "esiste ma altrove".**
+  `urban_memory.graph_link.link_to_graph()` (o `Neo4jMemoryLinker.link()`) resta la SOLA
+  funzione che scrive `MERGE (m:Memoria)-[:RIGUARDA]->(target)`, ma ora è incatenata
+  automaticamente a `curate_contribution` quando questa riceve un `linker` (seam unico
+  `_innesca_aggancio`, `service.py:256`, condiviso da entrambe le implementazioni del
+  repository). **Percorso di produzione reale oggi**: `urban_memory/verify.py`, passo 3
+  (non più passo 5) — passa `linker=linker.link` insieme a `target_checker`, condividendo
+  lo stesso `Neo4jMemoryLinker` aperto una volta in `main()`. Il passo 5 non fa più il
+  PRIMO aggancio: dimostra invece che `retry_link_contribution` è idempotente su un
+  contributo già `AGGANCIATO` e recupera un `AGGANCIO_FALLITO`/legacy `None`. **Nessun
+  endpoint HTTP** invoca ancora `curate_contribution` con un `linker` reale — l'automazione
+  è vera per costruzione SOLO per chi lo passa esplicitamente, non per ogni chiamante
+  futuro (stessa disciplina già richiesta per `target_checker`). Dettaglio verificato:
+  `docs/ENGINE_INVARIANTS.md` §11-B.
 - **`_link_transaction` è atomica per costruzione**, non per convenzione: verifica TUTTI
   gli id di `riguarda` in una sola transazione Neo4j (`execute_write`); se anche uno solo
   manca, solleva `MemoryLinkError` **prima** di scrivere qualunque cosa. L'aggancio
@@ -66,8 +89,12 @@
     indistinguibile da "nessuno l'ha ancora guardato".
   - Nessuna creazione di nodi — la curatela blocca se un target manca, non offre "crealo".
   - Nessuna promozione — il concetto fluttuante→permanente non esiste in nessuna forma.
-  - Nessun log delle decisioni oltre lo stato booleano finale — non c'è "chi, quando,
-    perché".
+  - Nessun log della DECISIONE UMANA oltre lo stato booleano finale — non c'è "chi, quando,
+    perché" per `curato=True` in sé (item 2 in §7 sotto, ancora aperto). **Eccezione
+    puntuale, Fase 3**: la transizione AUTOMATICA `approved → agganciato`/
+    `aggancio_fallito` (quando `linker` è passato) È loggata (chi=sistema, quando, esito —
+    mai il contenuto del contributo) — non colma il buco sulla decisione umana, che resta
+    aperto, ma non è più vero che "nessuna transizione" logghi qualcosa.
 - **Il grafo è append-only per i target di `riguarda`** (verificato con un grep dell'intero
   repo per `DETACH DELETE|DELETE \(|REMOVE \(|DROP CONSTRAINT`): una sola occorrenza in
   tutto il repository, in `services/urban-memory/README.md` — un comando Cypher

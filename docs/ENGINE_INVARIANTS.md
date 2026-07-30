@@ -185,19 +185,51 @@ sessione che li ha scoperti, come impone `docs/brief_fase3_promozione_traccia.md
   applicativo in questo repository (resta teoricamente possibile solo fuori dal codebase,
   via accesso diretto a Neo4j Browser — rischio di governance dell'accesso, non proprietà
   della macchina a stati).
-- **B — "Curato tira aggancio": DECISIONE CONGELATA (brief Fase 3 §1.7), NON ancora vera
-  nel codice oggi.** Unica eccezione voluta alla regola di questo documento (header:
-  "fatti... riletto nel codice al momento in cui è stato scritto, non presunto") — marcata
-  esplicitamente come tale per non confondere chi legge questo file aspettandosi solo fatti
-  verificati. Oggi, verificato (`docs/STATE_MACHINE.md` §0): `curate_contribution` e
-  `link_to_graph` sono **due atti separati**, nessun percorso applicativo li incatena;
-  `link_to_graph` è chiamato da un solo punto in tutto il repo (`urban_memory/verify.py`,
-  passo 5, esplicitamente dopo e distinto da `curate_contribution`). La Fase 3 ha deciso che
-  questo deve cambiare: ogni `approved` dovrà innescare meccanicamente il proprio
-  `link_to_graph`, rendendo "curato ma non agganciato" un transitorio — mai più uno stato di
-  riposo raggiungibile in produzione (o un `aggancio_fallito` esplicito se Aura è
-  irraggiungibile). **Quando questa automazione sarà implementata**, questa voce va
-  riverificata contro il codice (stessa disciplina di `STATE_MACHINE.md`: "se il codice
-  cambia, va riverificato, non aggiornato per analogia") e la qualifica "DECISIONE
-  CONGELATA, non ancora vera" va rimossa o confermata contro ciò che il codice fa
-  davvero — mai lasciata per assunzione.
+- **B — "Curato tira aggancio": VERO OGGI, riverificato contro il codice (non più
+  "DECISIONE CONGELATA, non ancora vera" — implementato e confermato PASS da un giro
+  dedicato di `ethics-guardian`, due passaggi: un FAIL iniziale su un bug reale, poi PASS
+  dopo la correzione, riverificato contro il codice scritto, non per analogia).**
+  `curate_contribution` (`services/urban-memory/urban_memory/service.py:168`) accetta ora
+  un parametro `linker` opzionale: se fornito, SUBITO dopo che `repo.curate(memory_id)` ha
+  portato `curato=True`, la stessa funzione tenta l'aggancio al grafo attraverso il seam
+  unico `_innesca_aggancio` (`service.py:256`, condiviso da `InMemoryMemoryRepository` e
+  `PostgresMemoryRepository` tramite il solo `Protocol MemoryRepository` — nessuna logica
+  duplicata tra le due implementazioni). Esito registrato in un nuovo campo del contratto,
+  `MemoryContribution.stato_aggancio: MemoryLinkState | None`
+  (`packages/contracts/contracts/models.py`, valori `AGGANCIATO`/`AGGANCIO_FALLITO`) — non
+  più un booleano isolato. `aggancio_fallito` è un'attesa RECUPERABILE, mai un vicolo
+  cieco: `retry_link_contribution` (`service.py:289`) riusa lo stesso seam per riprovare, e
+  `list_aggancio_fallito()` (`repository.py`) espone la coda di recupero su entrambe le
+  implementazioni. Ogni transizione automatica è loggata (chi=sistema, quando, esito — MAI
+  il contenuto del contributo: verificato che nessun log contenga `contributor_id`, `testo`
+  o `media_uri`).
+
+  **Bug reale trovato e corretto durante la verifica dedicata**: la prima versione
+  dell'automazione lasciava `submit_contribution` senza azzerare `stato_aggancio` in
+  ingresso — un client HTTP (`POST /memory` accetta un `MemoryContribution` grezzo) poteva
+  fabbricare `stato_aggancio=AGGANCIATO` fin dal conferimento, e quel valore sopravviveva
+  indisturbato perché l'unico percorso di produzione reale che cura (vedi sotto) non lo
+  toccava. Corretto in `service.py:179`:
+  `contribution.model_copy(update={"curato": False, "stato_aggancio": None})` — stesso
+  trattamento di `curato`. Due test di regressione dedicati in
+  `services/urban-memory/tests/test_service.py`.
+
+  **Caveat esplicito, per-chiamante, non globale** (raccomandato dal secondo giro di
+  `ethics-guardian`, non un dettaglio da sottintendere): l'automazione è VERA nel codice ed
+  è **esercitata oggi in un solo percorso di produzione reale**, `python -m
+  urban_memory.verify` (contro Neon+Aura veri: il passo 3 dello script,
+  `urban_memory/verify.py:177-179`, passa ora `linker=linker.link` a
+  `curate_contribution`; il passo 5, ex primo-aggancio, è stato trasformato in una
+  dimostrazione di idempotenza/recupero, `_verifica_aggancio_idempotente`,
+  `verify.py:231-287`). **Non esiste ancora alcun endpoint HTTP di curatela**
+  (`docs/STATE_MACHINE.md` §0) — quando ne verrà costruito uno, dovrà passare `linker=`
+  ESPLICITAMENTE per ereditare l'automazione, esattamente come già vale per
+  `target_checker`: ometterlo riaprirebbe il buco "curato ma non agganciato" per quel
+  chiamante specifico. L'invariante è quindi vera per costruzione per chi passa `linker=`,
+  non per costruzione per ogni chiamante futuro.
+
+  **Osservazioni non bloccanti, tracciate in `docs/LIMITI.md`, non in questa voce**: un
+  contributo `curato=True` con `stato_aggancio` diverso da `AGGANCIATO` resta comunque
+  visibile via `GET /memory/{place_id}` (`get_curated`/`contributions_for_place` filtrano
+  solo su `curato`); nessun rate limit su `retry_link_contribution`. Nessuna delle due
+  invalida l'invariante B: sono proprietà collaterali del meccanismo, non del suo nucleo.

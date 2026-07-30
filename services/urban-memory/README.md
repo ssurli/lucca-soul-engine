@@ -38,8 +38,22 @@ Applicate in un solo punto verificabile, `urban_memory.service` (CLAUDE.md,
   è obbligatorio**: senza, la curatela torna al comportamento pre-
   correzione (nessuna verifica) — utile solo per test di dominio puri.
   `python -m urban_memory.audit` scova i curati storici rimasti invalidi.
-- **Nessun log del contenuto.** Il servizio non chiama mai `print`/`logging`
-  sul payload di un contributo (`testo`, `media_uri`, `contributor_id`).
+- **"Curato tira aggancio"** (`docs/ENGINE_INVARIANTS.md` §11-B). Quando
+  `curate_contribution`/`publish_pending` riceve anche un `linker` (oltre
+  al `target_checker`), l'aggancio al grafo è innescato AUTOMATICAMENTE
+  subito dopo `curato=True`, nella stessa chiamata — "curato ma non
+  agganciato" resta un transitorio, mai uno stato di riposo raggiungibile.
+  `MemoryContribution.stato_aggancio` (`contracts.MemoryLinkState`)
+  registra l'esito: `AGGANCIATO`, o `AGGANCIO_FALLITO` (attesa
+  RECUPERABILE — in questo repository sempre di causa infrastrutturale,
+  mai un target sparito: vedi l'invariante A). `retry_link_contribution
+  (repo, memory_id, linker=...)` riprova più tardi, quando il grafo torna
+  raggiungibile. `linker=None` (default): comportamento invariato, nessun
+  aggancio tentato — come per `target_checker`, in produzione va passato.
+- **Nessun log del contenuto.** Il servizio non chiama mai `print()` né
+  passa `testo`/`media_uri`/`contributor_id` a `logging`. Le uniche righe
+  di log che produce sono le transizioni AUTOMATICHE dell'aggancio (chi,
+  quando, esito — mai il payload).
 - **Aggancio al grafo, ATOMICO.** Ogni contributo si collega al Knowledge
   Graph con `(:Memoria)-[:RIGUARDA]->(:Luogo|:Bottega|:Artista)`
   (`urban_memory.graph_link`). Prima di creare il nodo `:Memoria`, il grafo
@@ -71,7 +85,15 @@ pip install -e packages/contracts -e services/urban-memory
 ## Moduli
 
 - `urban_memory/repository.py` — `MemoryRepository` (Protocol):
-  `submit`/`get_curated`/`list_pending`/`curate`/`get`/`list_curated`.
+  `submit`/`get_curated`/`list_pending`/`curate`/`get`/`list_curated`/
+  `set_stato_aggancio`/`list_aggancio_fallito`.
+  - `set_stato_aggancio(memory_id, stato)` — registra l'ESITO di un
+    tentativo di aggancio al grafo (`MemoryLinkState.AGGANCIATO`/
+    `AGGANCIO_FALLITO`); `list_aggancio_fallito()` — i contributi curati la
+    cui ultima registrazione è `AGGANCIO_FALLITO`, la coda di retry. Scritti
+    SOLO da `urban_memory.service` (mai dal conferimento o dalla curatela
+    in sé): un fatto sull'ESECUZIONE dell'aggancio, non sulla revisione
+    umana.
   - `get(memory_id) -> MemoryContribution | None` rilegge un contributo
     COSÌ COM'È persistito (curato o no; `None` se non esiste) — un lookup,
     non un comando. Usato da `urban_memory.verify` per non assumere mai che
@@ -103,15 +125,27 @@ pip install -e packages/contracts -e services/urban-memory
   `LicenseRequiredError`, `PseudonymRequiredError`, `InvalidTargetsError`
   (tutte sottoclassi di `UrbanMemoryError`, quindi il BFF le mappa già a
   422 senza codice nuovo).
-  - `curate_contribution(repo, memory_id, *, target_checker=None)` —
+  - `curate_contribution(repo, memory_id, *, target_checker=None, linker=None)` —
     `target_checker: Callable[[list[str]], list[str]] | None` riceve
     `riguarda` del contributo, ritorna gli id NON esistenti nel grafo. Se
     non vuota, solleva `InvalidTargetsError` e NON tocca il repository
     (`curato` resta `False`). `target_checker=None` (default): nessuna
     verifica — SOLO per test di dominio puri; **chi cura per pubblicare
     davvero DEVE passare un `target_checker` reale**. `publish_pending`,
-    essendo un alias (non un wrapper), eredita `target_checker`
+    essendo un alias (non un wrapper), eredita `target_checker`/`linker`
     automaticamente, anche curando in un ciclo su più `memory_id`.
+    `linker: Callable[[MemoryContribution], None] | None` (tipicamente
+    `Neo4jMemoryLinker.link`): se fornito, SUBITO dopo `curato=True` questa
+    funzione tenta l'aggancio al grafo — "curato tira aggancio" — e imposta
+    `stato_aggancio` (`AGGANCIATO`/`AGGANCIO_FALLITO`, mai propagando
+    `MemoryLinkError`: un aggancio fallito è un esito registrato, non un
+    errore che interrompe la curatela). `linker=None` (default):
+    comportamento invariato, nessun aggancio tentato.
+  - `retry_link_contribution(repo, memory_id, *, linker)` — ritenta
+    l'aggancio di un contributo GIÀ curato (tipicamente uno in
+    `AGGANCIO_FALLITO`): il percorso di RECUPERO, per quando il grafo torna
+    raggiungibile dopo un'interruzione. Solleva `UrbanMemoryError` se il
+    contributo non è ancora curato, `KeyError` se non esiste.
 - `urban_memory/graph_link.py`:
   - `riguarda_check_cypher(contribution) -> (query, params)` e
     `riguarda_to_cypher(contribution) -> (query, params)`: funzioni
