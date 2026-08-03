@@ -11,7 +11,7 @@ white paper) — segnalalo a `contract-keeper`.
 
 from __future__ import annotations
 
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 
 import contracts
 import pytest
@@ -31,6 +31,7 @@ from contracts import (
     PersonKind,
     SegnaleFluttuante,
     Signal,
+    StatoSegnaleFluttuante,
     UrbanIntelligenceIndex,
     VisitorContext,
     rientra_in_orario,
@@ -104,6 +105,10 @@ def make_segnale_fluttuante(**overrides: object) -> SegnaleFluttuante:
         temi=["musica"],
         place_id="piazza-anfiteatro",
         non_commerciale=True,
+        # Lontano nel futuro, non un "oggi" che scadrebbe da solo col tempo:
+        # la fixture deve restare ATTIVO indipendentemente da quando la
+        # suite gira.
+        valido_fino=datetime(2099, 1, 1, tzinfo=UTC),
     )
     base.update(overrides)
     return SegnaleFluttuante(**base)  # type: ignore[arg-type]
@@ -266,7 +271,15 @@ def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse
         ),
         (
             SegnaleFluttuante,
-            {"id", "descrizione", "temi", "place_id", "non_commerciale"},
+            {
+                "id",
+                "descrizione",
+                "temi",
+                "place_id",
+                "non_commerciale",
+                "valido_fino",
+                "stato",
+            },
         ),
         (
             VisitorContext,
@@ -664,6 +677,8 @@ def test_segnale_fluttuante_valido() -> None:
     assert segnale.temi == ["musica"]
     assert segnale.place_id == "piazza-anfiteatro"
     assert segnale.non_commerciale is True
+    assert segnale.valido_fino == datetime(2099, 1, 1, tzinfo=UTC)
+    assert segnale.stato == StatoSegnaleFluttuante.ATTIVO
 
 
 def test_segnale_fluttuante_descrizione_vuota_rifiutata() -> None:
@@ -680,10 +695,75 @@ def test_segnale_fluttuante_non_commerciale_obbligatorio_nessun_default() -> Non
     # Nessun default (a differenza di `orari_apertura=[]`): chi genera il
     # segnale DEVE dichiararlo esplicitamente, stesso principio di
     # `MemoryContribution.consenso` — mai un'eccezione lasciata al buon senso.
+    # `valido_fino` valorizzato esplicitamente per isolare il test sul solo
+    # campo mancante (`non_commerciale`).
     with pytest.raises(ValidationError):
         SegnaleFluttuante(
-            id="x", descrizione="d", temi=["musica"], place_id="p"
+            id="x",
+            descrizione="d",
+            temi=["musica"],
+            place_id="p",
+            valido_fino=datetime(2099, 1, 1, tzinfo=UTC),
         )  # type: ignore[call-arg]
+
+
+def test_segnale_fluttuante_valido_fino_obbligatorio_nessun_default() -> None:
+    # Stesso principio del test sopra, campo speculare: un fluttuante
+    # persistito senza scadenza vivrebbe per sempre.
+    with pytest.raises(ValidationError):
+        SegnaleFluttuante(
+            id="x",
+            descrizione="d",
+            temi=["musica"],
+            place_id="p",
+            non_commerciale=True,
+        )  # type: ignore[call-arg]
+
+
+def test_segnale_fluttuante_valido_fino_naive_rifiutato() -> None:
+    # `field_validator`: un datetime senza tzinfo non è confrontabile in modo
+    # affidabile con `datetime.now(UTC)` — stesso obbligo di ogni timestamp
+    # persistito nel repo (vedi `graph.seed_lucca`).
+    with pytest.raises(ValidationError):
+        make_segnale_fluttuante(valido_fino=datetime(2099, 1, 1))
+
+
+def test_segnale_fluttuante_stato_default_attivo() -> None:
+    assert make_segnale_fluttuante().stato == StatoSegnaleFluttuante.ATTIVO
+
+
+def test_segnale_fluttuante_gia_scaduto_normalizza_a_expired() -> None:
+    # Caso-limite: `valido_fino` già nel passato alla costruzione — il
+    # segnale nasce già `EXPIRED`, qualunque `stato` sia stato passato
+    # (qui non passato affatto: il default `ATTIVO` viene comunque forzato).
+    passato = datetime.now(UTC) - timedelta(hours=1)
+    segnale = make_segnale_fluttuante(valido_fino=passato)
+    assert segnale.stato == StatoSegnaleFluttuante.EXPIRED
+
+
+def test_segnale_fluttuante_gia_scaduto_normalizza_anche_se_stato_attivo_dichiarato() -> None:
+    # Stesso caso-limite, ma con `stato=ATTIVO` dichiarato esplicitamente
+    # dal chiamante: normalizza comunque, non fidandosi di uno stato
+    # dichiarato incoerente con la scadenza dichiarata.
+    passato = datetime.now(UTC) - timedelta(hours=1)
+    segnale = make_segnale_fluttuante(
+        valido_fino=passato, stato=StatoSegnaleFluttuante.ATTIVO
+    )
+    assert segnale.stato == StatoSegnaleFluttuante.EXPIRED
+
+
+def test_segnale_fluttuante_non_ancora_scaduto_resta_attivo_anche_se_expired_dichiarato() -> None:
+    # La normalizzazione è a senso unico: forza EXPIRED quando la scadenza è
+    # passata, ma non "resuscita" ad ATTIVO uno stato EXPIRED dichiarato con
+    # una scadenza ancora futura — nessuna base per farlo: non è un caso
+    # limite che questo contratto debba correggere, chi lo dichiara EXPIRED
+    # con una scadenza futura sa qualcosa che il contratto non può verificare
+    # (es. un segnale terminato in anticipo). Il contratto non lo impedisce.
+    futuro = datetime.now(UTC) + timedelta(hours=1)
+    segnale = make_segnale_fluttuante(
+        valido_fino=futuro, stato=StatoSegnaleFluttuante.EXPIRED
+    )
+    assert segnale.stato == StatoSegnaleFluttuante.EXPIRED
 
 
 def test_extra_forbid_su_segnale_fluttuante() -> None:

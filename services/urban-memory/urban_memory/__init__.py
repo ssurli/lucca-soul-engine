@@ -81,6 +81,7 @@ tardi, quando il grafo torna raggiungibile.
 from __future__ import annotations
 
 from .audit import audit
+from .canale_fluttuante import PlaceLinkWriter, persist_signal, sweep_and_fetch_active
 from .graph_link import (
     MEMORY_LINK_CHECK_QUERY_PATH,
     MEMORY_LINK_WRITE_QUERY_PATH,
@@ -92,12 +93,25 @@ from .graph_link import (
     target_checker_from_env,
 )
 from .link import controprova, link_memory
-from .migrate import SCHEMA_PATH, migrate
+from .luogo_traccia_link import (
+    LUOGO_TRACCIA_WRITE_QUERY_PATH,
+    LuogoTracciaLinkError,
+    Neo4jLuogoTracciaLinker,
+    scrivi_ultima_traccia,
+    ultima_traccia_cypher,
+)
+from .migrate import SCHEMA_PATH, SCHEMA_PATHS, migrate
 from .repository import (
     InMemoryMemoryRepository,
     MemoryRepository,
     MemoryStorageError,
     PostgresMemoryRepository,
+)
+from .segnale_repository import (
+    InMemorySegnaleFluttuanteRepository,
+    PostgresSegnaleFluttuanteRepository,
+    SegnaleFluttuanteRepository,
+    SegnaleStorageError,
 )
 from .service import (
     ConsentRequiredError,
@@ -111,6 +125,13 @@ from .service import (
     publish_pending,
     retry_link_contribution,
     submit_contribution,
+)
+from .traccia_repository import (
+    InMemoryTracciaRepository,
+    PostgresTracciaRepository,
+    Traccia,
+    TracciaRepository,
+    TracciaStorageError,
 )
 
 __all__ = [
@@ -142,4 +163,23 @@ __all__ = [
     "audit",
     "migrate",
     "SCHEMA_PATH",
+    "SCHEMA_PATHS",
+    # Canale fluttuante persistente (Fase 3, docs/PROMOZIONE_TRACCIA.md)
+    "SegnaleFluttuanteRepository",
+    "InMemorySegnaleFluttuanteRepository",
+    "PostgresSegnaleFluttuanteRepository",
+    "SegnaleStorageError",
+    "Traccia",
+    "TracciaRepository",
+    "InMemoryTracciaRepository",
+    "PostgresTracciaRepository",
+    "TracciaStorageError",
+    "PlaceLinkWriter",
+    "persist_signal",
+    "sweep_and_fetch_active",
+    "LUOGO_TRACCIA_WRITE_QUERY_PATH",
+    "ultima_traccia_cypher",
+    "LuogoTracciaLinkError",
+    "scrivi_ultima_traccia",
+    "Neo4jLuogoTracciaLinker",
 ]

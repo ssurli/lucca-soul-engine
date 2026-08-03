@@ -12,14 +12,18 @@
 > Per i fatti verificati sul motore delle esperienze (non sulla curatela), vedi
 > `docs/ENGINE_INVARIANTS.md` — perimetro diverso, non duplicato qui.
 >
-> **Eccezione al "design, non codice" del titolo**: l'invariante B (`approved → agganciato`
-> automatico) è passata da design a **codice reale** durante la Fase 3 (Task 1) — l'unico
-> pezzo di questo intero documento che oggi esiste anche come comportamento eseguibile, non
-> solo come piano. §0 sotto è stato riverificato e riscritto contro il codice per riflettere
-> questo. Tutto il resto del documento (`blocked`/`deferred`/`rejected`, le tre uscite dal
-> target fantasma, la corsia fluttuanti, promozione/frizione/freno) resta design puro,
-> invariato. Dettaglio dell'implementazione e delle sue verifiche:
-> `docs/ENGINE_INVARIANTS.md` §11-B.
+> **Eccezione al "design, non codice" del titolo — DUE pezzi, non più uno.** L'invariante B
+> (`approved → agganciato` automatico, Fase 3 Task 1) e la **fondazione persistenza+ledger
+> della corsia fluttuanti** (Fase 3, task successivo: persistenza di `SegnaleFluttuante`,
+> sweep pigro `attivo → expired`, deposito della traccia, `:Luogo.ultima_traccia_il`) sono
+> passati da design a **codice reale**. §0 e §4 sotto sono stati riverificati e riscritti
+> contro il codice per riflettere questo — ciascuno con una nota esplicita di cosa è reale
+> e cosa resta design (§4: vedi "REALTÀ vs DESIGN" più sotto, subito dopo il diagramma della
+> corsia fluttuanti). Tutto il resto del documento (`blocked`/`deferred`/`rejected` della
+> corsia principale, le tre uscite dal target fantasma, `blocked`/`approved`/`rejected`
+> della corsia fluttuanti, promozione/frizione/freno) resta design puro, invariato.
+> Dettaglio delle due implementazioni e delle loro verifiche: `docs/ENGINE_INVARIANTS.md`
+> §11-B (invariante B) e `docs/PROMOZIONE_TRACCIA.md` (nota di apertura, persistenza+ledger).
 >
 > **Fase 3 (Promozione & Traccia, `docs/brief_fase3_promozione_traccia.md`)** ha chiuso tre
 > punti che questo documento lasciava aperti — §7.1 (`approved → agganciato`, ora
@@ -262,16 +266,30 @@ contesto da ricostruire".
 ### Macchina a stati della corsia fluttuanti
 
 ```
-submit (NUOVO — prerequisito non risolto qui: oggi Signal.eventi_attivi
-        non persiste MAI fuori da una singola richiesta di itinerario;
-        perché questa corsia esista serve un canale di sottomissione
-        indipendente che oggi non esiste — vedi docs/LIMITI.md)
+submit — CHIUSO IN CODICE per la sola PERSISTENZA (Fase 3, fondazione
+        persistenza+ledger), NON per la revisione sotto (blocked/
+        approved/rejected restano design puro, vedi nota **REALTÀ vs
+        DESIGN** più sotto): `SegnaleFluttuante` persiste ora in
+        Postgres (`services/urban-memory/urban_memory/
+        segnale_repository.py`), invocabile da `python -m
+        urban_memory.submit_signal` — un percorso RISTRETTO/FIDATO
+        provvisorio, stesso principio di `link_to_graph` chiamato solo
+        da `verify.py` (Task 1). NESSUN endpoint HTTP pubblico ancora:
+        quello resta la "fase fiducia" (prova di presenza, auth, rate
+        limit — `docs/LIMITI.md`), non implementata qui.
    │
    ▼
 "submitted"  (descrizione/temi/place_id/non_commerciale dichiarati;
-              porta con sé un orologio — durata della finestra NON decisa)
+              porta con sé un orologio — CHIUSO: `valido_fino`, per
+              singolo segnale, non un timer globale condiviso — ma
+              QUANTO debba durare tipicamente resta una decisione di
+              prodotto non presa, item 7 in §7 sotto)
    │
    │ pre-check automatico: place_id esiste come Luogo/Bottega/Artista?
+   │   ANCORA APERTO (item 8 in §7): nessun codice valida
+   │   `SegnaleFluttuante.place_id` contro il grafo, né alla
+   │   persistenza né altrove — un `place_id` inventato persiste
+   │   comunque, oggi.
    │
 ┌──┴──┐
 ▼     ▼
@@ -297,10 +315,19 @@ approved rejected  (nessuna azione entro la finestra ──► anch'essa expired
             category)
    │        │
    │        └──────────────────────────────┐
-   │  (clock: la finestra scade,             │
-   │   stesso orologio per tutti)            │
+   │  (clock: `valido_fino <= now`,          │
+   │   per singolo segnale — CHIUSO, non     │
+   │   più "stesso orologio per tutti")      │
    ▼                                          ▼
-"expired"  (automatico, clock-based, terminale, SEMPRE in audit — mai silenzioso)
+"expired"  (automatico — ma CLOCK-BASED è oggi LAZY, non un job: la
+           transizione avviene IN LETTURA, alla prima `POST
+           /itinerary` successiva alla scadenza — `sweep_scaduti`,
+           `urban_memory.segnale_repository`. Vedi nota REALTÀ vs
+           DESIGN sotto per cosa esattamente è codice reale qui.
+           SEMPRE in audit — mai silenzioso — nel senso che deposita
+           sempre una traccia se il segnale era attivo, MAI nel senso
+           di un log "chi/quando/perché" della transizione stessa,
+           che oggi non esiste)
    │
    │  effetto collaterale, condizionato da COME si è arrivati qui
    │  (Fase 3, `docs/PROMOZIONE_TRACCIA.md` — non più "nessuna scrittura"
@@ -320,9 +347,34 @@ creato_il — timbrato       rifiutate non fanno pattern" di Fase 2)
 dal SERVER in questo
 istante, automatico,
 in `services/urban-memory`
-o servizio dedicato,
+(collocazione CHIUSA,
+Fase 3 — non più
+"o servizio dedicato"),
 vedi PROMOZIONE_TRACCIA §1)
 ```
+
+**REALTÀ vs DESIGN in questa corsia — non confonderli leggendo il diagramma sopra.** La
+fondazione persistenza+ledger (Fase 3) ha reso reale SOLO un sottoinsieme stretto di questa
+macchina, verificato nel codice (`services/urban-memory/urban_memory/{segnale_repository,
+canale_fluttuante,traccia_repository,luogo_traccia_link}.py`):
+
+- **Reale**: `submit` (persistenza, `stato=ATTIVO` di default), `attivo → expired` (lazy,
+  innescato da `POST /itinerary` — mai un job/cron, vedi `docs/LIMITI.md`), il deposito
+  della traccia su quella transizione, la proprietà derivata `:Luogo.ultima_traccia_il`.
+- **NON reale, ancora design puro**: `blocked` (nessun `target_checker` su `place_id` —
+  item 8 sotto), `approved`/`rejected` da un Guardiano — **non esiste nel codice nessuno
+  stato diverso da `ATTIVO`/`EXPIRED`**. Ogni segnale che entra dal percorso fidato
+  (`submit_signal.py`) è trattato come implicitamente approvato: non c'è un gate di
+  revisione umana da superare, la fiducia è tutta nel percorso ristretto della CLI, non in
+  una decisione di un Guardiano. Conseguenza per il principio "solo le approvate
+  depositano traccia, le rifiutate non lasciano nulla" (§5 del brief, ancora valido come
+  PRINCIPIO): oggi è vero per COSTRUZIONE, non per APPLICAZIONE — non esiste ancora un
+  `rejected` da cui distinguersi, quindi ogni segnale scaduto deposita sempre la sua
+  traccia, senza eccezioni, perché non c'è ancora un modo di rifiutarne uno.
+
+Quando la revisione umana (`blocked`/`approved`/`rejected`) verrà costruita, questa nota va
+riverificata — non aggiornata per analogia — e il deposito della traccia dovrà diventare
+condizionato da un vero stato `approved`, non più incondizionato.
 
 `expired` è deliberatamente **distinto** da `rejected`: uno è un giudizio sul contenuto,
 l'altro è un fatto di processo (nessuno è arrivato in tempo). Confonderli nasconderebbe un

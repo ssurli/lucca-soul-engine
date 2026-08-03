@@ -21,12 +21,36 @@ class EmotionalProfile(BaseModel):
     ha_gia_visto_firenze: bool = False
     lingue: list[str] = ["it"]
 
+class StatoSegnaleFluttuante(str, Enum):
+    """Stato di persistenza di un SegnaleFluttuante — NON la macchina a stati
+    completa del canale fluttuante (submitted/blocked/approved/rejected/
+    expired, quella resta design, non codice: docs/STATE_MACHINE.md,
+    docs/PROMOZIONE_TRACCIA.md), stesso principio già applicato da
+    MemoryLinkState (§4). Qui solo il minimo che rende un segnale
+    persistibile e interrogabile: attivo ora, oppure scaduto."""
+    ATTIVO = "attivo"
+    EXPIRED = "expired"          # nome in inglese: stesso termine letterale già
+                                  # usato per lo stesso concetto in STATE_MACHINE.md/
+                                  # PROMOZIONE_TRACCIA.md, un solo vocabolario
+
 class SegnaleFluttuante(BaseModel):
     """Qualcosa che accade ORA e domani non c'è (un violinista in piazza,
     artisti di strada) — vive in Signal.eventi_attivi, stato del mondo in
     questo momento, NON un nodo del grafo, NON il livello "programmato"
     (:Evento, con data e organizzatore — fuori scope, vedi docs/LIMITI.md).
-    Scade da solo: Signal è transitorio, non serve una scadenza esplicita."""
+
+    valido_fino/stato fondano la persistenza di questo contratto: Signal
+    resta transitorio (costruito per la singola richiesta, mai persistito),
+    ma il SegnaleFluttuante che porta ORA una scadenza assoluta può
+    sopravvivere a quella singola richiesta — fondazione del canale
+    fluttuante persistente (repository/sweep/ledger, task successivo).
+    Comportamento INVARIATO per ogni Signal costruito prima di questo campo.
+
+    CONFINE ESPLICITO, deliberatamente NON colmato da un `valido_da`: il
+    fluttuante "accade DA ADESSO" — nessun inizio programmabile. Un evento
+    annunciato in anticipo è per definizione un :Evento PROGRAMMATO (livello
+    diverso, fuori scope, vedi docs/PROMOZIONE_TRACCIA.md), non un
+    fluttuante."""
     id: str
     descrizione: str                  # "un violinista suona in piazza" — alimenta il reason (min 1 carattere)
     temi: list[str]                   # stessa forma di ExperienceNode.temi (min 1 elemento)
@@ -36,6 +60,21 @@ class SegnaleFluttuante(BaseModel):
     # bloccato per costruzione da segnale_fluttuante_ammissibile, mai
     # lasciato al buon senso di chi consuma il segnale.
     non_commerciale: bool
+    # Scadenza ASSOLUTA, timezone-aware UTC (field_validator: rifiuta un
+    # datetime naive — stesso vincolo dell'assert su tzinfo in
+    # graph.seed_lucca per RelazioneVicino.creato_il). OBBLIGATORIO, nessun
+    # default: un fluttuante persistito senza scadenza vivrebbe per sempre.
+    valido_fino: datetime
+    # Default ATTIVO: comportamento invariato per ogni segnale costruito
+    # prima di questo campo. model_validator: se valido_fino è già nel
+    # passato al momento della costruzione, NORMALIZZA a EXPIRED
+    # (qualunque valore passato) invece di rifiutare la costruzione — un
+    # SegnaleFluttuante deve poter rappresentare un record già scaduto letto
+    # da un repository/audit; rifiutarlo romperebbe il round-trip che ogni
+    # altro contratto di questo file garantisce. Diverso da affollamento
+    # (§1, rifiutato se fuori scala): lì il dato è incoerente col dominio,
+    # qui è un fatto passato perfettamente coerente, solo già esaurito.
+    stato: StatoSegnaleFluttuante = StatoSegnaleFluttuante.ATTIVO
 
 def segnale_fluttuante_ammissibile(segnale: SegnaleFluttuante) -> bool:
     """Filtro duro unico: `segnale.non_commerciale`. "Visibilità non
@@ -475,3 +514,13 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   `Signal.eventi_attivi`, in nessuna forma — un'aggiunta di tappa fluttuante non altera lo
   score di nessuna esperienza permanente: "visibilità non acquistabile" applicata anche al
   vettore "segnalare invece di pagare una commissione".
+- `SegnaleFluttuante.valido_fino` è OBBLIGATORIO, nessun default, e deve essere
+  timezone-aware (vincolo di contratto: `field_validator`, rifiuta un `datetime` naive —
+  stesso obbligo di ogni timestamp persistito nel repo). `SegnaleFluttuante.stato`
+  (`StatoSegnaleFluttuante`, default `ATTIVO`) è forzato a `EXPIRED` per costruzione
+  (`model_validator`) se `valido_fino` è già nel passato al momento della validazione,
+  qualunque valore sia stato passato: NORMALIZZA, non rifiuta — un segnale già scaduto
+  resta un dato valido (utile a un audit/repository), non un errore da bloccare in
+  costruzione. Nessun campo `valido_da`: il fluttuante "accade DA ADESSO", un inizio
+  programmabile è per definizione un `:Evento` PROGRAMMATO (fuori scope,
+  `docs/PROMOZIONE_TRACCIA.md`).

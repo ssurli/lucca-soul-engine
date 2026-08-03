@@ -709,11 +709,21 @@ un'esperienza permanente.
   dedicato, con una soglia esplicita da negoziare ("quante ripetizioni bastano?", la stessa
   classe di decisione già rimandata per `tasso_ritorno` — vedi sopra in questo file).
 - **Come i segnali fluttuanti entrano nel sistema nel mondo reale** (chi segnala il violinista,
-  con quale prova che sia successo davvero) NON è stato costruito qui: è ESATTAMENTE il
+  con quale prova che sia successo davvero) NON era stato costruito qui: era ESATTAMENTE il
   problema già documentato nella voce precedente di questo file (`POST /events` senza prova di
-  presenza, autenticazione, rate limiting). Questa attivazione ASSUME che
-  `Signal.eventi_attivi` arrivi già popolato onestamente nella richiesta — non costruisce, e
+  presenza, autenticazione, rate limiting). Questa attivazione ASSUMEVA che
+  `Signal.eventi_attivi` arrivasse già popolato onestamente nella richiesta — non costruiva, e
   non doveva costruire, il canale d'ingresso.
+  **Aggiornamento (Fase 3, fondazione persistenza+ledger)**: `Signal.eventi_attivi` ora ha
+  una sorgente reale — `SegnaleFluttuante` persiste in Postgres e il server lo fetcha
+  autorevolmente ad ogni `POST /itinerary`, sovrascrivendo sempre quanto mandato dal client
+  (proprietà di sicurezza verificata). Ma il canale d'INGRESSO resta un percorso
+  RISTRETTO/FIDATO provvisorio — `python -m urban_memory.submit_signal`, una CLI, stesso
+  principio di `link_to_graph` chiamato solo da `verify.py` — MAI un endpoint HTTP pubblico.
+  Il problema descritto sopra (chi può generare un segnale, con quale prova) resta quindi
+  APERTO nella sua forma originale per chiunque non abbia accesso alla CLI: solo il
+  "come si scrive" è cambiato (persistenza reale invece di un campo sempre vuoto), non il
+  "chi può scrivere" — quella resta la fase-fiducia, non ancora affrontata.
 - **`SegnaleFluttuante.non_commerciale` è interamente auto-dichiarato, senza alcuna verifica**
   — stessa famiglia di fiducia non verificata già accettata per `ExperienceNode.orari_apertura`
   (vedi sopra in questo file) e per `POST /events`: nessun controllo impedisce a chi genera un
@@ -846,3 +856,145 @@ rate limit senza un job reale che lo richieda.
 Non implementato ora — nessun rischio attivo (nessun loop automatico esiste). Questo limite
 va riletto prima di costruire un job/endpoint che consumi `list_aggancio_fallito()` in modo
 automatico e ripetuto.
+
+---
+
+## Il canale fluttuante persistente: lo sweep è pigro, la traccia arriva in ritardo indefinito
+
+**Introdotto:** Fase 3, fondazione persistenza+ledger. **Componente:** `services/urban-memory`,
+`services/api`.
+
+### Cosa è garantito oggi
+
+`SegnaleFluttuante` persiste con una scadenza assoluta (`valido_fino`, tz-aware UTC). La
+transizione `attivo → expired` è deliberatamente LAZY (non un job/cron): avviene solo in
+lettura, innescata dalla prima `POST /itinerary` che arriva dopo la scadenza
+(`urban_memory.segnale_repository.sweep_scaduti`, chiamata da
+`urban_memory.canale_fluttuante.sweep_and_fetch_active` dentro `api.main.create_itinerary`).
+La query è GLOBALE (non filtrata per luogo): ogni richiesta, per qualunque luogo, spazza
+TUTTI i segnali scaduti nel frattempo — non solo quelli del luogo interrogato in quella
+richiesta specifica. Questo evita il buco classico del lazy-sweep ("i luoghi tranquilli non
+vengono mai spazzati").
+
+### Cosa NON è garantito
+
+Se NESSUNA richiesta arriva a `POST /itinerary` per un periodo prolungato, i segnali scaduti
+restano `stato=attivo` in Postgres indefinitamente: nessuna traccia si deposita, `:Luogo.
+ultima_traccia_il` non si aggiorna, finché non arriva la prossima richiesta (per qualunque
+luogo). Non è una perdita di dato (il segnale non sparisce, la traccia arriverà appena una
+richiesta arriva), solo un RITARDO indefinito — ma un ritardo che può essere arbitrariamente
+lungo se il traffico si ferma. Un cruscotto/audit che leggesse `ultima_traccia_il` per
+giudicare quanto un luogo "parla" potrebbe vedere un dato stantio più a lungo di quanto ci si
+aspetterebbe da un sistema con sweep attivo.
+
+### Cosa servirebbe per chiudere il buco
+
+Un job schedulato (cron/worker periodico) che chiami `sweep_and_fetch_active` (o solo la sua
+parte di sweep) a intervalli regolari, indipendentemente dal traffico su `/itinerary`.
+Deliberatamente NON costruito ora: nessun caso reale ne mostra il bisogno prima che il canale
+fluttuante abbia traffico reale da osservare — stesso principio di "non sovra-modellare" già
+applicato altrove in questo file.
+
+### Decisione
+
+Non implementato ora. Questo limite va riletto prima di:
+- presentare `ultima_traccia_il`/il ledger delle tracce come "in tempo reale" a un
+  consumatore (Comune, dashboard) — oggi è "aggiornato alla prossima richiesta reale", non
+  un flusso continuo;
+- decidere se investire in un job schedulato, quando il traffico reale su `/itinerary`
+  mostrerà se il ritardo è effettivamente un problema pratico o solo teorico.
+
+---
+
+## Un fallimento del deposito, dopo lo sweep, perde la traccia in modo permanente (isolato al singolo segnale)
+
+**Introdotto:** Fase 3, fondazione persistenza+ledger. **Componente:** `services/urban-memory`.
+**Trovato durante:** un giro dedicato di `ethics-guardian`, non un'autovalutazione.
+
+### Cosa è garantito oggi
+
+Lo sweep (`sweep_scaduti`, un `UPDATE ... WHERE stato='attivo' AND valido_fino<=now
+RETURNING` atomico) e il deposito della traccia (`traccia_repo.deposita`, un `INSERT`
+separato per ogni segnale scaduto) NON condividono una transazione — scelta deliberata,
+stesso principio già accettato altrove nel repo per `link_to_graph`/Postgres ("due scritture
+in due store diversi, non una transazione distribuita da inventare"). Un fallimento nel
+deposito di UN segnale è ISOLATO: non blocca né fa fallire il deposito degli altri segnali
+scaduti nello stesso sweep (`urban_memory.canale_fluttuante.sweep_and_fetch_active`, ogni
+`deposita`/`place_link_writer` avvolto in un try/except per-segnale, che logga e continua —
+corretto dopo un FAIL iniziale di `ethics-guardian` che aveva trovato il ciclo capace di
+abortire interamente su un solo fallimento).
+
+### Cosa NON è garantito
+
+Se `deposita` fallisce per un segnale specifico (es. un blip di connessione Postgres/Neon
+transitorio) DOPO che `sweep_scaduti` ha già committato la sua transizione `attivo→expired`,
+quella traccia va PERSA in modo PERMANENTE e SILENZIOSO (solo un log a livello `ERROR`, mai
+un errore visibile a un chiamante HTTP): la guardia primaria dell'idempotenza
+(`WHERE stato='attivo'`) impedisce per costruzione a qualunque sweep futuro di ripescare un
+segnale già `expired`. Il segnale stesso resta correttamente `expired` (non più composto in
+un itinerario) — a perdersi è solo la riga del ledger per quel segnale specifico, non
+l'integrità del canale nel suo insieme. Questo contraddice, per il singolo segnale colpito,
+l'aspettativa di `docs/PROMOZIONE_TRACCIA.md` §2a che il ledger sia "append-only, immortale...
+la fonte di verità" — è vero per ogni riga che riesce a depositarsi, non è garantito che ogni
+segnale scaduto ci riesca.
+
+### Cosa servirebbe per chiudere il buco
+
+Una coda di retry per i depositi falliti (stesso principio già applicato all'aggancio al
+grafo di Urban Memory, `list_aggancio_fallito()`/`retry_link_contribution` — Fase 3, Task 1),
+oppure una transazione condivisa Postgres tra `segnale_fluttuante` e `traccia_luogo` (stessa
+connessione per sweep+deposito, con rollback dello sweep se il deposito fallisce) — quest'
+ultima cambierebbe l'architettura attuale (le due tabelle sono oggi gestite da repository
+indipendenti con connessioni proprie) e non è stata richiesta da `ethics-guardian` come
+bloccante.
+
+### Decisione
+
+Non implementato ora — il rischio è stato RIDOTTO (isolamento per-segnale, non più un
+fallimento a cascata su un intero batch) ma non ELIMINATO, deliberatamente: nessuna coda di
+retry è stata costruita senza un caso reale (traffico reale sul canale fluttuante) che ne
+mostri la frequenza pratica del problema. Questo limite va riletto prima di:
+- presentare il ledger delle tracce come garanzia assoluta di completezza a un consumatore
+  reale (es. se il bagliore, `docs/PROMOZIONE_TRACCIA.md` §2b, entrasse in produzione e un
+  luogo "sembrasse" meno vivo di quanto sia per una traccia mai depositata);
+- decidere se investire in una coda di retry dedicata, quando il traffico reale mostrerà
+  quanto spesso questo scenario si manifesta davvero.
+
+---
+
+## `POST /itinerary/adapt` non sanifica `Signal.eventi_attivi` come fa `POST /itinerary`
+
+**Introdotto:** Fase 3, fondazione persistenza+ledger. **Componente:** `services/api`.
+**Trovato durante:** lo stesso giro di `ethics-guardian` sopra (osservazione non bloccante).
+
+### Cosa è garantito oggi
+
+`POST /itinerary` ora sovrascrive SEMPRE `ctx.signal.eventi_attivi` con la lettura autorevole
+dallo store (sweep+fetch), ignorando qualunque valore il client abbia mandato nel body —
+proprietà di sicurezza verificata da un test dedicato. `POST /itinerary/adapt` invece passa
+`request.signal` DIRETTAMENTE ad `adapt_itinerary`, senza alcuna sanificazione.
+
+### Cosa NON è garantito
+
+Un client potrebbe, in teoria, iniettare `eventi_attivi` fabbricati anche in
+`/itinerary/adapt`. Oggi è INNOCUO: `adapt_itinerary`/`experience_engine.engine` non leggono
+MAI `signal.eventi_attivi` (limite già dichiarato in `docs/ENGINE_INVARIANTS.md` §6:
+"`adapt_itinerary` non rivaluta mai i segnali fluttuanti" — un limite pre-esistente a questa
+fase, non introdotto ora). Ma è una TRAPPOLA LATENTE: un futuro sviluppatore che estendesse
+`adapt_itinerary` per rivalutare i segnali fluttuanti (chiudendo il limite sopra) potrebbe
+dimenticare che questo endpoint non applica la stessa igiene di `/itinerary`, reintroducendo
+la vulnerabilità che `/itinerary` ha appena chiuso.
+
+### Cosa servirebbe per chiudere il buco
+
+Applicare la stessa sovrascrittura autorevole (sweep+fetch dallo store) anche in
+`/itinerary/adapt`, MA solo quando (se mai) `adapt_itinerary` verrà esteso per rivalutare i
+segnali fluttuanti — farlo ora, prima che `adapt_itinerary` legga quel campo, sarebbe lavoro
+morto: nessun percorso lo consumerebbe.
+
+### Decisione
+
+Non implementato ora — nessun rischio attivo (il campo non viene mai letto da `adapt`). Va
+riletto — non ignorato — nello stesso momento in cui si chiude il limite gemello in
+`docs/ENGINE_INVARIANTS.md` §6 ("`adapt_itinerary` non rivaluta mai i segnali fluttuanti"):
+le due estensioni vanno fatte insieme, non l'una dimenticando l'altra.

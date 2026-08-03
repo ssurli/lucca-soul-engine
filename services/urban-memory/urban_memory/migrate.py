@@ -1,8 +1,19 @@
 """Migrazione idempotente dello schema di Urban Memory (Postgres/Neon).
 
-Applica `sql/00_memory_schema.sql` — letto da file (single source of verità,
-non duplicato come stringa nel codice), rieseguibile da zero in un comando,
-come il seed del grafo (CLAUDE.md).
+Applica OGNI file `sql/*_schema.sql` — letto da file (single source of
+verità, non duplicato come stringa nel codice), rieseguibile da zero in un
+comando, come il seed del grafo (CLAUDE.md). Due schemi oggi, applicati IN
+ORDINE (il prefisso numerico ne fissa l'ordine, `sorted()` su nomi di file):
+
+- `00_memory_schema.sql` — `memory_contribution` (Wave 2, la Urban Memory).
+- `01_fluttuante_schema.sql` — `segnale_fluttuante`/`traccia_luogo` (Fase 3,
+  il canale fluttuante persistente e il suo ledger,
+  `docs/PROMOZIONE_TRACCIA.md`).
+
+Un solo comando applica ENTRAMBI, in una connessione, in una transazione
+sola (`conn.execute`/`conn.commit` una volta sola per tutti i file): non
+serve un comando `migrate` per schema, esattamente come prima di questo
+cambio non ne serviva uno per `00_memory_schema.sql` da solo.
 
 Uso::
 
@@ -17,23 +28,37 @@ import psycopg
 
 from ._env import database_url_from_env
 
-__all__ = ["SCHEMA_PATH", "migrate", "mask_dsn", "main"]
+__all__ = ["SCHEMA_PATH", "SCHEMA_PATHS", "migrate", "mask_dsn", "main"]
 
 _SQL_DIR = Path(__file__).resolve().parent.parent / "sql"
+
+#: Mantenuto per compatibilità (era l'UNICO schema prima di questa wave):
+#: continua a puntare a `00_memory_schema.sql`, mai rimosso né ridefinito.
 SCHEMA_PATH = _SQL_DIR / "00_memory_schema.sql"
+
+#: TUTTI gli schemi versionati di questo servizio, in ordine di applicazione
+#: (il prefisso numerico del nome file ne fissa l'ordine): quello che
+#: `migrate()` applica davvero, da questa wave in poi.
+SCHEMA_PATHS: tuple[Path, ...] = tuple(sorted(_SQL_DIR.glob("*_schema.sql")))
 
 
 def migrate(dsn: str) -> None:
-    """Applica lo schema (`CREATE TABLE`/`INDEX ... IF NOT EXISTS`) su `dsn`.
+    """Applica OGNI schema in `SCHEMA_PATHS` (`CREATE TABLE`/`INDEX ... IF
+    NOT EXISTS`) su `dsn`, in ordine, in una sola connessione.
 
     Idempotente: rieseguibile senza errori né duplicazioni, sullo stesso
-    principio del seed del grafo (`services/graph/cypher/`). `dsn` arriva
-    SEMPRE da chi chiama (mai letto qui da `os.environ`): usa
-    `database_url_from_env()` per costruirlo a partire da `DATABASE_URL`.
+    principio del seed del grafo (`services/graph/cypher/`) — ogni file SQL
+    è a sua volta idempotente (`CREATE ... IF NOT EXISTS`, mai un `DROP`),
+    quindi applicarli di nuovo (es. dopo l'aggiunta di
+    `01_fluttuante_schema.sql` su un database che aveva già solo
+    `00_memory_schema.sql`) è un no-op sul primo e crea solo ciò che manca
+    sul secondo. `dsn` arriva SEMPRE da chi chiama (mai letto qui da
+    `os.environ`): usa `database_url_from_env()` per costruirlo a partire da
+    `DATABASE_URL`.
     """
-    sql = SCHEMA_PATH.read_text(encoding="utf-8")
     with psycopg.connect(dsn) as conn:
-        conn.execute(sql)
+        for path in SCHEMA_PATHS:
+            conn.execute(path.read_text(encoding="utf-8"))
         conn.commit()
 
 
@@ -57,7 +82,8 @@ def main() -> None:
     dsn = database_url_from_env()
     migrate(dsn)
     print(f"Schema Urban Memory applicato (idempotente) su {mask_dsn(dsn)}.")
-    print(f"Sorgente: {SCHEMA_PATH}")
+    for path in SCHEMA_PATHS:
+        print(f"Sorgente: {path}")
 
 
 if __name__ == "__main__":

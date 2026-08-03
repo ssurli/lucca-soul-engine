@@ -67,6 +67,23 @@ Wave 3b aggiunge il Recommender ML (`docs/DATA_CONTRACTS.md` §6/§8):
   `score_fn=None` (il ranking deterministico `calcola_score`, identico al
   comportamento pre-Wave-3b) — vedi il commento in `create_itinerary`.
 
+Fase 3 aggiunge la fondazione del canale fluttuante persistente
+(`docs/PROMOZIONE_TRACCIA.md`): `POST /itinerary` ORA popola
+`ctx.signal.eventi_attivi` lato SERVER, PRIMA di chiamare
+`compose_itinerary` — `urban_memory.canale_fluttuante.
+sweep_and_fetch_active(get_segnale_repository(), get_traccia_repository(),
+place_link_writer=get_place_link_writer())` spazza (lazy, globale) i segnali
+scaduti, deposita una traccia per ciascuno (ledger append-only,
+`services/urban-memory`) e aggiorna `:Luogo.ultima_traccia_il` (Neo4j,
+best-effort), poi fetcha gli attivi rimasti. Il valore ritornato SOVRASCRIVE
+SEMPRE `eventi_attivi` mandato dal client nel body — proprietà di
+SICUREZZA: un client non può iniettare segnali fluttuanti falsi in una
+composizione. Stesso "cattura e degrada" del Recommender sopra: un
+fallimento dello store (Postgres o, per la proprietà derivata, Neo4j) NON fa
+mai fallire `/itinerary` — `eventi_attivi` resta vuoto, mai un 503. Il
+motore (`experience_engine.engine.compose_itinerary`) resta INVARIATO: legge
+solo `ctx.signal.eventi_attivi`, non sa nulla dello storage che lo popola.
+
 Wave 4 aggiunge la dashboard dell'Urban Intelligence Index
 (`docs/DATA_CONTRACTS.md` §7/§8), due soli endpoint `GET`, entrambi wrapper
 PURI attorno agli adattatori già pronti in `intelligence_index.dashboard`
@@ -126,6 +143,7 @@ from contracts import (
     Itinerary,
     MemoryContribution,
     OnboardingRequest,
+    SegnaleFluttuante,
     Signal,
     VisitorContext,
 )
@@ -146,6 +164,7 @@ from urban_memory import (
     UrbanMemoryError,
     contributions_for_place,
     submit_contribution,
+    sweep_and_fetch_active,
 )
 
 from api import __version__
@@ -154,6 +173,9 @@ from api.deps import (
     get_candidate_source,
     get_event_repository,
     get_memory_repository,
+    get_place_link_writer,
+    get_segnale_repository,
+    get_traccia_repository,
 )
 from api.settings import get_settings
 
@@ -454,7 +476,56 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     un'infrastruttura ausiliaria che non riguarda la richiesta dell'utente.
     Per questo qui la strategia è "cattura e degrada", non "503 esplicito"
     come in `/events`: sono scelte diverse per motivi diversi (centralità
-    dello storage nella richiesta), non un'incoerenza tra i due endpoint."""
+    dello storage nella richiesta), non un'incoerenza tra i due endpoint.
+
+    Fase 3 — canale fluttuante persistente (`docs/PROMOZIONE_TRACCIA.md`):
+    dopo aver costruito `score_fn`, questo endpoint SOVRASCRIVE
+    `ctx.signal.eventi_attivi` con la lettura AUTOREVOLE dallo store
+    (`urban_memory.canale_fluttuante.sweep_and_fetch_active`), IGNORANDO
+    qualunque valore mandato dal client nel body — PROPRIETÀ DI SICUREZZA:
+    un client non può iniettare segnali fluttuanti falsi in una
+    composizione (oggi ogni client manda `eventi_attivi=[]`; anche se ne
+    mandasse uno costruito ad arte, verrebbe scartato qui, PRIMA che
+    `compose_itinerary` veda `ctx`). Stessa tecnica di iniezione diretta
+    (mai `Depends`) di `get_event_repository()` sopra, per lo STESSO motivo:
+    `get_segnale_repository()`/`get_traccia_repository()`/
+    `get_place_link_writer()` sono chiamate DENTRO il `try`, così un loro
+    fallimento resta catturabile qui e non finisce in un gestore globale
+    503 (che per questi tipi non esiste nemmeno, di proposito: il canale
+    fluttuante non ha un endpoint HTTP pubblico ancora, quindi nessun altro
+    percorso li solleva).
+
+    VINCOLO CRITICO — identico a quello sopra per il Recommender, sulla
+    STESSA riga di ragionamento: il canale fluttuante è un arricchimento
+    OPZIONALE della composizione (una tappa fluttuante in più, "un
+    violinista in piazza"), non il cuore della richiesta. Un fallimento
+    catturato QUI (`SegnaleStorageError` da `sweep_scaduti`/`fetch_attivi`,
+    o un fallimento nella costruzione dei repository/writer) NON deve MAI
+    far fallire `/itinerary`: viene catturato e `eventi_attivi` resta `[]`
+    (comportamento IDENTICO a ogni chiamante precedente a questa fase, che
+    non popolava mai questo campo).
+
+    DUE GARANZIE DIVERSE — non confonderle (precisato dopo una revisione
+    `ethics-guardian`: la formulazione precedente le confondeva in una sola
+    frase rassicurante, non vera per tutti i percorsi). Se il fallimento
+    catturato QUI avviene PRIMA che `sweep_scaduti` committi (o nella sola
+    costruzione dei repository), NESSUNA transizione è avvenuta: innocuo,
+    mai una perdita, solo un ritardo — la prossima richiesta a `/itinerary`
+    ritenta l'intero sweep quando lo store torna raggiungibile. Ma se
+    `sweep_scaduti` ha GIÀ COMMITTATO la transizione `attivo -> expired` per
+    un segnale e SOLO IL DEPOSITO DELLA TRACCIA per quel segnale fallisce
+    (`deposita`/`place_link_writer` dentro
+    `urban_memory.canale_fluttuante.sweep_and_fetch_active`), quella
+    situazione NON raggiunge nemmeno questo blocco `except`: è già stata
+    intercettata, LOGGATA e ISOLATA per singolo segnale dentro
+    `sweep_and_fetch_active` stessa (vedi il suo docstring per il dettaglio
+    completo) — e in quel caso specifico la conseguenza NON è "un ritardo,
+    poi ritentato": la guardia dell'idempotenza (`WHERE stato='attivo'`)
+    impedisce per costruzione a qualunque sweep futuro di ripescare un
+    segnale già `expired`, quindi la traccia per quel segnale va persa in
+    modo PERMANENTE. Il segnale stesso resta comunque correttamente
+    `expired` (non più composto in un itinerario): a perdersi è solo la
+    riga del ledger, non l'integrità del canale fluttuante nel suo insieme."""
     source = get_candidate_source()
     candidates = source.candidates(ctx)
     try:
@@ -463,6 +534,32 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
         # opzionale, mai un motivo di fallimento di /itinerary — degrada al
         # ranking deterministico (score_fn=None -> calcola_score da solo).
         score_fn = None
+
+    eventi_attivi: list[SegnaleFluttuante] = []
+    try:
+        eventi_attivi = sweep_and_fetch_active(
+            get_segnale_repository(),
+            get_traccia_repository(),
+            place_link_writer=get_place_link_writer(),
+        )
+    except Exception:  # difesa in profondità: il canale fluttuante è un
+        # arricchimento opzionale, mai un motivo di fallimento di /itinerary
+        # — degrada a eventi_attivi=[] (nessuna tappa fluttuante composta).
+        # Cattura SOLO fallimenti di sweep_scaduti/fetch_attivi o della
+        # costruzione dei repository/writer (mai una perdita: solo un
+        # ritardo, vedi il docstring sopra) — un fallimento del deposito
+        # della traccia per un SINGOLO segnale già scaduto è isolato PRIMA
+        # di arrivare qui (urban_memory.canale_fluttuante.
+        # sweep_and_fetch_active, che logga e non propaga).
+        eventi_attivi = []
+
+    # Il server SOVRASCRIVE SEMPRE ctx.signal.eventi_attivi con la lettura
+    # autorevole dallo store — qualunque valore il client abbia mandato nel
+    # body viene ignorato (proprietà di sicurezza, vedi il docstring sopra).
+    ctx = ctx.model_copy(
+        update={"signal": ctx.signal.model_copy(update={"eventi_attivi": eventi_attivi})}
+    )
+
     return compose_itinerary(ctx, candidates, reason_fn=compose_reason, score_fn=score_fn)
 
 

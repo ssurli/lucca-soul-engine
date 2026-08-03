@@ -9,8 +9,10 @@ dataset diverso a seconda del profilo (cloud/locale).
 
 L'istanza è creata una sola volta (`lru_cache`): aprire un driver Neo4j a
 ogni richiesta sarebbe costoso e inutile. Stesso pattern per
-`get_memory_repository` (Urban Memory, Wave 2) e `get_booking_repository`
-(Marketplace, Wave 3a).
+`get_memory_repository` (Urban Memory, Wave 2), `get_booking_repository`
+(Marketplace, Wave 3a) e — Fase 3, il canale fluttuante persistente
+(`docs/PROMOZIONE_TRACCIA.md`) — `get_segnale_repository`/
+`get_traccia_repository`/`get_place_link_writer`.
 """
 
 from __future__ import annotations
@@ -22,9 +24,19 @@ import recommender
 from graph.source import CandidateSource, Neo4jCandidateSource, SeedCandidateSource
 from urban_memory import (
     InMemoryMemoryRepository,
+    InMemorySegnaleFluttuanteRepository,
+    InMemoryTracciaRepository,
     MemoryRepository,
     MemoryStorageError,
+    Neo4jLuogoTracciaLinker,
+    PlaceLinkWriter,
     PostgresMemoryRepository,
+    PostgresSegnaleFluttuanteRepository,
+    PostgresTracciaRepository,
+    SegnaleFluttuanteRepository,
+    SegnaleStorageError,
+    TracciaRepository,
+    TracciaStorageError,
 )
 
 from api.settings import get_settings
@@ -34,6 +46,9 @@ __all__ = [
     "get_memory_repository",
     "get_booking_repository",
     "get_event_repository",
+    "get_segnale_repository",
+    "get_traccia_repository",
+    "get_place_link_writer",
 ]
 
 
@@ -184,3 +199,91 @@ def get_event_repository() -> recommender.BehaviorEventRepository:
                 "impossibile inizializzare la persistenza degli eventi comportamentali"
             ) from exc
     return recommender.InMemoryBehaviorEventRepository()
+
+
+# ---------------------------------------------------------------------------
+# Canale fluttuante persistente (Fase 3, docs/PROMOZIONE_TRACCIA.md) —
+# stesso pattern di get_memory_repository/get_booking_repository/
+# get_event_repository sopra: nessun `if local/cloud`, solo presenza di
+# DATABASE_URL (per le due tabelle Postgres) / delle tre credenziali Neo4j
+# (per la proprietà derivata `ultima_traccia_il`).
+# ---------------------------------------------------------------------------
+
+
+@lru_cache
+def get_segnale_repository() -> SegnaleFluttuanteRepository:
+    """Sceglie il repository della tabella-segnale in base al `.env`, una
+    volta sola — stesso pattern di `get_memory_repository`.
+
+    Se `DATABASE_URL` è configurato usa `PostgresSegnaleFluttuanteRepository`
+    (Neon in cloud o Postgres locale): persiste DAVVERO, con connessione lazy
+    per operazione. Altrimenti ricade su
+    `InMemorySegnaleFluttuanteRepository` (in-process, non persiste tra
+    riavvii — il percorso usato dai test e dallo smoke test di questo
+    servizio quando `DATABASE_URL` non è impostato).
+
+    NOTA — a differenza di `/memory`/`/booking`/`/events`, questo repository
+    è iniettato SOLO nel wiring di `POST /itinerary`
+    (`api.main.create_itinerary`), dove il canale fluttuante è un
+    arricchimento OPZIONALE della composizione: un suo fallimento (qui o
+    nelle operazioni successive di `urban_memory.canale_fluttuante.
+    sweep_and_fetch_active`) NON deve mai propagare — è per questo che
+    questa funzione è chiamata DIRETTAMENTE dentro il `try` di
+    `create_itinerary`, mai tramite `Depends` nella firma (stesso motivo,
+    stessa tecnica, di `get_event_repository` — vedi il commento in
+    `create_itinerary`)."""
+    settings = get_settings()
+    if settings.database_url:
+        try:
+            return PostgresSegnaleFluttuanteRepository.from_env()
+        except SegnaleStorageError:
+            raise
+        except Exception as exc:  # difesa in profondità: mai un errore grezzo
+            raise SegnaleStorageError(
+                "impossibile inizializzare la persistenza del canale fluttuante"
+            ) from exc
+    return InMemorySegnaleFluttuanteRepository()
+
+
+@lru_cache
+def get_traccia_repository() -> TracciaRepository:
+    """Sceglie il repository del ledger delle tracce in base al `.env`, una
+    volta sola — stesso pattern di `get_segnale_repository`, stessa NOTA
+    sull'iniezione diretta (mai `Depends`) in `create_itinerary`."""
+    settings = get_settings()
+    if settings.database_url:
+        try:
+            return PostgresTracciaRepository.from_env()
+        except TracciaStorageError:
+            raise
+        except Exception as exc:  # difesa in profondità: mai un errore grezzo
+            raise TracciaStorageError(
+                "impossibile inizializzare la persistenza del ledger delle tracce"
+            ) from exc
+    return InMemoryTracciaRepository()
+
+
+@lru_cache
+def get_place_link_writer() -> PlaceLinkWriter | None:
+    """Scrittore della proprietà derivata `:Luogo.ultima_traccia_il` sul
+    Knowledge Graph — `None` se `NEO4J_URI`/`NEO4J_USERNAME`/
+    `NEO4J_PASSWORD` non sono TUTTE presenti (stesso pattern di
+    `get_candidate_source`: senza credenziali complete non si tenta la
+    connessione; `sweep_and_fetch_active` tratta `place_link_writer=None`
+    come "nessuna scrittura nel grafo", mai un errore).
+
+    Un solo driver Neo4j, aperto una volta per l'intero ciclo di vita del
+    processo (`Neo4jLuogoTracciaLinker`, stesso pattern di
+    `Neo4jCandidateSource` sopra), riusato per ogni richiesta — mai un
+    driver per richiesta. Il metodo legato `.scrivi` è esattamente la firma
+    richiesta da `urban_memory.canale_fluttuante.PlaceLinkWriter`."""
+    settings = get_settings()
+    if settings.neo4j_uri and settings.neo4j_username and settings.neo4j_password:
+        linker = Neo4jLuogoTracciaLinker.from_credentials(
+            uri=settings.neo4j_uri,
+            username=settings.neo4j_username,
+            password=settings.neo4j_password,
+            database=settings.neo4j_database or "neo4j",
+        )
+        return linker.scrivi
+    return None

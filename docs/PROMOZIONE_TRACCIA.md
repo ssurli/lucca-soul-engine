@@ -1,7 +1,15 @@
 # PROMOZIONE_TRACCIA.md — Fase 3: il ledger delle tracce e la promozione fluttuante→permanente
 
-> **Stato del documento: DESIGN, non implementazione.** Nessuna riga SQL qui è eseguibile,
-> nessun Cypher è codice, nessuna colonna esiste oggi in Postgres o in Neo4j. Fonte:
+> **Stato del documento: PARZIALMENTE implementato — non più "design, non implementazione"
+> in blocco.** Un task successivo a questo design ("fondazione del canale fluttuante:
+> persistenza + ledger") ha reso REALE §1 (il ledger delle tracce, tabella
+> `traccia_luogo`) e §2(a) (`:Luogo.ultima_traccia_il`, scritta via Cypher versionato) —
+> verificato contro il codice, non presunto, stessa disciplina di sempre. **§2(b) (il
+> bagliore) e §3 (la pipeline ricorrenza→promozione→dormienza, inclusa la corsia
+> fluttuanti `blocked`/`approved`/`rejected` di `docs/STATE_MACHINE.md` §4) restano
+> DESIGN PURO, non toccati da quel task** — nessuna riga SQL/Cypher di quella parte è
+> eseguibile. Ogni sezione sotto è annotata esplicitamente REALE o DESIGN, non lasciata
+> all'inferenza. Fonte del design originario:
 > `docs/brief_fase3_promozione_traccia.md` (vincolante, ma il codice lo sovrasta — §0 del
 > brief). Questo documento presuppone Fase 1/2 approvate (`docs/STATE_MACHINE.md`) e i due
 > invarianti del motore (`docs/ENGINE_INVARIANTS.md`): non li riapre, costruisce sopra.
@@ -33,7 +41,12 @@
 
 ---
 
-## 1. Il ledger delle tracce — forma dati
+## 1. Il ledger delle tracce — forma dati — **REALE, implementato**
+
+**Verificato contro il codice**: `services/urban-memory/sql/01_fluttuante_schema.sql`
+(tabella `traccia_luogo`), `services/urban-memory/urban_memory/traccia_repository.py`
+(`Traccia`, `TracciaRepository` — doppia implementazione InMemory/Postgres). Il design
+sotto è rispecchiato fedelmente dal codice, non solo un piano.
 
 **Anagrafica minima** (brief §5): `place_id`, `temi[]`, `creato_il`. Nient'altro — niente
 `contributor`, niente PII, niente testo libero, niente descrizione dell'occorrenza. È il
@@ -62,6 +75,15 @@ distillato del passaggio, non un secondo `SegnaleFluttuante` persistito.
 stesso punto nello stesso minuto non sono lo stesso fatto). Chiave surrogata, non una
 chiave composta.
 
+**Limite reale trovato durante l'implementazione, non anticipato da questo design**: lo
+sweep (`attivo → expired`, atomico) e il deposito della traccia non condividono una
+transazione — un fallimento del deposito DOPO che lo sweep ha già committato causa la
+perdita PERMANENTE e silenziosa della traccia per quel singolo segnale (isolata dal resto
+del batch, non a cascata — trovato e corretto da un giro dedicato di `ethics-guardian`).
+Il ledger resta quindi "immortale" per ogni riga che riesce a depositarsi, ma NON garantisce
+che ogni segnale scaduto depositi effettivamente la sua riga. Dettaglio completo in
+`docs/LIMITI.md`.
+
 **Idiomatica — stessa forma di `behavior_event`, non una vista sopra di esso:**
 - Tabella propria, append-only, con la propria migrazione dedicata — stesso pattern delle
   tre corsie esistenti (`recommender.migrate`, `marketplace.migrate`, `urban_memory.migrate`
@@ -80,26 +102,50 @@ chiave composta.
   non porta né `place_id` né `temi`, e il cui `tipo` è un `CHECK` chiuso su un insieme fisso
   che non include nulla su fluttuanti/tracce) né su `memory_contribution` (porta
   `contributor_id`, esplicitamente vietato dall'anagrafica minima).
-- **Collocazione del codice**: candidato naturale `services/urban-memory` (stesso spirito
-  del white paper — "Urban Memory cresce con l'uso": un fluttuante approvato che scade è,
-  in un certo senso, un conferimento automatico e anonimo alla memoria del luogo) oppure un
-  servizio dedicato nuovo. **Non deciso qui** — è una domanda di collocazione
-  architetturale, non di forma dati (vedi §5).
+- **Collocazione del codice — CHIUSA**: `services/urban-memory` (stesso spirito del white
+  paper — "Urban Memory cresce con l'uso": un fluttuante approvato che scade è, in un certo
+  senso, un conferimento automatico e anonimo alla memoria del luogo). Decisione presa
+  dall'orchestratore al momento dell'implementazione (non un servizio dedicato nuovo),
+  coerente con l'istruzione del brief di modellare la persistenza su
+  `urban_memory/repository.py` — nuovi moduli `segnale_repository.py`/
+  `traccia_repository.py`/`canale_fluttuante.py`/`luogo_traccia_link.py` accanto a quelli
+  esistenti, non duplicati altrove.
 
-**Solo occorrenze approvate-e-poi-scadute depositano.** Le rifiutate: nulla (brief §5,
-estende "le rifiutate non fanno pattern" di Fase 2 a "le rifiutate non fanno traccia").
-Senza questo confine, occorrenze respinte "accenderebbero" comunque un luogo mai davvero
-toccato dal fenomeno.
+**Solo occorrenze approvate-e-poi-scadute depositano — PRINCIPIO valido, ma vacuamente vero
+oggi.** Le rifiutate: nulla (brief §5, estende "le rifiutate non fanno pattern" di Fase 2 a
+"le rifiutate non fanno traccia"). Senza questo confine, occorrenze respinte
+"accenderebbero" comunque un luogo mai davvero toccato dal fenomeno. **Nota di
+implementazione (non presente nel design originario)**: il codice reale oggi non ha ALCUN
+concetto di `rejected` per un segnale fluttuante (`STATE_MACHINE.md` §4 — `blocked`/
+`approved`/`rejected` restano design puro, non implementati da questo task) — ogni segnale
+persistito dal percorso fidato (`submit_signal.py`) è trattato come implicitamente
+approvato, quindi OGNI segnale che scade deposita sempre la sua traccia, incondizionatamente
+(`urban_memory.canale_fluttuante.sweep_and_fetch_active`). Il principio "le rifiutate non
+fanno traccia" è quindi rispettato per COSTRUZIONE (non esiste ancora un modo di rifiutare),
+non per un controllo esplicito nel codice del deposito — quando la revisione umana verrà
+costruita, il deposito dovrà diventare condizionato da un vero stato `approved`, non più
+incondizionato su ogni `expired`.
 
 ## 2. La proprietà derivata sul grafo + il bagliore
 
-Due meccanismi distinti — tenerli separati evita di confonderli in fase di implementazione:
+Due meccanismi distinti — tenerli separati evita di confonderli in fase di implementazione.
+**Stato epistemico diverso tra i due, come per gli invarianti del motore — non
+confonderli**: (a) è REALE, (b) resta DESIGN.
 
-### (a) `:Luogo.ultima_traccia_il` — proprietà derivata, un solo scopo
+### (a) `:Luogo.ultima_traccia_il` — proprietà derivata, un solo scopo — **REALE, implementato**
 
-Serve **esclusivamente** a rilevare la dormienza di un pattern promosso (§3) a costo di
-lettura zero: "quando ha parlato l'ultima volta questo luogo" senza mai interrogare
-Postgres o traversare il grafo.
+**Verificato contro il codice**: `services/urban-memory/cypher/40_luogo_traccia_write.cypher`
+(un `MATCH`+`SET` puro, MAI un `MERGE` — confermato non crea mai un `:Luogo` inesistente,
+verificato anche da un giro dedicato di `ethics-guardian`), `services/urban-memory/
+urban_memory/luogo_traccia_link.py` (`Neo4jLuogoTracciaLinker`, stesso pattern di driver
+diretto già usato da `graph_link.py`). Il design sotto è rispecchiato fedelmente dal codice.
+
+Serve **esclusivamente** a rilevare la dormienza di un pattern promosso (§3, ANCORA DESIGN)
+a costo di lettura zero: "quando ha parlato l'ultima volta questo luogo" senza mai
+interrogare Postgres o traversare il grafo. **Nessun consumatore reale ancora** (§3 non è
+implementata): la proprietà si aggiorna già ma nessuno la legge oggi per prendere una
+decisione — scritta in anticipo per il momento in cui §3 verrà costruita, stesso principio
+già visto per la label `:Evento` riservata ma vuota nello schema.
 
 - **Si rinfresca in scrittura**, non in lettura: un `SET` sul nodo `:Luogo` nello stesso
   momento in cui la riga viene appesa al ledger. Due scritture in due store diversi, non una
@@ -306,9 +352,9 @@ posto consultabile insieme alle altre domande della macchina a stati:
    frizione a cadenza (§3, §4-bis(a) di `docs/STATE_MACHINE.md`), E chi amministra la lista
    dei permessi-freno (§7.14.1) — stessa classe di tuning/dettaglio implementativo, non
    struttura.
-4. **Collocazione del codice del ledger**: `services/urban-memory` (stesso dominio
-   concettuale) o un servizio nuovo dedicato — non decisa qui, è una domanda architetturale
-   che tocca `contract-keeper`/`tech-lead` più che questo design.
+4. ~~**Collocazione del codice del ledger**: `services/urban-memory` o un servizio nuovo
+   dedicato?~~ **CHIUSA** — `services/urban-memory` (§1 sopra), decisione presa
+   dall'orchestratore al momento dell'implementazione, non da questo documento di design.
 5. **Chi consuma il bagliore** (§2b): `experience-engine` per lo scoring/`reason`,
    `index-engineer` per un cruscotto, entrambi, nessuno dei due ancora — non deciso, resta
    un consumatore futuro. Nota per quando si deciderà: `ENGINE_INVARIANTS.md` §3 registra

@@ -254,3 +254,40 @@ def any_memory_repository(request: pytest.FixtureRequest):
 
     migrate(dsn)
     return PostgresMemoryRepository(dsn)
+
+
+@pytest.fixture(params=["in_memory", "postgres"])
+def any_segnale_repository(request: pytest.FixtureRequest):
+    """Stesso pattern di `any_memory_repository`, per
+    `SegnaleFluttuanteRepository` (Fase 3, canale fluttuante persistente,
+    `docs/PROMOZIONE_TRACCIA.md`): parametrizza contro ENTRAMBE le
+    implementazioni. Il ramo `postgres` salta (non fallisce) se il cluster
+    effimero non è disponibile, tramite `pg_dsn`."""
+    if request.param == "in_memory":
+        from urban_memory.segnale_repository import InMemorySegnaleFluttuanteRepository
+
+        return InMemorySegnaleFluttuanteRepository()
+
+    dsn = request.getfixturevalue("pg_dsn")
+    from urban_memory.migrate import migrate
+    from urban_memory.segnale_repository import PostgresSegnaleFluttuanteRepository
+
+    migrate(dsn)
+    return PostgresSegnaleFluttuanteRepository(dsn)
+
+
+@pytest.fixture(params=["in_memory", "postgres"])
+def any_traccia_repository(request: pytest.FixtureRequest):
+    """Stesso pattern di `any_memory_repository`, per `TracciaRepository`
+    (Fase 3, il ledger delle tracce, `docs/PROMOZIONE_TRACCIA.md` §1)."""
+    if request.param == "in_memory":
+        from urban_memory.traccia_repository import InMemoryTracciaRepository
+
+        return InMemoryTracciaRepository()
+
+    dsn = request.getfixturevalue("pg_dsn")
+    from urban_memory.migrate import migrate
+    from urban_memory.traccia_repository import PostgresTracciaRepository
+
+    migrate(dsn)
+    return PostgresTracciaRepository(dsn)

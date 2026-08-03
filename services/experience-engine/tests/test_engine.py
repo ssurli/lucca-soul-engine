@@ -15,7 +15,7 @@ riceve iniettati, non li importa.
 from __future__ import annotations
 
 import inspect
-from datetime import datetime, time
+from datetime import UTC, datetime, time
 
 import pytest
 from contracts import (
@@ -725,6 +725,7 @@ def _violinista(non_commerciale: bool = True) -> SegnaleFluttuante:
     return SegnaleFluttuante(
         id="violinista-1", descrizione="un violinista suona in piazza",
         temi=["musica"], place_id="luogo-fisso", non_commerciale=non_commerciale,
+        valido_fino=datetime(2099, 1, 1, tzinfo=UTC),
     )
 
 
@@ -760,6 +761,7 @@ def test_segnale_fluttuante_non_coerente_non_aggiunge_tappa() -> None:
     segnale = SegnaleFluttuante(
         id="storico-1", descrizione="una guida racconta la storia della torre",
         temi=["storia"], place_id="luogo-fisso", non_commerciale=True,
+        valido_fino=datetime(2099, 1, 1, tzinfo=UTC),
     )
     signal = Signal(
         meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0), eventi_attivi=[segnale]
