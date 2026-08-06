@@ -82,6 +82,13 @@ from __future__ import annotations
 
 from .audit import audit
 from .canale_fluttuante import PlaceLinkWriter, persist_signal, sweep_and_fetch_active
+from .cestino_repository import (
+    CestinoStorageError,
+    InMemoryPatternCestinatoRepository,
+    PatternCestinato,
+    PatternCestinatoRepository,
+    PostgresPatternCestinatoRepository,
+)
 from .graph_link import (
     MEMORY_LINK_CHECK_QUERY_PATH,
     MEMORY_LINK_WRITE_QUERY_PATH,
@@ -101,11 +108,25 @@ from .luogo_traccia_link import (
     ultima_traccia_cypher,
 )
 from .migrate import SCHEMA_PATH, SCHEMA_PATHS, migrate
+from .promozione_evento import (
+    PROMOZIONE_EVENTO_WRITE_QUERY_PATH,
+    Neo4jPromozioneWriter,
+    PromozioneEventoError,
+    evento_id_per_pattern,
+    promozione_evento_cypher,
+    scrivi_evento_promosso,
+)
 from .repository import (
     InMemoryMemoryRepository,
     MemoryRepository,
     MemoryStorageError,
     PostgresMemoryRepository,
+)
+from .ricorrenza import (
+    N_MINIMO_OCCORRENZE,
+    TOLLERANZA_REGOLARITA,
+    PatternCandidato,
+    rileva_candidati,
 )
 from .segnale_repository import (
     InMemorySegnaleFluttuanteRepository,
@@ -128,6 +149,7 @@ from .service import (
 )
 from .traccia_repository import (
     InMemoryTracciaRepository,
+    PatternAggregato,
     PostgresTracciaRepository,
     Traccia,
     TracciaRepository,
@@ -174,6 +196,7 @@ __all__ = [
     "InMemoryTracciaRepository",
     "PostgresTracciaRepository",
     "TracciaStorageError",
+    "PatternAggregato",
     "PlaceLinkWriter",
     "persist_signal",
     "sweep_and_fetch_active",
@@ -182,4 +205,21 @@ __all__ = [
     "LuogoTracciaLinkError",
     "scrivi_ultima_traccia",
     "Neo4jLuogoTracciaLinker",
+    # Rilevamento cadenza + promozione a :Evento + cestino permanente
+    # (Fase 3, curatela umana via `python -m urban_memory.curatela_pattern`)
+    "PatternCestinato",
+    "PatternCestinatoRepository",
+    "InMemoryPatternCestinatoRepository",
+    "PostgresPatternCestinatoRepository",
+    "CestinoStorageError",
+    "N_MINIMO_OCCORRENZE",
+    "TOLLERANZA_REGOLARITA",
+    "PatternCandidato",
+    "rileva_candidati",
+    "PROMOZIONE_EVENTO_WRITE_QUERY_PATH",
+    "evento_id_per_pattern",
+    "promozione_evento_cypher",
+    "PromozioneEventoError",
+    "scrivi_evento_promosso",
+    "Neo4jPromozioneWriter",
 ]

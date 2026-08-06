@@ -998,3 +998,104 @@ Non implementato ora — nessun rischio attivo (il campo non viene mai letto da 
 riletto — non ignorato — nello stesso momento in cui si chiude il limite gemello in
 `docs/ENGINE_INVARIANTS.md` §6 ("`adapt_itinerary` non rivaluta mai i segnali fluttuanti"):
 le due estensioni vanno fatte insieme, non l'una dimenticando l'altra.
+
+---
+
+## Il cestino dei pattern ricorrenti è permanente in v1; nessuna interfaccia oltre la CLI
+
+**Introdotto:** Fase 3, rilevamento pattern ricorrenti + promozione `:Evento` + cestino.
+**Componente:** `services/urban-memory`.
+
+### Cosa è garantito oggi
+
+`urban_memory.cestino_repository` (tabella `pattern_cestinato`) registra il rifiuto
+PERMANENTE di un pattern (`place_id`+insieme di `temi`): un pattern cestinato non ricompare
+MAI più come candidato, anche accumulando nuove occorrenze nel ledger dopo il rifiuto —
+verificato da un test dedicato. La colonna `motivo` esiste ed è opzionalmente popolabile dal
+Promotore al momento del rifiuto (`python -m urban_memory.curatela_pattern`). Il comando è un
+percorso ristretto/fidato, stesso principio di `submit_signal.py`/`verify.py`: nessuna auth,
+nessun rate limit, nessun endpoint HTTP.
+
+### Cosa NON è garantito
+
+Il `motivo` è registrato ma NON guida alcuna logica: non esiste una distinzione fra un
+rifiuto "temporaneo" (es. "troppo presto per giudicare, ririvedi fra un anno") e uno
+"definitivo" (es. "è pubblicità mascherata") — ogni rifiuto ha lo stesso effetto,
+permanente e indistinguibile dagli altri se non per il testo libero del `motivo`. Inoltre,
+la curatela esiste SOLO come comando CLI: nessuna interfaccia grafica, nessun endpoint HTTP,
+nessun modo per un Promotore di rivedere l'elenco dei pattern già cestinati (nessun
+equivalente di `GET /memory/{place_id}` per il cestino) — un pattern cestinato per errore
+richiederebbe un intervento diretto su Postgres per essere corretto.
+
+### Cosa servirebbe per chiudere il buco
+
+1. **Logica "temporaneo vs permanente"** sul cestino: un campo di tipo/categoria sul
+   rifiuto (non solo testo libero) che determini se/quando un pattern può essere
+   ripresentato. Richiede prima dati reali sui motivi di rifiuto più comuni nel pilota — non
+   fabbricata ora per lo stesso principio già applicato altrove in questo file
+   (`tasso_ritorno`, capienza del marketplace): non tarare una categorizzazione a tavolino
+   senza un caso reale che la richieda.
+2. **Un modo di rivedere/annullare un rifiuto**: un comando o un endpoint che elenchi
+   `pattern_cestinato` e permetta di rimuovere una riga (rompendo l'append-only solo per
+   questo caso esplicito, con log dedicato) — non costruito ora.
+3. **Un'interfaccia oltre la CLI**: fuori scope per questa v1, esplicitamente (stesso
+   principio già accettato per il canale fluttuante — `docs/LIMITI.md`, voce su
+   `SegnaleFluttuante.non_commerciale`/canale d'ingresso).
+
+### Decisione
+
+Non implementato ora — scope minimo deliberato (v1: curatore reale da CLI + cestino
+permanente). Questo limite va riletto prima di:
+- aprire la curatela dei pattern a più di un Promotore o a un uso ad alta frequenza (a quel
+  punto un rifiuto per errore, irreversibile senza toccare Postgres a mano, diventa un
+  rischio operativo concreto, non solo teorico);
+- decidere se/come costruire la logica temporaneo/permanente — a quel punto i `motivo`
+  raccolti finora sono il dato su cui basare la categorizzazione.
+
+---
+
+## Il rilevamento automatico di un pattern ricorrente non lascia un record d'audit distinto dalla decisione del Promotore
+
+**Introdotto:** Fase 3, rilevamento pattern ricorrenti + promozione `:Evento` + cestino.
+**Componente:** `services/urban-memory`.
+
+### Cosa è garantito oggi
+
+Le due transizioni UMANE — `candidato → promosso` e `candidato → cestinato` — sono entrambe
+loggate (`chi=Promotore, quando, pattern, cadenza/motivo`) e, per la promozione, anche
+persistite come proprietà del nodo `:Evento` (`promosso_da`/`promosso_il`, mai sovrascritte
+da una ripromozione — corretto dopo un FAIL dedicato di `ethics-guardian`). Il rifiuto è
+persistito in `pattern_cestinato`, append-only.
+
+### Cosa NON è garantito
+
+`urban_memory.ricorrenza.rileva_candidati` — il rilevamento AUTOMATICO, system-detected, di
+un pattern che supera la soglia N+tolleranza — è una funzione PURA, senza alcun log
+applicativo del fatto stesso "il sistema ha rilevato questo pattern come ricorrente, in base
+a queste occorrenze, in questo momento". Questo diverge dal principio congelato di
+`docs/STATE_MACHINE.md` §5/§1.4 ("ogni transizione di stato logga chi/quando/perché — anche
+le automatiche... una transizione system-detected, es. il rilevamento ricorrenza, va
+comunque registrata"), che usa letteralmente questo caso come esempio. Non è un rischio di
+integrità (il rilevamento è ricalcolato identico ad ogni corsa della CLI dallo stesso ledger,
+non è uno stato che si possa perdere), ma un buco di accountability: un'amministrazione che
+volesse ricostruire mesi dopo "quando è emerso per la prima volta questo pattern, anche prima
+che un Promotore lo notasse" non troverebbe nulla.
+
+### Cosa servirebbe per chiudere il buco
+
+Un log applicativo (`logging`, stesso livello di persistenza già accettato per le transizioni
+umane di questo stesso file prima della correzione sul grafo) emesso da
+`rileva_candidati` — o da chi la chiama — alla prima volta che un pattern supera la soglia:
+richiede però di distinguere "prima volta rilevato" da "rilevato di nuovo alla corsa
+successiva" (oggi `rileva_candidati` non ha memoria fra una corsa e l'altra), quindi non è
+un aggiustamento puramente locale.
+
+### Decisione
+
+Non implementato ora — non bloccante (nessuna perdita di stato, solo di un audit trail
+opzionale), non richiesto esplicitamente dal brief che ha introdotto questa funzionalità
+(che imponeva la tracciabilità solo per le transizioni innescate da un umano, già
+soddisfatta). Va riletto prima di:
+- presentare la curatela dei pattern come "auditabile end-to-end" a un'amministrazione;
+- costruire un meccanismo che debba sapere "da quanto tempo" un pattern è candidato (oggi
+  non derivabile se non dalla prima occorrenza nel ledger, un proxy imperfetto).

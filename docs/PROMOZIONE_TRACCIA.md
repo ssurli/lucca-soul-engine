@@ -4,12 +4,15 @@
 > in blocco.** Un task successivo a questo design ("fondazione del canale fluttuante:
 > persistenza + ledger") ha reso REALE §1 (il ledger delle tracce, tabella
 > `traccia_luogo`) e §2(a) (`:Luogo.ultima_traccia_il`, scritta via Cypher versionato) —
-> verificato contro il codice, non presunto, stessa disciplina di sempre. **§2(b) (il
-> bagliore) e §3 (la pipeline ricorrenza→promozione→dormienza, inclusa la corsia
-> fluttuanti `blocked`/`approved`/`rejected` di `docs/STATE_MACHINE.md` §4) restano
-> DESIGN PURO, non toccati da quel task** — nessuna riga SQL/Cypher di quella parte è
-> eseguibile. Ogni sezione sotto è annotata esplicitamente REALE o DESIGN, non lasciata
-> all'inferenza. Fonte del design originario:
+> verificato contro il codice, non presunto, stessa disciplina di sempre. **Un secondo
+> task ("rilevamento pattern ricorrenti + promozione :Evento + cestino") ha reso REALE
+> anche una FETTA di §3** — il rilevamento della ricorrenza e la promozione a `:Evento`
+> via curatela umana da CLI, dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto. **§2(b)
+> (il bagliore) e il RESTO di §3 (la frizione automatica a cadenza, il freno di emergenza,
+> la corsia fluttuanti `blocked`/`approved`/`rejected` di `docs/STATE_MACHINE.md` §4)
+> restano DESIGN PURO** — nessuna riga di quella parte è eseguibile. Ogni sezione sotto è
+> annotata esplicitamente REALE o DESIGN, non lasciata all'inferenza. Fonte del design
+> originario:
 > `docs/brief_fase3_promozione_traccia.md` (vincolante, ma il codice lo sovrasta — §0 del
 > brief). Questo documento presuppone Fase 1/2 approvate (`docs/STATE_MACHINE.md`) e i due
 > invarianti del motore (`docs/ENGINE_INVARIANTS.md`): non li riapre, costruisce sopra.
@@ -193,10 +196,65 @@ un'aggregazione a chiave indicizzata, esattamente il caso d'uso per cui Postgres
 
 ## 3. La pipeline ricorrenza → promozione → dormienza
 
-**Rilevamento ricorrenza**: sorgente = occorrenze APPROVATE (mai rifiutate, brief §6) di
-stessa descrizione/temi/place_id entro una finestra — meccanismo già descritto in
-`STATE_MACHINE.md` §4 ("Ricorrenza → promozione"), non riscritto qui. Soglia N e finestra W
-restano deliberatamente non decise (§4 sotto).
+**REALTÀ vs DESIGN in questa sezione — non confonderli.** Un task successivo a questo
+design ("rilevamento pattern ricorrenti + promozione :Evento + cestino") ha reso REALE il
+rilevamento e la promozione — verificato contro il codice:
+
+- **Reale**: `urban_memory.ricorrenza.rileva_candidati` (rilevamento: `place_id`+insieme di
+  `temi` canonico, minimo `N_MINIMO_OCCORRENZE=3` occorrenze — vincolo DURO, mai
+  configurabile sotto — e regolarità misurata come coefficiente di variazione degli
+  intervalli, `TOLLERANZA_REGOLARITA=0.35`, scala-indipendente: la stessa soglia vale per un
+  pattern settimanale e uno annuale); `urban_memory.promozione_evento.scrivi_evento_promosso`
+  (scrive `:Evento` via `MATCH (:Luogo)` + `MERGE (:Evento)-[:SI_SVOLGE_A]->(:Luogo)`,
+  `cypher/50_promozione_evento_write.cypher`); il comando CLI
+  `python -m urban_memory.curatela_pattern` (percorso ristretto/fidato, stesso principio di
+  `submit_signal.py`/`verify.py` — NESSUN endpoint HTTP pubblico). Il cestino permanente
+  (`urban_memory.cestino_repository`, tabella `pattern_cestinato`,
+  `sql/02_ricorrenza_schema.sql`) è la Strada per "occorrenze rifiutate non fanno pattern"
+  di questa fase: si cestina il PATTERN, non la singola candidata, e resta cestinato per
+  sempre (v1, deliberatamente permanente — vedi `docs/LIMITI.md`).
+- **Deviazioni CONCRETE dal design originario sotto, da conoscere prima di leggerlo**:
+  nessuna finestra temporale W libera (si usa tutta la storia disponibile del pattern, non
+  una fetta scelta a mano — coerente con "non esiste un precedente per una W libera nel
+  repo", verificato prima di implementare); `cadenza` è `cadenza_giorni: float` (la MEDIA
+  degli intervalli in giorni), non un'etichetta categorica come "settimanale"/"annuale"
+  suggerito più sotto in questa sezione; il nodo porta anche `promosso_da`/`promosso_il`
+  (chi/quando della PRIMA promozione, mai sovrascritti) e, a una ripromozione,
+  `ultimo_ricalcolo_da`/`ultimo_ricalcolo_il` (separati, mai confusi con l'originale) — non
+  previsti nella bozza di proprietà sotto, aggiunti dopo un FAIL di `ethics-guardian` che
+  aveva trovato l'accountability della promozione persa (solo loggata, mai persistita sul
+  grafo). Un pattern il cui `:Evento` esiste già non è mai ripresentato come candidato
+  (`evento_esistente`, stesso principio del cestino) — altro fix dello stesso giro.
+- **NON reale, resta design puro**: la frizione automatica a cadenza (`attivo ⇄ sospeso →
+  dormiente`), il freno di emergenza, e la corsia di revisione umana `blocked`/`approved`/
+  `rejected` dei singoli SEGNALI fluttuanti (`STATE_MACHINE.md` §4) — quella distinta dalla
+  revisione del PATTERN qui sopra: ogni segnale che arriva dal canale fluttuante persistente
+  è trattato come implicitamente approvato (nessun `rejected` esiste ancora per il singolo
+  segnale), quindi il ledger su cui `rileva_candidati` legge non distingue oggi segnali
+  "genuinamente approvati da un Guardiano" da "mai rivisti da nessuno" — stesso limite già
+  dichiarato in `STATE_MACHINE.md` §4.
+- **Limite noto non chiuso da questo task**: la transizione automatica "occorrenze →
+  ricorrente" (system-detected, un pattern supera la soglia N+tolleranza) NON produce un
+  record d'audit persistente distinto dalla decisione del Promotore — `rileva_candidati` è
+  una funzione pura, senza log applicativo del "sistema ha rilevato questo pattern come
+  ricorrente in base a queste occorrenze". Solo le due transizioni UMANE successive
+  (`candidato → promosso`, `candidato → cestinato`) sono loggate (`chi=Promotore, quando,
+  pattern, cadenza/motivo` — `curatela_pattern.py`). Questo diverge dal principio
+  `STATE_MACHINE.md` §5/§1.4 originario ("anche se system-detected, la transizione va
+  comunque registrata... rilevamento ricorrenza" è l'esempio letterale usato lì) — non
+  bloccante (il rilevamento è ricalcolato ad ogni corsa della CLI, non uno stato perso: la
+  stessa candidatura ricompare identica finché non viene decisa), ma dichiarato qui invece
+  di lasciato implicito, coerente con la disciplina del resto di questo file. Vedi
+  `docs/LIMITI.md` per il dettaglio.
+
+**Rilevamento ricorrenza** (design originario, sotto — la Strada REALE sopra lo rispetta
+nella sostanza, con le deviazioni dichiarate): sorgente = occorrenze APPROVATE (mai
+rifiutate, brief §6) di stessa descrizione/temi/place_id entro una finestra — meccanismo già
+descritto in `STATE_MACHINE.md` §4 ("Ricorrenza → promozione"), non riscritto qui. Soglia N e
+finestra W: **N ha ora un valore reale nel codice** (`N_MINIMO_OCCORRENZE=3`, pavimento duro,
+tuning verso l'alto — vedi sopra); **W non esiste ancora** e non è stata introdotta
+(deliberato, vedi sopra) — resta non decisa nel senso più forte: non richiesta da questo
+design.
 
 **Nodo promosso: famiglia `:Evento`** (chiude la domanda 11 di `STATE_MACHINE.md` §7,
 check §3.4 del brief) — la label esiste già, riservata da `00_schema.cypher` con un
@@ -335,8 +393,14 @@ Tenute anche in `docs/STATE_MACHINE.md` §7 (items 12, 15 aperti; 14 e 16 CHIUSE
 principio, con solo un residuo di tuning/dettaglio implementativo) per restare in un solo
 posto consultabile insieme alle altre domande della macchina a stati:
 
-1. **Soglia N e finestra W** per il rilevamento della ricorrenza — stessa classe di
-   `tasso_ritorno`, si fissa quando c'è il dato reale.
+1. ~~**Soglia N e finestra W** per il rilevamento della ricorrenza.~~ **PARZIALMENTE
+   CHIUSA nel codice** (non nel principio di tuning): `N_MINIMO_OCCORRENZE=3` (pavimento
+   duro, mai sotto) e `TOLLERANZA_REGOLARITA=0.35` (coefficiente di variazione) sono valori
+   di PARTENZA reali in `urban_memory.ricorrenza`, dichiarati esplicitamente come tuning da
+   calibrare sui dati del pilota — stessa classe di `tasso_ritorno`, non definitivi. **W non
+   esiste**: sostituita per design da "tutta la storia disponibile del pattern" (nessuna
+   finestra libera introdotta, coerente con l'assenza di un precedente nel repo, verificata
+   prima di implementare — vedi §3 sopra).
 2. ~~**Override manuale del ritiro pattern**~~ **CHIUSA** (`docs/STATE_MACHINE.md` §4-bis):
    non un override generico, ma due meccanismi distinti — frizione automatica a cadenza
    (§3 sopra) e freno di emergenza (§3 sopra).

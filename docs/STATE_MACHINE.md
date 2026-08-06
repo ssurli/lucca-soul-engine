@@ -12,18 +12,23 @@
 > Per i fatti verificati sul motore delle esperienze (non sulla curatela), vedi
 > `docs/ENGINE_INVARIANTS.md` — perimetro diverso, non duplicato qui.
 >
-> **Eccezione al "design, non codice" del titolo — DUE pezzi, non più uno.** L'invariante B
-> (`approved → agganciato` automatico, Fase 3 Task 1) e la **fondazione persistenza+ledger
+> **Eccezione al "design, non codice" del titolo — TRE pezzi, non più due.** L'invariante B
+> (`approved → agganciato` automatico, Fase 3 Task 1), la **fondazione persistenza+ledger
 > della corsia fluttuanti** (Fase 3, task successivo: persistenza di `SegnaleFluttuante`,
-> sweep pigro `attivo → expired`, deposito della traccia, `:Luogo.ultima_traccia_il`) sono
+> sweep pigro `attivo → expired`, deposito della traccia, `:Luogo.ultima_traccia_il`) e il
+> **rilevamento pattern ricorrenti + promozione a `:Evento`** (Fase 3, task successivo:
+> `urban_memory.ricorrenza`/`promozione_evento`/`curatela_pattern`/`cestino_repository`) sono
 > passati da design a **codice reale**. §0 e §4 sotto sono stati riverificati e riscritti
-> contro il codice per riflettere questo — ciascuno con una nota esplicita di cosa è reale
-> e cosa resta design (§4: vedi "REALTÀ vs DESIGN" più sotto, subito dopo il diagramma della
-> corsia fluttuanti). Tutto il resto del documento (`blocked`/`deferred`/`rejected` della
-> corsia principale, le tre uscite dal target fantasma, `blocked`/`approved`/`rejected`
-> della corsia fluttuanti, promozione/frizione/freno) resta design puro, invariato.
-> Dettaglio delle due implementazioni e delle loro verifiche: `docs/ENGINE_INVARIANTS.md`
-> §11-B (invariante B) e `docs/PROMOZIONE_TRACCIA.md` (nota di apertura, persistenza+ledger).
+> contro il codice per riflettere i primi due — ciascuno con una nota esplicita di cosa è
+> reale e cosa resta design (§4: vedi "REALTÀ vs DESIGN" più sotto, subito dopo il diagramma
+> della corsia fluttuanti); il terzo ha la propria nota REALTÀ vs DESIGN nella sezione
+> "Ricorrenza → promozione", più sotto in questo file. Tutto il resto del documento
+> (`blocked`/`deferred`/`rejected` della corsia principale, le tre uscite dal target
+> fantasma, `blocked`/`approved`/`rejected` della corsia fluttuanti, la frizione automatica
+> a cadenza e il freno di emergenza del pattern promosso) resta design puro, invariato.
+> Dettaglio delle tre implementazioni e delle loro verifiche: `docs/ENGINE_INVARIANTS.md`
+> §11-B (invariante B) e `docs/PROMOZIONE_TRACCIA.md` (nota di apertura + §3, persistenza+
+> ledger e rilevamento+promozione).
 >
 > **Fase 3 (Promozione & Traccia, `docs/brief_fase3_promozione_traccia.md`)** ha chiuso tre
 > punti che questo documento lasciava aperti — §7.1 (`approved → agganciato`, ora
@@ -435,6 +440,34 @@ entro una finestra
                                         stagionalità nativamente)
 ```
 
+**REALTÀ vs DESIGN in questo diagramma — non confonderli.** Un task successivo a questo
+design ("rilevamento pattern ricorrenti + promozione :Evento + cestino") ha reso reale un
+tratto di questa sequenza, verificato contro il codice:
+
+- **Reale**: il rilevamento automatico e la transizione `candidato → "promosso"` (via
+  `python -m urban_memory.curatela_pattern`, un Promotore decide esplicitamente — mai
+  automatica) e `candidato → "cestinato"` (equivalente REALE di "ignorato" sopra, con un
+  nome diverso: si scrive nel cestino permanente, `pattern_cestinato`, invece di restare un
+  fatto non tracciato — vedi `docs/PROMOZIONE_TRACCIA.md` §3). La sorgente delle occorrenze è
+  il ledger delle tracce (§1 di `PROMOZIONE_TRACCIA.md`), non — come immaginato da questo
+  diagramma originario — le occorrenze "approvate" della corsia fluttuanti (quella
+  distinzione `approved`/`rejected` per il singolo segnale non esiste ancora, vedi sotto).
+- **Divergenza dal principio "anche se system-detected, la transizione va comunque
+  registrata"** (`§5` di questo file, il testo del diagramma sopra lo dice esplicitamente
+  per "ricorrente"): il rilevamento reale (`urban_memory.ricorrenza.rileva_candidati`) è una
+  funzione PURA, senza log applicativo del fatto "il sistema ha rilevato questo pattern come
+  ricorrente, in base a queste occorrenze" — solo le due transizioni UMANE successive
+  (promosso/cestinato) sono loggate. Limite dichiarato, non bloccante, non chiuso da questo
+  task: vedi `docs/LIMITI.md` e `docs/PROMOZIONE_TRACCIA.md` §3.
+- **NON reale, resta design puro**: `"ignorato"` come stato distinto da "cestinato" (nel
+  codice reale un rifiuto è sempre permanente, non esiste una terza via "resta noto ma non
+  promosso, senza cestinarlo"); l'intero ciclo `"attivo" ⇄ "sospeso" → "dormiente"` (§4-bis
+  sotto, frizione automatica a cadenza) e il freno di emergenza; la distinzione
+  `approved`/`rejected` per il singolo SEGNALO fluttuante (§4 sopra) — il rilevamento reale
+  legge il ledger così com'è, senza poter escludere un'occorrenza "mai rivista da un
+  Guardiano" da una "genuinamente approvata", perché quella distinzione non esiste ancora a
+  monte.
+
 Nessuno stato `"ritirato"` in questa sequenza: il freno di emergenza (§4-bis(b)) è un
 override ortogonale, non una quarta voce di `stato` — dettaglio completo sotto.
 
@@ -572,7 +605,8 @@ questa esclusione, non aggiungerla come eccezione a posteriori.
 | `blocked`, per-id: redirect / rimuovi da riguarda | Guardiano | chi, quando, perché (a quale id) |
 | `blocked`, per-id: crea nodo e aggancia | **Costruttore** | chi, quando, perché |
 | `approved → agganciato` | **automatico (sistema)** — CHIUSO, brief Fase 3 §1.7 | chi/cosa=sistema, quando |
-| `ricorrente → promosso` | **Promotore** | chi, quando, perché |
+| `ricorrente → promosso` | **Promotore** — REALE, `python -m urban_memory.curatela_pattern` | chi, quando, pattern, cadenza (persistiti su `:Evento.promosso_da`/`promosso_il`, mai un log soltanto) |
+| `candidato → cestinato` (equivalente reale di "ignorato" del diagramma — permanente, non una terza via) | **Promotore** — REALE, stesso comando | chi, quando, pattern, motivo se dato (persistiti su `pattern_cestinato`, append-only) |
 | imposta flag `richiede_revisione_umana` | Guardiano (chiunque) | chi, quando |
 | `submitted/blocked → approved/rejected` (fluttuante) | Guardiano | chi, quando, perché |
 | `submitted/blocked → expired` (fluttuante) | automatico (clock) | quando, sistema, sempre in audit |
@@ -630,8 +664,12 @@ un'identità loggata come un'altra, non un'esenzione.
     grafo (`00_schema.cypher`, constraint di unicità su `id`) ma senza seed/proprietà —
     riservata in anticipo per esattamente questo momento (`seed_lucca.py`: "Evento arriva
     con i segnali reali"). Dettagli in `docs/PROMOZIONE_TRACCIA.md` §3.
-12. **Soglia N e finestra per la rilevazione di "ricorrente"** — non decise, stessa classe
-    di scelta già rimandata altrove nel progetto (es. `tasso_ritorno`).
+12. ~~**Soglia N e finestra per la rilevazione di "ricorrente"**~~ **PARZIALMENTE CHIUSA nel
+    codice**: `N_MINIMO_OCCORRENZE=3` (pavimento duro) e `TOLLERANZA_REGOLARITA=0.35`
+    (coefficiente di variazione degli intervalli, scala-indipendente) sono valori di
+    PARTENZA reali in `urban_memory.ricorrenza`, tuning da calibrare sui dati del pilota —
+    stessa classe di `tasso_ritorno`, non definitivi. Nessuna finestra W: sostituita da
+    "tutta la storia disponibile del pattern" (vedi `docs/PROMOZIONE_TRACCIA.md` §3).
 13. **Richiamo automatico per tempo di `deferred`** (`deferred_until`) — deliberatamente
     omesso per ora, nessun caso reale a giustificarlo oggi.
 14. ~~**Ritiro manuale di un `:Evento` promosso**: la dormienza è *solo* da silenzio del

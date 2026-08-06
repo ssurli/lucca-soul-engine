@@ -291,3 +291,22 @@ def any_traccia_repository(request: pytest.FixtureRequest):
 
     migrate(dsn)
     return PostgresTracciaRepository(dsn)
+
+
+@pytest.fixture(params=["in_memory", "postgres"])
+def any_cestino_repository(request: pytest.FixtureRequest):
+    """Stesso pattern di `any_traccia_repository`, per
+    `PatternCestinatoRepository` (Fase 3, il cestino permanente dei pattern
+    rifiutati). Il ramo `postgres` salta (non fallisce) se il cluster
+    effimero non è disponibile, tramite `pg_dsn`."""
+    if request.param == "in_memory":
+        from urban_memory.cestino_repository import InMemoryPatternCestinatoRepository
+
+        return InMemoryPatternCestinatoRepository()
+
+    dsn = request.getfixturevalue("pg_dsn")
+    from urban_memory.cestino_repository import PostgresPatternCestinatoRepository
+    from urban_memory.migrate import migrate
+
+    migrate(dsn)
+    return PostgresPatternCestinatoRepository(dsn)

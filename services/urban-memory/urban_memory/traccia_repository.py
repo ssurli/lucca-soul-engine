@@ -57,6 +57,7 @@ __all__ = [
     "InMemoryTracciaRepository",
     "PostgresTracciaRepository",
     "TracciaStorageError",
+    "PatternAggregato",
 ]
 
 
@@ -73,6 +74,23 @@ class Traccia:
     place_id: str
     temi: tuple[str, ...]
     creato_il: datetime
+
+
+@dataclass(frozen=True)
+class PatternAggregato:
+    """Un pattern ricorrente grezzo: stesso `place_id` + stesso INSIEME di
+    `temi` (canonicalizzato come tupla ordinata alfabeticamente — l'ordine in
+    cui i temi arrivano da un singolo segnale non è significativo ai fini
+    dell'identità del pattern, solo il loro INSIEME lo è), con tutte le sue
+    occorrenze nel ledger. `occorrenze` è `creato_il` di ogni traccia del
+    pattern, in ordine crescente — la materia prima da cui
+    `urban_memory.ricorrenza.rileva_candidati` calcola intervalli, cadenza e
+    regolarità: nessuna logica statistica qui, solo conteggio e
+    raggruppamento."""
+
+    place_id: str
+    temi: tuple[str, ...]
+    occorrenze: tuple[datetime, ...]
 
 
 class TracciaRepository(Protocol):
@@ -94,6 +112,18 @@ class TracciaRepository(Protocol):
         da un consumatore futuro (bagliore, dormienza di un pattern
         promosso). Nessuna logica di aggregazione qui: solo lettura grezza
         del ledger."""
+        ...
+
+    def pattern_ricorrenti(self, minimo_occorrenze: int) -> list[PatternAggregato]:
+        """Enumera i pattern (place_id + insieme di temi) che hanno
+        raggiunto ALMENO `minimo_occorrenze` tracce nel ledger, ciascuno con
+        le proprie occorrenze (`creato_il`), ordinate crescenti — la vista
+        grezza da cui `urban_memory.ricorrenza.rileva_candidati` calcola
+        cadenza e regolarità. Nessuna logica di soglia/tolleranza qui: solo
+        conteggio e raggruppamento (il vincolo duro N>=3 vive in
+        `urban_memory.ricorrenza.N_MINIMO_OCCORRENZE`, non qui — questo
+        metodo accetta qualunque `minimo_occorrenze` positivo, è un
+        primitivo di aggregazione, non il gate di dominio)."""
         ...
 
 
@@ -131,6 +161,18 @@ class InMemoryTracciaRepository:
     def list_for_place(self, place_id: str) -> list[Traccia]:
         risultato = [t for t in self._store.values() if t.place_id == place_id]
         return sorted(risultato, key=lambda t: (t.creato_il, t.id))
+
+    def pattern_ricorrenti(self, minimo_occorrenze: int) -> list[PatternAggregato]:
+        gruppi: dict[tuple[str, tuple[str, ...]], list[datetime]] = {}
+        for traccia in self._store.values():
+            chiave = (traccia.place_id, tuple(sorted(traccia.temi)))
+            gruppi.setdefault(chiave, []).append(traccia.creato_il)
+        risultato = [
+            PatternAggregato(place_id=place_id, temi=temi, occorrenze=tuple(sorted(occorrenze)))
+            for (place_id, temi), occorrenze in gruppi.items()
+            if len(occorrenze) >= minimo_occorrenze
+        ]
+        return sorted(risultato, key=lambda p: (p.place_id, p.temi))
 
 
 # ---------------------------------------------------------------------------
@@ -210,6 +252,42 @@ class PostgresTracciaRepository:
         except psycopg.Error as exc:
             raise TracciaStorageError(f"lettura fallita su traccia_luogo: {exc}") from exc
         return [_from_row(riga) for riga in righe]
+
+    def pattern_ricorrenti(self, minimo_occorrenze: int) -> list[PatternAggregato]:
+        # La canonicalizzazione (temi ordinati alfabeticamente) avviene QUI,
+        # in query, non nell'indice (Postgres non ammette una sotto-query in
+        # un'espressione di indice): vedi il commento su
+        # `traccia_luogo_place_id_temi_idx` in
+        # `sql/02_ricorrenza_schema.sql`.
+        query = (
+            "WITH canonico AS ("
+            "  SELECT place_id, "
+            "         (SELECT array_agg(t ORDER BY t) FROM unnest(temi) AS t) AS temi_canonici, "
+            "         creato_il "
+            "  FROM traccia_luogo"
+            ") "
+            "SELECT place_id, temi_canonici, "
+            "       array_agg(creato_il ORDER BY creato_il) AS occorrenze "
+            "FROM canonico "
+            "GROUP BY place_id, temi_canonici "
+            "HAVING count(*) >= %(minimo)s "
+            "ORDER BY place_id, temi_canonici"
+        )
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, {"minimo": minimo_occorrenze})
+                    righe = list(cur.fetchall())
+        except psycopg.Error as exc:
+            raise TracciaStorageError(f"aggregazione fallita su traccia_luogo: {exc}") from exc
+        return [
+            PatternAggregato(
+                place_id=riga["place_id"],
+                temi=tuple(riga["temi_canonici"] or []),
+                occorrenze=tuple(riga["occorrenze"] or []),
+            )
+            for riga in righe
+        ]
 
 
 def _from_row(riga: dict[str, Any]) -> Traccia:
