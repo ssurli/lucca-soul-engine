@@ -481,39 +481,73 @@ confusi né nella forma né nell'autorità che li governa.
 
 ### (a) Frizione automatica a cadenza — il ciclo di vita normale
 
+> **REALTÀ vs DESIGN — Un task successivo a questo design ("verifica §0 — frizione, sola
+> lettura" + implementazione conseguente) ha reso REALE il calcolo e l'applicazione della
+> transizione, verificato contro il codice**: `urban_memory.frizione_pattern` (comando
+> `python -m urban_memory.frizione_pattern`), funzione pura `calcola_transizione`, query
+> `cypher/60_eventi_ricorrenti_read.cypher` (lettura)/`61_frizione_stato_write.cypher`
+> (scrittura, `MATCH`+`SET` puro, mai un `MERGE`). Verificato con un giro DEDICATO di
+> `ethics-guardian` (PASS con riserva — un problema numerico reale nei default trovato e
+> corretto in questa stessa collaborazione, vedi sotto), non un'autovalutazione.
+> **Due deviazioni CONCRETE dal design sotto, da conoscere prima di leggerlo**:
+> (1) il clock del pattern (l'ultima occorrenza) NON è una proprietà scritta sul nodo
+> `:Evento` — si CALCOLA ogni volta dal ledger Postgres (`TracciaRepository.
+> occorrenze_per_pattern`, nuovo metodo, filtrato per `place_id`+`temi` esatti del pattern),
+> per non accoppiare l'hot path di `/itinerary` (dove le tracce vengono depositate,
+> `urban_memory.canale_fluttuante.sweep_and_fetch_active`) a un lookup su `:Evento`; (2)
+> **`sospeso → attivo` NON è "automatico non appena arriva una traccia fresca"** come il
+> design originario sotto ipotizzava — avviene SOLO quando `python -m
+> urban_memory.frizione_pattern` viene rieseguito e trova un'occorrenza abbastanza recente:
+> un pattern può restare `sospeso` più a lungo di quanto la sola cadenza indicherebbe se il
+> comando non gira con regolarità. Dichiarato esplicitamente nel modulo, non nascosto — vedi
+> `docs/LIMITI.md` per il dettaglio completo di questa e altre deviazioni. Il comando resta
+> un batch RISTRETTO/FIDATO (nessuna auth, nessun rate limiting, invocato manualmente),
+> MAI raggiungibile da `/itinerary` o dall'Experience Engine — verificato per assenza di
+> import incrociati.
+
 Sostituisce il modello iniziale di `docs/PROMOZIONE_TRACCIA.md` §3 ("`ultima_traccia_il`
 invecchia oltre una soglia assoluta → `dormiente`") con un modello sensibile al **ritmo** del
 pattern, non al tempo assoluto:
 
 - Il pattern promosso salva la propria **cadenza** (il ritmo delle occorrenze che lo hanno
-  fatto rilevare come ricorrente — es. "ogni sabato") al momento della promozione.
-  **Da verificare quando il rilevamento ricorrenza sarà implementato**: se la funzione che
-  produce `"ricorrente"` (`docs/PROMOZIONE_TRACCIA.md` §3, soglia N/finestra W) calcola già
-  un ritmo o solo un conteggio grezzo di occorrenze in una finestra. Se calcola solo il
-  conteggio, la cadenza è un campo **nuovo** da persistere sull'`:Evento` al momento della
-  promozione, non deducibile a posteriori dal solo conteggio. **Non verificabile oggi contro
-  codice reale**: il rilevamento ricorrenza non esiste ancora (`docs/FASE3_VERIFICHE.md`,
-  check 1) — annotato qui come vincolo di progettazione per quando verrà implementato, non
-  come fatto verificato.
+  fatto rilevare come ricorrente — es. "ogni sabato") al momento della promozione. **REALE**:
+  `e.cadenza_giorni` (float, media giorni tra occorrenze consecutive — non una mediana né
+  l'ultimo intervallo), scritta da `promozione_evento_cypher` alla promozione — vedi
+  `docs/FASE3_VERIFICHE.md`/`docs/PROMOZIONE_TRACCIA.md` §3 per la chiusura di questo punto.
 - **`attivo → sospeso`**: dopo **K battiti mancati** della cadenza attesa — non un numero di
   giorni assoluto. Un pattern settimanale che salta due sabati e uno mensile che salta due
   mesi attraversano la stessa soglia *logica* (K battiti), non la stessa soglia in giorni.
-- **`sospeso → attivo`**: automatico, non appena arriva una traccia fresca — il pattern si
-  "risveglia" da solo quando ricompare, nessuna azione del curatore richiesta.
+  **REALE**: `K_BATTITI_SOSPENSIONE` (default 2, dichiarato tuning di partenza).
+- **`sospeso → attivo`**: **REALE, ma solo a corsa del comando** (vedi nota REALTÀ vs DESIGN
+  sopra) — non "non appena arriva una traccia fresca" come ipotizzato qui sotto in origine:
+  automatico nel senso che nessun curatore decide, ma non istantaneo rispetto al deposito
+  della traccia.
 - **`sospeso → dormiente`**: se la sospensione supera un **orizzonte lungo** (assoluto, non
   in battiti — a un certo punto anche un pattern annuale va dichiarato dormiente se non si
-  ripresenta più).
+  ripresenta più). **REALE, con una correzione rispetto al design originario**: l'orizzonte
+  NON è una costante fissa indipendente dalla cadenza (una soglia fissa avrebbe dichiarato
+  `dormiente` un pattern annuale quasi subito dopo essere entrato in `sospeso` — bug trovato
+  da `ethics-guardian` sui valori di default iniziali, corretto prima della chiusura) — è
+  `max(ORIZZONTE_DORMIENZA_GIORNI, K_ORIZZONTE_DORMIENZA * cadenza_giorni)`: un pavimento
+  assoluto (180 giorni, per le cadenze cortissime) combinato con un multiplo della cadenza
+  stessa (per le cadenze lunghe, dove il pavimento da solo sarebbe insufficiente).
 - **Gestisce nativamente la stagionalità**: un pattern annuale (es. un mercatino di Natale)
-  vive `sospeso` per undici mesi ogni anno senza mai essere dichiarato morto — il modello
-  precedente (invecchiamento assoluto di `ultima_traccia_il`) lo avrebbe spento ogni anno,
-  confondendo "stagionale" con "cessato" — lo stesso errore concettuale che
+  vive `sospeso` per undici-dodici mesi ogni anno senza mai essere dichiarato morto — il
+  modello precedente (invecchiamento assoluto di `ultima_traccia_il`) lo avrebbe spento ogni
+  anno, confondendo "stagionale" con "cessato" — lo stesso errore concettuale che
   `docs/LIMITI.md` documenta altrove per `tasso_ritorno` (finestra sbagliata = fenomeno
-  travisato).
-- **Numeri non decisi qui**: K (battiti mancati per sospendere), l'orizzonte lungo (per
-  dormire da sospeso), la tolleranza sul ritmo (quanto una cadenza può slittare prima di
-  contare come "mancata") sono tuning — stessa classe di scelta già rimandata per la soglia
-  N/finestra W della ricorrenza (§7 item 12) e per la curva di decadimento del bagliore
-  (§7 item 15).
+  travisato). **Verificato ora anche numericamente** (non solo concettualmente): con i
+  default reali, un pattern annuale entra in `sospeso` a ~730 giorni e in `dormiente` solo
+  oltre ~1095 giorni — circa una cadenza intera di margine, non un istante.
+- **Numeri**: K (battiti mancati per sospendere), l'orizzonte assoluto e il suo moltiplicatore
+  di cadenza (per dormire da sospeso) hanno ora valori REALI di partenza nel codice
+  (`K_BATTITI_SOSPENSIONE=2`, `ORIZZONTE_DORMIENZA_GIORNI=180.0`,
+  `K_ORIZZONTE_DORMIENZA=3.0`), dichiarati esplicitamente tuning da calibrare sul pilota, non
+  definitivi — stessa classe di scelta già rimandata per la soglia N/finestra W della
+  ricorrenza (§7 item 12) e per la curva di decadimento del bagliore (§7 item 15, ancora
+  design puro). La **tolleranza sul ritmo** (quanto una cadenza può slittare prima di
+  contare come "mancata") resta invece NON implementata: `calcola_transizione` non ha un
+  parametro di tolleranza, solo il rapporto esatto giorni-trascorsi/cadenza.
 
 ### (b) Freno di emergenza — override di sicurezza, non uno stato — CHIUSA (§7.14.1)
 

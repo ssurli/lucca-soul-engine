@@ -262,6 +262,12 @@ def test_fallimento_deposita_isolato_non_blocca_gli_altri_segnali(
         def list_for_place(self, place_id: str):
             return reale.list_for_place(place_id)
 
+        def pattern_ricorrenti(self, minimo_occorrenze: int):
+            return reale.pattern_ricorrenti(minimo_occorrenze)
+
+        def occorrenze_per_pattern(self, place_id: str, temi: list[str]):
+            return reale.occorrenze_per_pattern(place_id, temi)
+
     istante = ORA + timedelta(hours=1)
     with caplog.at_level("ERROR"):
         attivi = sweep_and_fetch_active(

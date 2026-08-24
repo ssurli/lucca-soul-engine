@@ -126,6 +126,30 @@ class TracciaRepository(Protocol):
         primitivo di aggregazione, non il gate di dominio)."""
         ...
 
+    def occorrenze_per_pattern(self, place_id: str, temi: list[str]) -> list[datetime]:
+        """Le occorrenze (`creato_il`) di UN pattern ESATTO — `place_id` +
+        l'INSIEME di `temi` (canonicalizzato, l'ordine non è significativo,
+        stessa convenzione di `PatternAggregato`) — ordinate crescenti.
+
+        A differenza di `pattern_ricorrenti` (che aggrega TUTTI i pattern
+        sopra soglia in un colpo solo) e di `list_for_place` (che restituisce
+        TUTTE le tracce di un luogo, mischiando temi diversi), questo metodo
+        mira a UN pattern specifico e GIÀ promosso: la lettura che
+        `urban_memory.frizione_pattern` esegue per calcolare l'ultima
+        occorrenza e i battiti di cadenza mancati di UN `:Evento` esistente
+        (letto dal grafo con le proprie proprietà `place_id`+`temi`), non un
+        campo scritto ad ogni deposito di traccia — il clock del pattern si
+        CALCOLA da questo metodo ogni volta che serve, non si mantiene
+        incrementalmente nell'hot path di `/itinerary`
+        (`urban_memory.canale_fluttuante.sweep_and_fetch_active`), per non
+        accoppiare quel percorso a un lookup su `:Evento`.
+
+        Lista vuota se nessuna traccia esiste per questo pattern esatto
+        (mai un errore: un pattern promosso con zero occorrenze nel ledger è
+        un caso degenere che chi chiama tratta esplicitamente, non un
+        malfunzionamento di questo metodo)."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # In-memory — percorso di test e di default finché DATABASE_URL non c'è
@@ -173,6 +197,15 @@ class InMemoryTracciaRepository:
             if len(occorrenze) >= minimo_occorrenze
         ]
         return sorted(risultato, key=lambda p: (p.place_id, p.temi))
+
+    def occorrenze_per_pattern(self, place_id: str, temi: list[str]) -> list[datetime]:
+        temi_canonici = tuple(sorted(temi))
+        occorrenze = [
+            traccia.creato_il
+            for traccia in self._store.values()
+            if traccia.place_id == place_id and tuple(sorted(traccia.temi)) == temi_canonici
+        ]
+        return sorted(occorrenze)
 
 
 # ---------------------------------------------------------------------------
@@ -288,6 +321,30 @@ class PostgresTracciaRepository:
             )
             for riga in righe
         ]
+
+    def occorrenze_per_pattern(self, place_id: str, temi: list[str]) -> list[datetime]:
+        # Stessa canonicalizzazione IN QUERY di `pattern_ricorrenti` (il
+        # confronto è sull'array ORDINATO alfabeticamente, non sull'array
+        # grezzo così com'è arrivato dal segnale): un pattern esatto è
+        # identificato dall'INSIEME dei temi, non dal loro ordine di arrivo.
+        temi_canonici = sorted(temi)
+        query = (
+            "SELECT creato_il FROM traccia_luogo "
+            "WHERE place_id = %(place_id)s "
+            "AND (SELECT array_agg(t ORDER BY t) FROM unnest(temi) AS t) = %(temi_canonici)s "
+            "ORDER BY creato_il"
+        )
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, {"place_id": place_id, "temi_canonici": temi_canonici})
+                    righe = list(cur.fetchall())
+        except psycopg.Error as exc:
+            raise TracciaStorageError(
+                f"lettura fallita su traccia_luogo per pattern place_id={place_id!r}, "
+                f"temi={temi_canonici!r}: {exc}"
+            ) from exc
+        return [riga["creato_il"] for riga in righe]
 
 
 def _from_row(riga: dict[str, Any]) -> Traccia:

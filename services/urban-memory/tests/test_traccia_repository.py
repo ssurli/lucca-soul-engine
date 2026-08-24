@@ -109,3 +109,75 @@ def test_list_for_place_filtra_per_luogo_in_ordine_di_deposito(any_traccia_repos
 def test_list_for_place_vuota_se_nessuna_traccia(any_traccia_repository) -> None:
     repo = any_traccia_repository
     assert repo.list_for_place("luogo-mai-visto") == []
+
+
+# ---------------------------------------------------------------------------
+# occorrenze_per_pattern — il clock del pattern promosso, CALCOLATO dal
+# ledger a ogni chiamata (mai un campo mantenuto incrementalmente): la
+# lettura che `urban_memory.frizione_pattern` usa per un pattern ESATTO
+# (place_id + insieme di temi specifico), a differenza di
+# `pattern_ricorrenti` (TUTTI i pattern sopra soglia) e `list_for_place`
+# (TUTTE le tracce di un luogo, temi mischiati).
+# ---------------------------------------------------------------------------
+
+
+def test_occorrenze_per_pattern_filtra_per_place_id_e_temi_esatti(
+    any_traccia_repository,
+) -> None:
+    repo = any_traccia_repository
+    repo.deposita(
+        segnale_id="s1",
+        place_id="piazza-anfiteatro",
+        temi=["musica", "arte"],
+        creato_il=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+    repo.deposita(
+        segnale_id="s2",
+        place_id="piazza-anfiteatro",
+        temi=["arte", "musica"],  # stesso insieme, ordine diverso
+        creato_il=datetime(2026, 1, 8, tzinfo=UTC),
+    )
+    # Rumore che NON deve comparire: stesso luogo, temi diversi.
+    repo.deposita(
+        segnale_id="s3",
+        place_id="piazza-anfiteatro",
+        temi=["storia"],
+        creato_il=datetime(2026, 1, 9, tzinfo=UTC),
+    )
+    # Rumore che NON deve comparire: stessi temi, luogo diverso.
+    repo.deposita(
+        segnale_id="s4",
+        place_id="san-michele",
+        temi=["arte", "musica"],
+        creato_il=datetime(2026, 1, 10, tzinfo=UTC),
+    )
+
+    occorrenze = repo.occorrenze_per_pattern("piazza-anfiteatro", ["musica", "arte"])
+
+    assert occorrenze == [
+        datetime(2026, 1, 1, tzinfo=UTC),
+        datetime(2026, 1, 8, tzinfo=UTC),
+    ]
+
+
+def test_occorrenze_per_pattern_ordine_dei_temi_richiesti_e_indifferente(
+    any_traccia_repository,
+) -> None:
+    repo = any_traccia_repository
+    repo.deposita(
+        segnale_id="s1",
+        place_id="piazza-anfiteatro",
+        temi=["musica", "arte"],
+        creato_il=datetime(2026, 1, 1, tzinfo=UTC),
+    )
+
+    # Richiedere i temi in un ordine diverso da quello depositato non deve
+    # cambiare il risultato: l'identità del pattern è l'INSIEME dei temi.
+    occorrenze = repo.occorrenze_per_pattern("piazza-anfiteatro", ["arte", "musica"])
+
+    assert occorrenze == [datetime(2026, 1, 1, tzinfo=UTC)]
+
+
+def test_occorrenze_per_pattern_vuota_se_pattern_mai_visto(any_traccia_repository) -> None:
+    repo = any_traccia_repository
+    assert repo.occorrenze_per_pattern("luogo-mai-visto", ["musica"]) == []

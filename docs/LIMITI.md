@@ -1099,3 +1099,89 @@ soddisfatta). Va riletto prima di:
 - presentare la curatela dei pattern come "auditabile end-to-end" a un'amministrazione;
 - costruire un meccanismo che debba sapere "da quanto tempo" un pattern è candidato (oggi
   non derivabile se non dalla prima occorrenza nel ledger, un proxy imperfetto).
+
+---
+
+## La frizione automatica a cadenza (`attivo ⇄ sospeso → dormiente`) è un batch manuale: la riattivazione non è in tempo reale, e non ha uno scheduler
+
+**Introdotto:** Fase 3, frizione automatica a cadenza. **Componente:** `services/urban-memory`
+(`urban_memory.frizione_pattern`).
+
+### Cosa è garantito oggi
+
+`python -m urban_memory.frizione_pattern` calcola e applica la transizione di stato di ogni
+`:Evento {ricorrente: true}` esistente, leggendo le sue occorrenze ESATTE dal ledger
+Postgres (`TracciaRepository.occorrenze_per_pattern`, filtrato per `place_id`+`temi`) e
+scrivendo `e.stato` solo se cambia (`MATCH`+`SET` puro, mai un `MERGE`). Ogni transizione
+automatica applicata è loggata esplicitamente (chi=sistema, quando, evento_id, stato
+precedente→nuovo, perché) — colma, per questo meccanismo, il gap di accountability
+documentato nella voce precedente di questo file per il rilevamento ricorrenza. La logica è
+sensibile alla CADENZA (`attivo → sospeso` in battiti mancati) e non a un tempo assoluto
+fisso per la sospensione, con un orizzonte di dormienza proporzionale alla cadenza del
+singolo pattern (`max(pavimento assoluto, moltiplicatore × cadenza_giorni)` — corretto da un
+giro dedicato di `ethics-guardian` che aveva trovato i valori di default iniziali in
+tensione, vedi sotto). Verificato: 228 test passano, nessuna riga di questo modulo è
+raggiungibile da `/itinerary` o dall'Experience Engine.
+
+### Cosa NON è garantito
+
+- **`sospeso → attivo` non è in tempo reale.** Il design originario
+  (`docs/STATE_MACHINE.md` §4-bis(a), prima di questa implementazione) ipotizzava "automatico
+  non appena arriva una traccia fresca". Il codice reale calcola il clock del pattern SOLO
+  quando `frizione_pattern` viene eseguito — non c'è alcun trigger legato al deposito di una
+  traccia (`urban_memory.canale_fluttuante.sweep_and_fetch_active`, che gira dentro
+  `/itinerary`). Un pattern può quindi restare `sospeso` più a lungo di quanto la sola cadenza
+  indicherebbe, se questo comando non viene rieseguito con regolarità dopo che il pattern ha
+  ripreso a manifestarsi. Decisione architetturale deliberata (vedi il docstring del modulo):
+  l'alternativa (dare al percorso caldo di `/itinerary` visibilità su `:Evento` per
+  aggiornare lo stato ad ogni traccia) avrebbe accoppiato il motore puro a una scrittura sul
+  grafo non necessaria per comporre un itinerario.
+- **Nessuno scheduler esiste.** Il comando va invocato manualmente (stesso principio di
+  `curatela_pattern.py`/`submit_signal.py`/`verify.py`): non esiste un job periodico, un
+  cron, o un trigger che lo richiami automaticamente. Senza disciplina operativa (rieseguirlo
+  a intervalli regolari), gli `:Evento` promossi possono restare con uno `stato` stantio
+  indefinitamente — un pattern realmente cessato mesi fa potrebbe restare `attivo` finché
+  nessuno fa girare il comando.
+- **Nessuna riattivazione da `dormiente`.** Una volta dichiarato `dormiente`, un `:Evento` non
+  torna mai automaticamente `attivo`/`sospeso` in questo comando, anche se il pattern
+  ricomincia a manifestarsi con nuove tracce nel ledger — `calcola_transizione` tratta
+  `dormiente` come vicolo cieco per costruzione. Fuori scope deliberato (nessun caso reale
+  osservato che ne mostri il bisogno); se servirà, è un task a sé.
+- **Nessuna "tolleranza sul ritmo".** Il design originario (`docs/PROMOZIONE_TRACCIA.md` §5,
+  item 3) menzionava una tolleranza su quanto una cadenza può slittare prima di contare come
+  "battito mancato" — `calcola_transizione` non ha alcun parametro equivalente: usa il
+  rapporto esatto `giorni_trascorsi / cadenza_giorni`, nessuna soglia di margine.
+- **I tre valori di tuning (`K_BATTITI_SOSPENSIONE=2`, `ORIZZONTE_DORMIENZA_GIORNI=180.0`,
+  `K_ORIZZONTE_DORMIENZA=3.0`) sono valori di PARTENZA**, non calibrati su alcun dato reale
+  del pilota — stessa classe di `ricorrenza.N_MINIMO_OCCORRENZE`/`TOLLERANZA_REGOLARITA`. Un
+  giro dedicato di `ethics-guardian` (non un'autovalutazione) ha trovato che i valori
+  inizialmente proposti erano in tensione reale: con `K_BATTITI_SOSPENSIONE=2` e un pattern a
+  cadenza lunga (es. annuale, `cadenza_giorni≈365`), la soglia `attivo→sospeso` scattava solo
+  a ~730 giorni — ma un `ORIZZONTE_DORMIENZA_GIORNI=180` fisso e indipendente dalla cadenza
+  era già ampiamente superato ben prima di quell'istante, quindi il pattern sarebbe stato
+  dichiarato `dormiente` quasi subito dopo essere entrato in `sospeso`, vanificando lo scopo
+  dichiarato (gestire nativamente la stagionalità). Corretto rendendo l'orizzonte
+  proporzionale alla cadenza (`max(pavimento, moltiplicatore × cadenza_giorni)`) prima della
+  chiusura di questo lavoro — ma la calibrazione dei tre numeri resta comunque da fare sui
+  dati reali del pilota, non definitiva.
+
+### Cosa servirebbe per chiudere questi buchi (proposte, NON implementate ora)
+
+1. **Uno scheduler** (cron, job periodico) che invochi `python -m urban_memory.frizione_pattern`
+   a intervalli regolari — decisione operativa (quale intervallo?), non solo tecnica.
+2. **Riattivazione in tempo reale**: solo se un caso reale mostra che il ritardo del batch è
+   inaccettabile — richiederebbe ripensare l'accoppiamento hot-path/grafo deliberatamente
+   evitato in questa implementazione, non un aggiustamento locale.
+3. **Riattivazione da `dormiente`**: da progettare quando/se un caso reale la richiede
+   (un pattern dichiarato morto che poi ricomincia).
+4. **Calibrazione dei tre numeri di tuning** sui dati reali del pilota, come già rimandato per
+   `N_MINIMO_OCCORRENZE`/`TOLLERANZA_REGOLARITA` sopra in questo file.
+
+### Decisione
+
+Non implementato ora. Il comando resta un batch manuale, senza scheduler, senza riattivazione
+da `dormiente`, senza tolleranza sul ritmo — dichiarato esplicitamente, non un buco silenzioso.
+Questo limite va riletto prima di:
+- affidarsi allo `stato` di un `:Evento` come sempre aggiornato in un contesto di produzione
+  reale (Living Lab) senza una disciplina operativa esplicita di riesecuzione del comando;
+- decidere di investire in uno scheduler o in una riattivazione in tempo reale.

@@ -7,10 +7,14 @@
 > verificato contro il codice, non presunto, stessa disciplina di sempre. **Un secondo
 > task ("rilevamento pattern ricorrenti + promozione :Evento + cestino") ha reso REALE
 > anche una FETTA di §3** — il rilevamento della ricorrenza e la promozione a `:Evento`
-> via curatela umana da CLI, dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto. **§2(b)
-> (il bagliore) e il RESTO di §3 (la frizione automatica a cadenza, il freno di emergenza,
-> la corsia fluttuanti `blocked`/`approved`/`rejected` di `docs/STATE_MACHINE.md` §4)
-> restano DESIGN PURO** — nessuna riga di quella parte è eseguibile. Ogni sezione sotto è
+> via curatela umana da CLI, dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto. **Un
+> terzo task ("verifica §0 — frizione, sola lettura" + implementazione conseguente) ha reso
+> REALE anche la frizione automatica a cadenza** (`attivo ⇄ sospeso → dormiente`,
+> `urban_memory.frizione_pattern`, comando `python -m urban_memory.frizione_pattern`) —
+> dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto, subito dopo quella del rilevamento/
+> promozione. **§2(b) (il bagliore) e il freno di emergenza, più la corsia fluttuanti
+> `blocked`/`approved`/`rejected` di `docs/STATE_MACHINE.md` §4, restano DESIGN PURO** —
+> nessuna riga di quelle parti è eseguibile. Ogni sezione sotto è
 > annotata esplicitamente REALE o DESIGN, non lasciata all'inferenza. Fonte del design
 > originario:
 > `docs/brief_fase3_promozione_traccia.md` (vincolante, ma il codice lo sovrasta — §0 del
@@ -225,8 +229,27 @@ rilevamento e la promozione — verificato contro il codice:
   aveva trovato l'accountability della promozione persa (solo loggata, mai persistita sul
   grafo). Un pattern il cui `:Evento` esiste già non è mai ripresentato come candidato
   (`evento_esistente`, stesso principio del cestino) — altro fix dello stesso giro.
-- **NON reale, resta design puro**: la frizione automatica a cadenza (`attivo ⇄ sospeso →
-  dormiente`), il freno di emergenza, e la corsia di revisione umana `blocked`/`approved`/
+- **Ora REALE anche la frizione automatica a cadenza** (`attivo ⇄ sospeso → dormiente`,
+  `urban_memory.frizione_pattern`, `python -m urban_memory.frizione_pattern`) — verificato
+  contro il codice, non presunto. Funzione pura `calcola_transizione`; lettura di tutti gli
+  `:Evento {ricorrente: true}` (`cypher/60_eventi_ricorrenti_read.cypher`) e scrittura dello
+  stato (`cypher/61_frizione_stato_write.cypher`, `MATCH`+`SET` puro, mai un `MERGE` — il
+  nodo esiste già, creato solo alla promozione). **Due deviazioni dal design**, dettaglio
+  completo in `docs/STATE_MACHINE.md` §4-bis(a): (1) il clock del pattern (ultima occorrenza)
+  non è una proprietà sul nodo `:Evento` — si CALCOLA ogni volta dal ledger Postgres
+  (`TracciaRepository.occorrenze_per_pattern`, nuovo metodo, filtrato per `place_id`+`temi`
+  esatti), per non accoppiare l'hot path di `/itinerary` a un lookup sul grafo; (2)
+  `sospeso → attivo` NON è istantaneo al deposito di una traccia fresca — avviene solo alla
+  successiva corsa del comando (un pattern può restare `sospeso` più a lungo di quanto la
+  cadenza indicherebbe se il comando non gira con regolarità — dichiarato, non nascosto,
+  `docs/LIMITI.md`). Un giro DEDICATO di `ethics-guardian` (non un'autovalutazione) ha dato
+  PASS con riserva: ha trovato un bug numerico reale nei valori di default iniziali
+  (`K_BATTITI_SOSPENSIONE`/`ORIZZONTE_DORMIENZA_GIORNI` in tensione — un pattern annuale
+  sarebbe stato dichiarato `dormiente` quasi subito dopo `sospeso`, vanificando lo scopo
+  dichiarato di gestire la stagionalità), corretto rendendo l'orizzonte di dormienza
+  proporzionale alla cadenza del singolo pattern (`max(pavimento assoluto, moltiplicatore ×
+  cadenza_giorni)`), con test di regressione dedicato per cadenze lunghe. **Resta design
+  puro**: il freno di emergenza, e la corsia di revisione umana `blocked`/`approved`/
   `rejected` dei singoli SEGNALI fluttuanti (`STATE_MACHINE.md` §4) — quella distinta dalla
   revisione del PATTERN qui sopra: ogni segnale che arriva dal canale fluttuante persistente
   è trattato come implicitamente approvato (nessun `rejected` esiste ancora per il singolo
@@ -410,12 +433,20 @@ posto consultabile insieme alle altre domande della macchina a stati:
    doppio-occhio sul tiro (stessa domanda di `docs/STATE_MACHINE.md` §7 item 16, non
    duplicata in due forme diverse). Il residuo (chi amministra la lista) è dettaglio
    implementativo, ripiegato nel tuning dell'item 3 sotto — non una domanda di design a sé.
-3. **Forma della curva di decadimento — disegnata qui (§2b); i numeri no**: tasso di
-   decadimento, valore del pavimento, soglia di invecchiamento per la dormienza — E ORA
-   ANCHE K (battiti mancati per sospendere) e l'orizzonte lungo (sospeso→dormiente) della
-   frizione a cadenza (§3, §4-bis(a) di `docs/STATE_MACHINE.md`), E chi amministra la lista
-   dei permessi-freno (§7.14.1) — stessa classe di tuning/dettaglio implementativo, non
-   struttura.
+3. **Forma della curva di decadimento (bagliore, §2b) — disegnata, i numeri no**: tasso di
+   decadimento e valore del pavimento restano design puro, nessun valore reale nel codice.
+   **La frizione a cadenza (§3, §4-bis(a) di `docs/STATE_MACHINE.md`) è invece PARZIALMENTE
+   CHIUSA nel codice** (stessa classe della soglia N/tolleranza dell'item 1): K battiti
+   mancati per sospendere (`K_BATTITI_SOSPENSIONE=2`), l'orizzonte assoluto di dormienza
+   (`ORIZZONTE_DORMIENZA_GIORNI=180.0`) e il suo moltiplicatore di cadenza
+   (`K_ORIZZONTE_DORMIENZA=3.0`, aggiunto per correggere un bug reale trovato da
+   `ethics-guardian` — un orizzonte fisso indipendente dalla cadenza avrebbe vanificato la
+   gestione della stagionalità per i pattern a cadenza lunga) sono valori di PARTENZA reali
+   in `urban_memory.frizione_pattern`, dichiarati esplicitamente tuning da calibrare sul
+   pilota, non definitivi. La **tolleranza sul ritmo** (quanto una cadenza può slittare
+   prima di contare come "mancata") resta invece NON implementata — nessun parametro
+   equivalente esiste in `calcola_transizione`. Resta aperto anche chi amministra la lista
+   dei permessi-freno (§7.14.1) — dettaglio implementativo, non struttura.
 4. ~~**Collocazione del codice del ledger**: `services/urban-memory` o un servizio nuovo
    dedicato?~~ **CHIUSA** — `services/urban-memory` (§1 sopra), decisione presa
    dall'orchestratore al momento dell'implementazione, non da questo documento di design.
