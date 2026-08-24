@@ -5,6 +5,12 @@ Mappato sulla roadmap del White Paper (Fase 0 Ricerca → 1 PoC → 2 Living Lab
 
 Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore esegue una wave alla volta.
 
+> **Canali d'ingresso, stato attuale**: segnali (fluttuanti, transitori) — **fatto**
+> (`docs/PROMOZIONE_TRACCIA.md`); relazioni (archi stabili tra entità, es. pizzeria↔rafting,
+> alimentati via curatela) — **non ancora aperto**, nessuna porta d'ingresso oggi.
+> **Scala**: Lucca prima, poi area vasta — non si salta direttamente alla replica nazionale
+> (Fase 4).
+
 ---
 
 ## Wave 0 — Fondamenta & contratti  *(blocca tutto il resto)*
