@@ -731,32 +731,54 @@ un'esperienza permanente.
   Il filtro duro (`segnale_fluttuante_ammissibile`) protegge SOLO contro un segnale onestamente
   marcato commerciale, non contro uno mentito. Trovato durante un giro dedicato di
   ethics-guardian su questa stessa funzionalità (vedi changelog in `docs/BUILD_PLAN.md`).
-  **Aggiornamento (Fase 3, promozione + consumo degli `:Evento` — dichiarazione esplicita
-  richiesta da un giro dedicato di `ethics-guardian`, non un'estensione spontanea): questo
-  varco non si ferma al singolo segnale fluttuante, attraversa l'intera pipeline di
-  promozione senza mai essere richiuso.** Verificato codice alla mano: `non_commerciale` NON
-  sopravvive nemmeno al deposito nel ledger (`urban_memory.traccia_repository.Traccia` porta
-  solo `place_id`/`temi`/`creato_il` — nessun campo commerciale); `urban_memory.
-  canale_fluttuante.sweep_and_fetch_active` deposita una traccia per OGNI segnale scaduto,
-  senza rifiltrare per commerciale; `urban_memory.ricorrenza.rileva_candidati` non legge né
-  scrive nulla sul carattere commerciale (il dato è già perso, non solo ignorato); la CLI di
-  curatela (`urban_memory.curatela_pattern._stampa_candidato`) mostra al Promotore SOLO
-  `place_id`, `temi`, occorrenze, cadenza e coefficiente di variazione — **nessuna
-  informazione sul carattere commerciale è disponibile da mostrare a quel punto**, quindi la
-  revisione umana alla promozione non può ri-verificarlo, non perché non lo faccia ma perché
-  il dato non c'è più. Un pattern commerciale (auto-dichiarato onestamente non-commerciale per
-  errore, o mentito fin dall'inizio) che si ripete abbastanza volte può quindi diventare un
+  **Aggiornamento (Fase 3, promozione + consumo degli `:Evento`) — TROVATO e POI CHIUSO,
+  entrambi da giri DEDICATI di `ethics-guardian`, non un'autovalutazione.** Quando il consumo
+  degli `:Evento` promossi in un itinerario è stato costruito, un giro dedicato ha verificato
+  che questo varco non si fermava al singolo segnale fluttuante: attraversava l'intera
+  pipeline di promozione senza mai essere richiuso. Verificato codice alla mano, PRIMA del
+  fix: `non_commerciale` non sopravviveva nemmeno al deposito nel ledger
+  (`urban_memory.traccia_repository.Traccia` porta solo `place_id`/`temi`/`creato_il` —
+  nessun campo commerciale); `urban_memory.canale_fluttuante.sweep_and_fetch_active` depositava
+  una traccia per OGNI segnale scaduto, senza rifiltrare per commerciale;
+  `urban_memory.ricorrenza.rileva_candidati` non leggeva né scriveva nulla sul carattere
+  commerciale (il dato era già perso, non solo ignorato); la CLI di curatela
+  (`urban_memory.curatela_pattern._stampa_candidato`) mostrava al Promotore SOLO `place_id`,
+  `temi`, occorrenze, cadenza e coefficiente di variazione — nessuna informazione sul
+  carattere commerciale era disponibile da mostrare a quel punto, quindi la revisione umana
+  alla promozione non poteva ri-verificarlo, non perché non lo facesse ma perché il dato non
+  c'era più. Un pattern commerciale (auto-dichiarato onestamente non-commerciale per errore, o
+  mentito fin dall'inizio) che si ripeteva abbastanza volte poteva quindi diventare un
   `:Evento` promosso senza che NESSUNO dei due controlli teoricamente esistenti
-  (auto-dichiarazione del segnale, curatela umana del pattern) lo intercetti mai. **Prima
+  (auto-dichiarazione del segnale, curatela umana del pattern) lo intercettasse mai. **Prima
   della Fase 3 "consumo degli `:Evento` promossi" questo varco era teorico**: nessun
-  consumatore leggeva mai un `:Evento` in un itinerario. **Ora è concretamente raggiungibile
-  da un visitatore reale**, sotto forma di una tappa "contesto sul luogo"
-  (`experience_engine.engine._aggiungi_tappe_eventi_promossi`) — esattamente la superficie che
-  il principio "nessuno spazio è acquistabile" (CLAUDE.md) deve proteggere. Non chiuso da
-  questo lavoro (fuori scope: richiederebbe ridisegnare cosa il ledger/la curatela portano con
-  sé, non un aggiustamento locale) — dichiarato qui perché un'amministrazione che leggesse
-  solo "curatela umana prima della promozione" senza questo dettaglio presumerebbe una
-  garanzia che il codice non offre.
+  consumatore leggeva mai un `:Evento` in un itinerario — il consumo lo ha reso concretamente
+  raggiungibile da un visitatore reale, sotto forma di una tappa "contesto sul luogo"
+  (`experience_engine.engine._aggiungi_tappe_eventi_promossi`), esattamente la superficie che
+  il principio "nessuno spazio è acquistabile" (CLAUDE.md) deve proteggere.
+
+  **CHIUSO, non solo dichiarato**: su richiesta esplicita del committente, un secondo giro
+  dedicato ha risalito l'intera catena e confermato il verdetto "GARANZIA NON PRESERVATA",
+  indicando il punto più economico per il fix. Corretto alla RADICE, non sul consumo (nessuna
+  ridisegnazione del ledger/della curatela è servita): `urban_memory.canale_fluttuante.
+  sweep_and_fetch_active` ora scarta un segnale non ammissibile
+  (`contracts.segnale_fluttuante_ammissibile` — la STESSA funzione già usata per il consumo
+  diretto dei fluttuanti, nessuna seconda logica inventata) PRIMA del deposito della
+  `Traccia`: un segnale commerciale scade comunque (`attivo → expired`, invariato, per audit),
+  ma non genera mai più una traccia, quindi non può mai maturare in un pattern ricorrente né
+  in un `:Evento` promosso. Un terzo giro, indipendente, ha riverificato punto per punto
+  (ordine del controllo rispetto al deposito, non-alterazione della transizione `expired`,
+  non-interferenza con `submit_signal.py`, assenza di un secondo scrittore del ledger che
+  bypassi il filtro — grep su tutti i chiamanti di `TracciaRepository.deposita` in codice di
+  produzione: uno solo, ora protetto) e confermato **"GARANZIA ORA PRESERVATA"**.
+
+  **Cosa resta, e non è chiuso da questo fix — lo stesso limite di sempre, non uno nuovo**:
+  l'auto-dichiarazione di `non_commerciale=True` resta interamente fidata — un segnale che
+  MENTE fin dall'inizio (dichiara `non_commerciale=True` per un'attività che in realtà non lo
+  è) supera il filtro esattamente come lo superava prima, perché il filtro verifica il campo
+  dichiarato, non la realtà sottostante. Nessun fix di questa voce può chiudere quel limite
+  (richiederebbe un meccanismo di verifica indipendente della dichiarazione, non un filtro sul
+  dato che il segnale stesso porta) — resta esattamente dove il primo paragrafo di questa
+  voce lo colloca.
 - **`SegnaleFluttuante.temi` è ALTRETTANTO auto-dichiarato**, e il vettore di gioco è diverso da
   quello sul commerciale: non "farsi passare per non commerciale" ma "dichiarare temi larghi
   (es. sempre `arte`, il gruppo più popolato) per massimizzare a chi il segnale risulta

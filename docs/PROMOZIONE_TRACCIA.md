@@ -22,10 +22,20 @@
 > abbastanza volte non resta più un fatto solo interno a `services/urban-memory`, arriva
 > davvero a un visitatore. Dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto, in coda alle
 > altre tre. **Nessuna finestra temporale in questa v1** (un `:Evento` compare a prescindere
-> da SE la cadenza combacia col giorno di visita — deliberato, task successivo) e **nessun
-> filtro di ammissibilità commerciale sul pattern promosso** (varco preesistente reso ora
-> concretamente raggiungibile — trovato da un giro dedicato di `ethics-guardian`, dettaglio
-> completo in `docs/LIMITI.md`, voce estesa su `SegnaleFluttuante.non_commerciale`). **§2(b)
+> da SE la cadenza combacia col giorno di visita — deliberato, task successivo). **Il filtro
+> di ammissibilità commerciale sul pattern promosso è stato CHIUSO in questa stessa
+> collaborazione**, non lasciato aperto: un giro dedicato di `ethics-guardian` aveva trovato
+> (verdetto "GARANZIA NON PRESERVATA") che un segnale commerciale poteva attraversare indenne
+> l'intera catena fino a comparire in un itinerario reale — il filtro esistente
+> (`contracts.segnale_fluttuante_ammissibile`) proteggeva solo il consumo diretto di
+> `Signal.eventi_attivi`, mai il percorso del ledger. Corretto alla RADICE (non sul consumo:
+> `EventoPromosso` resta senza campo `non_commerciale`, per design — non serve, il filtro
+> agisce a monte), in `urban_memory.canale_fluttuante.sweep_and_fetch_active`: un segnale non
+> ammissibile non deposita più alcuna `Traccia`, quindi non può mai maturare in un pattern
+> ricorrente. Un secondo giro di `ethics-guardian`, indipendente, ha riverificato e confermato
+> "GARANZIA ORA PRESERVATA" (fino al limite noto e già accettato dell'auto-dichiarazione
+> mentita di `non_commerciale`, invariato — dettaglio in `docs/LIMITI.md`, voce estesa su
+> `SegnaleFluttuante.non_commerciale`). **§2(b)
 > (il bagliore) e il freno di emergenza, più la corsia fluttuanti
 > `blocked`/`approved`/`rejected` di `docs/STATE_MACHINE.md` §4, restano DESIGN PURO** —
 > nessuna riga di quelle parti è eseguibile. Ogni sezione sotto è
@@ -140,12 +150,25 @@ implementazione (non presente nel design originario)**: il codice reale oggi non
 concetto di `rejected` per un segnale fluttuante (`STATE_MACHINE.md` §4 — `blocked`/
 `approved`/`rejected` restano design puro, non implementati da questo task) — ogni segnale
 persistito dal percorso fidato (`submit_signal.py`) è trattato come implicitamente
-approvato, quindi OGNI segnale che scade deposita sempre la sua traccia, incondizionatamente
-(`urban_memory.canale_fluttuante.sweep_and_fetch_active`). Il principio "le rifiutate non
-fanno traccia" è quindi rispettato per COSTRUZIONE (non esiste ancora un modo di rifiutare),
-non per un controllo esplicito nel codice del deposito — quando la revisione umana verrà
-costruita, il deposito dovrà diventare condizionato da un vero stato `approved`, non più
-incondizionato su ogni `expired`.
+approvato, quindi sull'asse `approved`/`rejected` OGNI segnale che scade deposita la sua
+traccia incondizionatamente (`urban_memory.canale_fluttuante.sweep_and_fetch_active`). Il
+principio "le rifiutate non fanno traccia" è quindi rispettato per COSTRUZIONE su
+quell'asse (non esiste ancora un modo di rifiutare), non per un controllo esplicito nel
+codice del deposito — quando la revisione umana verrà costruita, il deposito dovrà diventare
+condizionato ANCHE da un vero stato `approved`, non più incondizionato su ogni `expired`.
+**Aggiornamento — un SECONDO asse esiste ora, indipendente da `approved`/`rejected`**: un giro
+DEDICATO di `ethics-guardian` ha verificato l'intera catena segnale→traccia→pattern→
+promozione→consumo in itinerario e trovato che un segnale commerciale
+(`non_commerciale=False`) poteva attraversarla indenne (il filtro "nessuno spazio è
+acquistabile", `contracts.segnale_fluttuante_ammissibile`, era applicato SOLO nel consumo
+diretto di `Signal.eventi_attivi`, mai nel percorso del ledger) — **chiuso**: lo stesso sweep
+ora scarta anche i segnali non ammissibili PRIMA del deposito
+(`if not segnale_fluttuante_ammissibile(segnale): continue`,
+`urban_memory.canale_fluttuante.sweep_and_fetch_active`), riverificato indipendentemente da
+un secondo giro di `ethics_guardian` ("GARANZIA ORA PRESERVATA"). I due assi restano
+distinti e non vanno confusi: "approvato/rifiutato" (ancora vacuamente vero, sopra) e
+"commercialmente ammissibile" (ora REALMENTE applicato, non più vacuo) sono due filtri
+diversi sullo stesso deposito, non lo stesso controllo raccontato due volte.
 
 ## 2. La proprietà derivata sul grafo + il bagliore
 
@@ -288,8 +311,27 @@ rilevamento e la promozione — verificato contro il codice:
   da `/itinerary`") e sull'assenza di una dichiarazione esplicita che il consumo rende ora
   concretamente raggiungibile un varco preesistente (un pattern commerciale può diventare un
   `:Evento` promosso senza che nessun controllo lo intercetti, perché il carattere commerciale
-  non sopravvive al deposito nel ledger) — corretto, **PASS** dopo l'aggiornamento di
-  `docs/LIMITI.md` (voce sulla frizione + voce estesa su `SegnaleFluttuante.non_commerciale`).
+  non sopravvive al deposito nel ledger) — **PASS** dopo l'aggiornamento di `docs/LIMITI.md`.
+  **Il varco stesso, non solo la sua dichiarazione, è stato poi chiuso in un secondo giro,
+  su richiesta esplicita del committente**: un terzo giro DEDICATO di `ethics-guardian` ha
+  risalito l'intera catena (`submit_signal.py` → `canale_fluttuante.py` →
+  `traccia_repository.py` → `ricorrenza.py` → `curatela_pattern.py` → `promozione_evento.py`
+  → `eventi_promossi_pertinenti`) e confermato "GARANZIA NON PRESERVATA": un segnale
+  commerciale attraversava indenne ogni passaggio, perché nessuno di essi rifiltrava
+  `non_commerciale` (l'informazione stessa si perde già al deposito della `Traccia`, che non
+  porta quel campo). Fix applicato alla RADICE, in `urban_memory.canale_fluttuante.
+  sweep_and_fetch_active`: un segnale non ammissibile (`contracts.
+  segnale_fluttuante_ammissibile`, la STESSA funzione già usata per il consumo diretto dei
+  fluttuanti, nessuna seconda logica inventata) non deposita più alcuna `Traccia` né aggiorna
+  `:Luogo.ultima_traccia_il` — resta comunque persistito e correttamente `expired` per audit
+  (`submit_signal.py` invariato). Un quarto giro, ancora indipendente, ha riverificato punto
+  per punto (ordine del controllo, non-alterazione della transizione `expired`,
+  non-interferenza con la persistenza grezza, assenza di un secondo scrittore del ledger che
+  bypassi il filtro) e confermato **"GARANZIA ORA PRESERVATA"** — fino al limite noto e già
+  accettato dell'auto-dichiarazione mentita di `non_commerciale` (un segnale può sempre
+  mentire su sé stesso; nessun filtro a valle può correggerlo), invariato e non oggetto di
+  questo fix. Dettaglio completo in `docs/LIMITI.md`, voce estesa su
+  `SegnaleFluttuante.non_commerciale`.
 - **Resta design
   puro**: il freno di emergenza, e la corsia di revisione umana `blocked`/`approved`/
   `rejected` dei singoli SEGNALI fluttuanti (`STATE_MACHINE.md` §4) — quella distinta dalla

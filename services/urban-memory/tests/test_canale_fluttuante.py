@@ -221,6 +221,123 @@ def test_deposita_che_fallisce_e_isolato_non_propaga(
 # ---------------------------------------------------------------------------
 
 
+def test_segnale_commerciale_scaduto_non_deposita_traccia_ne_chiama_writer() -> None:
+    """LOAD-BEARING (revisione DEDICATA `ethics-guardian`, non
+    un'autovalutazione — varco su "nessuno spazio è acquistabile", CLAUDE.md):
+    un segnale commerciale (`non_commerciale=False`) che scade NON deve MAI
+    depositare una traccia nel ledger né aggiornare `ultima_traccia_il` sul
+    grafo — altrimenti potrebbe maturare, indenne, in un pattern ricorrente e
+    poi in un `:Evento` promosso e raccomandato."""
+    segnale_repo = InMemorySegnaleFluttuanteRepository()
+    traccia_repo = InMemoryTracciaRepository()
+    segnale_repo.persist(
+        _segnale(
+            id="promo-negozio",
+            place_id="bottega-x",
+            non_commerciale=False,
+            valido_fino=ORA + timedelta(minutes=1),
+        )
+    )
+    chiamate: list[tuple[str, object]] = []
+
+    def _writer(place_id: str, quando: datetime) -> None:
+        chiamate.append((place_id, quando))
+
+    attivi = sweep_and_fetch_active(
+        segnale_repo, traccia_repo, place_link_writer=_writer, now=ORA + timedelta(hours=1)
+    )
+
+    assert attivi == []
+    assert traccia_repo.list_for_place("bottega-x") == []
+    assert chiamate == []
+
+
+def test_segnale_non_commerciale_scaduto_deposita_come_prima_regressione() -> None:
+    """Regressione: il default (`non_commerciale=True`) deve continuare a
+    depositare normalmente e ad aggiornare il luogo — il filtro NON deve
+    stringere il cammino felice già coperto sopra."""
+    segnale_repo = InMemorySegnaleFluttuanteRepository()
+    traccia_repo = InMemoryTracciaRepository()
+    segnale_repo.persist(
+        _segnale(id="ammissibile", non_commerciale=True, valido_fino=ORA + timedelta(minutes=1))
+    )
+    chiamate: list[tuple[str, object]] = []
+
+    def _writer(place_id: str, quando: datetime) -> None:
+        chiamate.append((place_id, quando))
+
+    attivi = sweep_and_fetch_active(
+        segnale_repo, traccia_repo, place_link_writer=_writer, now=ORA + timedelta(hours=1)
+    )
+
+    assert attivi == []
+    tracce = traccia_repo.list_for_place("piazza-anfiteatro")
+    assert len(tracce) == 1
+    assert tracce[0].segnale_id == "ammissibile"
+    assert chiamate == [("piazza-anfiteatro", ORA + timedelta(hours=1))]
+
+
+def test_batch_misto_solo_il_non_commerciale_deposita_isolamento_per_segnale() -> None:
+    """Batch misto nello stesso sweep: un segnale commerciale e uno non
+    commerciale scadono insieme. Solo quello non commerciale deposita una
+    traccia — il commerciale non blocca né altera il deposito dell'altro
+    (stesso principio di isolamento per-segnale già in uso per i
+    fallimenti di deposito, vedi sopra)."""
+    segnale_repo = InMemorySegnaleFluttuanteRepository()
+    traccia_repo = InMemoryTracciaRepository()
+    scade_a_breve = ORA + timedelta(minutes=1)
+    segnale_repo.persist(
+        _segnale(
+            id="commerciale",
+            place_id="bottega-x",
+            non_commerciale=False,
+            valido_fino=scade_a_breve,
+        )
+    )
+    segnale_repo.persist(
+        _segnale(
+            id="non-commerciale",
+            place_id="piazza-anfiteatro",
+            non_commerciale=True,
+            valido_fino=scade_a_breve,
+        )
+    )
+
+    attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ORA + timedelta(hours=1))
+
+    assert attivi == []
+    assert traccia_repo.list_for_place("bottega-x") == []
+    tracce = traccia_repo.list_for_place("piazza-anfiteatro")
+    assert len(tracce) == 1
+    assert tracce[0].segnale_id == "non-commerciale"
+
+
+def test_segnale_commerciale_transita_comunque_a_expired() -> None:
+    """Il fix non impedisce la scadenza: un segnale commerciale scaduto non
+    deve MAI ricomparire tra gli attivi in un fetch successivo, anche se non
+    ha depositato alcuna traccia — la transizione attivo->expired
+    (`sweep_scaduti`) resta incondizionata e indipendente da
+    `non_commerciale`."""
+    segnale_repo = InMemorySegnaleFluttuanteRepository()
+    traccia_repo = InMemoryTracciaRepository()
+    segnale_repo.persist(
+        _segnale(
+            id="commerciale-scaduto",
+            place_id="bottega-x",
+            non_commerciale=False,
+            valido_fino=ORA + timedelta(minutes=1),
+        )
+    )
+
+    istante = ORA + timedelta(hours=1)
+    primo = sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante)
+    secondo = sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante + timedelta(days=1))
+
+    assert primo == []
+    assert secondo == []
+    assert traccia_repo.list_for_place("bottega-x") == []
+
+
 def test_fallimento_deposita_isolato_non_blocca_gli_altri_segnali(
     caplog: pytest.LogCaptureFixture,
 ) -> None:

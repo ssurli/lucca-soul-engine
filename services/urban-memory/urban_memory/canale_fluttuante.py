@@ -23,10 +23,12 @@ ordine:
     d'itinerario, per QUALUNQUE luogo, innesca lo stesso sweep — chiude il
     buco classico del lazy-sweep ("i luoghi tranquilli non vengono mai
     spazzati").
-(b) **deposita una traccia** per OGNI segnale appena transitato (mai per
-    quelli già `expired` da prima — la guardia è la query di
-    `sweep_scaduti`, vedi `docs/PROMOZIONE_TRACCIA.md` §1), e aggiorna la
-    proprietà derivata `:Luogo.ultima_traccia_il` (best-effort, via
+(b) **deposita una traccia** per OGNI segnale appena transitato che sia
+    ANCHE ammissibile (`contracts.segnale_fluttuante_ammissibile` — mai per
+    quelli già `expired` da prima, la guardia è la query di
+    `sweep_scaduti`, vedi `docs/PROMOZIONE_TRACCIA.md` §1; e mai per un
+    segnale commerciale, vedi il paragrafo dedicato più sotto), e aggiorna
+    la proprietà derivata `:Luogo.ultima_traccia_il` (best-effort, via
     `place_link_writer` — vedi sotto). ISOLATO PER SEGNALE, vedi sotto.
 (c) **fetcha gli attivi** — `SegnaleFluttuanteRepository.fetch_attivi`,
     con lo STESSO `now` di (a): quello che popola `Signal.eventi_attivi`.
@@ -59,6 +61,35 @@ resta deliberatamente esclusa, stesso principio già accettato in
 `urban_memory.graph_link` per `:Memoria`/Postgres: "due scritture in due
 store diversi", non una garanzia nuova da inventare).
 
+**FILTRO DI AMMISSIBILITÀ SUL DEPOSITO (varco chiuso, revisione dedicata
+`ethics-guardian` — non un'autovalutazione).** Un giro DEDICATO di
+`ethics-guardian` sull'intera catena segnale->traccia->pattern->promozione->
+consumo in itinerario ha trovato un varco: `contracts.
+segnale_fluttuante_ammissibile` (il filtro "nessuno spazio è acquistabile",
+CLAUDE.md) era applicato SOLO nel consumo diretto di `Signal.eventi_attivi`
+(`experience_engine.rules.segnali_fluttuanti_pertinenti`), MAI nel percorso
+parallelo del ledger delle tracce — un `SegnaleFluttuante` commerciale
+(`non_commerciale=False`) poteva quindi attraversare indenne sweep ->
+deposito -> pattern ricorrente -> promozione a `:Evento` -> raccomandazione
+in un itinerario reale, bypassando il filtro perché quel percorso non passa
+mai da `Signal.eventi_attivi`. Il fix riusa la STESSA funzione già impiegata
+per il consumo diretto (`segnale_fluttuante_ammissibile` — un solo criterio,
+mai un secondo scritto qui) e la applica QUI, nel ciclo `for segnale in
+scaduti`, PRIMA di `traccia_repo.deposita`: un segnale non ammissibile
+`continue`-a senza depositare una `Traccia` né chiamare
+`place_link_writer` per sé — un luogo non deve "brillare"
+(`ultima_traccia_il`) per un segnale che non sarebbe mai stato composto.
+Il filtro si applica SOLO qui, mai altrove in questa funzione: NON tocca
+`sweep_scaduti` (la transizione `attivo -> expired` avviene comunque,
+incondizionatamente, per QUALUNQUE segnale, commerciale o no — un segnale
+scade per il solo fatto di essere scaduto, non per la sua ammissibilità) e
+NON tocca `persist_signal`/la persistenza del segnale grezzo (resta
+invariata, per audit/storico, indipendentemente da `non_commerciale` — vedi
+il suo docstring). Il segnale commerciale scaduto resta quindi correttamente
+`expired` in Postgres, visibile per audit, ma inerte per il ledger: non
+genera mai una `Traccia`, quindi non può mai maturare in un pattern
+ricorrente né in un `:Evento` promosso.
+
 **ATTENZIONE — CONSEGUENZA NON RIMEDIABILE, dichiarata esplicitamente, non
 nascosta:** `sweep_scaduti` ha GIÀ COMMITTATO la transizione `attivo ->
 expired` per un segnale PRIMA che questo modulo tenti `deposita` per quello
@@ -84,7 +115,7 @@ import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
 
-from contracts import SegnaleFluttuante
+from contracts import SegnaleFluttuante, segnale_fluttuante_ammissibile
 
 from .segnale_repository import SegnaleFluttuanteRepository
 from .traccia_repository import TracciaRepository
@@ -152,6 +183,14 @@ def sweep_and_fetch_active(
 
     scaduti = segnale_repo.sweep_scaduti(istante)
     for segnale in scaduti:
+        if not segnale_fluttuante_ammissibile(segnale):
+            # "Nessuno spazio è acquistabile" (CLAUDE.md) applicato ANCHE
+            # qui — vedi il paragrafo dedicato nel docstring del modulo. La
+            # transizione attivo->expired è GIA' avvenuta sopra (invariata,
+            # intenzionale): il segnale commerciale semplicemente non
+            # contribuisce al ledger né alla proprietà derivata sul luogo.
+            continue
+
         try:
             traccia_repo.deposita(
                 segnale_id=segnale.id,
