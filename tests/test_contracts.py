@@ -20,6 +20,7 @@ from contracts import (
     DashboardFlowsResponse,
     DashboardIndexResponse,
     EmotionalProfile,
+    EventoPromosso,
     ExperienceCandidate,
     ExperienceNode,
     FasciaApertura,
@@ -40,7 +41,7 @@ from contracts import (
 from pydantic import ValidationError
 
 # ---------------------------------------------------------------------------
-# 1. I 17 tipi canonici sono importabili da `contracts`
+# 1. I 18 tipi canonici sono importabili da `contracts`
 # ---------------------------------------------------------------------------
 
 CANONICAL_TYPES = [
@@ -51,6 +52,7 @@ CANONICAL_TYPES = [
     "VisitorContext",
     "FasciaApertura",
     "ExperienceNode",
+    "EventoPromosso",
     "ExperienceCandidate",
     "ItineraryStop",
     "Itinerary",
@@ -64,8 +66,8 @@ CANONICAL_TYPES = [
 ]
 
 
-def test_diciassette_tipi_canonici_importabili() -> None:
-    assert len(CANONICAL_TYPES) == 17
+def test_diciotto_tipi_canonici_importabili() -> None:
+    assert len(CANONICAL_TYPES) == 18
     for name in CANONICAL_TYPES:
         assert hasattr(contracts, name), f"{name} non importabile da `contracts`"
 
@@ -112,6 +114,16 @@ def make_segnale_fluttuante(**overrides: object) -> SegnaleFluttuante:
     )
     base.update(overrides)
     return SegnaleFluttuante(**base)  # type: ignore[arg-type]
+
+
+def make_evento_promosso(**overrides: object) -> EventoPromosso:
+    base: dict[str, object] = dict(
+        id="evento-piazza-anfiteatro-musica",
+        place_id="piazza-anfiteatro",
+        temi=["musica"],
+    )
+    base.update(overrides)
+    return EventoPromosso(**base)  # type: ignore[arg-type]
 
 
 def make_visitor_context(**overrides: object) -> VisitorContext:
@@ -304,6 +316,10 @@ def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse
         (
             FasciaApertura,
             {"giorno_settimana", "apertura", "chiusura"},
+        ),
+        (
+            EventoPromosso,
+            {"id", "place_id", "temi"},
         ),
         (
             ExperienceCandidate,
@@ -801,6 +817,45 @@ def test_round_trip_json_signal_con_eventi_attivi() -> None:
     signal = make_signal(eventi_attivi=[make_segnale_fluttuante()])
     ricostruito = Signal.model_validate_json(signal.model_dump_json())
     assert ricostruito == signal
+
+
+# ---------------------------------------------------------------------------
+# 5quater. `EventoPromosso` — un `:Evento` promosso e ATTIVO nel Knowledge
+# Graph (Fase 3), livello "programmato" diverso dal fluttuante
+# (`SegnaleFluttuante` sopra, "accade ORA"). Contratto minimo, deliberatamente
+# senza `stato` (chi lo costruisce filtra GIÀ per attivo prima), senza
+# `cadenza_giorni` (fuori scope v1) e senza accountability di promozione.
+# ---------------------------------------------------------------------------
+
+
+def test_evento_promosso_valido() -> None:
+    evento = make_evento_promosso()
+    assert evento.id == "evento-piazza-anfiteatro-musica"
+    assert evento.place_id == "piazza-anfiteatro"
+    assert evento.temi == ["musica"]
+
+
+def test_evento_promosso_temi_vuoti_rifiutati() -> None:
+    with pytest.raises(ValidationError):
+        make_evento_promosso(temi=[])
+
+
+def test_extra_forbid_su_evento_promosso() -> None:
+    with pytest.raises(ValidationError):
+        make_evento_promosso(stato="attivo")  # non canonico: filtrato PRIMA, mai qui
+    with pytest.raises(ValidationError):
+        make_evento_promosso(cadenza_giorni=7.0)  # fuori scope v1
+    with pytest.raises(ValidationError):
+        make_evento_promosso(promosso_da="promotore-pseudo-1")  # accountability, non consumo
+    with pytest.raises(ValidationError):
+        make_evento_promosso(descrizione="un violinista suona in piazza")  # non sopravvive alla promozione
+
+
+def test_round_trip_json_evento_promosso() -> None:
+    original = make_evento_promosso()
+    dumped = original.model_dump_json()
+    restored = EventoPromosso.model_validate_json(dumped)
+    assert restored == original
 
 
 # ---------------------------------------------------------------------------

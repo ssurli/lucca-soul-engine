@@ -140,6 +140,7 @@ from contracts import (
     DashboardFlowsResponse,
     DashboardIndexResponse,
     EmotionalProfile,
+    EventoPromosso,
     Itinerary,
     MemoryContribution,
     OnboardingRequest,
@@ -172,6 +173,7 @@ from api.deps import (
     get_booking_repository,
     get_candidate_source,
     get_event_repository,
+    get_evento_reader,
     get_memory_repository,
     get_place_link_writer,
     get_segnale_repository,
@@ -525,7 +527,36 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     segnale già `expired`, quindi la traccia per quel segnale va persa in
     modo PERMANENTE. Il segnale stesso resta comunque correttamente
     `expired` (non più composto in un itinerario): a perdersi è solo la
-    riga del ledger, non l'integrità del canale fluttuante nel suo insieme."""
+    riga del ledger, non l'integrità del canale fluttuante nel suo insieme.
+
+    Fase 3 — consumo degli `:Evento` PROMOSSI (`docs/PROMOZIONE_TRACCIA.md`
+    §3, il livello "programmato", diverso dal canale fluttuante "accade
+    ORA" sopra): dopo il blocco `eventi_attivi`, questo endpoint legge TUTTI
+    gli `:Evento` ricorrenti dal grafo (`api.deps.get_evento_reader`,
+    `Neo4jFrizioneClient.eventi_ricorrenti`, che riusa `urban_memory.
+    frizione_pattern.leggi_eventi_ricorrenti` — nessuna nuova query Cypher),
+    filtra in Python quelli con `stato == 'attivo'` (la query legge
+    QUALUNQUE stato, il filtro è deliberatamente qui, non nel Cypher) e li
+    converte in `list[contracts.EventoPromosso]` — mapping diretto
+    `EventoRicorrente.evento_id -> EventoPromosso.id`, `place_id ->
+    place_id`, `temi -> temi`; `cadenza_giorni`/`stato` restano
+    nell'`EventoRicorrente` letto qui e NON attraversano il confine verso il
+    motore (vedi il docstring di `contracts.EventoPromosso`: quel tipo
+    arriva al motore già filtrato ad `attivo`, per costruzione).
+
+    Stessa disciplina, stesso motivo, dello stesso blocco `eventi_attivi`
+    sopra: `get_evento_reader()` è chiamato DIRETTAMENTE dentro il `try`
+    (mai tramite `Depends` nella firma, per restare catturabile qui), ed è
+    un ARRICCHIMENTO OPZIONALE della composizione (una tappa-evento in
+    coda), non il cuore della richiesta — un `Neo4jFrizioneClient` assente
+    (credenziali mancanti: `get_evento_reader()` ritorna `None`) o un grafo
+    irraggiungibile (Aura in pausa — scenario NORMALE, CLAUDE.md) o
+    QUALUNQUE altra eccezione imprevista viene catturata e degrada a
+    `eventi_promossi=[]`, MAI un 503/500 per questo arricchimento — `/
+    itinerary` risponde comunque 200. Il client non può in alcun modo
+    influenzare questa lista (letta SOLO dal grafo, mai dal body della
+    richiesta): stessa proprietà di sicurezza già garantita per
+    `eventi_attivi`."""
     source = get_candidate_source()
     candidates = source.candidates(ctx)
     try:
@@ -560,7 +591,35 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
         update={"signal": ctx.signal.model_copy(update={"eventi_attivi": eventi_attivi})}
     )
 
-    return compose_itinerary(ctx, candidates, reason_fn=compose_reason, score_fn=score_fn)
+    eventi_promossi: list[EventoPromosso] = []
+    try:
+        evento_reader = get_evento_reader()
+        if evento_reader is not None:
+            eventi_promossi = [
+                EventoPromosso(
+                    id=evento.evento_id,
+                    place_id=evento.place_id,
+                    temi=list(evento.temi),
+                )
+                for evento in evento_reader.eventi_ricorrenti()
+                if evento.stato == "attivo"
+            ]
+    except Exception:  # difesa in profondità: il consumo degli eventi
+        # promossi è un arricchimento opzionale, mai un motivo di fallimento
+        # di /itinerary — degrada a eventi_promossi=[] (nessuna tappa-evento
+        # composta), esattamente come eventi_attivi sopra. Cattura sia
+        # l'assenza/fallimento del client (`get_evento_reader`) sia un grafo
+        # irraggiungibile durante `eventi_ricorrenti()`
+        # (`urban_memory.frizione_pattern.FrizionePatternError`).
+        eventi_promossi = []
+
+    return compose_itinerary(
+        ctx,
+        candidates,
+        reason_fn=compose_reason,
+        score_fn=score_fn,
+        eventi_promossi=eventi_promossi,
+    )
 
 
 @app.post("/itinerary/adapt", response_model=Itinerary)

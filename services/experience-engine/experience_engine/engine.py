@@ -22,6 +22,7 @@ from datetime import datetime, time, timedelta
 
 from contracts import (
     EmotionalProfile,
+    EventoPromosso,
     GraphCandidate,
     Itinerary,
     ItineraryStop,
@@ -32,12 +33,14 @@ from contracts import (
 )
 
 from .rules import (
+    DURATA_TAPPA_EVENTO_MIN,
     DURATA_TAPPA_FLUTTUANTE_MIN,
     SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
     SOGLIA_STANCHEZZA_ALTA,
     TEMPO_TRASFERIMENTO_DEFAULT_MIN,
     TOLLERANZA_DIVERSITA,
     calcola_score,
+    eventi_promossi_pertinenti,
     passa_filtri_duri,
     segnali_fluttuanti_pertinenti,
     segnali_rilevanti,
@@ -236,7 +239,8 @@ def _costruisci_stops(
 # ---------------------------------------------------------------------------
 # Segnali FLUTTUANTI (Signal.eventi_attivi) — AGGIUNTA in coda, mai una
 # sostituzione. Livello "accade ora" (violinista in piazza): diverso dal
-# livello "programmato" (:Evento, fuori scope — docs/LIMITI.md).
+# livello "programmato" (:Evento promosso), che vive nella sezione gemella
+# più sotto e arriva da una sorgente diversa (il grafo, non il `Signal`).
 # ---------------------------------------------------------------------------
 
 #: Prefisso dell'`experience_id` fittizio con cui una tappa fluttuante entra
@@ -314,6 +318,129 @@ def _aggiungi_tappe_fluttuanti(
 
 
 # ---------------------------------------------------------------------------
+# Eventi PROMOSSI (:Evento attivi nel grafo, Fase 3) — AGGIUNTA in coda, mai
+# una sostituzione. Stessa identica meccanica dei fluttuanti sopra (budget,
+# orari progressivi, skip se non c'è spazio), sorgente DIVERSA: non
+# `Signal.eventi_attivi` (stato del mondo, transitorio) ma nodi permanenti del
+# grafo letti dal BFF e PASSATI al motore già filtrati a `stato='attivo'` —
+# il motore non legge il grafo e non importa `graph`/`urban_memory`.
+# ---------------------------------------------------------------------------
+
+# NESSUN prefisso sull'`experience_id`, a differenza delle tappe fluttuanti
+# (`_PREFISSO_TAPPA_FLUTTUANTE` sopra): `EventoPromosso.id` è GIÀ un id
+# namespaced per costruzione — `evento-{place_id}-{temi}`, prodotto da
+# `urban_memory.promozione_evento.evento_id_per_pattern` — quindi
+# strutturalmente distinto sia dalle esperienze reali del seed (`exp-...`) sia
+# dalle tappe fluttuanti (`fluttuante-...`). Aggiungere un secondo prefisso
+# creerebbe un id che non corrisponde a nessun nodo del grafo, rompendo la
+# tracciabilità della tappa verso l'`:Evento` che l'ha generata.
+
+
+def _temi_leggibili(temi: list[str]) -> str:
+    """Rende leggibile una lista di temi GREZZI (id/slug del grafo, es.
+    "musica-di-strada") per il `reason` di una tappa-evento.
+
+    `EventoPromosso.temi` porta lo stesso contenuto grezzo di
+    `SegnaleFluttuante.temi` e di `ExperienceNode.temi` — id, non nomi umani
+    (i nomi leggibili dei `:Tema` viaggiano su un campo separato della query
+    candidati, `temi_nomi`, che qui non esiste). Sostituisce i trattini con
+    spazi e unisce con virgola: trasformazione PURA, mai un lookup a un nodo
+    `:Tema` che questa funzione non ha modo di fare — meglio un id reso
+    leggibile che un nome fabbricato."""
+    return ", ".join(tema.replace("-", " ") for tema in temi)
+
+
+def _reason_evento_promosso(evento: EventoPromosso, place_nome: str) -> str:
+    """`reason` sempre non vuoto (spiegabilità obbligatoria) per una tappa
+    generata da un `:Evento` promosso.
+
+    Racconta un CONTESTO SUL LUOGO, non un appuntamento: un pattern promosso
+    dice "qui succede spesso questa cosa", MAI "oggi alle 18". Non
+    promettiamo un giorno né un orario perché non abbiamo quell'informazione
+    — `EventoPromosso` non trasporta cadenza né finestra temporale (task
+    futuro, esplicitamente fuori scope in questa v1). Promettere un
+    appuntamento che il dato non garantisce sarebbe la peggiore forma di
+    inspiegabilità: una frase credibile e falsa."""
+    return (
+        f"{place_nome} ha un carattere legato a {_temi_leggibili(evento.temi)}: "
+        "un tratto ricorrente del luogo, non un appuntamento di oggi."
+    )
+
+
+def _aggiungi_tappe_eventi_promossi(
+    stops: list[ItineraryStop],
+    candidates: list[GraphCandidate],
+    profile: EmotionalProfile,
+    eventi_promossi: list[EventoPromosso],
+    ora_inizio: time | None = None,
+) -> list[ItineraryStop]:
+    """Aggiunge, IN CODA, le tappe degli eventi promossi pertinenti — mai una
+    sostituzione (le tappe 1-4 e le eventuali tappe fluttuanti restano
+    esattamente come composte). Rispetta il budget di tempo residuo: se non
+    c'è spazio, la tappa NON si aggiunge — mai forzata oltre
+    `profile.tempo_disponibile_min`.
+
+    Ogni tappa-evento costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessuna
+    `distanza_m` nota per un `:Evento`, stessa stima prudente già usata
+    altrove per una distanza sconosciuta) + `DURATA_TAPPA_EVENTO_MIN`.
+
+    `minuti_usati`/`orario_corrente` sono RICALCOLATI da `stops[-1]`, non
+    portati da un accumulatore esterno: così questa funzione può essere
+    chiamata DOPO `_aggiungi_tappe_fluttuanti` e continuare correttamente il
+    budget condiviso, qualunque coda le due sezioni abbiano già prodotto.
+
+    `ora_inizio` (`ctx.signal.ora` quando chiamata da `compose_itinerary`) è
+    l'origine dell'orologio, e serve SOLO nel caso limite in cui `stops` è
+    vuota — nessuna tappa reale né fluttuante da cui ripartire. Se in quel
+    caso non è fornita, la tappa-evento NON si aggiunge: meglio non
+    aggiungerla che collocarla a un orario fabbricato (es. mezzanotte), lo
+    stesso principio per cui `place_nome` ricade sul `place_id` grezzo invece
+    di inventare un nome."""
+    pertinenti = eventi_promossi_pertinenti(eventi_promossi, profile)
+    if not pertinenti:
+        return stops
+
+    place_nomi = {c.experience.place_id: c.place_nome for c in candidates}
+
+    if stops:
+        # Origine del conteggio: `ora_inizio` se nota, altrimenti l'arrivo
+        # della prima tappa — che per costruzione parte proprio da
+        # `signal.ora` (vedi `_costruisci_stops`), quindi il risultato è lo
+        # stesso; il fallback esiste per non dipendere da un parametro
+        # facoltativo quando l'informazione è già dentro `stops`.
+        origine = ora_inizio if ora_inizio is not None else stops[0].arrivo
+        minuti_usati = _minuti_trascorsi(origine, stops[-1].arrivo) + stops[-1].durata_min
+        orario_corrente = _somma_minuti(stops[-1].arrivo, stops[-1].durata_min)
+    elif ora_inizio is not None:
+        minuti_usati = 0
+        orario_corrente = ora_inizio
+    else:
+        return stops
+
+    nuove_tappe = list(stops)
+    for evento in pertinenti:
+        costo = TEMPO_TRASFERIMENTO_DEFAULT_MIN + DURATA_TAPPA_EVENTO_MIN
+        if minuti_usati + costo > profile.tempo_disponibile_min:
+            continue  # niente budget: non si forza, si passa al prossimo evento
+        orario_corrente = _somma_minuti(orario_corrente, TEMPO_TRASFERIMENTO_DEFAULT_MIN)
+        place_nome = place_nomi.get(evento.place_id, evento.place_id)
+        nuove_tappe.append(
+            ItineraryStop(
+                # `evento.id` DIRETTAMENTE, senza prefisso — vedi il commento
+                # in testa a questa sezione.
+                experience_id=evento.id,
+                arrivo=orario_corrente,
+                durata_min=DURATA_TAPPA_EVENTO_MIN,
+                reason=_reason_evento_promosso(evento, place_nome),
+            )
+        )
+        orario_corrente = _somma_minuti(orario_corrente, DURATA_TAPPA_EVENTO_MIN)
+        minuti_usati += costo
+
+    return nuove_tappe
+
+
+# ---------------------------------------------------------------------------
 # API pubblica
 # ---------------------------------------------------------------------------
 
@@ -323,6 +450,7 @@ def compose_itinerary(
     candidates: list[GraphCandidate],
     reason_fn: ReasonFn | None = None,
     score_fn: ScoreFn | None = None,
+    eventi_promossi: list[EventoPromosso] | None = None,
 ) -> Itinerary:
     """Compone un `Itinerary` a regole per il contesto dato.
 
@@ -332,6 +460,7 @@ def compose_itinerary(
       3. composizione a budget con diversificazione -> `_seleziona_tappe`
       4. `reason` obbligatorio per ogni tappa -> `_costruisci_stops`
       5. segnali FLUTTUANTI pertinenti, in CODA -> `_aggiungi_tappe_fluttuanti`
+      6. eventi PROMOSSI pertinenti, in CODA -> `_aggiungi_tappe_eventi_promossi`
 
     `score_fn` è INIETTABILE (Wave 3b): il recommender può fornire un ranking
     alternativo. È applicato DOPO il filtro duro, mai prima: riceve solo i
@@ -345,6 +474,18 @@ def compose_itinerary(
     esperienze permanenti sono scelte né il loro punteggio. Se non c'è alcun
     segnale attivo (`eventi_attivi=[]`, ogni chiamante oggi), il passo 5 è un
     no-op — comportamento invariato.
+
+    Il passo 6 (`eventi_promossi`, nodi `:Evento` PROMOSSI e attivi nel grafo,
+    Fase 3 — il livello "programmato", diverso dal passo 5) segue esattamente
+    la stessa regola: è un'AGGIUNTA in coda, mai una sostituzione; non tocca i
+    passi 1-4, non tocca `score_fn`/`calcola_score`, non altera quali
+    esperienze permanenti sono scelte né il loro punteggio. La lista arriva
+    GIÀ pronta e già filtrata a `stato='attivo'` dal BFF (il motore non legge
+    il grafo, non importa `graph` né `urban_memory`, e non scrive nulla). Se è
+    `None` o vuota — ogni chiamante esistente oggi, che questo parametro non
+    lo passa — il passo 6 è un no-op: comportamento invariato, bit per bit.
+    Il parametro è ULTIMO proprio per non spostare `reason_fn`/`score_fn` e
+    non rompere le chiamate posizionali già in essere.
 
     Determinismo totale: a parità di score l'ordine è per `experience_id`.
     Due profili diversi possono produrre itinerari diversi — è il criterio
@@ -363,6 +504,9 @@ def compose_itinerary(
     selezionati = _seleziona_tappe(valutati, profile.tempo_disponibile_min)
     stops = _costruisci_stops(selezionati, profile, ctx.signal, fn)
     stops = _aggiungi_tappe_fluttuanti(stops, candidates, profile, ctx.signal)
+    stops = _aggiungi_tappe_eventi_promossi(
+        stops, candidates, profile, eventi_promossi or [], ctx.signal.ora
+    )
 
     return Itinerary(
         person_id=ctx.person_id,

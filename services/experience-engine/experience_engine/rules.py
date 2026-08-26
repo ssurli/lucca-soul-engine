@@ -17,6 +17,7 @@ import math
 
 from contracts import (
     EmotionalProfile,
+    EventoPromosso,
     GraphCandidate,
     SegnaleFluttuante,
     Signal,
@@ -61,6 +62,18 @@ TOLLERANZA_DIVERSITA = 0.05
 #: quindi una costante della FEATURE, non un campo dichiarato dal segnale —
 #: `SegnaleFluttuante` resta minimale (`docs/LIMITI.md` spiega la scelta).
 DURATA_TAPPA_FLUTTUANTE_MIN = 15
+
+#: Durata (min) di una tappa aggiunta da un `:Evento` PROMOSSO
+#: (`contracts.EventoPromosso`, Fase 3). Stessa idea di
+#: `DURATA_TAPPA_FLUTTUANTE_MIN` sopra: una costante della FEATURE, non un
+#: campo dichiarato dall'evento — `EventoPromosso` resta minimale (nessuna
+#: durata sopravvive alla promozione, verificato).
+#: TUNING: valore di PARTENZA, non calibrato su dati reali. La taratura è
+#: deliberatamente differita a quando esisterà un `:Evento` promosso vero da
+#: osservare; costante gemella (e non riuso diretto di
+#: `DURATA_TAPPA_FLUTTUANTE_MIN`) proprio perché i due livelli — "accade ora"
+#: e "programmato" — devono poter divergere senza toccarsi a vicenda.
+DURATA_TAPPA_EVENTO_MIN = 15
 
 # --- Pesi dello scoring (documentati: nessuno tocca partner_id/prezzo_eur) ---
 
@@ -291,3 +304,47 @@ def segnali_fluttuanti_pertinenti(
         for segnale in eventi_attivi
         if segnale_fluttuante_ammissibile(segnale) and _coerente_col_profilo(segnale.temi, profile)
     ]
+
+
+# ---------------------------------------------------------------------------
+# Eventi PROMOSSI (:Evento attivi nel grafo, Fase 3) — livello "programmato",
+# diverso dal livello "accade ora" (`Signal.eventi_attivi`, sopra).
+# ---------------------------------------------------------------------------
+
+
+def eventi_promossi_pertinenti(
+    eventi: list[EventoPromosso], profile: EmotionalProfile
+) -> list[EventoPromosso]:
+    """Eventi promossi pertinenti per QUESTO profilo, nell'ordine in cui sono
+    arrivati (determinismo: nessun riordino inventato qui — stessa garanzia di
+    `segnali_fluttuanti_pertinenti` sopra).
+
+    UNA sola condizione: `_coerente_col_profilo` — un tema in comune con
+    almeno una dimensione a cui il profilo tiene davvero (peso > 0). È
+    ESATTAMENTE la stessa funzione riusata dai fluttuanti, non un secondo
+    criterio: "il tema raggiunge chi è affine" si scrive in un posto solo.
+
+    PERCHÉ NON APPLICA L'AMMISSIBILITÀ COMMERCIALE (non è un'omissione).
+    `segnali_fluttuanti_pertinenti` applica in più
+    `contracts.segnale_fluttuante_ammissibile`, che legge
+    `SegnaleFluttuante.non_commerciale`: un campo che `EventoPromosso` NON ha,
+    e deliberatamente. Un segnale fluttuante entra nel mondo per
+    auto-segnalazione, senza che nessuno lo abbia vagliato — lì il filtro duro
+    sul commerciale è l'unica difesa contro la pubblicità travestita da
+    segnale. Un `:Evento` promosso, invece, esiste SOLO perché una decisione
+    umana esplicita di curatela lo ha promosso da pattern ricorrente a nodo
+    permanente del grafo (`urban_memory.promozione_evento`): il vaglio è già
+    avvenuto, a monte e da una persona. Riapplicarlo qui non aggiungerebbe
+    protezione — non c'è un campo su cui applicarlo — e fingere di applicarlo
+    (es. un default `non_commerciale=True`) darebbe una garanzia che nessuno
+    ha davvero dichiarato. Il vincolo "visibilità non acquistabile" resta
+    intatto per un'altra via, più forte: un `:Evento` non si compra, si
+    promuove, e la promozione è tracciata (`promosso_da`/`promosso_il` sul
+    nodo).
+
+    NON legge né tocca `calcola_score`: nessuna esperienza permanente vede il
+    proprio punteggio cambiare per la presenza di un evento promosso — questa
+    funzione produce solo la lista di eventi da aggiungere in coda, mai un
+    input allo scoring delle esperienze del grafo.
+    """
+    return [evento for evento in eventi if _coerente_col_profilo(evento.temi, profile)]

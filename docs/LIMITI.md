@@ -731,6 +731,32 @@ un'esperienza permanente.
   Il filtro duro (`segnale_fluttuante_ammissibile`) protegge SOLO contro un segnale onestamente
   marcato commerciale, non contro uno mentito. Trovato durante un giro dedicato di
   ethics-guardian su questa stessa funzionalità (vedi changelog in `docs/BUILD_PLAN.md`).
+  **Aggiornamento (Fase 3, promozione + consumo degli `:Evento` — dichiarazione esplicita
+  richiesta da un giro dedicato di `ethics-guardian`, non un'estensione spontanea): questo
+  varco non si ferma al singolo segnale fluttuante, attraversa l'intera pipeline di
+  promozione senza mai essere richiuso.** Verificato codice alla mano: `non_commerciale` NON
+  sopravvive nemmeno al deposito nel ledger (`urban_memory.traccia_repository.Traccia` porta
+  solo `place_id`/`temi`/`creato_il` — nessun campo commerciale); `urban_memory.
+  canale_fluttuante.sweep_and_fetch_active` deposita una traccia per OGNI segnale scaduto,
+  senza rifiltrare per commerciale; `urban_memory.ricorrenza.rileva_candidati` non legge né
+  scrive nulla sul carattere commerciale (il dato è già perso, non solo ignorato); la CLI di
+  curatela (`urban_memory.curatela_pattern._stampa_candidato`) mostra al Promotore SOLO
+  `place_id`, `temi`, occorrenze, cadenza e coefficiente di variazione — **nessuna
+  informazione sul carattere commerciale è disponibile da mostrare a quel punto**, quindi la
+  revisione umana alla promozione non può ri-verificarlo, non perché non lo faccia ma perché
+  il dato non c'è più. Un pattern commerciale (auto-dichiarato onestamente non-commerciale per
+  errore, o mentito fin dall'inizio) che si ripete abbastanza volte può quindi diventare un
+  `:Evento` promosso senza che NESSUNO dei due controlli teoricamente esistenti
+  (auto-dichiarazione del segnale, curatela umana del pattern) lo intercetti mai. **Prima
+  della Fase 3 "consumo degli `:Evento` promossi" questo varco era teorico**: nessun
+  consumatore leggeva mai un `:Evento` in un itinerario. **Ora è concretamente raggiungibile
+  da un visitatore reale**, sotto forma di una tappa "contesto sul luogo"
+  (`experience_engine.engine._aggiungi_tappe_eventi_promossi`) — esattamente la superficie che
+  il principio "nessuno spazio è acquistabile" (CLAUDE.md) deve proteggere. Non chiuso da
+  questo lavoro (fuori scope: richiederebbe ridisegnare cosa il ledger/la curatela portano con
+  sé, non un aggiustamento locale) — dichiarato qui perché un'amministrazione che leggesse
+  solo "curatela umana prima della promozione" senza questo dettaglio presumerebbe una
+  garanzia che il codice non offre.
 - **`SegnaleFluttuante.temi` è ALTRETTANTO auto-dichiarato**, e il vettore di gioco è diverso da
   quello sul commerciale: non "farsi passare per non commerciale" ma "dichiarare temi larghi
   (es. sempre `arte`, il gruppo più popolato) per massimizzare a chi il segnale risulta
@@ -1120,8 +1146,28 @@ sensibile alla CADENZA (`attivo → sospeso` in battiti mancati) e non a un temp
 fisso per la sospensione, con un orizzonte di dormienza proporzionale alla cadenza del
 singolo pattern (`max(pavimento assoluto, moltiplicatore × cadenza_giorni)` — corretto da un
 giro dedicato di `ethics-guardian` che aveva trovato i valori di default iniziali in
-tensione, vedi sotto). Verificato: 228 test passano, nessuna riga di questo modulo è
-raggiungibile da `/itinerary` o dall'Experience Engine.
+tensione, vedi sotto). Verificato: 228 test passano.
+
+> **AGGIORNAMENTO (Fase 3, consumo degli `:Evento` promossi in `/itinerary`) — l'affermazione
+> precedente in questo paragrafo ("nessuna riga di questo modulo è raggiungibile da
+> `/itinerary`") NON è più vera, e va corretta esplicitamente, non lasciata implicita.**
+> `services/api/api/deps.get_evento_reader` riusa direttamente
+> `urban_memory.frizione_pattern.Neo4jFrizioneClient`/`leggi_eventi_ricorrenti`: `POST
+> /itinerary` legge ORA tutti gli `:Evento {ricorrente: true}`, filtra `stato == 'attivo'` e fa
+> comparire i pattern attivi come tappe in coda (`experience_engine.engine.
+> _aggiungi_tappe_eventi_promossi`, `docs/PROMOZIONE_TRACCIA.md` §3). Conseguenza diretta dei
+> due limiti sopra, ora concreta e non più teorica: se `frizione_pattern` non viene rieseguito
+> con regolarità (nessuno scheduler, vedi sotto), un `:Evento` il cui `stato` è rimasto
+> stantio su `'attivo'` (perché nessuno ha rilanciato il comando dopo che il pattern è
+> realmente cessato) continua a comparire in itinerari reali finché qualcuno non fa girare il
+> comando — non è più solo "un dato di stato non aggiornato", è "una raccomandazione a un
+> visitatore basata su un dato non aggiornato". Verificato per `ethics-guardian` dedicato
+> (PASS sull'implementazione tecnica del consumo — nessun impatto su score, nessuna
+> forzatura di budget, nessuna iniezione lato client, degradazione sempre a 200, `reason`
+> onesto — ma FAIL iniziale proprio su questa frase non aggiornata, corretta qui). Vedi anche
+> la voce su `SegnaleFluttuante.non_commerciale` più sopra in questo file (sezione "Livello
+> FLUTTUANTE attivato"), per il secondo varco (verifica del carattere commerciale) reso
+> concretamente raggiungibile dallo stesso lavoro.
 
 ### Cosa NON è garantito
 

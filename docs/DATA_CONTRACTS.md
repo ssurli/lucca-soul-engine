@@ -202,6 +202,41 @@ class GraphCandidate(BaseModel):
     # violando "visibilità non acquistabile". `attribuzione` è SOLO narrazione
     # trasparente nel `reason`, mai input di scoring.
     attribuzione: str | None = None    # es. "Offerta da <bottega>, bottega di <mestiere>."
+
+class EventoPromosso(BaseModel):
+    """Un `:Evento` PROMOSSO e ATTIVO nel Knowledge Graph (Fase 3): un pattern
+    ricorrente rilevato da tracce fluttuanti, promosso da una decisione umana
+    esplicita (`urban_memory.promozione_evento`), che ora vive come nodo
+    permanente del grafo — livello diverso da `SegnaleFluttuante` (§1,
+    `Signal.eventi_attivi`, "accade ORA e domani non c'è"): questo è il
+    livello "programmato", con una cadenza propria.
+
+    Stesso principio di minimalismo di `SegnaleFluttuante`: SOLO ciò che
+    serve per comparire come tappa in coda in un itinerario, letto dal grafo
+    da `services/api` (il BFF) e passato a
+    `experience_engine.engine.compose_itinerary` come parametro iniettabile
+    — il motore dipende SOLO dai contratti, non importa mai `graph` né `rag`
+    (vedi il docstring di `compose_itinerary`), stesso principio già
+    applicato a `GraphCandidate`.
+
+    Deliberatamente ASSENTI, e perché:
+    - `stato`: chi costruisce la lista da passare al motore filtra GIÀ per
+      `stato='attivo'` PRIMA di costruire questo tipo — stesso principio per
+      cui `Signal.eventi_attivi` arriva al motore già filtrato ai soli
+      fluttuanti attivi, mai con uno stato da ricontrollare a valle. Un
+      `EventoPromosso` che raggiunge il motore è, per costruzione, sempre
+      attivo.
+    - `cadenza_giorni`: non serve a questa v1, che non applica alcun filtro
+      temporale sulla cadenza — task esplicitamente futuro, fuori scope ora.
+    - `promosso_da`/`promosso_il`: accountability della DECISIONE di
+      promozione (chi, quando), non pertinente al CONSUMO in un itinerario.
+    - nessun campo narrativo/descrizione: non esiste nulla di equivalente sul
+      nodo `:Evento` reale — verificato, la `descrizione` del segnale
+      fluttuante originale non sopravvive alla promozione (vedi
+      `50_promozione_evento_write.cypher`)."""
+    id: str        # id deterministico del nodo :Evento (evento_id_per_pattern)
+    place_id: str  # il :Luogo a cui è ancorato (SI_SVOLGE_A)
+    temi: list[str]  # stessa forma di SegnaleFluttuante.temi/ExperienceNode.temi (min 1 elemento)
 ```
 
 ## 3. AI Experience Engine — uscita
@@ -524,3 +559,11 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   costruzione. Nessun campo `valido_da`: il fluttuante "accade DA ADESSO", un inizio
   programmabile è per definizione un `:Evento` PROGRAMMATO (fuori scope,
   `docs/PROMOZIONE_TRACCIA.md`).
+- `EventoPromosso` (§2) è il contratto minimo — `id`/`place_id`/`temi` — con cui un `:Evento`
+  promosso e ATTIVO nel Knowledge Graph raggiunge `experience_engine.engine.compose_itinerary`
+  come parametro iniettabile: il motore non importa `graph` né `rag`, stesso principio già
+  applicato a `GraphCandidate`. Chi legge dal grafo (`services/api`) filtra GIÀ per
+  `stato='attivo'` PRIMA di costruire questo tipo: nessuno stato, nessuna cadenza, nessuna
+  accountability di promozione (`promosso_da`/`promosso_il`) e nessun testo narrativo vivono
+  in questo contratto — sono task futuri o informazioni non pertinenti al consumo in un
+  itinerario (vedi il docstring del modello in `packages/contracts`).

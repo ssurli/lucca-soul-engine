@@ -12,23 +12,30 @@
 > Per i fatti verificati sul motore delle esperienze (non sulla curatela), vedi
 > `docs/ENGINE_INVARIANTS.md` — perimetro diverso, non duplicato qui.
 >
-> **Eccezione al "design, non codice" del titolo — TRE pezzi, non più due.** L'invariante B
+> **Eccezione al "design, non codice" del titolo — CINQUE pezzi, non più tre.** L'invariante B
 > (`approved → agganciato` automatico, Fase 3 Task 1), la **fondazione persistenza+ledger
 > della corsia fluttuanti** (Fase 3, task successivo: persistenza di `SegnaleFluttuante`,
-> sweep pigro `attivo → expired`, deposito della traccia, `:Luogo.ultima_traccia_il`) e il
+> sweep pigro `attivo → expired`, deposito della traccia, `:Luogo.ultima_traccia_il`), il
 > **rilevamento pattern ricorrenti + promozione a `:Evento`** (Fase 3, task successivo:
-> `urban_memory.ricorrenza`/`promozione_evento`/`curatela_pattern`/`cestino_repository`) sono
+> `urban_memory.ricorrenza`/`promozione_evento`/`curatela_pattern`/`cestino_repository`), la
+> **frizione automatica a cadenza** (`attivo ⇄ sospeso → dormiente`,
+> `urban_memory.frizione_pattern`, comando `python -m urban_memory.frizione_pattern` — QUESTA
+> NOTA diceva finora, erroneamente non aggiornata, che restava design puro: corretto qui) e il
+> **consumo degli `:Evento` promossi in un itinerario reale**
+> (`experience_engine.engine._aggiungi_tappe_eventi_promossi`, letto dal grafo dal BFF e
+> passato a `compose_itinerary` come nuovo tipo condiviso `contracts.EventoPromosso`) sono
 > passati da design a **codice reale**. §0 e §4 sotto sono stati riverificati e riscritti
 > contro il codice per riflettere i primi due — ciascuno con una nota esplicita di cosa è
 > reale e cosa resta design (§4: vedi "REALTÀ vs DESIGN" più sotto, subito dopo il diagramma
-> della corsia fluttuanti); il terzo ha la propria nota REALTÀ vs DESIGN nella sezione
-> "Ricorrenza → promozione", più sotto in questo file. Tutto il resto del documento
+> della corsia fluttuanti); il terzo, il quarto e il quinto hanno la propria nota REALTÀ vs
+> DESIGN nella sezione "Ricorrenza → promozione" più sotto in questo file (il quarto anche in
+> §4-bis(a)) e in `docs/PROMOZIONE_TRACCIA.md` §3 (il quinto). Tutto il resto del documento
 > (`blocked`/`deferred`/`rejected` della corsia principale, le tre uscite dal target
-> fantasma, `blocked`/`approved`/`rejected` della corsia fluttuanti, la frizione automatica
-> a cadenza e il freno di emergenza del pattern promosso) resta design puro, invariato.
-> Dettaglio delle tre implementazioni e delle loro verifiche: `docs/ENGINE_INVARIANTS.md`
+> fantasma, `blocked`/`approved`/`rejected` della corsia fluttuanti, il freno di emergenza del
+> pattern promosso) resta design puro, invariato.
+> Dettaglio delle cinque implementazioni e delle loro verifiche: `docs/ENGINE_INVARIANTS.md`
 > §11-B (invariante B) e `docs/PROMOZIONE_TRACCIA.md` (nota di apertura + §3, persistenza+
-> ledger e rilevamento+promozione).
+> ledger, rilevamento+promozione, frizione e consumo).
 >
 > **Fase 3 (Promozione & Traccia, `docs/brief_fase3_promozione_traccia.md`)** ha chiuso tre
 > punti che questo documento lasciava aperti — §7.1 (`approved → agganciato`, ora

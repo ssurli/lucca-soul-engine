@@ -15,11 +15,13 @@ riceve iniettati, non li importa.
 from __future__ import annotations
 
 import inspect
+import re
 from datetime import UTC, datetime, time
 
 import pytest
 from contracts import (
     EmotionalProfile,
+    EventoPromosso,
     ExperienceNode,
     FasciaApertura,
     GraphCandidate,
@@ -899,3 +901,242 @@ def test_tappa_fluttuante_sopravvive_invariata_a_un_adapt_successivo() -> None:
     assert len(fluttuanti_dopo) == 1
     assert fluttuanti_dopo[0].experience_id == "fluttuante-violinista-1"
     assert fluttuanti_dopo[0].reason == base.stops[-1].reason
+
+
+# ---------------------------------------------------------------------------
+# Eventi PROMOSSI (:Evento attivi nel grafo, Fase 3) — livello "programmato",
+# diverso dal livello "accade ora" (Signal.eventi_attivi, sopra). AGGIUNTA in
+# coda, mai una sostituzione. Sorgente: il grafo via BFF, non il `Signal`.
+# ---------------------------------------------------------------------------
+
+#: Id nel formato REALE prodotto da
+#: `urban_memory.promozione_evento.evento_id_per_pattern`:
+#: `evento-{place_id}-{'-'.join(temi)}`. Il test lo scrive esteso, non lo
+#: calcola, così una futura divergenza di formato si vede subito.
+_ID_EVENTO_MUSICA = "evento-luogo-fisso-musica-musica-di-strada"
+
+
+def _evento_musica() -> EventoPromosso:
+    """Un `:Evento` promosso sul luogo di `_candidato_arte`, con un tema che
+    parla al profilo "arte" (`musica` ∈ `TEMI_ARTE`) e uno slug a più parole
+    (`musica-di-strada`) per verificare la resa leggibile nel `reason`."""
+    return EventoPromosso(
+        id=_ID_EVENTO_MUSICA,
+        place_id="luogo-fisso",
+        temi=["musica", "musica-di-strada"],
+    )
+
+
+def _profilo_arte(tempo_disponibile_min: int = 200) -> EmotionalProfile:
+    return EmotionalProfile(
+        curiosita=0.1, contemplazione=0.1, arte=0.9, con_bambini=False,
+        tempo_disponibile_min=tempo_disponibile_min,
+    )
+
+
+def test_evento_promosso_pertinente_aggiunge_tappa_in_coda() -> None:
+    """(a) evento coerente col profilo e con budget disponibile -> tappa
+    aggiunta IN CODA, con l'id del nodo `:Evento` INTATTO (nessun prefisso) e
+    un `reason` che nomina il luogo."""
+    profile = _profilo_arte()
+    ctx = VisitorContext(
+        person_id="p", profile=profile,
+        signal=Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0)),
+    )
+    it = compose_itinerary(
+        ctx, [_candidato_arte()], compose_reason, eventi_promossi=[_evento_musica()]
+    )
+
+    assert len(it.stops) == 2
+    tappa = it.stops[-1]
+    # Nessun prefisso: l'id del grafo arriva intatto fino alla tappa.
+    assert tappa.experience_id == _ID_EVENTO_MUSICA
+    assert not tappa.experience_id.startswith("fluttuante-")
+    assert tappa.reason  # spiegabilità obbligatoria: mai vuoto
+    assert "Piazza Fissa" in tappa.reason  # place_nome risolto dai candidati reali
+    # La tappa reale resta la prima: aggiunta, mai sostituzione.
+    assert it.stops[0].experience_id == "exp-fisso"
+
+
+def test_evento_promosso_non_pertinente_non_aggiunge_tappa() -> None:
+    """(b) evento NON coerente col profilo (nessuna dimensione a peso > 0 sui
+    suoi temi) -> non aggiunto."""
+    profile = EmotionalProfile(
+        curiosita=0.0, contemplazione=0.0, arte=0.0, con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    evento = EventoPromosso(
+        id="evento-luogo-fisso-storia", place_id="luogo-fisso", temi=["storia"]
+    )
+    ctx = VisitorContext(
+        person_id="p", profile=profile,
+        signal=Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0)),
+    )
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason, eventi_promossi=[evento])
+
+    assert len(it.stops) == 1
+    assert all(not s.experience_id.startswith("evento-") for s in it.stops)
+
+
+def test_evento_promosso_non_forzato_senza_budget() -> None:
+    """(c) niente budget residuo -> la tappa-evento NON si forza, anche se
+    pertinente. Nessuna eccezione: si passa oltre, in silenzio."""
+    profile = _profilo_arte(tempo_disponibile_min=30)
+    ctx = VisitorContext(
+        person_id="p", profile=profile,
+        signal=Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0)),
+    )
+    # L'unico candidato reale (30 min) consuma TUTTO il budget da solo.
+    it = compose_itinerary(
+        ctx, [_candidato_arte(durata_min=30)], compose_reason,
+        eventi_promossi=[_evento_musica()],
+    )
+
+    assert len(it.stops) == 1
+    assert it.stops[0].experience_id == "exp-fisso"
+
+
+def test_eventi_promossi_none_o_vuoto_lascia_itinerario_identico(
+    source: SeedCandidateSource,
+) -> None:
+    """Comportamento INVARIATO per ogni chiamante esistente: non passare
+    `eventi_promossi` (il default `None`, tutti oggi) o passarlo vuoto produce
+    un itinerario BIT-IDENTICO — ids, reason e orari."""
+    profile = EmotionalProfile(
+        curiosita=0.6, contemplazione=0.5, arte=0.7, con_bambini=False,
+        tempo_disponibile_min=180,
+    )
+    ctx = _ctx(profile)
+    cands = _candidati(source, ctx)
+
+    senza = compose_itinerary(ctx, cands, compose_reason)
+    none_esplicito = compose_itinerary(ctx, cands, compose_reason, eventi_promossi=None)
+    vuoto = compose_itinerary(ctx, cands, compose_reason, eventi_promossi=[])
+
+    for altro in (none_esplicito, vuoto):
+        assert [s.experience_id for s in senza.stops] == [s.experience_id for s in altro.stops]
+        assert [s.reason for s in senza.stops] == [s.reason for s in altro.stops]
+        assert [s.arrivo for s in senza.stops] == [s.arrivo for s in altro.stops]
+        assert [s.durata_min for s in senza.stops] == [s.durata_min for s in altro.stops]
+
+
+def test_evento_promosso_non_altera_score_ne_tappe_reali() -> None:
+    """VISIBILITÀ NON ACQUISTABILE anche per il canale "promozione":
+    `calcola_score` è bit-identico con e senza eventi promossi, e le tappe
+    REALI (esclusa la coda `evento-...`) restano bit-identiche — stesso ordine,
+    stessi reason, stessi orari."""
+    profile = _profilo_arte()
+    cand = _candidato_arte()
+    signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
+    ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
+
+    # `==` su float è voluto: bit-identico, non prossimità. `calcola_score` non
+    # ha nemmeno un parametro in cui un evento promosso possa entrare.
+    prima = rules.calcola_score(cand, profile, signal)
+    it_con = compose_itinerary(
+        ctx, [cand], compose_reason, eventi_promossi=[_evento_musica()]
+    )
+    assert rules.calcola_score(cand, profile, signal) == prima
+
+    it_senza = compose_itinerary(ctx, [cand], compose_reason)
+    reali_con = [s for s in it_con.stops if not s.experience_id.startswith("evento-")]
+
+    assert [s.experience_id for s in it_senza.stops] == [s.experience_id for s in reali_con]
+    assert [s.reason for s in it_senza.stops] == [s.reason for s in reali_con]
+    assert [s.arrivo for s in it_senza.stops] == [s.arrivo for s in reali_con]
+
+
+def test_reason_evento_promosso_e_contesto_sul_luogo_non_un_appuntamento() -> None:
+    """Il `reason` di una tappa-evento racconta un CONTESTO SUL LUOGO (nome
+    del luogo + temi resi leggibili), e NON promette mai un giorno o un orario
+    specifico: `EventoPromosso` non trasporta cadenza né finestra temporale,
+    quindi una promessa del genere sarebbe credibile e falsa."""
+    profile = _profilo_arte()
+    ctx = VisitorContext(
+        person_id="p", profile=profile,
+        signal=Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0)),
+    )
+    it = compose_itinerary(
+        ctx, [_candidato_arte()], compose_reason, eventi_promossi=[_evento_musica()]
+    )
+    reason = it.stops[-1].reason
+
+    # Contesto sul luogo: il luogo è nominato...
+    assert "Piazza Fissa" in reason
+    # ...e i temi compaiono in forma leggibile (slug -> parole, niente trattini).
+    assert "musica di strada" in reason
+    assert "musica-di-strada" not in reason
+    # ...detto esplicitamente come tratto ricorrente, non come appuntamento.
+    assert "non un appuntamento" in reason
+
+    # NESSUNA promessa temporale: né un orario (10:30, 18.00...) né un giorno.
+    assert re.search(r"\d{1,2}[:.]\d{2}", reason) is None
+    giorni = (
+        "lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica",
+        "stasera", "stamattina", "alle ore",
+    )
+    assert all(g not in reason.lower() for g in giorni)
+
+
+def test_evento_promosso_determinismo_stesso_input_stesso_output() -> None:
+    """Stesso profilo e stessi `eventi_promossi` -> stesso identico risultato a
+    ogni chiamata (nessun riordino, nessuna sorgente non deterministica)."""
+    profile = _profilo_arte()
+    ctx = VisitorContext(
+        person_id="p", profile=profile,
+        signal=Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0)),
+    )
+    eventi = [
+        _evento_musica(),
+        EventoPromosso(
+            id="evento-luogo-fisso-liuteria", place_id="luogo-fisso", temi=["liuteria"]
+        ),
+    ]
+    a = compose_itinerary(ctx, [_candidato_arte()], compose_reason, eventi_promossi=eventi)
+    b = compose_itinerary(ctx, [_candidato_arte()], compose_reason, eventi_promossi=eventi)
+
+    assert [s.experience_id for s in a.stops] == [s.experience_id for s in b.stops]
+    assert [s.arrivo for s in a.stops] == [s.arrivo for s in b.stops]
+    assert [s.reason for s in a.stops] == [s.reason for s in b.stops]
+    # L'ordine di arrivo è preservato: nessun riordino inventato dal motore.
+    assert [s.experience_id for s in a.stops][1:] == [e.id for e in eventi]
+
+
+def test_tappa_evento_promosso_sopravvive_invariata_a_un_adapt_successivo() -> None:
+    """Una tappa-evento non è tra i `candidates` di un successivo
+    `adapt_itinerary` (il suo `experience_id` è quello di un nodo `:Evento`,
+    non di un'`:Esperienza`): deve comportarsi ESATTAMENTE come una tappa
+    sconosciuta — il percorso `_stub_da_stop` già esistente la conserva
+    intatta, `reason` compreso. Il segnale forza una VERA sostituzione della
+    tappa reale, così l'adapt ricostruisce davvero gli stop invece di
+    ritornare l'itinerario invariato: la coda-evento deve sopravvivere anche a
+    QUEL percorso. L'adattamento di una tappa-evento è fuori scope, come per i
+    fluttuanti."""
+    profile = _profilo_arte()
+    cand = _candidato_arte()
+    ctx = VisitorContext(
+        person_id="p", profile=profile,
+        signal=Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0)),
+    )
+    base = compose_itinerary(ctx, [cand], compose_reason, eventi_promossi=[_evento_musica()])
+    assert base.stops[-1].experience_id == _ID_EVENTO_MUSICA
+
+    alternativa = ExperienceNode(
+        id="exp-alternativa", titolo="Alternativa", place_id="luogo-alternativo",
+        temi=["arte"], durata_min=30, al_chiuso=False, accessibile=True,
+    )
+    cand_alt = GraphCandidate(experience=alternativa, place_nome="Altro Luogo", connessioni=[])
+
+    crowd = Signal(
+        meteo="sereno", affollamento={"luogo-fisso": 0.9}, stanchezza=0.0, ora=time(10, 0)
+    )
+    adattato = adapt_itinerary(
+        base, crowd, [cand, cand_alt], profile, compose_reason, adapt_reason
+    )
+
+    assert adattato.adattato_da_segnale is True  # prova che una VERA ricostruzione è avvenuta
+    eventi_dopo = [s for s in adattato.stops if s.experience_id.startswith("evento-")]
+    assert len(eventi_dopo) == 1
+    assert eventi_dopo[0].experience_id == _ID_EVENTO_MUSICA
+    assert eventi_dopo[0].reason == base.stops[-1].reason
+    assert eventi_dopo[0].durata_min == base.stops[-1].durata_min

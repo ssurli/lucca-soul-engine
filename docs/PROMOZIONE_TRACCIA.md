@@ -12,7 +12,21 @@
 > REALE anche la frizione automatica a cadenza** (`attivo ⇄ sospeso → dormiente`,
 > `urban_memory.frizione_pattern`, comando `python -m urban_memory.frizione_pattern`) —
 > dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto, subito dopo quella del rilevamento/
-> promozione. **§2(b) (il bagliore) e il freno di emergenza, più la corsia fluttuanti
+> promozione. **Un quarto task ("brief vincolante — consumo degli `:Evento` v1 minima") ha
+> reso REALE anche il CONSUMO**: un `:Evento` promosso e `stato='attivo'`, pertinente al
+> profilo, compare ora come tappa in coda in un itinerario reale
+> (`experience_engine.engine._aggiungi_tappe_eventi_promossi`, letto dal grafo dal BFF —
+> `services/api/api/deps.get_evento_reader`/`main.create_itinerary` — e passato a
+> `compose_itinerary` come nuovo tipo condiviso `contracts.EventoPromosso`). **Questo chiude
+> il cerchio traccia → promozione → frizione → consumo**: un fluttuante che si ripete
+> abbastanza volte non resta più un fatto solo interno a `services/urban-memory`, arriva
+> davvero a un visitatore. Dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto, in coda alle
+> altre tre. **Nessuna finestra temporale in questa v1** (un `:Evento` compare a prescindere
+> da SE la cadenza combacia col giorno di visita — deliberato, task successivo) e **nessun
+> filtro di ammissibilità commerciale sul pattern promosso** (varco preesistente reso ora
+> concretamente raggiungibile — trovato da un giro dedicato di `ethics-guardian`, dettaglio
+> completo in `docs/LIMITI.md`, voce estesa su `SegnaleFluttuante.non_commerciale`). **§2(b)
+> (il bagliore) e il freno di emergenza, più la corsia fluttuanti
 > `blocked`/`approved`/`rejected` di `docs/STATE_MACHINE.md` §4, restano DESIGN PURO** —
 > nessuna riga di quelle parti è eseguibile. Ogni sezione sotto è
 > annotata esplicitamente REALE o DESIGN, non lasciata all'inferenza. Fonte del design
@@ -248,7 +262,35 @@ rilevamento e la promozione — verificato contro il codice:
   sarebbe stato dichiarato `dormiente` quasi subito dopo `sospeso`, vanificando lo scopo
   dichiarato di gestire la stagionalità), corretto rendendo l'orizzonte di dormienza
   proporzionale alla cadenza del singolo pattern (`max(pavimento assoluto, moltiplicatore ×
-  cadenza_giorni)`), con test di regressione dedicato per cadenze lunghe. **Resta design
+  cadenza_giorni)`), con test di regressione dedicato per cadenze lunghe.
+- **Ora REALE anche il consumo**: un `:Evento {ricorrente: true, stato: 'attivo'}`, pertinente
+  al profilo, compare come tappa in coda in un itinerario reale — stessa identica meccanica
+  già in uso per i segnali fluttuanti (`_aggiungi_tappe_fluttuanti`), ramo gemello
+  `experience_engine.engine._aggiungi_tappe_eventi_promossi`. Il BFF (`services/api/api/deps.
+  get_evento_reader`, `main.create_itinerary`) legge dal grafo RIUSANDO
+  `urban_memory.frizione_pattern.leggi_eventi_ricorrenti`/`Neo4jFrizioneClient` (nessuna nuova
+  query Cypher), filtra in Python `stato == 'attivo'`, converte nel nuovo tipo condiviso
+  `contracts.EventoPromosso` (`id, place_id, temi` — minimale, nessun `cadenza_giorni`/`stato`
+  attraversa il confine verso il motore) e lo passa a `compose_itinerary` come nuovo parametro
+  iniettabile, stesso principio di `score_fn`/`reason_fn`. **Precisazione, non una
+  contraddizione col punto (1) sopra**: l'hot path di `/itinerary` ORA legge `:Evento.stato`
+  (proprietà già scritta dalla promozione/frizione), ma non calcola né scrive MAI il clock
+  del pattern — quella logica resta interamente nel batch `frizione_pattern`, invariata. Il
+  `reason` di una tappa-evento è scritto deliberatamente come CONTESTO SUL LUOGO
+  (`"{place_nome} ha un carattere legato a {temi}: un tratto ricorrente del luogo, non un
+  appuntamento di oggi."`), mai un appuntamento — questa v1 non verifica se la cadenza
+  combacia col giorno di visita (nessuna finestra temporale, task successivo), quindi un
+  `:Evento` può comparire in un giorno diverso da quello in cui l'occorrenza reale avviene: il
+  racconto deve restarne onesto, non promettere una presenza fisica. Un giro DEDICATO di
+  `ethics-guardian` ha dato FAIL iniziale (non un'autovalutazione) — non sull'implementazione
+  tecnica (score/budget/sicurezza/onestà del reason tutti verificati PASS), ma su una frase
+  ormai falsa lasciata in `docs/LIMITI.md` ("nessuna riga di frizione_pattern è raggiungibile
+  da `/itinerary`") e sull'assenza di una dichiarazione esplicita che il consumo rende ora
+  concretamente raggiungibile un varco preesistente (un pattern commerciale può diventare un
+  `:Evento` promosso senza che nessun controllo lo intercetti, perché il carattere commerciale
+  non sopravvive al deposito nel ledger) — corretto, **PASS** dopo l'aggiornamento di
+  `docs/LIMITI.md` (voce sulla frizione + voce estesa su `SegnaleFluttuante.non_commerciale`).
+- **Resta design
   puro**: il freno di emergenza, e la corsia di revisione umana `blocked`/`approved`/
   `rejected` dei singoli SEGNALI fluttuanti (`STATE_MACHINE.md` §4) — quella distinta dalla
   revisione del PATTERN qui sopra: ogni segnale che arriva dal canale fluttuante persistente

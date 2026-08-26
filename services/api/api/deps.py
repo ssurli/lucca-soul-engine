@@ -39,6 +39,13 @@ from urban_memory import (
     TracciaStorageError,
 )
 
+# `Neo4jFrizioneClient` NON è riesportato da `urban_memory/__init__.py` (vive
+# solo in `urban_memory.frizione_pattern`, pensato per il comando batch
+# `python -m urban_memory.frizione_pattern`): importato dal sottomodulo
+# direttamente, stesso principio di riuso-non-duplicazione già applicato in
+# questo file — nessuna modifica a `urban_memory` per esportarlo.
+from urban_memory.frizione_pattern import Neo4jFrizioneClient
+
 from api.settings import get_settings
 
 __all__ = [
@@ -49,6 +56,7 @@ __all__ = [
     "get_segnale_repository",
     "get_traccia_repository",
     "get_place_link_writer",
+    "get_evento_reader",
 ]
 
 
@@ -286,4 +294,40 @@ def get_place_link_writer() -> PlaceLinkWriter | None:
             database=settings.neo4j_database or "neo4j",
         )
         return linker.scrivi
+    return None
+
+
+@lru_cache
+def get_evento_reader() -> Neo4jFrizioneClient | None:
+    """Lettore degli `:Evento` ricorrenti/promossi nel Knowledge Graph (Fase
+    3, consumo in `POST /itinerary`: `experience_engine.engine.
+    compose_itinerary(..., eventi_promossi=...)`) — `None` se `NEO4J_URI`/
+    `NEO4J_USERNAME`/`NEO4J_PASSWORD` non sono TUTTE presenti, stesso pattern
+    di `get_candidate_source`/`get_place_link_writer`: senza credenziali
+    complete non si tenta la connessione, mai un errore all'avvio del BFF.
+
+    Un solo driver Neo4j, aperto una volta per l'intero ciclo di vita del
+    processo (`Neo4jFrizioneClient`, stesso pattern di `Neo4jCandidateSource`/
+    `Neo4jLuogoTracciaLinker` sopra), riusato per ogni richiesta — mai un
+    driver per richiesta, mai chiuso esplicitamente qui (stessa disciplina
+    già in uso per `get_candidate_source`/`get_place_link_writer`: il driver
+    vive quanto il processo del BFF, non quanto una singola richiesta).
+
+    `Neo4jFrizioneClient` (`urban_memory.frizione_pattern`, letto e riusato
+    da qui, MAI modificato) espone solo `from_env()` — pensato per il
+    comando batch `python -m urban_memory.frizione_pattern`, che legge il
+    `.env` autonomamente. Qui il driver è costruito DIRETTAMENTE dalle
+    credenziali già lette da `api.settings.Settings`, stessa tecnica di
+    `Neo4jLuogoTracciaLinker.from_credentials`/`Neo4jCandidateSource.
+    from_credentials`, per evitare una seconda lettura indipendente del
+    `.env` — nessun `from_credentials` da aggiungere a `urban_memory` per
+    questo."""
+    settings = get_settings()
+    if settings.neo4j_uri and settings.neo4j_username and settings.neo4j_password:
+        from neo4j import GraphDatabase  # import locale: nessuna dipendenza
+
+        driver = GraphDatabase.driver(
+            settings.neo4j_uri, auth=(settings.neo4j_username, settings.neo4j_password)
+        )
+        return Neo4jFrizioneClient(driver, database=settings.neo4j_database or "neo4j")
     return None
