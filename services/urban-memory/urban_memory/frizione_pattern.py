@@ -143,16 +143,26 @@ K_ORIZZONTE_DORMIENZA: float = 3.0
 
 @dataclass(frozen=True)
 class EventoRicorrente:
-    """Un `:Evento {ricorrente: true}` letto dal grafo, con le sole
-    proprietà che la frizione automatica a cadenza consuma. `temi` è GIÀ
-    canonico (scritto in quella forma alla promozione,
-    `promozione_evento.promozione_evento_cypher`)."""
+    """Un `:Evento {ricorrente: true}` letto dal grafo. `temi` è GIÀ canonico
+    (scritto in quella forma alla promozione,
+    `promozione_evento.promozione_evento_cypher`).
+
+    `frenato` (docs/STATE_MACHINE.md §4-bis(b), freno di emergenza) NON è
+    consumato dalla frizione automatica a cadenza di QUESTO modulo — vive
+    qui solo perché questo resta l'UNICO tipo che attraversa
+    `leggi_eventi_ricorrenti`/`Neo4jFrizioneClient.eventi_ricorrenti()`,
+    condiviso dal consumo in `services/api/api/main.py` (che sopprime la
+    raccomandazione quando `frenato` è vero). La lettura/scrittura del
+    freno vive interamente in `urban_memory.freno_pattern` (responsabilità
+    separata: la frizione decide `stato`, il freno decide `frenato` — mai
+    lo stesso modulo, mai la stessa proprietà)."""
 
     evento_id: str
     place_id: str
     temi: tuple[str, ...]
     stato: str
     cadenza_giorni: float
+    frenato: bool = False
 
 
 def eventi_ricorrenti_read_cypher() -> tuple[str, dict[str, Any]]:
@@ -227,6 +237,12 @@ def leggi_eventi_ricorrenti(
             temi=tuple(riga["temi"] or []),
             stato=riga["stato"],
             cadenza_giorni=riga["cadenza_giorni"],
+            # `.get(...)`, non `riga["frenato"]`: una riga proveniente da un
+            # test o da un grafo non ancora aggiornato può non avere la
+            # chiave affatto (o averla a `None`) — deve leggersi come
+            # `False` in ENTRAMBI i casi (mai frenato di default), stesso
+            # principio del `coalesce(e.frenato, false)` nella query.
+            frenato=bool(riga.get("frenato") or False),
         )
         for riga in righe
     ]

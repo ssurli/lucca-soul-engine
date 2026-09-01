@@ -1253,3 +1253,121 @@ Questo limite va riletto prima di:
 - affidarsi allo `stato` di un `:Evento` come sempre aggiornato in un contesto di produzione
   reale (Living Lab) senza una disciplina operativa esplicita di riesecuzione del comando;
 - decidere di investire in uno scheduler o in una riattivazione in tempo reale.
+
+---
+
+## Il freno di emergenza (v1 minima) è un percorso fidato/CLI provvisorio, senza lista nominale di permessi
+
+**Introdotto:** Fase 3, freno di emergenza v1 minima. **Componente:** `services/urban-memory`
+(`urban_memory.freno_pattern`), `services/api` (`api.main`, filtro di consumo).
+
+### Cosa è garantito oggi
+
+Il freno (`python -m urban_memory.freno_pattern tira|rilascia`) sopprime la raccomandazione di
+un `:Evento` promosso senza mai toccare `e.stato`: proprietà separata `e.frenato`
+(`cypher/62_freno_stato_write.cypher`, `MATCH`+`SET` puro, mai `MERGE`), letta dal filtro di
+consumo in `POST /itinerary` (`services/api/api/main.py`, ora `stato == 'attivo' and not
+frenato`) — lettura pura, nessuna scrittura raggiungibile dal path caldo (verificato con un
+guard AST: il BFF non importa mai `freno_pattern`/`freno_repository`). Il ledger delle tracce
+resta veritiero: un pattern frenato continua a depositare tracce normalmente (verificato con un
+guard AST bidirezionale — nessun import incrociato tra i moduli del freno e
+`canale_fluttuante`/`traccia_repository` — e un test comportamentale end-to-end).
+`motivazione` e `attore` sono entrambi validati PRIMA di ogni scrittura (né sul grafo né sulla
+tabella `pattern_frenato`) su `tira_freno`/`rilascia_freno` — quest'ultimo trovato mancante da
+un giro dedicato di `ethics-guardian` (FAIL iniziale: un `attore` vuoto poteva produrre un
+`:Evento` frenato senza riga di audit, perché la scrittura sul grafo precede quella
+sull'audit), corretto e riverificato PASS. La tabella `pattern_frenato` è append-only, senza
+vincolo UNIQUE (il freno è ripetibile: ogni tiro/rilascio è una riga nuova, mai un upsert).
+
+### Cosa NON è garantito
+
+Il design congelato (`docs/STATE_MACHINE.md §4-bis(b)`) prevede un **permesso individuale
+nominale**: solo un sottoinsieme ristretto di Promotori può tirare il freno, con
+concessione/revoca del permesso stesso tracciata e reversibile. **Nessuna parte di questo
+livello di autorità è implementata.** Il comando è oggi un percorso **fidato/CLI
+provvisorio** — stessa postura già accettata per `curatela_pattern.py`/`frizione_pattern.py`/
+`submit_signal.py`: nessuna autenticazione, nessun rate-limit, nessuna lista che distingua un
+Promotore autorizzato al freno da uno che non lo è. Chiunque abbia accesso alla shell del
+repository (con `.env` configurato) può tirare o rilasciare il freno su qualunque `:Evento`
+promosso, fornendo un `attore` a piacere (uno pseudonimo non verificato, esattamente come
+`promotore` in `pattern_cestinato`/`:Evento.promosso_da` — stessa fiducia non verificata già
+accettata altrove in questo file per `POST /events`/`SegnaleFluttuante.non_commerciale`).
+
+Conseguenza pratica: l'"accountability" oggi è **auditabile** (ogni azione lascia una riga
+persistita, interrogabile, con attore+motivazione+timestamp) ma **non autorizzata** — non c'è
+modo, nel codice, di impedire a chi ha accesso alla CLI di tirare il freno senza averne il
+titolo istituzionale. Per un contesto di pubblica amministrazione (un Comune che deve poter
+rispondere "chi AVEVA IL POTERE di frenare questo pattern il giorno X", non solo "chi lo ha
+fatto"), questo è un gap reale, non solo teorico, nel momento in cui più di una persona ha
+accesso al comando.
+
+### Cosa servirebbe per chiudere il buco
+
+Una lista nominale persistita (tabella o configurazione) di chi detiene il permesso-freno, con
+grant/revoke tracciato e reversibile (append-only, stesso principio già applicato a
+`pattern_frenato`), e un controllo in `tira_freno`/`rilascia_freno` che verifichi `attore`
+contro quella lista PRIMA di scrivere — rifiutando, non solo loggando, un tentativo da un
+attore non autorizzato. Residuo esplicitamente differito dal brief (`docs/STATE_MACHINE.md`
+§7.14.1, item 16): chi amministra concretamente la lista (un Admin di piattaforma? il Comune?
+il Promotore più anziano?) non è deciso — costruirla ora senza quella decisione fabbricherebbe
+un meccanismo di governance a tavolino, stesso principio già applicato altrove in questo file
+(`tasso_ritorno`, capienza del marketplace).
+
+### Decisione
+
+Non implementato ora, deliberatamente — v1 minima esplicitamente scoped a questo. Questo
+limite va riletto prima di:
+- aprire l'accesso al comando `freno_pattern` a più di una persona fidata nel Living Lab (a
+  quel punto l'assenza di una lista nominale smette di essere un rischio teorico);
+- decidere chi amministra la lista dei permessi-freno, sciogliendo il residuo di
+  `docs/STATE_MACHINE.md` §7.14.1.
+
+---
+
+## Non-atomicità tra la scrittura sul grafo e quella di audit del freno di emergenza
+
+**Introdotto:** Fase 3, freno di emergenza v1 minima. **Componente:** `services/urban-memory`
+(`urban_memory.freno_pattern`). **Trovato durante:** un giro dedicato di `ethics-guardian`,
+osservazione non bloccante lasciata dopo la correzione del bug bloccante (voce precedente in
+questo file, sulla validazione di `attore`).
+
+### Cosa è garantito oggi
+
+`tira_freno`/`rilascia_freno` validano `motivazione`/`attore` PRIMA di ogni effetto
+collaterale: un tentativo con uno dei due campi vuoto/whitespace non scrive NULLA, né sul
+grafo né su `pattern_frenato` — chiude il bug bloccante trovato nel primo giro di
+`ethics-guardian`.
+
+### Cosa NON è garantito
+
+Anche dopo quella correzione, `writer(evento_id, ...)` (scrittura su Neo4j) e
+`repo.registra(...)` (scrittura su Postgres) restano DUE scritture separate, non
+transazionali — stesso limite architetturale già accettato altrove nel repo per
+`link_to_graph`/Postgres e per lo sweep+deposito del canale fluttuante (`docs/LIMITI.md`, voce
+"Un fallimento del deposito..."). Se `repo.registra` fallisce per una causa infrastrutturale
+DOPO che `writer` ha già scritto `e.frenato` con successo (es. un blip di connessione Postgres
+transitorio, non più un `attore`/`motivazione` invalidi — quel caso è chiuso), il freno resta
+comunque tirato sul grafo ma senza la riga di audit corrispondente in quella specifica
+esecuzione. Nessun test esercita esplicitamente questo scenario (scrittura sul grafo riuscita,
+scrittura di audit fallita per causa infrastrutturale).
+
+### Cosa servirebbe per chiudere il buco
+
+Una coda di retry per l'audit fallito (stesso principio già applicato altrove — `docs/
+ENGINE_INVARIANTS.md` §11-B, `list_aggancio_fallito()`/`retry_link_contribution`), oppure
+invertire l'ordine di scrittura (registrare prima l'intento in `pattern_frenato`, poi scrivere
+sul grafo) — quest'ultima non elimina il problema, lo sposta (un `writer` fallito dopo un
+`repo.registra` riuscito lascerebbe una riga di audit per un'azione mai avvenuta sul grafo).
+Nessuna delle due è stata costruita ora: nessun caso reale (traffico reale sul comando) mostra
+la frequenza pratica di questo scenario.
+
+### Decisione
+
+Non implementato ora — il rischio è residuale (richiede un fallimento infrastrutturale nella
+finestra tra le due scritture, non un input malformato: quel caso è già chiuso) e non
+bloccante secondo il giro di `ethics-guardian` che lo ha trovato. Questo limite va riletto
+prima di:
+- presentare il freno come garanzia assoluta di audit completo in un contesto di produzione
+  reale (Living Lab);
+- decidere se investire in una coda di retry o in un cambio di ordine delle scritture, quando
+  il traffico reale mostrerà se questo scenario si manifesta davvero.

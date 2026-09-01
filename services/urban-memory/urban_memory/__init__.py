@@ -89,6 +89,13 @@ from .cestino_repository import (
     PatternCestinatoRepository,
     PostgresPatternCestinatoRepository,
 )
+from .freno_repository import (
+    FrenoStorageError,
+    InMemoryPatternFrenatoRepository,
+    PatternFrenato,
+    PatternFrenatoRepository,
+    PostgresPatternFrenatoRepository,
+)
 from .graph_link import (
     MEMORY_LINK_CHECK_QUERY_PATH,
     MEMORY_LINK_WRITE_QUERY_PATH,
@@ -222,4 +229,17 @@ __all__ = [
     "PromozioneEventoError",
     "scrivi_evento_promosso",
     "Neo4jPromozioneWriter",
+    # Freno di emergenza (Fase 3, docs/STATE_MACHINE.md §4-bis(b),
+    # `python -m urban_memory.freno_pattern tira|rilascia`). Il log
+    # (`PatternFrenatoRepository`) è esportato qui — stesso principio di
+    # `PatternCestinatoRepository` sopra; `Neo4jFrenoClient`/`tira_freno`/
+    # `rilascia_freno` restano NON riesportati (vivono solo in
+    # `urban_memory.freno_pattern`, importati dal sottomodulo direttamente
+    # da chi li usa — stesso principio di `Neo4jFrizioneClient`, vedi
+    # `services/api/api/deps.py`).
+    "PatternFrenato",
+    "PatternFrenatoRepository",
+    "InMemoryPatternFrenatoRepository",
+    "PostgresPatternFrenatoRepository",
+    "FrenoStorageError",
 ]

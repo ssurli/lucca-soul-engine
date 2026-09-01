@@ -349,6 +349,47 @@ def test_leggi_eventi_ricorrenti_mappa_le_proprieta() -> None:
     )
 
 
+def test_leggi_eventi_ricorrenti_mappa_frenato_true() -> None:
+    """`frenato` (freno di emergenza, `urban_memory.freno_pattern`,
+    `docs/STATE_MACHINE.md` §4-bis(b)) è letto dalla stessa riga, insieme
+    alle proprietà della frizione — un `:Evento` con il freno tirato."""
+    grezzo = dict(_EVENTO_GREZZO)
+    grezzo["frenato"] = True
+    driver = _FakeDriver(eventi=[grezzo])
+
+    [evento] = leggi_eventi_ricorrenti(driver=driver)
+
+    assert evento.frenato is True
+
+
+def test_leggi_eventi_ricorrenti_frenato_assente_di_default_a_false() -> None:
+    """Un `:Evento` promosso PRIMA dell'esistenza del freno non ha la
+    proprietà `frenato` sul nodo: la query versionata la legge con
+    `coalesce(e.frenato, false)`, ma questo test simula anche il caso in cui
+    la chiave manchi DEL TUTTO dalla riga (driver/versione della query
+    precedente) — comportamento invariato, mai frenato di default."""
+    grezzo = dict(_EVENTO_GREZZO)
+    assert "frenato" not in grezzo
+    driver = _FakeDriver(eventi=[grezzo])
+
+    [evento] = leggi_eventi_ricorrenti(driver=driver)
+
+    assert evento.frenato is False
+
+
+def test_leggi_eventi_ricorrenti_frenato_none_e_false() -> None:
+    """`coalesce` nella query non dovrebbe mai restituire `None`, ma la
+    mappatura Python resta difensiva: una riga con `frenato=None` si legge
+    comunque come `False`, mai come un errore o un `None` propagato."""
+    grezzo = dict(_EVENTO_GREZZO)
+    grezzo["frenato"] = None
+    driver = _FakeDriver(eventi=[grezzo])
+
+    [evento] = leggi_eventi_ricorrenti(driver=driver)
+
+    assert evento.frenato is False
+
+
 def test_leggi_eventi_ricorrenti_grafo_irraggiungibile_solleva_errore() -> None:
     driver = _FakeDriver(session_error=RuntimeError("connessione rifiutata"))
     with pytest.raises(FrizionePatternError):

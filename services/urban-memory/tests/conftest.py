@@ -310,3 +310,22 @@ def any_cestino_repository(request: pytest.FixtureRequest):
 
     migrate(dsn)
     return PostgresPatternCestinatoRepository(dsn)
+
+
+@pytest.fixture(params=["in_memory", "postgres"])
+def any_freno_repository(request: pytest.FixtureRequest):
+    """Stesso pattern di `any_cestino_repository`, per
+    `PatternFrenatoRepository` (Fase 3, il log del freno di emergenza,
+    `docs/STATE_MACHINE.md` §4-bis(b)). Il ramo `postgres` salta (non
+    fallisce) se il cluster effimero non è disponibile, tramite `pg_dsn`."""
+    if request.param == "in_memory":
+        from urban_memory.freno_repository import InMemoryPatternFrenatoRepository
+
+        return InMemoryPatternFrenatoRepository()
+
+    dsn = request.getfixturevalue("pg_dsn")
+    from urban_memory.freno_repository import PostgresPatternFrenatoRepository
+    from urban_memory.migrate import migrate
+
+    migrate(dsn)
+    return PostgresPatternFrenatoRepository(dsn)

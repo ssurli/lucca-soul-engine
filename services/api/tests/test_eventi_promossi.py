@@ -23,10 +23,20 @@ Copre i criteri del task:
 3. Il client non può influenzare `eventi_promossi` tramite il body: il
    contratto (`VisitorContext`, `extra="forbid"`) non espone alcun campo per
    questo, e un `:Evento` NON pertinente ai temi/place letti dal grafo non
-   compare comunque, a prescindere da cosa il client manda nel body."""
+   compare comunque, a prescindere da cosa il client manda nel body.
+4. Freno di emergenza (`frenato`, docs/STATE_MACHINE.md §4-bis(b)): un
+   `:Evento` `attivo` MA `frenato=True` non compare mai, indipendentemente
+   dal ciclo `stato` — overlay ortogonale, letto qui in sola lettura.
+5. Guard strutturale (AST): il filtro-freno nel consumo di `/itinerary` è
+   lettura pura — `api.main`/`api.deps` non importano MAI
+   `urban_memory.freno_pattern`/`freno_repository` (i moduli che POSSONO
+   scrivere `e.frenato`/`pattern_frenato`). Nessun `SET` è nemmeno
+   raggiungibile da questo path: il freno si tira/rilascia SOLO da CLI."""
 
 from __future__ import annotations
 
+import ast
+from pathlib import Path
 from typing import Any
 
 import pytest
@@ -204,6 +214,96 @@ def test_evento_promosso_non_attivo_non_entra(monkeypatch: pytest.MonkeyPatch) -
 
 
 # ---------------------------------------------------------------------------
+# 1-bis. Freno di emergenza (`frenato`, docs/STATE_MACHINE.md §4-bis(b)):
+#        overlay ORTOGONALE a `stato` sullo stesso :Evento, letto qui in
+#        sola lettura (mai scritto dal BFF — si tira/rilascia SOLO da CLI,
+#        `python -m urban_memory.freno_pattern`).
+# ---------------------------------------------------------------------------
+
+
+def test_evento_promosso_attivo_e_frenato_non_entra(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un `:Evento` `attivo` MA `frenato=True` non deve comparire: il freno
+    sopprime la raccomandazione indipendentemente dallo stato del ciclo
+    attivo/sospeso/dormiente."""
+    evento = EventoRicorrente(
+        evento_id="evento-frenato-test",
+        place_id=PLACE_ID_SEED,
+        temi=("musica",),
+        stato="attivo",
+        cadenza_giorni=30.0,
+        frenato=True,
+    )
+    _stub(
+        monkeypatch,
+        evento_reader=_FakeEventoReader([evento]),
+        candidate_source=_FakeCandidateSource([_candidato_arte()]),
+    )
+    client = TestClient(api_main.app)
+
+    resp = client.post("/itinerary", json=_visitor_context())
+
+    assert resp.status_code == 200
+    ids = [s["experience_id"] for s in resp.json()["stops"]]
+    assert "evento-frenato-test" not in ids, (
+        f"un evento attivo e frenato non deve comparire in itinerario: {ids}"
+    )
+
+
+def test_evento_promosso_attivo_e_non_frenato_entra(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stesso evento del test precedente, ma `frenato=False`: nessuna
+    regressione sul comportamento esistente (deve comparire, come prima
+    dell'introduzione del freno)."""
+    evento = EventoRicorrente(
+        evento_id="evento-non-frenato-test",
+        place_id=PLACE_ID_SEED,
+        temi=("musica",),
+        stato="attivo",
+        cadenza_giorni=30.0,
+        frenato=False,
+    )
+    _stub(
+        monkeypatch,
+        evento_reader=_FakeEventoReader([evento]),
+        candidate_source=_FakeCandidateSource([_candidato_arte()]),
+    )
+    client = TestClient(api_main.app)
+
+    resp = client.post("/itinerary", json=_visitor_context())
+
+    assert resp.status_code == 200
+    ids = [s["experience_id"] for s in resp.json()["stops"]]
+    assert "evento-non-frenato-test" in ids, (
+        f"un evento attivo e non frenato deve comparire in itinerario: {ids}"
+    )
+
+
+def test_evento_sospeso_e_frenato_non_entra(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Un `:Evento` `sospeso` E `frenato=True`: doppio motivo di esclusione,
+    nessuna sorpresa nella combinazione (resta fuori sia per `stato` che per
+    `frenato`)."""
+    evento = EventoRicorrente(
+        evento_id="evento-sospeso-e-frenato-test",
+        place_id=PLACE_ID_SEED,
+        temi=("musica",),
+        stato="sospeso",
+        cadenza_giorni=30.0,
+        frenato=True,
+    )
+    _stub(
+        monkeypatch,
+        evento_reader=_FakeEventoReader([evento]),
+        candidate_source=_FakeCandidateSource([_candidato_arte()]),
+    )
+    client = TestClient(api_main.app)
+
+    resp = client.post("/itinerary", json=_visitor_context())
+
+    assert resp.status_code == 200
+    ids = [s["experience_id"] for s in resp.json()["stops"]]
+    assert "evento-sospeso-e-frenato-test" not in ids
+
+
+# ---------------------------------------------------------------------------
 # 2. Grafo/lettore irraggiungibile -> COMUNQUE 200, mai un 503/500
 # ---------------------------------------------------------------------------
 
@@ -293,3 +393,54 @@ def test_evento_non_pertinente_non_entra_a_prescindere_dal_body(
     assert resp.status_code == 200
     ids = [s["experience_id"] for s in resp.json()["stops"]]
     assert "evento-non-pertinente-test" not in ids
+
+
+# ---------------------------------------------------------------------------
+# 5. Guard strutturale (AST) — il filtro-freno nel consumo è lettura pura:
+#    nessun modulo di questo BFF importa `urban_memory.freno_pattern`/
+#    `freno_repository` (gli UNICI moduli che possono scrivere `e.frenato`/
+#    `pattern_frenato`), quindi nessun `SET` è nemmeno raggiungibile dal path
+#    `/itinerary` — stesso principio del guard già in uso in
+#    `services/urban-memory/tests/test_purezza_experience_engine.py` e
+#    `test_freno_non_accoppia_traccia.py`, applicato qui al confine BFF.
+# ---------------------------------------------------------------------------
+
+_API_PACKAGE_DIR = Path(__file__).resolve().parents[1] / "api"
+_MODULI_FRENO_SCRITTURA = ("freno_pattern", "freno_repository")
+
+
+def _moduli_importati(albero: ast.AST) -> set[str]:
+    nomi: set[str] = set()
+    for nodo in ast.walk(albero):
+        if isinstance(nodo, ast.Import):
+            nomi.update(alias.name.split(".")[0] for alias in nodo.names)
+        elif isinstance(nodo, ast.ImportFrom) and nodo.module:
+            nomi.add(nodo.module.split(".")[-1])
+    return nomi
+
+
+def test_api_package_dir_esiste() -> None:
+    assert _API_PACKAGE_DIR.is_dir(), (
+        f"atteso {_API_PACKAGE_DIR} — layout del repo cambiato?"
+    )
+
+
+def test_api_non_importa_mai_i_moduli_di_scrittura_del_freno() -> None:
+    """`api/main.py`/`api/deps.py` (e qualunque altro modulo del BFF) non
+    importano MAI `freno_pattern`/`freno_repository`: solo `frizione_pattern`
+    (via `Neo4jFrizioneClient.eventi_ricorrenti`, un lettore) è raggiungibile
+    da `create_itinerary` — il freno resta un percorso CLI ristretto/fidato,
+    mai invocabile da `/itinerary` o da qualunque altro endpoint di questo
+    BFF (docs/STATE_MACHINE.md §4-bis(b))."""
+    moduli_python = list(_API_PACKAGE_DIR.rglob("*.py"))
+    assert moduli_python, "nessun modulo .py trovato: il guard non starebbe verificando nulla"
+
+    for path in moduli_python:
+        albero = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        importati = _moduli_importati(albero)
+        for nome_freno in _MODULI_FRENO_SCRITTURA:
+            assert nome_freno not in importati, (
+                f"{path} importa {nome_freno!r}: il BFF non deve MAI poter "
+                "scrivere il freno — /itinerary legge SOLO `e.frenato` "
+                "(tramite `EventoRicorrente`), non lo tira/rilascia mai."
+            )

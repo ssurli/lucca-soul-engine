@@ -535,14 +535,21 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     gli `:Evento` ricorrenti dal grafo (`api.deps.get_evento_reader`,
     `Neo4jFrizioneClient.eventi_ricorrenti`, che riusa `urban_memory.
     frizione_pattern.leggi_eventi_ricorrenti` — nessuna nuova query Cypher),
-    filtra in Python quelli con `stato == 'attivo'` (la query legge
-    QUALUNQUE stato, il filtro è deliberatamente qui, non nel Cypher) e li
-    converte in `list[contracts.EventoPromosso]` — mapping diretto
+    filtra in Python quelli con `stato == 'attivo' and not frenato` (la
+    query legge QUALUNQUE stato/valore di `frenato`, il filtro è
+    deliberatamente qui, non nel Cypher) e li converte in
+    `list[contracts.EventoPromosso]` — mapping diretto
     `EventoRicorrente.evento_id -> EventoPromosso.id`, `place_id ->
-    place_id`, `temi -> temi`; `cadenza_giorni`/`stato` restano
+    place_id`, `temi -> temi`; `cadenza_giorni`/`stato`/`frenato` restano
     nell'`EventoRicorrente` letto qui e NON attraversano il confine verso il
     motore (vedi il docstring di `contracts.EventoPromosso`: quel tipo
-    arriva al motore già filtrato ad `attivo`, per costruzione).
+    arriva al motore già filtrato ad `attivo` e non frenato, per
+    costruzione). `frenato` (docs/STATE_MACHINE.md §4-bis(b), freno di
+    emergenza) è un overlay ORTOGONALE a `stato`: un `:Evento` può essere
+    `attivo` e `frenato=True` insieme, nel qual caso NON compare qui — il
+    freno si tira/rilascia SOLO da CLI
+    (`python -m urban_memory.freno_pattern`), mai da questo endpoint, che
+    lo legge soltanto.
 
     Stessa disciplina, stesso motivo, dello stesso blocco `eventi_attivi`
     sopra: `get_evento_reader()` è chiamato DIRETTAMENTE dentro il `try`
@@ -602,7 +609,7 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
                     temi=list(evento.temi),
                 )
                 for evento in evento_reader.eventi_ricorrenti()
-                if evento.stato == "attivo"
+                if evento.stato == "attivo" and not evento.frenato
             ]
     except Exception:  # difesa in profondità: il consumo degli eventi
         # promossi è un arricchimento opzionale, mai un motivo di fallimento

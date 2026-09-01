@@ -23,9 +23,21 @@
 // il codice Python chiamante (`urban_memory.frizione_pattern.main`) a
 // decidere, pattern per pattern, se una transizione è dovuta; questa query
 // non filtra né decide nulla.
+//
+// `frenato` (docs/STATE_MACHINE.md §4-bis(b), freno di emergenza,
+// `urban_memory.freno_pattern`) è un OVERLAY scritto separatamente da
+// `62_freno_stato_write.cypher` — mai una quarta voce di `stato`. Letta qui
+// PERCHÉ `EventoRicorrente` (`urban_memory.frizione_pattern`) resta l'UNICO
+// tipo che attraversa questa lettura, condiviso dal consumo in
+// `services/api/api/main.py` (che sopprime la raccomandazione quando
+// `frenato` è vero) — non una seconda query separata solo per questo campo.
+// `coalesce(e.frenato, false)`: un `:Evento` promosso PRIMA dell'esistenza
+// del freno non ha questa proprietà — deve leggersi come `false` (mai
+// frenato), comportamento invariato per gli `:Evento` esistenti.
 MATCH (e:Evento {ricorrente: true})-[:SI_SVOLGE_A]->(l:Luogo)
 RETURN e.id AS evento_id,
        l.id AS place_id,
        e.temi AS temi,
        e.stato AS stato,
-       e.cadenza_giorni AS cadenza_giorni
+       e.cadenza_giorni AS cadenza_giorni,
+       coalesce(e.frenato, false) AS frenato

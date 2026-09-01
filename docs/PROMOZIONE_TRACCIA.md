@@ -35,8 +35,23 @@
 > ricorrente. Un secondo giro di `ethics-guardian`, indipendente, ha riverificato e confermato
 > "GARANZIA ORA PRESERVATA" (fino al limite noto e già accettato dell'auto-dichiarazione
 > mentita di `non_commerciale`, invariato — dettaglio in `docs/LIMITI.md`, voce estesa su
-> `SegnaleFluttuante.non_commerciale`). **§2(b)
-> (il bagliore) e il freno di emergenza, più la corsia fluttuanti
+> `SegnaleFluttuante.non_commerciale`). **Un quinto task ("brief vincolante — freno di
+> emergenza v1 minima") ha reso REALE anche l'OVERLAY DI SICUREZZA**: `urban_memory.
+> freno_pattern` (comando `python -m urban_memory.freno_pattern tira|rilascia`) scrive una
+> proprietà separata `e.frenato` sul nodo `:Evento` (mai `e.stato`), letta dallo stesso filtro
+> di consumo (`services/api/api/main.py`, ora `stato == 'attivo' and not frenato`) — un evento
+> frenato smette di essere raccomandato ma continua a depositare tracce normalmente (il ledger
+> resta veritiero). Tabella Postgres `pattern_frenato` (append-only, senza UNIQUE — il freno è
+> ripetibile), motivazione testuale obbligatoria su ogni tiro. Verificato da un giro DEDICATO
+> di `ethics-guardian`, due passaggi: **FAIL iniziale** su un bug reale (`attore` non validato
+> prima di scrivere, poteva lasciare un `:Evento` frenato senza riga di audit recuperabile),
+> **PASS** dopo la correzione (stessa guardia già usata per `motivazione`, replicata per
+> `attore`, riverificata riga per riga). Dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto,
+> in coda alle altre quattro, e in `docs/STATE_MACHINE.md` §4-bis(b). **Resta DESIGN PURO,
+> deliberatamente fuori scope per questa v1**: la lista nominale dei permessi-freno e il
+> grant/revoke (§7.14.1, residuo implementativo non ancora deciso) — il percorso oggi è
+> fidato/CLI provvisorio, stessa postura di `curatela_pattern.py`/`frizione_pattern.py`. **§2(b)
+> (il bagliore), più la corsia fluttuanti
 > `blocked`/`approved`/`rejected` di `docs/STATE_MACHINE.md` §4, restano DESIGN PURO** —
 > nessuna riga di quelle parti è eseguibile. Ogni sezione sotto è
 > annotata esplicitamente REALE o DESIGN, non lasciata all'inferenza. Fonte del design
@@ -332,8 +347,18 @@ rilevamento e la promozione — verificato contro il codice:
   mentire su sé stesso; nessun filtro a valle può correggerlo), invariato e non oggetto di
   questo fix. Dettaglio completo in `docs/LIMITI.md`, voce estesa su
   `SegnaleFluttuante.non_commerciale`.
+- **Ora REALE anche il freno di emergenza** (v1 minima — `urban_memory.freno_pattern`, `python
+  -m urban_memory.freno_pattern tira|rilascia`): proprietà separata `e.frenato` sul nodo
+  `:Evento` (mai `e.stato`), tabella Postgres `pattern_frenato` (append-only, senza UNIQUE),
+  motivazione obbligatoria su ogni tiro validata prima di ogni scrittura. Il filtro di consumo
+  in `POST /itinerary` è ora `stato == 'attivo' and not frenato` — lettura pura, nessuna
+  scrittura raggiungibile dal path caldo. Verificato da un giro DEDICATO di `ethics-guardian`
+  (FAIL iniziale su `attore` non validato → un `:Evento` frenato poteva restare senza riga di
+  audit → corretto → PASS). Dettaglio completo in `docs/STATE_MACHINE.md` §4-bis(b). **Resta
+  design puro**: la lista nominale dei permessi-freno e il grant/revoke (§7.14.1) — v1
+  deliberatamente su percorso fidato/CLI, come `curatela_pattern.py`/`frizione_pattern.py`.
 - **Resta design
-  puro**: il freno di emergenza, e la corsia di revisione umana `blocked`/`approved`/
+  puro**: la corsia di revisione umana `blocked`/`approved`/
   `rejected` dei singoli SEGNALI fluttuanti (`STATE_MACHINE.md` §4) — quella distinta dalla
   revisione del PATTERN qui sopra: ogni segnale che arriva dal canale fluttuante persistente
   è trattato come implicitamente approvato (nessun `rejected` esiste ancora per il singolo
@@ -460,19 +485,32 @@ ricorrenza — un fatto di audit (loggabile nella transizione `ricorrente`, già
 `STATE_MACHINE.md` §4: "quali occorrenze l'hanno determinata"), mai un arco nel grafo verso
 occorrenze che non esistono più come nodi.
 
-**Ritiro manuale — CHIUSA** (brief §7.2, `docs/STATE_MACHINE.md` §4-bis(b)): non un "ritiro"
-che sposta il pattern in un nuovo stato terminale (bozza abbandonata), ma un **freno di
-emergenza** — override di sicurezza, ortogonale alla frizione sopra, non una voce di
-`stato`. Tiro e rilascio entrambi manuali (non si auto-rilascia su traccia fresca, a
-differenza della frizione), immediato, sopprime solo la raccomandazione (il ledger continua
-a ricevere tracce normalmente), append-only con motivazione obbligatoria e log a salienza
-massima. Al rilascio il pattern torna allo stato che la frizione indica in quel momento, mai
-forzato ad `attivo`. Scoped a motivi di sicurezza/legale/immediatezza: usarlo perché "il
-pattern è finito" è un uso improprio, quello è compito della frizione. **Livello di
-autorità: CHIUSO nel principio** (`docs/STATE_MACHINE.md` §7.14.1, item 16) — permesso
-individuale nominale concesso a un sottoinsieme ristretto di Promotori, mai l'intero ruolo,
-con concessione/revoca tracciata e reversibile e nessun doppio-occhio sul singolo tiro.
-Resta solo un residuo di dettaglio implementativo (chi amministra concretamente la lista dei
+**Ritiro manuale — CHIUSA nel principio, REALE nella v1 minima** (brief §7.2, `docs/
+STATE_MACHINE.md` §4-bis(b)): non un "ritiro" che sposta il pattern in un nuovo stato
+terminale (bozza abbandonata), ma un **freno di emergenza** — override di sicurezza,
+ortogonale alla frizione sopra, non una voce di `stato`. Tiro e rilascio entrambi manuali (non
+si auto-rilascia su traccia fresca, a differenza della frizione), immediato, sopprime solo la
+raccomandazione (il ledger continua a ricevere tracce normalmente — verificato con un test
+comportamentale dedicato, non solo per assunzione), append-only con motivazione obbligatoria e
+log a salienza massima. Al rilascio il pattern torna allo stato che la frizione indica in quel
+momento, mai forzato ad `attivo` — conseguenza gratuita dell'ortogonalità (`frenato` non tocca
+mai `stato`), non una logica di ripristino da mantenere. **REALE**: `urban_memory.
+freno_pattern` (comando `python -m urban_memory.freno_pattern tira|rilascia`), proprietà
+`e.frenato` sul nodo `:Evento` (`cypher/62_freno_stato_write.cypher`), tabella Postgres
+`pattern_frenato` (append-only, senza UNIQUE — il freno è ripetibile). Motivazione validata
+PRIMA di ogni scrittura — un giro dedicato di `ethics-guardian` aveva trovato che la stessa
+guardia mancava per `attore` (un `:Evento` frenato con `attore` vuoto poteva restare senza
+riga di audit, perché la scrittura sul grafo precede quella sulla tabella), corretto e
+riverificato PASS. Scoped a motivi di sicurezza/legale/immediatezza: usarlo perché "il
+pattern è finito" è un uso improprio, quello è compito della frizione — questo resta un
+vincolo d'uso, non tecnico, non enforced dal codice. **Livello di
+autorità: CHIUSO nel principio, ma NON ANCORA REALE** (`docs/STATE_MACHINE.md` §7.14.1, item
+16) — permesso individuale nominale concesso a un sottoinsieme ristretto di Promotori, mai
+l'intero ruolo, con concessione/revoca tracciata e reversibile e nessun doppio-occhio sul
+singolo tiro: questo resta design puro. La v1 implementata usa invece un percorso
+fidato/CLI provvisorio (chi ha accesso alla shell è, per costruzione, fidato — stessa postura
+di `curatela_pattern.py`/`frizione_pattern.py`), deliberatamente, non per omissione. Resta
+solo un residuo di dettaglio implementativo (chi amministra concretamente la lista dei
 permessi), stessa classe di tuning di K/orizzonte/tolleranza sopra — non una decisione di
 governance ancora da prendere.
 

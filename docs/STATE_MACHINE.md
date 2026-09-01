@@ -12,7 +12,7 @@
 > Per i fatti verificati sul motore delle esperienze (non sulla curatela), vedi
 > `docs/ENGINE_INVARIANTS.md` — perimetro diverso, non duplicato qui.
 >
-> **Eccezione al "design, non codice" del titolo — CINQUE pezzi, non più tre.** L'invariante B
+> **Eccezione al "design, non codice" del titolo — SEI pezzi, non più cinque.** L'invariante B
 > (`approved → agganciato` automatico, Fase 3 Task 1), la **fondazione persistenza+ledger
 > della corsia fluttuanti** (Fase 3, task successivo: persistenza di `SegnaleFluttuante`,
 > sweep pigro `attivo → expired`, deposito della traccia, `:Luogo.ultima_traccia_il`), il
@@ -20,22 +20,28 @@
 > `urban_memory.ricorrenza`/`promozione_evento`/`curatela_pattern`/`cestino_repository`), la
 > **frizione automatica a cadenza** (`attivo ⇄ sospeso → dormiente`,
 > `urban_memory.frizione_pattern`, comando `python -m urban_memory.frizione_pattern` — QUESTA
-> NOTA diceva finora, erroneamente non aggiornata, che restava design puro: corretto qui) e il
+> NOTA diceva finora, erroneamente non aggiornata, che restava design puro: corretto qui), il
 > **consumo degli `:Evento` promossi in un itinerario reale**
 > (`experience_engine.engine._aggiungi_tappe_eventi_promossi`, letto dal grafo dal BFF e
-> passato a `compose_itinerary` come nuovo tipo condiviso `contracts.EventoPromosso`) sono
-> passati da design a **codice reale**. §0 e §4 sotto sono stati riverificati e riscritti
-> contro il codice per riflettere i primi due — ciascuno con una nota esplicita di cosa è
-> reale e cosa resta design (§4: vedi "REALTÀ vs DESIGN" più sotto, subito dopo il diagramma
-> della corsia fluttuanti); il terzo, il quarto e il quinto hanno la propria nota REALTÀ vs
-> DESIGN nella sezione "Ricorrenza → promozione" più sotto in questo file (il quarto anche in
-> §4-bis(a)) e in `docs/PROMOZIONE_TRACCIA.md` §3 (il quinto). Tutto il resto del documento
-> (`blocked`/`deferred`/`rejected` della corsia principale, le tre uscite dal target
-> fantasma, `blocked`/`approved`/`rejected` della corsia fluttuanti, il freno di emergenza del
-> pattern promosso) resta design puro, invariato.
-> Dettaglio delle cinque implementazioni e delle loro verifiche: `docs/ENGINE_INVARIANTS.md`
+> passato a `compose_itinerary` come nuovo tipo condiviso `contracts.EventoPromosso`) e il
+> **freno di emergenza, v1 MINIMA** (`urban_memory.freno_pattern`, comando `python -m
+> urban_memory.freno_pattern tira|rilascia` — verificato da un giro DEDICATO di
+> `ethics-guardian`, due passaggi: un FAIL iniziale su un bug reale — `attore` non validato
+> prima di scrivere, poteva produrre un `:Evento` frenato senza riga di audit — poi PASS dopo
+> la correzione) sono passati da design a **codice reale**. §0 e §4 sotto sono stati
+> riverificati e riscritti contro il codice per riflettere i primi due — ciascuno con una nota
+> esplicita di cosa è reale e cosa resta design (§4: vedi "REALTÀ vs DESIGN" più sotto, subito
+> dopo il diagramma della corsia fluttuanti); il terzo, il quarto e il quinto hanno la propria
+> nota REALTÀ vs DESIGN nella sezione "Ricorrenza → promozione" più sotto in questo file (il
+> quarto anche in §4-bis(a)) e in `docs/PROMOZIONE_TRACCIA.md` §3; il sesto (il freno) ha la
+> propria nota REALTÀ vs DESIGN in §4-bis(b) sotto e in `docs/PROMOZIONE_TRACCIA.md` §3.
+> Tutto il resto del documento (`blocked`/`deferred`/`rejected` della corsia principale, le tre
+> uscite dal target fantasma, `blocked`/`approved`/`rejected` della corsia fluttuanti, la lista
+> nominale dei permessi-freno e il grant/revoke — §7.14.1, ancora residuo implementativo APERTO)
+> resta design puro, invariato.
+> Dettaglio delle sei implementazioni e delle loro verifiche: `docs/ENGINE_INVARIANTS.md`
 > §11-B (invariante B) e `docs/PROMOZIONE_TRACCIA.md` (nota di apertura + §3, persistenza+
-> ledger, rilevamento+promozione, frizione e consumo).
+> ledger, rilevamento+promozione, frizione, consumo e freno).
 >
 > **Fase 3 (Promozione & Traccia, `docs/brief_fase3_promozione_traccia.md`)** ha chiuso tre
 > punti che questo documento lasciava aperti — §7.1 (`approved → agganciato`, ora
@@ -558,6 +564,45 @@ pattern, non al tempo assoluto:
 
 ### (b) Freno di emergenza — override di sicurezza, non uno stato — CHIUSA (§7.14.1)
 
+> **REALTÀ vs DESIGN — v1 MINIMA implementata, verificata contro il codice, non presunta.**
+> `urban_memory.freno_pattern` (comando `python -m urban_memory.freno_pattern tira|rilascia`)
+> ha reso REALE l'overlay: nuova proprietà `e.frenato` sul nodo `:Evento` (`cypher/
+> 62_freno_stato_write.cypher`, `MATCH`+`SET` puro, mai `MERGE`, mai `e.stato` — ortogonalità
+> verificata sia da lettura sia da test AST/parametrici sulla query eseguita), separata per
+> costruzione dallo `stato` scritto dalla frizione (a): nessuna delle due query tocca la
+> proprietà dell'altra. La catena di lettura (`cypher/60_eventi_ricorrenti_read.cypher` →
+> `EventoRicorrente.frenato` → `services/api/api/main.py`) porta il flag fino al filtro di
+> consumo in `POST /itinerary`, ora `stato == 'attivo' and not frenato` — lettura pura, nessun
+> `SET` raggiungibile dal path `/itinerary` (verificato con un guard AST dedicato: il BFF non
+> importa mai i moduli di scrittura del freno). Tabella Postgres `pattern_frenato`
+> (append-only, **nessun vincolo UNIQUE** — il freno è ripetibile, ogni tiro/rilascio è una
+> riga nuova), doppia implementazione InMemory/Postgres. **Motivazione testuale obbligatoria
+> su ogni `tira`** (validata PRIMA di qualunque scrittura, nessuna scrittura né sul grafo né
+> sulla tabella se assente/whitespace). Verificato da un giro DEDICATO di `ethics-guardian`,
+> due passaggi: **FAIL iniziale** su un bug reale — la stessa guardia esisteva per
+> `motivazione` ma non per `attore`, e poiché la scrittura sul grafo precede quella di audit,
+> un `attore` vuoto poteva produrre un `:Evento` frenato SENZA alcuna riga di audit
+> recuperabile (con Postgres: il grafo scrive, poi il CHECK `pattern_frenato_attore_check`
+> rigetta l'INSERT e il comando esce lasciando il freno tirato senza traccia di chi/quando/
+> perché; con InMemory, ancora più silenzioso: nessun errore affatto). Corretto aggiungendo la
+> stessa guardia (`not attore or not attore.strip()`) prima di ogni scrittura in
+> `tira_freno`/`rilascia_freno`; **PASS** dopo la correzione, riverificato (righe esatte
+> confermate, guardie simmetriche, test che asseriscono esplicitamente l'assenza di scritture
+> su entrambi i canali). Suite `services/urban-memory`: 272 passed, 71 skipped (ambientali,
+> Postgres non disponibile in questa sessione), 0 failed — eseguita e riconfermata
+> dall'orchestratore, non solo riportata dall'agente.
+>
+> **NON reale, resta design puro (v1 deliberatamente minima)**: la lista nominale dei
+> permessi-freno e il meccanismo di grant/revoke (§7.14.1, item 16 sotto — residuo
+> implementativo, non principio ancora aperto). Il percorso oggi è **fidato/CLI provvisorio**,
+> stesso principio già in uso per `curatela_pattern.py`/`frizione_pattern.py`/
+> `submit_signal.py`: nessuna auth, nessun rate-limit, chi ha accesso alla shell è, per
+> costruzione, fidato — non un buco nuovo, la stessa postura già accettata altrove in questa
+> fase (`docs/LIMITI.md`). Il "nessun doppio-occhio" e la "distinguibilità in audit" restano
+> quindi verificati SOLO al livello tecnico (query, tabella, test) — non al livello di
+> governance (chi ha materialmente accesso alla CLI), che resta un residuo dichiarato, non
+> implementato.
+
 Ortogonale al ciclo di vita (a): **non** una quarta voce di `stato`, un overlay applicabile
 in qualunque momento indipendentemente da dove il pattern si trovi (`attivo`/`sospeso`/
 `dormiente`).
@@ -654,7 +699,7 @@ questa esclusione, non aggiungerla come eccezione a posteriori.
 | `expired` (da `approved`) → deposita traccia | automatico (sistema) | quando (=`creato_il` della traccia), sistema, perché="finestra scaduta, occorrenza era approvata" — **non** è il log della traccia stessa (che resta anonima, senza contributor, `docs/PROMOZIONE_TRACCIA.md` §1): è il log della TRANSIZIONE, due record distinti (§1.4 non fa eccezione per l'automatico; §5 del brief impone comunque l'anagrafica minima sulla traccia) |
 | `attivo → sospeso` / `sospeso → dormiente` (frizione, §4-bis(a)) | automatico (K battiti mancati / orizzonte lungo superato) | quando si rileva, sistema, perché="cadenza mancata" / "sospensione oltre orizzonte" |
 | `sospeso → attivo` (frizione, §4-bis(a)) | automatico (traccia fresca depositata) | quando, sistema |
-| tira / rilascia freno di emergenza (§4-bis(b)) | **titolare di permesso-freno individuale** (sottoinsieme nominale di Promotori, MAI l'intero ruolo — CHIUSA) | chi, quando, motivazione testuale OBBLIGATORIA — salienza massima, distinguibile in audit dalle righe automatiche della frizione |
+| tira / rilascia freno di emergenza (§4-bis(b)) | **titolare di permesso-freno individuale** nel PRINCIPIO (sottoinsieme nominale di Promotori, MAI l'intero ruolo — CHIUSA); **REALE oggi**: chiunque abbia accesso alla CLI (`python -m urban_memory.freno_pattern`), percorso fidato/provvisorio, stessa postura di `curatela_pattern.py`/`frizione_pattern.py` — la lista nominale resta APERTA (riga sotto) | chi (`attore`, pseudonimo, validato obbligatorio), quando, motivazione testuale OBBLIGATORIA (validata prima di ogni scrittura) — persistita in `pattern_frenato` (append-only, interrogabile), distinguibile in audit dalle righe automatiche della frizione |
 | concedi / revoca permesso-freno (§4-bis(b)) | **APERTO — dettaglio implementativo (§7.14.1, item 16)**: chi amministra la lista, non deciso | chi, quando — append-only, reversibile |
 
 **Ordine verticale**: `approva < aggancia < crea < promuovi` — tenuto nell'ordine dato dal
