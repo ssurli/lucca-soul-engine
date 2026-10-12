@@ -223,6 +223,39 @@ def test_ultime_azioni_usa_quando_non_l_ordine_di_inserimento(any_freno_reposito
     assert ultima.azione == "rilasciato"
 
 
+def test_ultime_azioni_parita_quando_tirato_inserito_prima_vince_tirato(
+    any_freno_repository,
+) -> None:
+    repo = any_freno_repository
+    _freno(repo, "e-a", "tirato", T0)
+    _freno(repo, "e-a", "rilasciato", T0)
+
+    [ultima] = repo.ultime_azioni()
+    assert ultima.azione == "tirato"
+
+
+def test_ultime_azioni_parita_quando_rilasciato_inserito_prima_vince_tirato(
+    any_freno_repository,
+) -> None:
+    repo = any_freno_repository
+    _freno(repo, "e-a", "rilasciato", T0)
+    _freno(repo, "e-a", "tirato", T0)
+
+    [ultima] = repo.ultime_azioni()
+    assert ultima.azione == "tirato"
+
+
+def test_ultime_azioni_quando_diversi_vince_il_piu_recente_anche_se_rilasciato(
+    any_freno_repository,
+) -> None:
+    repo = any_freno_repository
+    _freno(repo, "e-a", "tirato", T0 + timedelta(seconds=1))
+    _freno(repo, "e-a", "rilasciato", T0 + timedelta(seconds=2))
+
+    [ultima] = repo.ultime_azioni()
+    assert ultima.azione == "rilasciato"
+
+
 # ---------------------------------------------------------------------------
 # Senza cluster: errori infrastrutturali tipizzati (storage irraggiungibile)
 # ---------------------------------------------------------------------------

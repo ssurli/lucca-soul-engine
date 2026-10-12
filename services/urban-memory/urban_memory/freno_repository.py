@@ -92,13 +92,22 @@ class PatternFrenatoRepository(Protocol):
     def ultime_azioni(self) -> list[PatternFrenato]:
         """L'ULTIMA azione (per `quando`) di ogni `evento_id` che abbia
         almeno una riga — usata dal ripristino del grafo
-        (`urban_memory.ripristina_eventi`) per ricostruire `e.frenato`."""
+        (`urban_memory.ripristina_eventi`) per ricostruire `e.frenato`.
+
+        Tie-break FAIL-CLOSED, identico in ogni implementazione: a parità
+        ESATTA di `quando` vince `tirato` su `rilasciato`, indipendentemente
+        dall'ordine di inserimento."""
         ...
 
 
 # ---------------------------------------------------------------------------
 # In-memory — percorso di test e di default finché DATABASE_URL non c'è
 # ---------------------------------------------------------------------------
+
+
+def _chiave_ordine(riga: PatternFrenato) -> tuple[datetime, bool]:
+    """Chiave di "ultima azione": `quando`, poi `tirato` > `rilasciato`."""
+    return (riga.quando, riga.azione == "tirato")
 
 
 class InMemoryPatternFrenatoRepository:
@@ -133,10 +142,12 @@ class InMemoryPatternFrenatoRepository:
         return riga
 
     def ultime_azioni(self) -> list[PatternFrenato]:
+        """Ultima azione per evento. A parità ESATTA di `quando` vince
+        `tirato` (fail-closed), non l'ordine di inserimento."""
         ultime: dict[str, PatternFrenato] = {}
-        for riga in self._righe:  # ordine di inserimento: a parità di `quando` vince l'ultima
+        for riga in self._righe:
             corrente = ultime.get(riga.evento_id)
-            if corrente is None or riga.quando >= corrente.quando:
+            if corrente is None or _chiave_ordine(riga) >= _chiave_ordine(corrente):
                 ultime[riga.evento_id] = riga
         return list(ultime.values())
 
@@ -221,10 +232,14 @@ class PostgresPatternFrenatoRepository:
         return _from_row(riga)
 
     def ultime_azioni(self) -> list[PatternFrenato]:
+        """Ultima azione per evento. A parità ESATTA di `quando` vince
+        `tirato` (fail-closed); `id` è solo l'ultimo criterio e irrilevante
+        (righe con stesso evento, quando e azione sono equivalenti)."""
         query = (
             "SELECT DISTINCT ON (evento_id) "
             "id, evento_id, place_id, temi, azione, attore, motivazione, quando "
-            "FROM pattern_frenato ORDER BY evento_id, quando DESC, id DESC"
+            "FROM pattern_frenato "
+            "ORDER BY evento_id, quando DESC, (azione = 'tirato') DESC, id DESC"
         )
         try:
             with psycopg.connect(self._dsn) as conn:

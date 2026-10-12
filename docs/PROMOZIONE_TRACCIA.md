@@ -359,7 +359,7 @@ rilevamento e la promozione — verificato contro il codice:
   `python -m graph.loader` poi `python -m urban_memory.ripristina_eventi`
   (idempotente; riga PRIMA per `promosso_da/_il` con `coalesce`, mai sovrascritti su un nodo
   esistente; riga PIÙ RECENTE per cadenza/ricalcolo, `cypher/51_ripristino_evento_write.cypher`).
-  FAIL-CLOSED: `e.frenato` (ultima azione di `pattern_frenato`) è scritto NELLA STESSA query
+  FAIL-CLOSED: `e.frenato` (ultima azione di `pattern_frenato`; a parità ESATTA di `quando` vince `tirato`, in Postgres e in-memory) è scritto NELLA STESSA query
   del nodo e tutte le letture (ledger, freno, cestino) precedono ogni scrittura; un pattern nel
   cestino E nel ledger NON è proiettato (conflitto, exit 1; `promuovi_pattern` lo rifiuta già
   prima di scrivere). `e.stato` NON è ripristinato: i nuovi eventi partono `sospeso` (non
