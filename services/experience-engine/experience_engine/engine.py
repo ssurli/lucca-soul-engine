@@ -93,9 +93,15 @@ def _fallback_reason(
 
 
 def _fallback_adapt_reason(motivo: str, segnale: str) -> str:
-    """`reason` di sostituzione minimo, se nessuna RAG è iniettata."""
-    motivo_pulito = motivo.strip().rstrip(".;,")
-    return f"Sostituita per {segnale}: {motivo_pulito[:1].lower() + motivo_pulito[1:]}."
+    """`reason` di sostituzione minimo, se nessuna RAG è iniettata.
+
+    Due frasi: il case del motivo non viene mai abbassato, perché spesso è una
+    connessione del grafo che inizia con un nome proprio ("Luigi Boccherini…").
+    """
+    motivo_pulito = motivo.strip().rstrip(".;,").strip()
+    if not motivo_pulito:
+        return f"Sostituita per {segnale}."
+    return f"Sostituita per {segnale}. {motivo_pulito[:1].upper() + motivo_pulito[1:]}."
 
 
 # ---------------------------------------------------------------------------

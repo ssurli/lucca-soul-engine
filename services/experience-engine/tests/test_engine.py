@@ -1140,3 +1140,52 @@ def test_tappa_evento_promosso_sopravvive_invariata_a_un_adapt_successivo() -> N
     assert eventi_dopo[0].experience_id == _ID_EVENTO_MUSICA
     assert eventi_dopo[0].reason == base.stops[-1].reason
     assert eventi_dopo[0].durata_min == base.stops[-1].durata_min
+
+
+# --- reason di sostituzione di fallback: il nome proprio resta maiuscolo ----
+
+
+def test_fallback_adapt_reason_non_abbassa_il_nome_proprio() -> None:
+    from experience_engine.engine import _fallback_adapt_reason
+
+    reason = _fallback_adapt_reason("Luigi Boccherini è legato a questo luogo.", "la pioggia")
+
+    assert reason == "Sostituita per la pioggia. Luigi Boccherini è legato a questo luogo."
+    assert "luigi" not in reason
+    assert reason.startswith("Sostituita per")
+
+
+def test_fallback_adapt_reason_maiuscola_iniziale_e_motivo_vuoto() -> None:
+    from experience_engine.engine import _fallback_adapt_reason
+
+    assert (
+        _fallback_adapt_reason("  un chiostro al riparo;", "la pioggia")
+        == "Sostituita per la pioggia. Un chiostro al riparo."
+    )
+    assert _fallback_adapt_reason("", "la pioggia") == "Sostituita per la pioggia."
+    assert _fallback_adapt_reason(" . ", "la pioggia") == "Sostituita per la pioggia."
+
+
+def test_adapt_senza_rag_usa_fallback_a_due_frasi(source: SeedCandidateSource) -> None:
+    profile = EmotionalProfile(
+        curiosita=0.5,
+        contemplazione=0.6,
+        arte=0.5,
+        con_bambini=False,
+        tempo_disponibile_min=200,
+    )
+    ctx = _ctx(profile)
+    cands = _candidati(source, ctx)
+    base = compose_itinerary(ctx, cands, compose_reason)
+    pioggia = Signal(meteo="pioggia", affollamento={}, stanchezza=0.2, ora=time(10, 0))
+
+    adattato = adapt_itinerary(base, pioggia, cands, profile, compose_reason)
+
+    sostituite = [s for s in adattato.stops if s.reason.startswith("Sostituita per")]
+    assert sostituite, "la pioggia deve sostituire almeno una tappa all'aperto"
+    for stop in sostituite:
+        # Nessun "…: minuscola": il motivo è una seconda frase con iniziale maiuscola.
+        match = re.match(r"Sostituita per [^.]+\.(?: (.))?", stop.reason)
+        assert match is not None, stop.reason
+        if match.group(1) is not None:
+            assert match.group(1).isupper(), stop.reason

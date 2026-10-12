@@ -168,13 +168,16 @@ def adapt_reason(motivo: str, segnale: str) -> str:
 
     Esempio: `adapt_reason("qui si respira la tradizione liutaia",
     "l'affollamento sulle Mura")` ->
-    "Sostituita per l'affollamento sulle Mura: qui si respira la tradizione liutaia."
-    """
+    "Sostituita per l'affollamento sulle Mura. Qui si respira la tradizione liutaia."
+
+    Due frasi, non due punti: il motivo spesso è una connessione del grafo
+    che inizia con un nome proprio ("Luigi Boccherini è legato…"), quindi il
+    suo case non va mai abbassato; si alza soltanto la prima lettera."""
     segnale_pulito = segnale.strip()
     motivo_pulito = _pulisci(motivo)
     prefisso = f"Sostituita per {segnale_pulito}" if segnale_pulito else "Sostituita"
     if motivo_pulito:
-        return f"{prefisso}: {_lower_first(motivo_pulito)}."
+        return f"{prefisso}. {_cap(motivo_pulito)}."
     return f"{prefisso}."
 
 
