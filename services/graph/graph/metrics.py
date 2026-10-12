@@ -38,6 +38,7 @@ from typing import Protocol
 from neo4j import Driver, GraphDatabase
 
 from graph import topology
+from graph.errors import translate_driver_errors
 
 _CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
 GRADO_SEMANTICO_QUERY_PATH = _CYPHER_DIR / "11_grado_semantico.cypher"
@@ -97,14 +98,13 @@ class Neo4jMetricsSource:
         self._driver = driver
         self._database = database
         self._grado_semantico_query = GRADO_SEMANTICO_QUERY_PATH.read_text(encoding="utf-8")
-        self._non_connected_pairs_query = NON_CONNECTED_PAIRS_QUERY_PATH.read_text(
-            encoding="utf-8"
-        )
+        self._non_connected_pairs_query = NON_CONNECTED_PAIRS_QUERY_PATH.read_text(encoding="utf-8")
 
     @classmethod
     def from_credentials(
         cls, uri: str, username: str, password: str, database: str = "neo4j"
     ) -> Neo4jMetricsSource:
+        # URI malformato = errore di configurazione, non indisponibilita'.
         driver = GraphDatabase.driver(uri, auth=(username, password))
         return cls(driver, database=database)
 
@@ -118,7 +118,7 @@ class Neo4jMetricsSource:
         self.close()
 
     def grado_semantico(self) -> dict[str, int]:
-        with self._driver.session(database=self._database) as session:
+        with translate_driver_errors(), self._driver.session(database=self._database) as session:
             records = list(session.run(self._grado_semantico_query))
         return {record["place_id"]: record["grado"] for record in records}
 
@@ -126,7 +126,7 @@ class Neo4jMetricsSource:
         self, at: datetime | None = None
     ) -> tuple[set[frozenset[str]], int]:
         params = {"at": at.isoformat() if at is not None else None}
-        with self._driver.session(database=self._database) as session:
+        with translate_driver_errors(), self._driver.session(database=self._database) as session:
             record = session.run(self._non_connected_pairs_query, params).single()
         coppie_grezze = record["coppie_non_connesse"] if record is not None else []
         coppie = {frozenset(coppia) for coppia in coppie_grezze}

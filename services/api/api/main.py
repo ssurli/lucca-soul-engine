@@ -126,6 +126,7 @@ nei log applicativi; il contenuto di un `MemoryContribution` (`testo`,
 
 from __future__ import annotations
 
+import logging
 from datetime import date, time
 from typing import Annotated
 
@@ -151,6 +152,7 @@ from contracts import (
 from experience_engine.engine import adapt_itinerary, compose_itinerary
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
+from graph import GraphUnavailableError
 from intelligence_index import IndexStorageError
 from intelligence_index.catalogo import esperienze_per_id as indice_esperienze_per_id
 from intelligence_index.dashboard import celle_flusso, indice_per_dashboard
@@ -243,6 +245,7 @@ async def dashboard_readonly_cors(request: Request, call_next):  # type: ignore[
         response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
+
 # Iniezione FastAPI standard (`Annotated[..., Depends(...)]`, non
 # `= Depends(...)` in default d'argomento: quella forma è flaggata da
 # ruff/bugbear B008). Definito una volta qui perché usato da entrambi gli
@@ -254,16 +257,15 @@ _MemoryRepositoryDep = Annotated[MemoryRepository, Depends(get_memory_repository
 # Stesso pattern per `POST /booking` (Wave 3a): un test sostituisce il
 # repository del Marketplace con `app.dependency_overrides` senza toccare
 # `api.deps` o la configurazione reale.
-_BookingRepositoryDep = Annotated[
-    marketplace.BookingRepository, Depends(get_booking_repository)
-]
+_BookingRepositoryDep = Annotated[marketplace.BookingRepository, Depends(get_booking_repository)]
 
 # Stesso pattern per `POST /events` (Wave 3b): un test sostituisce il
 # repository degli eventi comportamentali con `app.dependency_overrides`
 # senza toccare `api.deps` o la configurazione reale.
-_EventRepositoryDep = Annotated[
-    recommender.BehaviorEventRepository, Depends(get_event_repository)
-]
+_EventRepositoryDep = Annotated[recommender.BehaviorEventRepository, Depends(get_event_repository)]
+
+
+_log = logging.getLogger(__name__)
 
 
 @app.exception_handler(UrbanMemoryError)
@@ -305,9 +307,7 @@ def memory_storage_error_handler(request: Request, exc: MemoryStorageError) -> J
 
 
 @app.exception_handler(marketplace.MarketplaceError)
-def marketplace_error_handler(
-    request: Request, exc: marketplace.MarketplaceError
-) -> JSONResponse:
+def marketplace_error_handler(request: Request, exc: marketplace.MarketplaceError) -> JSONResponse:
     """Mappa i vincoli non negoziabili del Marketplace (`ExperienceNotBookableError`,
     `BookingNotFoundError`, `InvalidBookingStateError` — sollevati da
     `marketplace.service`, un solo punto verificabile) a un 422 esplicativo in
@@ -331,9 +331,7 @@ def marketplace_storage_error_handler(
     host, credenziali, stack del driver)."""
     return JSONResponse(
         status_code=503,
-        content={
-            "detail": "prenotazioni temporaneamente non disponibili: riprova più tardi"
-        },
+        content={"detail": "prenotazioni temporaneamente non disponibili: riprova più tardi"},
     )
 
 
@@ -382,8 +380,31 @@ def index_storage_error_handler(request: Request, exc: IndexStorageError) -> JSO
     credenziali, stack del driver)."""
     return JSONResponse(
         status_code=503,
+        content={"detail": "indicatori temporaneamente non disponibili: riprova più tardi"},
+    )
+
+
+@app.exception_handler(GraphUnavailableError)
+def graph_unavailable_error_handler(request: Request, exc: GraphUnavailableError) -> JSONResponse:
+    """Mappa un Urban Knowledge Graph irraggiungibile (`graph.GraphUnavailableError`
+    — Aura in pausa, rete/DNS, credenziali, failover; scenario NORMALE, vedi
+    CLAUDE.md) a un **503 Service Unavailable**, MAI a un 500 opaco: stesso
+    stile degli altri handler di storage.
+
+    Copre `/itinerary`, `/itinerary/adapt`, `/booking`, `/dashboard/index` e
+    `/dashboard/flows` (tutti leggono il grafo senza try). NON copre gli
+    arricchimenti opzionali di `/itinerary` (eventi promossi/attivi), che
+    degradano a lista vuota. Corpo fisso: nessun `str(exc)`, URI, host o
+    credenziale; nel log solo il TIPO della causa."""
+    cause = exc.__cause__
+    _log.warning(
+        "knowledge graph non disponibile (causa: %s)",
+        type(cause).__name__ if cause is not None else "n/d",
+    )
+    return JSONResponse(
+        status_code=503,
         content={
-            "detail": "indicatori temporaneamente non disponibili: riprova più tardi"
+            "detail": "conoscenza della città temporaneamente non disponibile: riprova più tardi"
         },
     )
 
@@ -736,9 +757,7 @@ def create_booking(
         signal=_segnale_neutro_per_candidati(),
     )
     candidates = source.candidates(ctx)
-    candidato = next(
-        (c for c in candidates if c.experience.id == request.experience_id), None
-    )
+    candidato = next((c for c in candidates if c.experience.id == request.experience_id), None)
     if candidato is None:
         raise HTTPException(
             status_code=404,

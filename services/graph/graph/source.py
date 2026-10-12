@@ -47,6 +47,7 @@ from typing import Protocol
 from contracts import ExperienceNode, GraphCandidate, Partner, VisitorContext
 from neo4j import Driver, GraphDatabase
 
+from graph.errors import translate_driver_errors
 from graph.seed_lucca import (
     ARTISTI,
     BOTTEGA_EVOCA,
@@ -140,9 +141,7 @@ class SeedCandidateSource:
             # score. `model_copy` non muta l'istanza condivisa in `ESPERIENZE`.
             esperienza_effettiva = esperienza.model_copy(
                 update={
-                    "partner_abbonamento_attivo": self._abbonamento_attivo(
-                        esperienza.partner_id
-                    )
+                    "partner_abbonamento_attivo": self._abbonamento_attivo(esperienza.partner_id)
                 }
             )
             risultato.append(
@@ -194,16 +193,12 @@ class SeedCandidateSource:
             if luogo_riferimento is not None:
                 for vicino_id, metri in self._vicini.get(luogo.id, []):
                     if vicino_id == riferimento:
-                        frasi.append(
-                            f"A {metri} m da {luogo_riferimento.nome}, già visitato."
-                        )
+                        frasi.append(f"A {metri} m da {luogo_riferimento.nome}, già visitato.")
                         break
 
         return frasi
 
-    def _catena_semantica_bottega(
-        self, bottega_id: str, temi_esperienza: list[str]
-    ) -> list[str]:
+    def _catena_semantica_bottega(self, bottega_id: str, temi_esperienza: list[str]) -> list[str]:
         """Fatti SEMANTICI della bottega (`ISPIRATA_DA`, `EVOCA`): non fatti
         commerciali (quello è `_attribuzione`). Sono ciò che rende
         percorribile "Puccini -> ... -> liutaio -> violino" per sole
@@ -273,6 +268,7 @@ class Neo4jCandidateSource:
     def from_credentials(
         cls, uri: str, username: str, password: str, database: str = "neo4j"
     ) -> Neo4jCandidateSource:
+        # URI malformato = errore di configurazione, non indisponibilita'.
         driver = GraphDatabase.driver(uri, auth=(username, password))
         return cls(driver, database=database)
 
@@ -294,7 +290,7 @@ class Neo4jCandidateSource:
             "vicino_a": vicino_a,
             "raggio_m": None,
         }
-        with self._driver.session(database=self._database) as session:
+        with translate_driver_errors(), self._driver.session(database=self._database) as session:
             records = list(session.run(self._query, params))
         return [self._to_candidate(record) for record in records]
 

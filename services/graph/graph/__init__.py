@@ -12,3 +12,7 @@ il Cypher versionato in `cypher/` (rigenerato da `graph.export_cypher`).
 from __future__ import annotations
 
 __version__ = "0.1.0"
+
+from graph.errors import GraphUnavailableError
+
+__all__ = ["GraphUnavailableError", "__version__"]

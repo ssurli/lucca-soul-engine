@@ -64,6 +64,17 @@ altrimenti ricade su `SeedCandidateSource`, lo stesso dataset canonico
 versionato in `services/graph/graph/seed_lucca.py`. L'istanza è creata una
 sola volta (`lru_cache`), non ad ogni richiesta.
 
+## Knowledge Graph non raggiungibile
+
+Se Neo4j/Aura non risponde (pausa, rete, credenziali), `graph.GraphUnavailableError`
+(sollevata da `Neo4jCandidateSource`/`Neo4jMetricsSource`) è mappata da
+`graph_unavailable_error_handler` a **503** con il messaggio fisso
+`"conoscenza della città temporaneamente non disponibile: riprova più tardi"`.
+Vale per `/itinerary`, `/itinerary/adapt`, `/booking`, `/dashboard/index` e
+`/dashboard/flows`. Nessun URI/host/credenziale nel corpo; nel log solo il tipo
+della causa. Gli arricchimenti opzionali di `/itinerary` (eventi promossi/attivi)
+restano best-effort e degradano a lista vuota.
+
 ## Repository della Urban Memory
 
 `api/deps.get_memory_repository` sceglie il `MemoryRepository` leggendo SOLO
