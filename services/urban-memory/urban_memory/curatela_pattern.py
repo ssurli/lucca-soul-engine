@@ -42,40 +42,135 @@ from .cestino_repository import (
     PostgresPatternCestinatoRepository,
 )
 from .migrate import migrate
-from .promozione_evento import Neo4jPromozioneWriter, PromozioneEventoError
+from .promozione_evento import (
+    LuogoMancanteError,
+    Neo4jPromozioneWriter,
+    PromozioneEventoError,
+    evento_id_per_pattern,
+)
+from .promozione_repository import (
+    PostgresPromozioneRepository,
+    PromozioneRepository,
+    PromozioneStorageError,
+)
 from .ricorrenza import PatternCandidato, rileva_candidati
 from .traccia_repository import PostgresTracciaRepository, TracciaRepository
 
-__all__ = ["promuovi_pattern", "rifiuta_pattern", "main"]
+__all__ = [
+    "promuovi_pattern",
+    "rifiuta_pattern",
+    "ProiezioneGrafoPendenteError",
+    "ConflittoCestinoError",
+    "main",
+]
 
 _logger = logging.getLogger(__name__)
 
 #: Firma di un "writer" di promozione — tipicamente
 #: `promozione_evento.Neo4jPromozioneWriter.promuovi` (metodo legato):
-#: riceve `(place_id, temi, cadenza_giorni, promotore)`, ritorna `evento_id`
-#: o solleva `PromozioneEventoError`. `promotore` è INOLTRATO fino al grafo
-#: (`:Evento.promosso_da`/`ultimo_ricalcolo_da`): l'atto di promozione
-#: scrive struttura PERMANENTE e PUBBLICA, l'accountability persistente
-#: conta più che per un rifiuto, non meno — un log applicativo non basta
-#: (correzione ethics-guardian). Un `Protocol`/callable astratto, mai un
+#: riceve `(place_id, temi, cadenza_giorni, promotore, promosso_il)`, ritorna
+#: `evento_id` o solleva `PromozioneEventoError`. `promotore` è INOLTRATO
+#: fino al grafo (`:Evento.promosso_da`/`ultimo_ricalcolo_da`): l'atto di
+#: promozione scrive struttura PERMANENTE e PUBBLICA, l'accountability
+#: persistente conta più che per un rifiuto, non meno (correzione
+#: ethics-guardian). `promosso_il` è lo STESSO istante scritto nel ledger:
+#: ledger e grafo non divergono. Un callable astratto, mai un
 #: `Neo4jPromozioneWriter` concreto nella firma: testabile con un writer
 #: finto senza toccare Neo4j.
-_Writer = Callable[[str, tuple[str, ...], float, str], str]
+_Writer = Callable[[str, tuple[str, ...], float, str, datetime], str]
+
+#: `place_id -> bool`: il `:Luogo` esiste nel grafo? (tipicamente
+#: `Neo4jPromozioneWriter.luogo_esiste`). Sola lettura.
+_LuogoEsiste = Callable[[str], bool]
 
 
-def promuovi_pattern(candidato: PatternCandidato, *, promotore: str, writer: _Writer) -> str:
-    """Promuove `candidato` a `:Evento` tramite `writer` (il grafo è sempre
-    INIETTATO, mai costruito qui — stesso principio del resto del servizio),
-    inoltrandogli `promotore` così l'accountability persiste SUL NODO
-    (`promosso_da`/`ultimo_ricalcolo_da`), non solo nel log applicativo.
-    Logga ANCHE la transizione `candidato -> promosso` (chi=Promotore,
-    quando, quale pattern, cadenza). Ritorna `evento_id`.
+class ProiezioneGrafoPendenteError(PromozioneEventoError):
+    """La promozione è REGISTRATA nel ledger Postgres (fonte di verità) ma la
+    proiezione sul grafo è fallita DOPO (Aura in pausa, rete assente). NON è
+    un fallimento della decisione: `python -m urban_memory.ripristina_eventi`
+    la proietterà quando il grafo torna raggiungibile. `evento_id` è
+    disponibile per il report."""
 
-    Propaga `PromozioneEventoError` se la scrittura fallisce (place_id
-    inesistente nel grafo, o grafo irraggiungibile): in quel caso NESSUNA
-    riga viene scritta da nessuna parte (né grafo, né cestino) — il pattern
-    resta CANDIDATO, ricomparirà al prossimo rilevamento."""
-    evento_id = writer(candidato.place_id, candidato.temi, candidato.cadenza_giorni, promotore)
+    def __init__(self, evento_id: str, causa: Exception) -> None:
+        self.evento_id = evento_id
+        super().__init__(
+            f"promozione REGISTRATA nel ledger (evento_id={evento_id!r}) ma NON ancora "
+            f"proiettata sul grafo: {causa}. Non va ripetuta: esegui "
+            "'python -m urban_memory.ripristina_eventi' quando il grafo è raggiungibile."
+        )
+
+
+class ConflittoCestinoError(PromozioneEventoError):
+    """Il pattern è nel cestino PERMANENTE: promuoverlo contraddirebbe un
+    rifiuto già deciso. Nulla è scritto (né ledger né grafo)."""
+
+
+def promuovi_pattern(
+    candidato: PatternCandidato,
+    *,
+    promotore: str,
+    writer: _Writer,
+    repo: PromozioneRepository,
+    luogo_esiste: _LuogoEsiste,
+    e_cestinato: Callable[[str, list[str]], bool],
+    promosso_il: datetime | None = None,
+) -> str:
+    """Promuove `candidato` a `:Evento`. Il ledger Postgres (`repo`) è la
+    FONTE DI VERITÀ della decisione, il grafo (`writer`) la PROIEZIONE:
+    `repo`, `writer` e `luogo_esiste` sono sempre INIETTATI, mai costruiti
+    qui. Ordine delle scritture:
+
+    0. `e_cestinato(place_id, temi)` — se il pattern è nel cestino solleva
+       `ConflittoCestinoError`, nulla scritto;
+    1. `luogo_esiste(place_id)` — LETTURA: se il `:Luogo` manca solleva
+       `LuogoMancanteError` e NON scrive nulla (il ledger non registra
+       promozioni su luoghi inesistenti; se il grafo è irraggiungibile
+       solleva `PromozioneEventoError`, nulla scritto, il pattern resta
+       candidato);
+    2. `repo.registra(...)` — la decisione diventa durevole
+       (`PromozioneStorageError` se Postgres fallisce: il grafo NON è toccato);
+    3. `writer(...)` — la proiezione. Se fallisce solleva
+       `ProiezioneGrafoPendenteError`: la promozione RESTA registrata e verrà
+       proiettata da `python -m urban_memory.ripristina_eventi`.
+
+    `promotore` è uno pseudonimo (mai PII). Logga la transizione
+    `candidato -> promosso`. Ritorna `evento_id`."""
+    if e_cestinato(candidato.place_id, list(candidato.temi)):
+        raise ConflittoCestinoError(
+            f"il pattern (place_id={candidato.place_id!r}) è nel cestino permanente: "
+            "promozione NON registrata (conflitto cestino/ledger)."
+        )
+    if not luogo_esiste(candidato.place_id):
+        raise LuogoMancanteError(
+            f":Luogo con id={candidato.place_id!r} non esiste nel grafo: promozione "
+            "NON registrata (nessun luogo fantasma, nessuna riga nel ledger)."
+        )
+    promosso_il = promosso_il or datetime.now(UTC)
+    evento_id = evento_id_per_pattern(candidato.place_id, candidato.temi)
+    repo.registra(
+        evento_id=evento_id,
+        place_id=candidato.place_id,
+        temi=list(candidato.temi),
+        cadenza_giorni=candidato.cadenza_giorni,
+        promotore=promotore,
+        promosso_il=promosso_il,
+    )
+    try:
+        evento_id = writer(
+            candidato.place_id,
+            candidato.temi,
+            candidato.cadenza_giorni,
+            promotore,
+            promosso_il,
+        )
+    except PromozioneEventoError as exc:
+        _logger.warning(
+            "promozione registrata nel ledger ma non proiettata sul grafo "
+            "(evento_id=%s, promotore=%s): da ripristinare",
+            evento_id,
+            promotore,
+        )
+        raise ProiezioneGrafoPendenteError(evento_id, exc) from exc
     _logger.info(
         "transizione: candidato -> promosso (place_id=%s, temi=%s, "
         "cadenza_giorni=%.2f, evento_id=%s, promotore=%s, quando=%s)",
@@ -84,7 +179,7 @@ def promuovi_pattern(candidato: PatternCandidato, *, promotore: str, writer: _Wr
         candidato.cadenza_giorni,
         evento_id,
         promotore,
-        datetime.now(UTC).isoformat(),
+        promosso_il.isoformat(),
     )
     return evento_id
 
@@ -138,6 +233,8 @@ def _esegui_interattivo(
     *,
     cestino_repo: PatternCestinatoRepository,
     writer: _Writer,
+    promozione_repo: PromozioneRepository,
+    luogo_esiste: _LuogoEsiste,
 ) -> None:
     for indice, candidato in enumerate(candidati, start=1):
         _stampa_candidato(indice, len(candidati), candidato)
@@ -145,9 +242,20 @@ def _esegui_interattivo(
         if decisione in ("a", "approva"):
             promotore = _chiedi("Promotore (pseudonimo, mai PII): ")
             try:
-                evento_id = promuovi_pattern(candidato, promotore=promotore, writer=writer)
-            except PromozioneEventoError as exc:
-                print(f"  FALLITO: {exc}")
+                evento_id = promuovi_pattern(
+                    candidato,
+                    promotore=promotore,
+                    writer=writer,
+                    repo=promozione_repo,
+                    luogo_esiste=luogo_esiste,
+                    e_cestinato=cestino_repo.e_cestinato,
+                )
+            except ProiezioneGrafoPendenteError as exc:
+                # La decisione E' registrata (ledger): non un fallimento.
+                print(f"  REGISTRATA, NON ANCORA SUL GRAFO: {exc}")
+                continue
+            except (PromozioneEventoError, PromozioneStorageError) as exc:
+                print(f"  FALLITO (nulla registrato): {exc}")
                 continue
             print(f"  OK: promosso a :Evento (id={evento_id!r}).")
         elif decisione in ("r", "rifiuta"):
@@ -186,6 +294,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     traccia_repo: TracciaRepository = PostgresTracciaRepository(dsn)
     cestino_repo = PostgresPatternCestinatoRepository(dsn)
+    promozione_repo = PostgresPromozioneRepository(dsn)
 
     # Il rilevamento richiede il grafo (`evento_esistente`, per escludere i
     # pattern GIÀ promossi — vedi `ricorrenza.rileva_candidati`): apre il
@@ -197,8 +306,15 @@ def main(argv: Sequence[str] | None = None) -> None:
     try:
         with Neo4jPromozioneWriter.from_env() as scrittore:
             print("2. Rilevamento dei pattern candidati...")
+            # Esclusi i pattern già promossi: sul grafo O nel ledger (una
+            # promozione registrata ma non ancora proiettata non deve
+            # ricomparire come candidata: va ripristinata, non ripetuta).
             candidati = rileva_candidati(
-                traccia_repo, cestino_repo, evento_esistente=scrittore.esiste
+                traccia_repo,
+                cestino_repo,
+                evento_esistente=lambda eid: (
+                    promozione_repo.registrata(eid) or scrittore.esiste(eid)
+                ),
             )
             print(
                 f"   {len(candidati)} pattern candidato/i (esclusi i cestinati e i già promossi)."
@@ -209,7 +325,13 @@ def main(argv: Sequence[str] | None = None) -> None:
                 return
 
             print("3. Curatela (una decisione umana per pattern)...")
-            _esegui_interattivo(candidati, cestino_repo=cestino_repo, writer=scrittore.promuovi)
+            _esegui_interattivo(
+                candidati,
+                cestino_repo=cestino_repo,
+                writer=scrittore.promuovi,
+                promozione_repo=promozione_repo,
+                luogo_esiste=scrittore.luogo_esiste,
+            )
     except Exception as exc:  # stesso stile esplicito di migrate()/submit_signal.py/verify.py
         print(f"   FALLITO: grafo non disponibile/errore — {exc}")
         raise SystemExit(1) from exc

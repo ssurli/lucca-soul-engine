@@ -89,6 +89,12 @@ class PatternFrenatoRepository(Protocol):
         niente qui va deduplicato."""
         ...
 
+    def ultime_azioni(self) -> list[PatternFrenato]:
+        """L'ULTIMA azione (per `quando`) di ogni `evento_id` che abbia
+        almeno una riga — usata dal ripristino del grafo
+        (`urban_memory.ripristina_eventi`) per ricostruire `e.frenato`."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # In-memory — percorso di test e di default finché DATABASE_URL non c'è
@@ -125,6 +131,14 @@ class InMemoryPatternFrenatoRepository:
         )
         self._righe.append(riga)
         return riga
+
+    def ultime_azioni(self) -> list[PatternFrenato]:
+        ultime: dict[str, PatternFrenato] = {}
+        for riga in self._righe:  # ordine di inserimento: a parità di `quando` vince l'ultima
+            corrente = ultime.get(riga.evento_id)
+            if corrente is None or riga.quando >= corrente.quando:
+                ultime[riga.evento_id] = riga
+        return list(ultime.values())
 
     def per_evento(self, evento_id: str) -> list[PatternFrenato]:
         """Comodità per i test: tutte le righe registrate per `evento_id`,
@@ -205,6 +219,21 @@ class PostgresPatternFrenatoRepository:
             ) from exc
         assert riga is not None  # l'INSERT senza ON CONFLICT produce sempre una riga
         return _from_row(riga)
+
+    def ultime_azioni(self) -> list[PatternFrenato]:
+        query = (
+            "SELECT DISTINCT ON (evento_id) "
+            "id, evento_id, place_id, temi, azione, attore, motivazione, quando "
+            "FROM pattern_frenato ORDER BY evento_id, quando DESC, id DESC"
+        )
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query)
+                    righe = cur.fetchall()
+        except psycopg.Error as exc:
+            raise FrenoStorageError(f"lettura fallita su pattern_frenato: {exc}") from exc
+        return [_from_row(riga) for riga in righe]
 
     def per_evento(self, evento_id: str) -> list[PatternFrenato]:
         """Comodità per i test (stessa firma della controparte in-memory

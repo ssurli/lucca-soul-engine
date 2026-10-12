@@ -37,12 +37,17 @@ __all__ = [
     "evento_id_per_pattern",
     "promozione_evento_cypher",
     "PromozioneEventoError",
+    "LuogoMancanteError",
+    "RIPRISTINO_EVENTO_WRITE_QUERY_PATH",
+    "ripristino_evento_cypher",
+    "scrivi_evento_ripristinato",
     "scrivi_evento_promosso",
     "Neo4jPromozioneWriter",
 ]
 
 _CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
 PROMOZIONE_EVENTO_WRITE_QUERY_PATH = _CYPHER_DIR / "50_promozione_evento_write.cypher"
+RIPRISTINO_EVENTO_WRITE_QUERY_PATH = _CYPHER_DIR / "51_ripristino_evento_write.cypher"
 
 
 def evento_id_per_pattern(place_id: str, temi: tuple[str, ...] | list[str]) -> str:
@@ -110,6 +115,13 @@ class PromozioneEventoError(Exception):
     """
 
 
+class LuogoMancanteError(PromozioneEventoError):
+    """Sottotipo di `PromozioneEventoError`: il `:Luogo` di ancoraggio NON
+    esiste nel grafo (il grafo risponde, il luogo manca). Distinto dal
+    "grafo irraggiungibile" perché ha rimedio diverso (ricaricare il seed:
+    `python -m graph.loader`) — usato dal ripristino per il report."""
+
+
 class _Result(Protocol):
     def single(self) -> Any: ...
 
@@ -126,6 +138,79 @@ class _Driver(Protocol):
     def session(self, database: str | None = None) -> _Session: ...
 
     def close(self) -> None: ...
+
+
+def ripristino_evento_cypher(
+    place_id: str,
+    evento_id: str,
+    temi: tuple[str, ...] | list[str],
+    cadenza_giorni: float,
+    promotore: str,
+    promosso_il: datetime,
+    ultimo_ricalcolo_da: str | None,
+    ultimo_ricalcolo_il: datetime | None,
+    frenato: bool,
+) -> tuple[str, dict[str, Any]]:
+    """Query + parametri PURI per `51_ripristino_evento_write.cypher` (stato
+    finale di un `:Evento` ricostruito dal ledger `pattern_promosso`)."""
+    query = RIPRISTINO_EVENTO_WRITE_QUERY_PATH.read_text(encoding="utf-8")
+    params: dict[str, Any] = {
+        "place_id": place_id,
+        "evento_id": evento_id,
+        "temi": list(temi),
+        "cadenza_giorni": cadenza_giorni,
+        "promotore": promotore,
+        "promosso_il": promosso_il.isoformat(),
+        "ultimo_ricalcolo_da": ultimo_ricalcolo_da,
+        "ultimo_ricalcolo_il": (
+            ultimo_ricalcolo_il.isoformat() if ultimo_ricalcolo_il is not None else None
+        ),
+        "frenato": frenato,
+    }
+    return query, params
+
+
+def scrivi_evento_ripristinato(
+    place_id: str,
+    evento_id: str,
+    temi: tuple[str, ...] | list[str],
+    cadenza_giorni: float,
+    promotore: str,
+    promosso_il: datetime,
+    ultimo_ricalcolo_da: str | None,
+    ultimo_ricalcolo_il: datetime | None,
+    frenato: bool,
+    *,
+    driver: _Driver,
+    database: str | None = None,
+) -> str:
+    """Proietta nel grafo un `:Evento` dal ledger (idempotente). Solleva
+    `LuogoMancanteError` se il `:Luogo` non esiste, `PromozioneEventoError`
+    se il grafo è irraggiungibile. Mai un `:Luogo` fantasma."""
+    query, params = ripristino_evento_cypher(
+        place_id,
+        evento_id,
+        temi,
+        cadenza_giorni,
+        promotore,
+        promosso_il,
+        ultimo_ricalcolo_da,
+        ultimo_ricalcolo_il,
+        frenato,
+    )
+    try:
+        with driver.session(database=database or "neo4j") as session:
+            risultato = session.run(query, params).single()
+    except Exception as exc:
+        raise PromozioneEventoError(
+            f"grafo irraggiungibile durante il ripristino (evento_id={evento_id!r}): {exc}"
+        ) from exc
+    if risultato is None:
+        raise LuogoMancanteError(
+            f":Luogo con id={place_id!r} non esiste nel grafo: :Evento {evento_id!r} "
+            "NON ripristinato (ricarica prima il seed: python -m graph.loader)."
+        )
+    return str(risultato["evento_id"])
 
 
 def scrivi_evento_promosso(
@@ -187,7 +272,7 @@ def scrivi_evento_promosso(
             driver.close()
 
     if risultato is None:
-        raise PromozioneEventoError(
+        raise LuogoMancanteError(
             f":Luogo con id={place_id!r} non esiste nel grafo: nodo :Evento "
             "NON creato/aggiornato — nessun :Luogo fantasma."
         )
@@ -231,7 +316,6 @@ class Neo4jPromozioneWriter:
         temi: tuple[str, ...] | list[str],
         cadenza_giorni: float,
         promotore: str,
-        *,
         promosso_il: datetime | None = None,
     ) -> str:
         """Promuove il pattern (place_id, temi) a `:Evento` con
@@ -252,6 +336,51 @@ class Neo4jPromozioneWriter:
             driver=self._driver,
             database=self._database,
         )
+
+    def ripristina(
+        self,
+        place_id: str,
+        evento_id: str,
+        temi: tuple[str, ...] | list[str],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
+        ultimo_ricalcolo_da: str | None,
+        ultimo_ricalcolo_il: datetime | None,
+        frenato: bool,
+    ) -> str:
+        """Proiezione idempotente di un evento dal ledger (vedi
+        `scrivi_evento_ripristinato`), riusando il driver posseduto."""
+        return scrivi_evento_ripristinato(
+            place_id,
+            evento_id,
+            temi,
+            cadenza_giorni,
+            promotore,
+            promosso_il,
+            ultimo_ricalcolo_da,
+            ultimo_ricalcolo_il,
+            frenato,
+            driver=self._driver,
+            database=self._database,
+        )
+
+    def luogo_esiste(self, place_id: str) -> bool:
+        """`True` se un `:Luogo` con questo id esiste nel grafo — sola
+        lettura. Usato da `curatela_pattern.promuovi_pattern` PRIMA di
+        scrivere il ledger (mai registrare promozioni su un luogo
+        inesistente). Solleva `PromozioneEventoError` se il grafo è
+        irraggiungibile (nulla è stato scritto: il pattern resta candidato)."""
+        query = "MATCH (l:Luogo {id: $place_id}) RETURN l.id AS id"
+        try:
+            with self._driver.session(database=self._database) as session:
+                record = session.run(query, {"place_id": place_id}).single()
+        except Exception as exc:
+            raise PromozioneEventoError(
+                f"grafo irraggiungibile durante la verifica del luogo "
+                f"(place_id={place_id!r}): {exc}"
+            ) from exc
+        return record is not None
 
     def esiste(self, evento_id: str) -> bool:
         """`True` se un `:Evento` con questo id esiste GIÀ nel grafo — sola

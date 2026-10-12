@@ -1371,3 +1371,38 @@ prima di:
   reale (Living Lab);
 - decidere se investire in una coda di retry o in un cambio di ordine delle scritture, quando
   il traffico reale mostrerà se questo scenario si manifesta davvero.
+
+
+---
+
+## Le promozioni anteriori al ledger `pattern_promosso` non sono recuperabili
+
+### Cosa è garantito oggi
+
+Ogni promozione fatta con `curatela_pattern` dopo l'introduzione di `pattern_promosso`
+(`sql/04_promozione_schema.sql`) è registrata PRIMA nel ledger Postgres e poi proiettata sul
+grafo: `python -m urban_memory.ripristina_eventi` ricostruisce gli `:Evento` (e `e.frenato`) dopo
+la perdita di Aura. Se la proiezione fallisce dopo il ledger la promozione resta registrata e
+verrà proiettata dal ripristino.
+
+### Cosa NON è garantito
+
+- Gli `:Evento` promossi PRIMA del ledger vivevano solo su Aura: se il grafo è già perso, la
+  decisione (chi, quando, cadenza) non è ricostruibile da nessuna fonte. Vanno ripromossi
+  dal Promotore (i pattern ricompaiono come candidati se le tracce ci sono ancora).
+- `e.stato` non è ripristinato: i nuovi eventi partono `sospeso` (fail-safe, non
+  raccomandabili) finché `frizione_pattern` non li riporta `attivo`; un evento già dormiente
+  perde quello stato fino alla corsa. Un freno su un evento assente dal ledger è
+  segnalato come avviso, non applicabile.
+- Il ripristino non rilascia mai un freno (`e.frenato = $frenato OR coalesce(e.frenato, false)`):
+  un freno presente sul grafo ma assente da `pattern_frenato` resta tirato; si rilascia solo
+  con `freno_pattern rilascia`.
+- Il ripristino scrive `promosso_da`/`promosso_il` con `coalesce`: su un nodo GIÀ esistente
+  (anche pre-ledger) non sovrascrive l'accountability originale, ma il ledger non la corregge
+  se divergente. Un pattern presente sia nel cestino sia nel ledger non è proiettato.
+- Un `:Luogo` sparito tra la verifica e la proiezione lascia una riga nel ledger che il
+  ripristino segnalerà (exit 1) finché il seed non è ricaricato.
+
+### Decisione
+
+Accettato: il ledger copre il futuro, il passato si ripromuove a mano.

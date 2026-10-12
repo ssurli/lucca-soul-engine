@@ -22,6 +22,7 @@ from urban_memory import curatela_pattern
 from urban_memory.cestino_repository import InMemoryPatternCestinatoRepository
 from urban_memory.curatela_pattern import promuovi_pattern, rifiuta_pattern
 from urban_memory.promozione_evento import PromozioneEventoError, evento_id_per_pattern
+from urban_memory.promozione_repository import InMemoryPromozioneRepository
 from urban_memory.ricorrenza import PatternCandidato, rileva_candidati
 from urban_memory.traccia_repository import InMemoryTracciaRepository
 
@@ -46,22 +47,48 @@ def test_promuovi_pattern_chiama_il_writer_con_i_parametri_del_pattern_e_il_prom
     persistente."""
     chiamate: list[tuple[str, tuple[str, ...], float, str]] = []
 
-    def writer(place_id: str, temi: tuple[str, ...], cadenza_giorni: float, promotore: str) -> str:
+    def writer(
+        place_id: str,
+        temi: tuple[str, ...],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
+    ) -> str:
         chiamate.append((place_id, temi, cadenza_giorni, promotore))
         return "evento-fittizio"
 
-    evento_id = promuovi_pattern(CANDIDATO, promotore="promotore-1", writer=writer)
+    evento_id = promuovi_pattern(
+        CANDIDATO,
+        promotore="promotore-1",
+        writer=writer,
+        repo=InMemoryPromozioneRepository(),
+        e_cestinato=lambda _p, _t: False,
+        luogo_esiste=lambda _p: True,
+    )
 
     assert evento_id == "evento-fittizio"
     assert chiamate == [("piazza-anfiteatro", ("arte", "musica"), 7.0, "promotore-1")]
 
 
 def test_promuovi_pattern_propaga_errore_del_writer_senza_toccare_il_cestino() -> None:
-    def writer(place_id: str, temi: tuple[str, ...], cadenza_giorni: float, promotore: str) -> str:
+    def writer(
+        place_id: str,
+        temi: tuple[str, ...],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
+    ) -> str:
         raise PromozioneEventoError("luogo inesistente")
 
     with pytest.raises(PromozioneEventoError):
-        promuovi_pattern(CANDIDATO, promotore="promotore-1", writer=writer)
+        promuovi_pattern(
+            CANDIDATO,
+            promotore="promotore-1",
+            writer=writer,
+            repo=InMemoryPromozioneRepository(),
+            e_cestinato=lambda _p, _t: False,
+            luogo_esiste=lambda _p: True,
+        )
 
 
 def test_rifiuta_pattern_cestina_col_promotore_e_motivo() -> None:
@@ -108,12 +135,24 @@ def test_esegui_interattivo_approva_chiama_il_writer_e_promuove(monkeypatch, cap
     monkeypatch.setattr(curatela_pattern, "_chiedi", lambda prompt: next(risposte))
     chiamate: list[tuple[str, tuple[str, ...], float, str]] = []
 
-    def writer(place_id: str, temi: tuple[str, ...], cadenza_giorni: float, promotore: str) -> str:
+    def writer(
+        place_id: str,
+        temi: tuple[str, ...],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
+    ) -> str:
         chiamate.append((place_id, temi, cadenza_giorni, promotore))
         return "evento-fittizio"
 
     cestino_repo = InMemoryPatternCestinatoRepository()
-    curatela_pattern._esegui_interattivo([CANDIDATO], cestino_repo=cestino_repo, writer=writer)
+    curatela_pattern._esegui_interattivo(
+        [CANDIDATO],
+        cestino_repo=cestino_repo,
+        writer=writer,
+        promozione_repo=InMemoryPromozioneRepository(),
+        luogo_esiste=lambda _p: True,
+    )
 
     assert chiamate == [("piazza-anfiteatro", ("arte", "musica"), 7.0, "promotore-1")]
     assert cestino_repo.e_cestinato("piazza-anfiteatro", ["arte", "musica"]) is False
@@ -130,15 +169,51 @@ def test_esegui_interattivo_approva_con_writer_che_fallisce_stampa_fallito_senza
     risposte = iter(["a", "promotore-1"])
     monkeypatch.setattr(curatela_pattern, "_chiedi", lambda prompt: next(risposte))
 
-    def writer(place_id: str, temi: tuple[str, ...], cadenza_giorni: float, promotore: str) -> str:
+    def writer(
+        place_id: str,
+        temi: tuple[str, ...],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
+    ) -> str:
         raise PromozioneEventoError("luogo inesistente nel grafo")
 
     cestino_repo = InMemoryPatternCestinatoRepository()
-    curatela_pattern._esegui_interattivo([CANDIDATO], cestino_repo=cestino_repo, writer=writer)
+    curatela_pattern._esegui_interattivo(
+        [CANDIDATO],
+        cestino_repo=cestino_repo,
+        writer=writer,
+        promozione_repo=InMemoryPromozioneRepository(),
+        luogo_esiste=lambda _p: True,
+    )
 
     out = capsys.readouterr().out
-    assert "FALLITO" in out
+    # Il ledger ha gia' la decisione: messaggio dedicato, non un "FALLITO" generico.
+    assert "REGISTRATA" in out and "ripristina_eventi" in out
+    assert "FALLITO" not in out
     assert cestino_repo.e_cestinato("piazza-anfiteatro", ["arte", "musica"]) is False
+
+
+def test_esegui_interattivo_luogo_inesistente_stampa_fallito_e_non_registra(
+    monkeypatch, capsys
+) -> None:
+    risposte = iter(["a", "promotore-1"])
+    monkeypatch.setattr(curatela_pattern, "_chiedi", lambda prompt: next(risposte))
+    promozione_repo = InMemoryPromozioneRepository()
+
+    def writer(*args: object) -> str:
+        raise AssertionError("il grafo non deve essere toccato")
+
+    curatela_pattern._esegui_interattivo(
+        [CANDIDATO],
+        cestino_repo=InMemoryPatternCestinatoRepository(),
+        writer=writer,
+        promozione_repo=promozione_repo,
+        luogo_esiste=lambda _p: False,
+    )
+
+    assert "FALLITO (nulla registrato)" in capsys.readouterr().out
+    assert promozione_repo.elenca() == []
 
 
 def test_esegui_interattivo_rifiuta_cestina_il_pattern_senza_toccare_il_writer(
@@ -147,11 +222,23 @@ def test_esegui_interattivo_rifiuta_cestina_il_pattern_senza_toccare_il_writer(
     risposte = iter(["r", "promotore-1", "troppo raro"])
     monkeypatch.setattr(curatela_pattern, "_chiedi", lambda prompt: next(risposte))
 
-    def writer(place_id: str, temi: tuple[str, ...], cadenza_giorni: float, promotore: str) -> str:
+    def writer(
+        place_id: str,
+        temi: tuple[str, ...],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
+    ) -> str:
         raise AssertionError("il writer non deve mai essere chiamato per un rifiuto")
 
     cestino_repo = InMemoryPatternCestinatoRepository()
-    curatela_pattern._esegui_interattivo([CANDIDATO], cestino_repo=cestino_repo, writer=writer)
+    curatela_pattern._esegui_interattivo(
+        [CANDIDATO],
+        cestino_repo=cestino_repo,
+        writer=writer,
+        promozione_repo=InMemoryPromozioneRepository(),
+        luogo_esiste=lambda _p: True,
+    )
 
     assert cestino_repo.e_cestinato("piazza-anfiteatro", ["arte", "musica"]) is True
     assert "cestinato (permanente)" in capsys.readouterr().out
@@ -162,11 +249,23 @@ def test_esegui_interattivo_decisione_non_riconosciuta_salta_senza_effetti(
 ) -> None:
     monkeypatch.setattr(curatela_pattern, "_chiedi", lambda prompt: "")
 
-    def writer(place_id: str, temi: tuple[str, ...], cadenza_giorni: float, promotore: str) -> str:
+    def writer(
+        place_id: str,
+        temi: tuple[str, ...],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
+    ) -> str:
         raise AssertionError("il writer non deve mai essere chiamato quando si salta")
 
     cestino_repo = InMemoryPatternCestinatoRepository()
-    curatela_pattern._esegui_interattivo([CANDIDATO], cestino_repo=cestino_repo, writer=writer)
+    curatela_pattern._esegui_interattivo(
+        [CANDIDATO],
+        cestino_repo=cestino_repo,
+        writer=writer,
+        promozione_repo=InMemoryPromozioneRepository(),
+        luogo_esiste=lambda _p: True,
+    )
 
     assert cestino_repo.e_cestinato("piazza-anfiteatro", ["arte", "musica"]) is False
     assert "Saltato" in capsys.readouterr().out
@@ -189,13 +288,23 @@ def test_esegui_interattivo_itera_su_piu_candidati_nell_ordine_ricevuto(monkeypa
     monkeypatch.setattr(curatela_pattern, "_chiedi", lambda prompt: next(risposte))
     chiamate: list[str] = []
 
-    def writer(place_id: str, temi: tuple[str, ...], cadenza_giorni: float, promotore: str) -> str:
+    def writer(
+        place_id: str,
+        temi: tuple[str, ...],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
+    ) -> str:
         chiamate.append(place_id)
         return "evento-fittizio"
 
     cestino_repo = InMemoryPatternCestinatoRepository()
     curatela_pattern._esegui_interattivo(
-        [CANDIDATO, secondo_candidato], cestino_repo=cestino_repo, writer=writer
+        [CANDIDATO, secondo_candidato],
+        cestino_repo=cestino_repo,
+        writer=writer,
+        promozione_repo=InMemoryPromozioneRepository(),
+        luogo_esiste=lambda _p: True,
     )
 
     assert cestino_repo.e_cestinato("piazza-anfiteatro", ["arte", "musica"]) is True
@@ -220,6 +329,7 @@ def test_esegui_interattivo_itera_su_piu_candidati_nell_ordine_ricevuto(monkeypa
 def test_flusso_rileva_promuovi_rileva_di_nuovo_produce_lo_stesso_evento_id() -> None:
     traccia_repo = InMemoryTracciaRepository()
     cestino_repo = InMemoryPatternCestinatoRepository()
+    promozione_repo = InMemoryPromozioneRepository()
     for indice, giorni in enumerate([0, 7, 14]):
         traccia_repo.deposita(
             segnale_id=f"segnale-{indice}",
@@ -229,18 +339,32 @@ def test_flusso_rileva_promuovi_rileva_di_nuovo_produce_lo_stesso_evento_id() ->
         )
 
     def writer_deterministico(
-        place_id: str, temi: tuple[str, ...], cadenza_giorni: float, promotore: str
+        place_id: str,
+        temi: tuple[str, ...],
+        cadenza_giorni: float,
+        promotore: str,
+        promosso_il: datetime,
     ) -> str:
         return evento_id_per_pattern(place_id, temi)
 
     [candidato_1] = rileva_candidati(traccia_repo, cestino_repo)
     evento_id_1 = promuovi_pattern(
-        candidato_1, promotore="promotore-1", writer=writer_deterministico
+        candidato_1,
+        promotore="promotore-1",
+        writer=writer_deterministico,
+        repo=promozione_repo,
+        e_cestinato=lambda _p, _t: False,
+        luogo_esiste=lambda _p: True,
     )
 
     [candidato_2] = rileva_candidati(traccia_repo, cestino_repo)
     evento_id_2 = promuovi_pattern(
-        candidato_2, promotore="promotore-1", writer=writer_deterministico
+        candidato_2,
+        promotore="promotore-1",
+        writer=writer_deterministico,
+        repo=promozione_repo,
+        e_cestinato=lambda _p, _t: False,
+        luogo_esiste=lambda _p: True,
     )
 
     assert candidato_1 == candidato_2

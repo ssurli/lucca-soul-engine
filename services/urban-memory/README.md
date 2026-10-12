@@ -413,6 +413,17 @@ Output atteso: `CONTROPROVA SUPERATA: errore esplicito, nessun nodo creato.`
 linker ha smesso di rifiutare un target inesistente — una regressione del
 bug corretto in questa wave, da trattare come un incidente.
 
+## Ripristino degli `:Evento` promossi — `python -m urban_memory.ripristina_eventi`
+
+La promozione di un pattern (`curatela_pattern`) scrive PRIMA il ledger Postgres
+`pattern_promosso` (fonte di verità, append-only), POI il grafo (proiezione). Dopo la perdita di
+Aura (inattività): `python -m graph.loader` (seed), `python -m urban_memory.link` (:Memoria),
+`python -m urban_memory.ripristina_eventi` (:Evento con `e.frenato` scritto nella stessa query,
+idempotente), infine `python -m urban_memory.frizione_pattern` (PASSO OBBLIGATORIO: i nuovi
+eventi partono `sospeso`, non raccomandabili, e la frizione li riporta `attivo`).
+Exit 1 se un `:Luogo` manca (elencato: ricarica il seed), c'è un conflitto cestino/ledger o il
+grafo è irraggiungibile. Le letture precedono ogni scrittura. Non stampa PII.
+
 ## Audit dei curati con target invalidi — `python -m urban_memory.audit`
 
 La curatela verifica i target SOLO da quando `target_checker` esiste (vedi

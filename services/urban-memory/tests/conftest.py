@@ -329,3 +329,21 @@ def any_freno_repository(request: pytest.FixtureRequest):
 
     migrate(dsn)
     return PostgresPatternFrenatoRepository(dsn)
+
+
+@pytest.fixture(params=["in_memory", "postgres"])
+def any_promozione_repository(request: pytest.FixtureRequest):
+    """Stesso pattern di `any_freno_repository`, per `PromozioneRepository`
+    (Fase 3, il ledger delle promozioni). Il ramo `postgres` salta (non
+    fallisce) se il cluster effimero non e' disponibile, tramite `pg_dsn`."""
+    if request.param == "in_memory":
+        from urban_memory.promozione_repository import InMemoryPromozioneRepository
+
+        return InMemoryPromozioneRepository()
+
+    dsn = request.getfixturevalue("pg_dsn")
+    from urban_memory.migrate import migrate
+    from urban_memory.promozione_repository import PostgresPromozioneRepository
+
+    migrate(dsn)
+    return PostgresPromozioneRepository(dsn)

@@ -347,6 +347,25 @@ rilevamento e la promozione — verificato contro il codice:
   mentire su sé stesso; nessun filtro a valle può correggerlo), invariato e non oggetto di
   questo fix. Dettaglio completo in `docs/LIMITI.md`, voce estesa su
   `SegnaleFluttuante.non_commerciale`.
+- **Ledger delle promozioni e ripristino del grafo** (`sql/04_promozione_schema.sql`, tabella
+  `pattern_promosso`, append-only, senza UNIQUE; `urban_memory.promozione_repository`).
+  Aura Free è stata cancellata per inattività e la decisione di promozione viveva solo nel
+  grafo: ora **Postgres è la fonte di verità, il grafo la proiezione**. Ordine in
+  `curatela_pattern.promuovi_pattern`: (1) lettura `luogo_esiste` (luogo mancante o grafo
+  irraggiungibile: NULLA scritto, il pattern resta candidato); (2) riga nel ledger; (3)
+  proiezione sul grafo. Se (3) fallisce la promozione RESTA registrata
+  (`ProiezioneGrafoPendenteError`, messaggio "REGISTRATA, NON ANCORA SUL GRAFO": non va
+  ripetuta, i pattern già nel ledger sono esclusi dal rilevamento). Ripristino:
+  `python -m graph.loader` poi `python -m urban_memory.ripristina_eventi`
+  (idempotente; riga PRIMA per `promosso_da/_il` con `coalesce`, mai sovrascritti su un nodo
+  esistente; riga PIÙ RECENTE per cadenza/ricalcolo, `cypher/51_ripristino_evento_write.cypher`).
+  FAIL-CLOSED: `e.frenato` (ultima azione di `pattern_frenato`) è scritto NELLA STESSA query
+  del nodo e tutte le letture (ledger, freno, cestino) precedono ogni scrittura; un pattern nel
+  cestino E nel ledger NON è proiettato (conflitto, exit 1; `promuovi_pattern` lo rifiuta già
+  prima di scrivere). `e.stato` NON è ripristinato: i nuovi eventi partono `sospeso` (non
+  raccomandabili, `/itinerary` consuma solo `attivo`) e il passo OBBLIGATORIO successivo
+  `python -m urban_memory.frizione_pattern` fa `sospeso -> attivo`. Limite: le promozioni anteriori
+  al ledger non vi sono registrate e non sono recuperabili.
 - **Ora REALE anche il freno di emergenza** (v1 minima — `urban_memory.freno_pattern`, `python
   -m urban_memory.freno_pattern tira|rilascia`): proprietà separata `e.frenato` sul nodo
   `:Evento` (mai `e.stato`), tabella Postgres `pattern_frenato` (append-only, senza UNIQUE),
