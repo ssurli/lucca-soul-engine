@@ -1189,3 +1189,14 @@ def test_adapt_senza_rag_usa_fallback_a_due_frasi(source: SeedCandidateSource) -
         assert match is not None, stop.reason
         if match.group(1) is not None:
             assert match.group(1).isupper(), stop.reason
+
+
+def test_fallback_adapt_reason_segnale_vuoto() -> None:
+    from experience_engine.engine import _fallback_adapt_reason
+
+    assert _fallback_adapt_reason("", "") == "Sostituita."
+    assert _fallback_adapt_reason("  ", "   ") == "Sostituita."
+    assert (
+        _fallback_adapt_reason("Luigi Boccherini è legato a questo luogo.", "  ")
+        == "Sostituita. Luigi Boccherini è legato a questo luogo."
+    )

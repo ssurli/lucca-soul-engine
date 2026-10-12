@@ -98,10 +98,12 @@ def _fallback_adapt_reason(motivo: str, segnale: str) -> str:
     Due frasi: il case del motivo non viene mai abbassato, perché spesso è una
     connessione del grafo che inizia con un nome proprio ("Luigi Boccherini…").
     """
+    segnale_pulito = segnale.strip()
+    prefisso = f"Sostituita per {segnale_pulito}" if segnale_pulito else "Sostituita"
     motivo_pulito = motivo.strip().rstrip(".;,").strip()
     if not motivo_pulito:
-        return f"Sostituita per {segnale}."
-    return f"Sostituita per {segnale}. {motivo_pulito[:1].upper() + motivo_pulito[1:]}."
+        return f"{prefisso}."
+    return f"{prefisso}. {motivo_pulito[:1].upper() + motivo_pulito[1:]}."
 
 
 # ---------------------------------------------------------------------------
