@@ -25,6 +25,32 @@ void main() {
     });
   });
 
+  group('Signal.data', () {
+    Signal base({DateTime? data}) => Signal(
+          meteo: Meteo.sereno,
+          affollamento: const {},
+          stanchezza: 0.1,
+          ora: TimeHms.parse('09:00:00'),
+          data: data,
+        );
+
+    test('serializza "YYYY-MM-DD" con zero-padding', () {
+      expect(base(data: DateTime(2026, 3, 7)).toJson()['data'], '2026-03-07');
+    });
+
+    test('senza data il campo non viene inviato; fromJson lo rilegge', () {
+      expect(base().toJson().containsKey('data'), isFalse);
+      final s = Signal.fromJson(base(data: DateTime(2026, 12, 1)).toJson());
+      expect(s.data, DateTime(2026, 12, 1));
+    });
+
+    test('orologio: ora e data da una sola lettura (mezzanotte)', () {
+      final t = Signal.orologio(DateTime(2026, 1, 2, 0, 0, 1));
+      expect(t.ora.toJson(), '00:00:01');
+      expect(Signal.formatIsoDate(t.data), '2026-01-02');
+    });
+  });
+
   group('EmotionalProfile', () {
     test('fromJson/toJson usa i campi canonici italiani', () {
       final json = {
