@@ -21,8 +21,13 @@
 > il cerchio traccia → promozione → frizione → consumo**: un fluttuante che si ripete
 > abbastanza volte non resta più un fatto solo interno a `services/urban-memory`, arriva
 > davvero a un visitatore. Dettaglio nella nota REALTÀ vs DESIGN dentro §3 sotto, in coda alle
-> altre tre. **Nessuna finestra temporale in questa v1** (un `:Evento` compare a prescindere
-> da SE la cadenza combacia col giorno di visita — deliberato, task successivo). **Il filtro
+> altre tre. **Un sesto task, successivo al freno di emergenza (quinto, descritto più sotto) — "finestra
+> temporale degli `:Evento` promossi" — ha reso REALE
+> anche la FINESTRA**: la v1 del consumo faceva comparire un `:Evento` in qualunque giorno;
+> ora compare solo se la data della visita (`Signal.data`, mandata dal client) cade in una
+> finestra PROPORZIONALE alla cadenza attorno all'occorrenza proiettata più vicina
+> (`experience_engine.rules.evento_in_finestra`; fail-closed senza data) — dettaglio nella
+> nota REALTÀ vs DESIGN dentro §3 sotto, in coda alle altre. **Il filtro
 > di ammissibilità commerciale sul pattern promosso è stato CHIUSO in questa stessa
 > collaborazione**, non lasciato aperto: un giro dedicato di `ethics-guardian` aveva trovato
 > (verdetto "GARANZIA NON PRESERVATA") che un segnale commerciale poteva attraversare indenne
@@ -270,7 +275,7 @@ rilevamento e la promozione — verificato contro il codice:
   di questa fase: si cestina il PATTERN, non la singola candidata, e resta cestinato per
   sempre (v1, deliberatamente permanente — vedi `docs/LIMITI.md`).
 - **Deviazioni CONCRETE dal design originario sotto, da conoscere prima di leggerlo**:
-  nessuna finestra temporale W libera (si usa tutta la storia disponibile del pattern, non
+  nessuna finestra temporale W libera (del rilevamento ricorrenza, non la finestra di consumo degli `:Evento`) (si usa tutta la storia disponibile del pattern, non
   una fetta scelta a mano — coerente con "non esiste un precedente per una W libera nel
   repo", verificato prima di implementare); `cadenza` è `cadenza_giorni: float` (la MEDIA
   degli intervalli in giorni), non un'etichetta categorica come "settimanale"/"annuale"
@@ -314,12 +319,13 @@ rilevamento e la promozione — verificato contro il codice:
   contraddizione col punto (1) sopra**: l'hot path di `/itinerary` ORA legge `:Evento.stato`
   (proprietà già scritta dalla promozione/frizione), ma non calcola né scrive MAI il clock
   del pattern — quella logica resta interamente nel batch `frizione_pattern`, invariata. Il
-  `reason` di una tappa-evento è scritto deliberatamente come CONTESTO SUL LUOGO
+  `reason` di una tappa-evento era scritto deliberatamente come CONTESTO SUL LUOGO
   (`"{place_nome} ha un carattere legato a {temi}: un tratto ricorrente del luogo, non un
-  appuntamento di oggi."`), mai un appuntamento — questa v1 non verifica se la cadenza
-  combacia col giorno di visita (nessuna finestra temporale, task successivo), quindi un
-  `:Evento` può comparire in un giorno diverso da quello in cui l'occorrenza reale avviene: il
-  racconto deve restarne onesto, non promettere una presenza fisica. Un giro DEDICATO di
+  appuntamento di oggi."`), mai un appuntamento — quella v1 non verificava se la cadenza
+  combaciasse col giorno di visita, quindi un `:Evento` poteva comparire in un giorno diverso
+  da quello dell'occorrenza reale e il racconto non doveva promettere una presenza fisica.
+  **SUPERATO dalla finestra temporale** (punto "Ora REALE anche la finestra temporale" sotto):
+  il `reason` è ora un appuntamento ATTESO, mai confermato. Un giro DEDICATO di
   `ethics-guardian` ha dato FAIL iniziale (non un'autovalutazione) — non sull'implementazione
   tecnica (score/budget/sicurezza/onestà del reason tutti verificati PASS), ma su una frase
   ormai falsa lasciata in `docs/LIMITI.md` ("nessuna riga di frizione_pattern è raggiungibile
@@ -347,6 +353,47 @@ rilevamento e la promozione — verificato contro il codice:
   mentire su sé stesso; nessun filtro a valle può correggerlo), invariato e non oggetto di
   questo fix. Dettaglio completo in `docs/LIMITI.md`, voce estesa su
   `SegnaleFluttuante.non_commerciale`.
+- **Ora REALE anche la finestra temporale** (v1 della finestra, sostituisce "compare in
+  qualunque giorno"). Il FATTO e la DECISIONE stanno in due posti distinti:
+  - **Fatto, nel BFF** (`services/api/api/main.create_itinerary`): per ogni `:Evento`
+    `attivo` e non frenato legge le occorrenze dal ledger
+    (`TracciaRepository.occorrenze_per_pattern`, una query per evento — batch come
+    ottimizzazione futura, `docs/LIMITI.md`), ne prende il massimo (UTC) e lo converte nella
+    DATA LOCALE della città con `CITY_TZ` dal `.env` (mai scritto nel codice). Passa
+    `EventoPromosso.ultima_occorrenza` e `cadenza_giorni` — mai una "prossima occorrenza"
+    già calcolata. Precisazione al punto (1) sopra: l'hot path di `/itinerary` ORA legge
+    anche il ledger, in sola lettura; il clock della FRIZIONE (battiti mancati, `stato`)
+    resta interamente nel batch `frizione_pattern`.
+  - **Decisione, solo nell'Experience Engine** (`experience_engine.rules.
+    occorrenza_attesa_giorni`/`evento_in_finestra`, funzioni pure, chiamate da
+    `eventi_promossi_pertinenti`): tra le occorrenze `ultima_occorrenza + k·cadenza_giorni`
+    con k ≥ 1 intero sceglie la più vicina alla data della visita; in finestra se lo scarto è
+    `<= FRAZIONE_FINESTRA_CADENZA × cadenza_giorni` (0.15, valore di PARTENZA, tuning
+    differito — stesso principio di `K_ORIZZONTE_DORMIENZA`), bordo incluso. La finestra
+    decide solo "quando"; "se è vivo" resta a `stato`.
+  - **Fail-closed, mai una data inventata**: `Signal.data` assente, `CITY_TZ` assente o non
+    valido, nessuna occorrenza nel ledger, `cadenza_giorni` non positiva o non finita
+    (inf/nan), proiezione non rappresentabile → l'evento non
+    compare. `data` e `giorno_settimana` incoerenti → 422 (validatore del contratto).
+  - **Invariato**: in coda, mai in sostituzione, `DURATA_TAPPA_EVENTO_MIN`, costo a budget,
+    solo `attivo`, frenati esclusi; `calcola_score` e `passa_filtri_duri` non toccati.
+  - **`reason`**: ora un appuntamento ATTESO e dichiarato come stima ("la prossima
+    occorrenza è attesa domani… è una stima dalla regolarità osservata, non un appuntamento
+    confermato, e non ne conosciamo l'orario"). Solo per eventi in finestra.
+  - **App**: `Signal.data` compilata dall'app Flutter dallo stesso orologio di `ora`
+    (`Signal.orologio`), NON verificata a compilazione (`flutter` assente — `docs/LIMITI.md`).
+  - **Limiti** (timbro del ledger sfasato in avanti dallo sweep pigro, cadenze quasi
+    quotidiane sempre in finestra, finestra simmetrica "era attesa ieri", fuso del
+    dispositivo): `docs/LIMITI.md`, voce "La finestra temporale degli `:Evento` promossi".
+  - Verifica: giro DEDICATO di `ethics-guardian`, due passaggi. **FAIL iniziale** solo sulla
+    documentazione di audit (questo file e `docs/LIMITI.md` dicevano ancora "nessuna
+    finestra"; docstring di `EventoPromosso` impreciso sul timbro), codice già PASS; nello
+    stesso giro trovati e corretti un `OverflowError` provocabile dal client con date estreme
+    (500 → fail-closed, `rules.proiezione_occorrenza_attesa`) e una cadenza `inf` accettata
+    dal contratto (ora `allow_inf_nan=False`; il BFF salta il singolo evento). **PASS** al
+    secondo giro, indipendente: la finestra non apre un vettore commerciale — è un filtro in
+    più, mai un input di score, e restringe l'esposizione della v1 (che era "sempre"),
+    non la allarga.
 - **Ledger delle promozioni e ripristino del grafo** (`sql/04_promozione_schema.sql`, tabella
   `pattern_promosso`, append-only, senza UNIQUE; `urban_memory.promozione_repository`).
   Aura Free è stata cancellata per inattività e la decisione di promozione viveva solo nel
@@ -597,6 +644,12 @@ posto consultabile insieme alle altre domande della macchina a stati:
    oggi che `Signal.eventi_attivi` non altera mai lo score di un'esperienza permanente —
    se il bagliore entrasse nello scoring, quell'invariante andrebbe riverificato esplicitamente,
    non presunto ancora valido.
+6. **Finestra temporale degli `:Evento` promossi — REALE, i numeri no**:
+   `FRAZIONE_FINESTRA_CADENZA=0.15` è un valore di PARTENZA (stessa classe di
+   `K_ORIZZONTE_DORMIENZA`), da calibrare sul pilota. Aperte, non decise: finestra simmetrica
+   o asimmetrica (oggi un'occorrenza "attesa ieri" produce ancora una tappa); un pavimento di
+   cadenza per i pattern quasi quotidiani (oggi sempre in finestra); un timbro del ledger più
+   fedele dell'istante dello sweep pigro. Dettaglio: `docs/LIMITI.md`.
 
 ## 6. Scenario concreto — una giornata, un ciclo di vita
 

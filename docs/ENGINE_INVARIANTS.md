@@ -18,7 +18,7 @@ non duplicati qui.
 servizio tocca il grafo — non specifici di `experience-engine`, non specifici della
 curatela. Vivono qui perché sono *verità di sistema*, non design di un componente.
 
-## 1. Un solo punto di decisione, pipeline a 5 passi
+## 1. Un solo punto di decisione, pipeline a 6 passi
 
 `compose_itinerary` (`engine.py:321`):
 
@@ -28,6 +28,8 @@ curatela. Vivono qui perché sono *verità di sistema*, non design di un compone
 3. Composizione a budget con diversificazione → `_seleziona_tappe`.
 4. `reason` obbligatorio per ogni tappa → `_costruisci_stops`.
 5. Segnali FLUTTUANTI pertinenti, solo in coda → `_aggiungi_tappe_fluttuanti`.
+6. `:Evento` PROMOSSI pertinenti E in finestra temporale, solo in coda →
+   `_aggiungi_tappe_eventi_promossi` (vedi §8-bis).
 
 `score_fn`/`reason_fn` sono iniettabili (Wave 3b) ma il default a `None` riproduce
 esattamente il comportamento MVP — nessun chiamante esistente cambia comportamento
@@ -81,6 +83,8 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 | `contracts.segnale_fluttuante_ammissibile` | `packages/contracts/contracts/models.py:117` | `rules.segnali_fluttuanti_pertinenti` |
 | `rules.segnali_fluttuanti_pertinenti` | `rules.py:270` | `engine._aggiungi_tappe_fluttuanti` — **solo** in `compose_itinerary`, mai in `adapt_itinerary` (vedi §6) |
 | `rules.affinita_temi` | `rules.py:109` | `calcola_score` (3 volte) · `_coerente_col_profilo` |
+| `rules.evento_in_finestra` / `rules.occorrenza_attesa_giorni` | `rules.py` | `rules.eventi_promossi_pertinenti` (la decisione "in finestra") · `rules.giorno_occorrenza_attesa` → `engine._reason_evento_promosso` (solo il testo, mai la decisione) |
+| `rules.eventi_promossi_pertinenti` | `rules.py` | `engine._aggiungi_tappe_eventi_promossi` — **solo** in `compose_itinerary`, mai in `adapt_itinerary` |
 | `rules.calcola_score` | `rules.py:165` | `compose_itinerary` (via `score_fn` default) · `_migliore_alternativa` (per ordinare le alternative in adapt) |
 
 Tre chiamanti diversi per "cosa significa aperto" (`rientra_in_orario`), un solo modello.
@@ -153,6 +157,25 @@ scope, documentato in `docs/LIMITI.md`.
 - Nessun tetto al numero di tappe fluttuanti aggiungibili, nessun filtro di affollamento o
   accessibilità applicato alla tappa fluttuante stessa (limiti dichiarati, non chiusi, in
   `docs/LIMITI.md`).
+
+## 8-bis. `:Evento` promossi — vincoli del passo 6 (finestra temporale)
+
+- Il motore riceve FATTI (`EventoPromosso.ultima_occorrenza`, data locale già convertita dal
+  BFF con `CITY_TZ`; `cadenza_giorni` finita e `> 0`, `allow_inf_nan=False`) e decide da solo: occorrenza proiettata più vicina
+  `ultima_occorrenza + k·cadenza_giorni`, k ≥ 1 intero; in finestra se lo scarto è
+  `<= FRAZIONE_FINESTRA_CADENZA × cadenza_giorni` (0.15, tuning differito) più una
+  tolleranza float nominata (`TOLLERANZA_FINESTRA_GIORNI`), bordo incluso. Finestra
+  proporzionale alla cadenza, mai fissa.
+- `Signal.data is None` → nessuna tappa-evento (fail-closed). Proiezione non
+  rappresentabile come `date` → evento fuori finestra, mai un'eccezione.
+- Due condizioni, entrambe necessarie: `_coerente_col_profilo` E in finestra. Nessun
+  filtro commerciale qui (il vaglio è a monte, alla radice del ledger e alla promozione
+  umana — docstring di `eventi_promossi_pertinenti`).
+- `stato`/frenato sono filtrati dal BFF prima: la finestra decide solo "quando", mai "se è
+  vivo".
+- Stessi vincoli di budget e posizione delle tappe fluttuanti (§8):
+  `DURATA_TAPPA_EVENTO_MIN`, costo a budget, solo in coda, mai sostituzione.
+- `calcola_score` e `passa_filtri_duri` non leggono `Signal.data` (§3 resta vero).
 
 ## 9. Separazione strutturale da Marketplace
 

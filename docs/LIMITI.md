@@ -517,6 +517,10 @@ stesso ruolo che il gate ha già avuto in Wave 1 (attribuzione mescolata nello s
    richiederebbe filtrare/schedulare in un unico passo (sapere l'orario di visita PRIMA di
    escludere un candidato), un cambio di architettura della pipeline di composizione, non un
    aggiustamento locale.
+   **Nota (finestra degli `:Evento` promossi):** la stessa logica a istante singolo vale per
+   `Signal.data`, ma a granularità di GIORNO: la finestra (che ragiona in giorni) è valutata
+   sulla data d'inizio della composizione; conta solo per un itinerario che scavalca la
+   mezzanotte. Dettaglio nella voce sulla finestra temporale, in fondo a questo file.
 4. **ASSUNZIONE DI INTEGRITÀ NON VERIFICATA, della stessa famiglia del limite su
    `POST /events`** (voce successiva in questo file): `orari_apertura` è interamente
    auto-dichiarato da chi cura il grafo/la bottega, senza alcuna verifica. Non è un problema
@@ -1190,6 +1194,14 @@ tensione, vedi sotto). Verificato: 228 test passano.
 > la voce su `SegnaleFluttuante.non_commerciale` più sopra in questo file (sezione "Livello
 > FLUTTUANTE attivato"), per il secondo varco (verifica del carattere commerciale) reso
 > concretamente raggiungibile dallo stesso lavoro.
+>
+> **AGGIORNAMENTO (finestra temporale).** Dal task "finestra temporale degli `:Evento`
+> promossi" un evento `attivo` stantio non compare più in OGNI itinerario, ma solo nei giorni
+> in finestra attorno alla sua occorrenza proiettata (`ultima_occorrenza` letta dal ledger a
+> ogni richiesta). Il limite resta: la finestra decide solo "quando", "se è vivo" resta a
+> `stato`, quindi uno `stato` stantio continua a far comparire l'evento nei giorni in cui la
+> sua cadenza lo proietterebbe. Dettaglio nella voce "La finestra temporale degli `:Evento`
+> promossi", in fondo a questo file.
 
 ### Cosa NON è garantito
 
@@ -1406,3 +1418,83 @@ verrà proiettata dal ripristino.
 ### Decisione
 
 Accettato: il ledger copre il futuro, il passato si ripromuove a mano.
+
+---
+
+## La finestra temporale degli `:Evento` promossi: fatti approssimati, data dal client
+
+**Introdotto:** Fase 3, consumo degli `:Evento` con finestra temporale (sostituisce la v1
+"compare in qualunque giorno"). **Componenti:** `experience_engine.rules`
+(`evento_in_finestra`, `FRAZIONE_FINESTRA_CADENZA`), `services/api/api/main.create_itinerary`,
+`contracts.Signal.data`/`EventoPromosso.ultima_occorrenza`/`cadenza_giorni`,
+`apps/lucca_soul_app` (`Signal.orologio`).
+
+### Cosa è garantito oggi
+
+- Un `:Evento` promosso, `attivo` e non frenato compare SOLO se `Signal.data` cade entro
+  `FRAZIONE_FINESTRA_CADENZA × cadenza_giorni` (0.15, valore di PARTENZA, tuning differito)
+  dall'occorrenza proiettata più vicina `ultima_occorrenza + k·cadenza_giorni`, k ≥ 1 intero.
+  Bordo incluso. La finestra è proporzionale alla cadenza, mai fissa (settimanale ≈ ±1 giorno,
+  mensile ≈ ±4,5 giorni). Decide solo l'Experience Engine, funzione pura; il BFF passa i fatti.
+- Fail-closed, mai una data inventata: `Signal.data` assente, `CITY_TZ` assente o non valido,
+  nessuna occorrenza nel ledger per il pattern, `cadenza_giorni <= 0` o non finita (inf/nan:
+  rifiutata dal contratto, saltata per singolo evento dal BFF), proiezione non
+  rappresentabile come `date` → l'evento NON compare. `/itinerary` risponde comunque 200.
+- `data` e `giorno_settimana` incoerenti nello stesso `Signal` → 422 (validatore del contratto).
+- La finestra decide solo "quando"; "se è vivo" resta alla frizione (`stato`). `calcola_score`
+  e `passa_filtri_duri` non leggono `Signal.data`. Tappa sempre in coda, a budget.
+- Un client che mente sulla propria data cambia solo il proprio itinerario: `data` non entra
+  nel ledger, negli eventi comportamentali, nei log, negli indici; la lista degli eventi è
+  letta solo da grafo e ledger.
+
+### Cosa NON è garantito
+
+- **`ultima_occorrenza` è sfasata in avanti.** Il timbro di una traccia è l'istante dello
+  sweep pigro (`canale_fluttuante.sweep_and_fetch_active`, eseguito solo quando qualcuno chiama
+  `POST /itinerary`), non l'istante dell'occorrenza reale. In bassa affluenza lo scarto può
+  superare la finestra stessa (±1 giorno per un settimanale): la proiezione eredita lo scarto.
+- **Cadenze molto corte sono "sempre in finestra".** `cadenza_giorni` è una media di
+  intervalli, vincolata solo a `> 0`: con cadenza ≤ ~1 giorno ogni giorno contiene
+  un'occorrenza proiettata, e il pattern si comporta come nella v1 senza finestra. Non peggiora
+  la v1 (la finestra è un sottoinsieme del "sempre"), ma non la migliora. Nessun pavimento di
+  cadenza esiste oggi (né in `rileva_candidati` né alla curatela).
+- **La fase si sposta con nuove tracce.** `ultima_occorrenza` è riletta dal ledger a ogni
+  richiesta: un nuovo segnale ammissibile sullo stesso pattern ri-ancora la finestra. Può
+  scegliere in quali giorni l'evento compare, mai aumentarne l'esposizione oltre la v1. La
+  difesa contro i segnali commerciali resta quella alla radice
+  (`segnale_fluttuante_ammissibile`, auto-dichiarata: limite noto, voce su
+  `SegnaleFluttuante.non_commerciale`).
+- **Finestra simmetrica: "era attesa ieri".** Un'occorrenza proiettata già passata ma in
+  finestra produce comunque una tappa; il `reason` lo dichiara ("un'occorrenza era attesa
+  ieri", "stima", "orario ignoto"), ma la tappa propone 15 minuti per qualcosa che forse non
+  c'è più.
+- **Fuso del dispositivo vs fuso della città.** L'app manda la data locale del DISPOSITIVO;
+  il BFF converte il ledger con `CITY_TZ`. Un dispositivo in un altro fuso può sfalsare di ±1
+  giorno: per cadenze brevi (finestra < 1 giorno) la finestra reale può essere mancata.
+- **Una query al ledger per ogni evento attivo, a ogni `/itinerary`**
+  (`occorrenze_per_pattern`, che restituisce tutte le occorrenze per prenderne il massimo).
+  Accettato ora; ottimizzazione futura: un metodo batch che restituisca `max(creato_il)` per
+  tutti i pattern in una sola query.
+- **App non verificata a compilazione.** La compilazione di `Signal.data` nell'app Flutter
+  (`Signal.orologio`, `signal_presets.dart`) è scritta ma non compilata né testata: `flutter`/
+  `dart` non sono installati (stessa condizione della voce sulla dashboard Flutter). Usa un
+  record con nome (Dart 3; `pubspec.yaml` dichiara `sdk >=3.3.0`). Senza questa parte, in
+  produzione nessun evento comparirebbe mai (fail-closed).
+- **Itinerario a cavallo della mezzanotte.** La finestra usa la data della visita al momento
+  della composizione (stesso limite "istante singolo" dei filtri duri, voce sugli orari di
+  apertura): una tappa-evento collocata dopo la mezzanotte è valutata sulla data d'inizio.
+
+### Cosa servirebbe per chiudere questi buchi (proposte, NON implementate ora)
+
+1. Timbro più fedele: uno sweep periodico indipendente da `/itinerary`, o timbrare la traccia
+   con la fine dichiarata della finestra del segnale invece che con l'istante dello sweep.
+2. Pavimento di cadenza (es. ≥ 2 giorni) in `rileva_candidati` o un avviso al Promotore in
+   curatela per i pattern quasi quotidiani.
+3. Finestra asimmetrica (solo occorrenze ≥ `data_visita`, o un anticipo massimo minore del
+   ritardo) per non proporre tappe già passate.
+4. Metodo batch sul ledger.
+
+### Decisione
+
+Accettato come v1 della finestra. Verifica: giro dedicato di `ethics-guardian` (vedi
+`docs/PROMOZIONE_TRACCIA.md` §3, nota sulla finestra).
