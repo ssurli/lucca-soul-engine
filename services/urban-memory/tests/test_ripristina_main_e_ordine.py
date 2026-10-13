@@ -136,7 +136,8 @@ def test_main_tutto_ok_esce_con_0_e_proietta_tutto(ambiente, capsys) -> None:
     out = capsys.readouterr().out
     assert _Scrittore.chiamate == ["evento-a", "evento-b"]
     assert "RIPRISTINO OK." in out
-    assert "frizione_pattern" in out
+    assert ":Evento proiettati nel grafo: 2" in out
+    assert "python -m urban_memory.frizione_pattern" in out
     _non_stampa_promotore(out)
 
 
@@ -158,6 +159,19 @@ def test_main_luogo_mancante_exit_1_e_lo_elenca(ambiente, capsys) -> None:
     assert "RIPRISTINO INCOMPLETO." in out
     assert _Scrittore.chiamate == ["evento-a"]  # il resto e' proiettato comunque
     _non_stampa_promotore(out)
+
+
+def test_main_rapporto_incompleto_stampa_comunque_il_promemoria_frizione(ambiente, capsys) -> None:
+    _Scrittore.luoghi = {"luogo-a"}  # luogo-b assente: rapporto INCOMPLETO
+
+    with pytest.raises(SystemExit) as info:
+        ripristina_eventi.main([])
+
+    out = capsys.readouterr().out
+    assert info.value.code == 1
+    assert "RIPRISTINO INCOMPLETO." in out
+    assert ":Evento proiettati nel grafo: 1" in out
+    assert "Passo OBBLIGATORIO successivo: python -m urban_memory.frizione_pattern" in out
 
 
 def test_main_conflitto_cestino_exit_1_e_non_proietta_il_conflitto(ambiente, capsys) -> None:

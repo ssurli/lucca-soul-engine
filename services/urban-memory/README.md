@@ -413,16 +413,43 @@ Output atteso: `CONTROPROVA SUPERATA: errore esplicito, nessun nodo creato.`
 linker ha smesso di rifiutare un target inesistente — una regressione del
 bug corretto in questa wave, da trattare come un incidente.
 
-## Ripristino degli `:Evento` promossi — `python -m urban_memory.ripristina_eventi`
+## Ripristino degli `:Evento` promossi — procedura "Aura cancellata"
 
 La promozione di un pattern (`curatela_pattern`) scrive PRIMA il ledger Postgres
-`pattern_promosso` (fonte di verità, append-only), POI il grafo (proiezione). Dopo la perdita di
-Aura (inattività): `python -m graph.loader` (seed), `python -m urban_memory.link` (:Memoria),
-`python -m urban_memory.ripristina_eventi` (:Evento con `e.frenato` scritto nella stessa query,
-idempotente), infine `python -m urban_memory.frizione_pattern` (PASSO OBBLIGATORIO: i nuovi
-eventi partono `sospeso`, non raccomandabili, e la frizione li riporta `attivo`).
-Exit 1 se un `:Luogo` manca (elencato: ricarica il seed), c'è un conflitto cestino/ledger o il
-grafo è irraggiungibile. Le letture precedono ogni scrittura. Non stampa PII.
+`pattern_promosso` (fonte di verità, append-only), POI il grafo (proiezione). Se Aura viene
+cancellata (inattività), si riparte da Postgres. Dalla RADICE del repo (i comandi leggono il
+`.env` della radice), in quest'ordine:
+
+```powershell
+$py = ".venv\Scripts\python.exe"
+
+# a. Seed: schema + Lucca (i :Luogo devono esistere prima di tutto il resto)
+& $py -m graph.loader
+
+# b. Ricollegamento delle :Memoria curate (link accetta UN solo id: ciclo su tutti).
+#    L'elenco stampa solo id, nessun testo/PII.
+$ids = & $py -c 'from urban_memory.repository import PostgresMemoryRepository as R; print(chr(10).join(m.id for m in R.from_env().list_curated()))'
+if ($LASTEXITCODE -ne 0) { throw "elenco dei contributi curati fallito" }
+foreach ($id in ($ids -split "`n" | Where-Object { $_.Trim() })) {
+    & $py -m urban_memory.link $id.Trim()   # idempotente (MERGE)
+}
+
+# c. Proietta gli :Evento promossi dal ledger (anche il freno), idempotente
+& $py -m urban_memory.ripristina_eventi
+
+# d. OBBLIGATORIO: i nuovi :Evento partono 'sospeso' (non raccomandabili); solo la frizione
+#    li riporta 'attivo'. Senza questo passo nessun evento promosso compare in /itinerary.
+#    E' un batch manuale: non esiste uno scheduler (vedi docs/LIMITI.md).
+& $py -m urban_memory.frizione_pattern
+
+# Opzionale: verifica che i TARGET (riguarda) dei curati esistano nel grafo.
+# NON verifica che i nodi :Memoria esistano: non e' una prova del passo b.
+& $py -m urban_memory.audit
+```
+
+`ripristina_eventi` esce con 1 se un `:Luogo` manca (elencato: ricarica il seed), se c'è un
+conflitto cestino/ledger o se il grafo è irraggiungibile. Le letture precedono ogni scrittura.
+Non stampa PII (solo id tecnici e conteggi).
 
 ## Audit dei curati con target invalidi — `python -m urban_memory.audit`
 
