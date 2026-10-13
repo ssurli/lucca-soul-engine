@@ -153,6 +153,10 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
 Valgono i passi 3–4 del *Protocollo di orchestrazione*. In più: `ethics-guardian` e
 `test-engineer` sono agenti **separati** da chi ha scritto il codice. Un'autovalutazione
 dell'autore non è mai un gate superato.
+Dopo una modifica a CLAUDE.md o a .claude/agents/, riavvia la sessione prima di
+delegare: i subagent della sessione corrente lavorano con la versione caricata
+all'avvio. La prova che un subagent ha caricato una versione si legge dal **nome** dei tool
+che ha usato, non dal loro conteggio: la consegna di un agente in background conta già 1.
 
 ## Glossario di dominio (allineato al white paper)
 
