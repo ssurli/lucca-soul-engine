@@ -124,6 +124,36 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
   quella via riaprirebbe il bug delle memorie orfane (nodi `:Memoria` senza `RIGUARDA`).
 - **Italiano** nel dominio, inglese nei nomi dei pilastri (sono termini congelati).
 
+## Disciplina di lavoro (vale per la sessione principale e per TUTTI i subagent)
+
+### A. Verifica prima di implementare (§0)
+- **Il codice sovrasta brief e documenti.** Prima di implementare, verifica in sola lettura le
+  assunzioni del task contro il codice e riporta gli esiti.
+- Se un'assunzione è falsa: **FERMATI e segnala.** Mai riconciliare in silenzio.
+- "Verificato" significa **eseguito** contro il codice o l'infrastruttura reale, non dedotto.
+  Dichiara sempre cosa NON hai potuto verificare.
+- Test esistenti modificati: elencali con il motivo. Mai modificarne uno solo per farlo passare.
+
+### B. Trappole Windows/PowerShell (ambiente reale dell'utente)
+- Comandi per l'utente: PowerShell **completi**, mai segnaposto tipo `<...>` (in PS `<` è un
+  operatore riservato).
+- Comandi dalla radice del repo con `.venv\Scripts\python.exe`. BFF:
+  `.venv\Scripts\python.exe -m uvicorn api.main:app --app-dir services\api --port 8000`
+- Dopo modifiche a file `.cypher` o al `.env`: **uccidere e riavviare** uvicorn, `--reload` non
+  basta (i `.cypher` sono letti una volta, istanze in `lru_cache` in `services/api/api/deps.py`).
+- Un comando nativo che esce con 1 **NON** interrompe uno script PS: ogni passo di una procedura
+  va seguito da `if ($LASTEXITCODE -ne 0) { throw "..." }`.
+- TLS dietro proxy aziendale: `pip install pip-system-certs` (vedi `README.md`).
+- PS 5.1 mostra il JSON UTF-8 come Latin-1 (`Ã¨` per `è`): è solo visualizzazione, il dato è
+  corretto.
+- Aura Free si cancella dopo 30 giorni: procedura in `services/urban-memory/README.md`,
+  sezione "Aura cancellata".
+
+### C. Gate
+Valgono i passi 3–4 del *Protocollo di orchestrazione*. In più: `ethics-guardian` e
+`test-engineer` sono agenti **separati** da chi ha scritto il codice. Un'autovalutazione
+dell'autore non è mai un gate superato.
+
 ## Glossario di dominio (allineato al white paper)
 
 `Visitatore` · `Cittadino` · `ProfiloEmozionale` (curioso, contemplativo, ama-arte, con-bambini,
