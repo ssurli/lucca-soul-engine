@@ -425,17 +425,27 @@ $py = ".venv\Scripts\python.exe"
 
 # a. Seed: schema + Lucca (i :Luogo devono esistere prima di tutto il resto)
 & $py -m graph.loader
+if ($LASTEXITCODE -ne 0) { throw "a. seed del grafo fallito: fermati" }
 
 # b. Ricollegamento delle :Memoria curate (link accetta UN solo id: ciclo su tutti).
-#    L'elenco stampa solo id, nessun testo/PII.
+#    L'elenco stampa solo id, nessun testo/PII. Un fallimento NON ferma il ciclo:
+#    gli id falliti sono raccolti e, a fine ciclo, elencati prima di fermarsi.
 $ids = & $py -c 'from urban_memory.repository import PostgresMemoryRepository as R; print(chr(10).join(m.id for m in R.from_env().list_curated()))'
-if ($LASTEXITCODE -ne 0) { throw "elenco dei contributi curati fallito" }
+if ($LASTEXITCODE -ne 0) { throw "b. elenco dei contributi curati fallito: fermati" }
+$falliti = @()
 foreach ($id in ($ids -split "`n" | Where-Object { $_.Trim() })) {
     & $py -m urban_memory.link $id.Trim()   # idempotente (MERGE)
+    if ($LASTEXITCODE -ne 0) { $falliti += $id.Trim() }
+}
+if ($falliti.Count -gt 0) {
+    Write-Host "Memorie NON agganciate al grafo:"
+    $falliti | ForEach-Object { Write-Host "  - $_" }
+    throw "b. ricollegamento fallito per $($falliti.Count) memoria/e: fermati"
 }
 
 # c. Proietta gli :Evento promossi dal ledger (anche il freno), idempotente
 & $py -m urban_memory.ripristina_eventi
+if ($LASTEXITCODE -ne 0) { throw "c. ripristina_eventi fallito: fermati (NON lanciare d)" }
 
 # d. OBBLIGATORIO: i nuovi :Evento partono 'sospeso' (non raccomandabili); solo la frizione
 #    li riporta 'attivo'. Senza questo passo nessun evento promosso compare in /itinerary.
@@ -443,9 +453,15 @@ foreach ($id in ($ids -split "`n" | Where-Object { $_.Trim() })) {
 & $py -m urban_memory.frizione_pattern
 
 # Opzionale: verifica che i TARGET (riguarda) dei curati esistano nel grafo.
-# NON verifica che i nodi :Memoria esistano: non e' una prova del passo b.
+# NON verifica che i nodi :Memoria esistano (vedi nota sotto il blocco).
 & $py -m urban_memory.audit
 ```
+
+**Il passo b non ha oggi alcuna verifica a posteriori.** L'unico controllo è l'exit code di
+ogni `link` dentro il ciclo. `urban_memory.audit` controlla che i target (`riguarda`) dei
+contributi curati esistano nel grafo, NON che i nodi `:Memoria` e le relazioni `RIGUARDA`
+esistano: dopo la cancellazione di Aura, con il seed ricaricato, `audit` esce con 0 anche se
+nessuna memoria è stata ricollegata. Non va quindi usato come prova del passo b.
 
 `ripristina_eventi` esce con 1 se un `:Luogo` manca (elencato: ricarica il seed), se c'è un
 conflitto cestino/ledger o se il grafo è irraggiungibile. Le letture precedono ogni scrittura.
