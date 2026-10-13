@@ -121,6 +121,8 @@ def make_evento_promosso(**overrides: object) -> EventoPromosso:
         id="evento-piazza-anfiteatro-musica",
         place_id="piazza-anfiteatro",
         temi=["musica"],
+        ultima_occorrenza=date(2026, 9, 1),
+        cadenza_giorni=7.0,
     )
     base.update(overrides)
     return EventoPromosso(**base)  # type: ignore[arg-type]
@@ -279,7 +281,15 @@ def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse
         ),
         (
             Signal,
-            {"meteo", "affollamento", "stanchezza", "ora", "giorno_settimana", "eventi_attivi"},
+            {
+                "meteo",
+                "affollamento",
+                "stanchezza",
+                "ora",
+                "giorno_settimana",
+                "data",
+                "eventi_attivi",
+            },
         ),
         (
             SegnaleFluttuante,
@@ -319,7 +329,7 @@ def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse
         ),
         (
             EventoPromosso,
-            {"id", "place_id", "temi"},
+            {"id", "place_id", "temi", "ultima_occorrenza", "cadenza_giorni"},
         ),
         (
             ExperienceCandidate,
@@ -581,6 +591,27 @@ def test_default_giorno_settimana_none_se_omesso() -> None:
     assert make_signal().giorno_settimana is None
 
 
+def test_default_data_none_se_omessa() -> None:
+    # Mai una data fabbricata: senza `data` il contratto non inventa "oggi".
+    assert make_signal().data is None
+
+
+def test_signal_data_e_giorno_settimana_coerenti() -> None:
+    # 2026-10-13 è un martedì (weekday() == 1).
+    signal = make_signal(data=date(2026, 10, 13), giorno_settimana=1)
+    assert signal.data == date(2026, 10, 13)
+
+
+def test_signal_data_e_giorno_settimana_incoerenti_rifiutati() -> None:
+    with pytest.raises(ValidationError, match="incoerente"):
+        make_signal(data=date(2026, 10, 13), giorno_settimana=2)
+
+
+def test_signal_solo_data_o_solo_giorno_settimana_ok() -> None:
+    assert make_signal(data=date(2026, 10, 13)).giorno_settimana is None
+    assert make_signal(giorno_settimana=3).data is None
+
+
 # ---------------------------------------------------------------------------
 # 5bis. `FasciaApertura` e `rientra_in_orario` — validazione minima degli
 # orari di apertura (Wave 3a+, richiesta esplicitamente prima del Living
@@ -824,7 +855,8 @@ def test_round_trip_json_signal_con_eventi_attivi() -> None:
 # Graph (Fase 3), livello "programmato" diverso dal fluttuante
 # (`SegnaleFluttuante` sopra, "accade ORA"). Contratto minimo, deliberatamente
 # senza `stato` (chi lo costruisce filtra GIÀ per attivo prima), senza
-# `cadenza_giorni` (fuori scope v1) e senza accountability di promozione.
+# occorrenze proiettate (le calcola il motore) e senza accountability di
+# promozione. Porta i soli fatti della finestra: `ultima_occorrenza`, `cadenza_giorni`.
 # ---------------------------------------------------------------------------
 
 
@@ -844,11 +876,36 @@ def test_extra_forbid_su_evento_promosso() -> None:
     with pytest.raises(ValidationError):
         make_evento_promosso(stato="attivo")  # non canonico: filtrato PRIMA, mai qui
     with pytest.raises(ValidationError):
-        make_evento_promosso(cadenza_giorni=7.0)  # fuori scope v1
+        make_evento_promosso(prossima_occorrenza=date(2026, 9, 8))  # proiezione: la fa il motore
     with pytest.raises(ValidationError):
         make_evento_promosso(promosso_da="promotore-pseudo-1")  # accountability, non consumo
     with pytest.raises(ValidationError):
         make_evento_promosso(descrizione="un violinista suona in piazza")  # non sopravvive alla promozione
+
+
+@pytest.mark.parametrize("cadenza", [0, 0.0, -1.0, -7])
+def test_evento_promosso_cadenza_non_positiva_rifiutata(cadenza: float) -> None:
+    with pytest.raises(ValidationError):
+        make_evento_promosso(cadenza_giorni=cadenza)
+
+
+@pytest.mark.parametrize("cadenza", [float("inf"), float("-inf"), float("nan")])
+def test_evento_promosso_cadenza_inf_nan_rifiutata(cadenza: float) -> None:
+    # Una cadenza infinita/NaN non è un fatto reale (gt=0 da solo lascerebbe passare inf).
+    with pytest.raises(ValidationError):
+        make_evento_promosso(cadenza_giorni=cadenza)
+
+
+def test_evento_promosso_richiede_fatti_della_finestra() -> None:
+    # Obbligatori, nessun default: una data/cadenza fabbricata falserebbe la finestra.
+    for campo in ("ultima_occorrenza", "cadenza_giorni"):
+        dati: dict[str, object] = dict(
+            id="e", place_id="p", temi=["musica"],
+            ultima_occorrenza=date(2026, 9, 1), cadenza_giorni=7.0,
+        )
+        del dati[campo]
+        with pytest.raises(ValidationError):
+            EventoPromosso(**dati)  # type: ignore[arg-type]
 
 
 def test_round_trip_json_evento_promosso() -> None:

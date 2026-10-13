@@ -43,6 +43,11 @@ class Settings(BaseSettings):
     # (Neon con `sslmode=require` in cloud, Postgres locale via Docker)
     database_url: str | None = Field(default=None, alias="DATABASE_URL")
 
+    # Fuso IANA della CITTA' (es. `Europe/Rome`): nessun default nel codice.
+    # Serve a convertire le occorrenze UTC del ledger nella DATA LOCALE
+    # (`EventoPromosso.ultima_occorrenza`). Assente/non valido => fail-closed.
+    city_tz: str | None = Field(default=None, alias="CITY_TZ")
+
 
 @lru_cache
 def get_settings() -> Settings:

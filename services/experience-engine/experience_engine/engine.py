@@ -17,8 +17,9 @@ resta sostituibile città per città senza toccare grafo o RAG.
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from contracts import (
     EmotionalProfile,
@@ -41,6 +42,7 @@ from .rules import (
     TOLLERANZA_DIVERSITA,
     calcola_score,
     eventi_promossi_pertinenti,
+    giorno_occorrenza_attesa,
     passa_filtri_duri,
     segnali_fluttuanti_pertinenti,
     segnali_rilevanti,
@@ -358,20 +360,85 @@ def _temi_leggibili(temi: list[str]) -> str:
     return ", ".join(tema.replace("-", " ") for tema in temi)
 
 
-def _reason_evento_promosso(evento: EventoPromosso, place_nome: str) -> str:
-    """`reason` sempre non vuoto (spiegabilità obbligatoria) per una tappa
-    generata da un `:Evento` promosso.
+# Nomi italiani in CODICE, mai `strftime("%A")`/`%B`: il risultato non deve
+# dipendere dalla locale di sistema della macchina che esegue il motore
+# (notebook e PC fisso possono averne di diverse). Indici: `date.weekday()`
+# (0=lunedì) e `date.month` (1=gennaio, indice 0 inutilizzato).
+_GIORNI_SETTIMANA_IT = (
+    "lunedì",
+    "martedì",
+    "mercoledì",
+    "giovedì",
+    "venerdì",
+    "sabato",
+    "domenica",
+)
+_MESI_IT = (
+    "",
+    "gennaio",
+    "febbraio",
+    "marzo",
+    "aprile",
+    "maggio",
+    "giugno",
+    "luglio",
+    "agosto",
+    "settembre",
+    "ottobre",
+    "novembre",
+    "dicembre",
+)
 
-    Racconta un CONTESTO SUL LUOGO, non un appuntamento: un pattern promosso
-    dice "qui succede spesso questa cosa", MAI "oggi alle 18". Non
-    promettiamo un giorno né un orario perché non abbiamo quell'informazione
-    — `EventoPromosso` non trasporta cadenza né finestra temporale (task
-    futuro, esplicitamente fuori scope in questa v1). Promettere un
-    appuntamento che il dato non garantisce sarebbe la peggiore forma di
-    inspiegabilità: una frase credibile e falsa."""
+
+def _giorno_relativo_it(giorno: date, data_visita: date) -> str:
+    """Il giorno `giorno` detto in italiano RELATIVAMENTE a `data_visita`:
+    "oggi", "domani", "ieri", altrimenti giorno della settimana + data
+    ("giovedì 15 ottobre"). Pura, indipendente dalla locale di sistema."""
+    scarto = (giorno - data_visita).days
+    if scarto == 0:
+        return "oggi"
+    if scarto == 1:
+        return "domani"
+    if scarto == -1:
+        return "ieri"
+    return f"{_GIORNI_SETTIMANA_IT[giorno.weekday()]} {giorno.day} {_MESI_IT[giorno.month]}"
+
+
+def _cadenza_leggibile(cadenza_giorni: float) -> str:
+    """Cadenza APPROSSIMATA in italiano ("circa ogni 7 giorni"): arrotondata
+    al giorno intero (mezzo giorno verso l'alto, mai `round` bancario), mai
+    sotto 1 — è una regolarità osservata, non un calendario esatto."""
+    giorni = max(1, math.floor(cadenza_giorni + 0.5))
+    if giorni == 1:
+        return "circa ogni giorno"
+    return f"circa ogni {giorni} giorni"
+
+
+def _reason_evento_promosso(evento: EventoPromosso, place_nome: str, data_visita: date) -> str:
+    """`reason` sempre non vuoto, in italiano (spiegabilità obbligatoria) per
+    una tappa generata da un `:Evento` promosso.
+
+    La tappa compare SOLO se `data_visita` cade nella finestra attorno a
+    un'occorrenza attesa (`rules.evento_in_finestra`), quindi il reason PUÒ
+    nominare un giorno — ma ONESTAMENTE: è un'occorrenza ATTESA, proiettata
+    da una regolarità osservata (`ultima_occorrenza` + k·`cadenza_giorni`),
+    NON un appuntamento confermato da qualcuno. Lo dice esplicitamente.
+    Include il giorno atteso relativo alla visita (`rules.
+    giorno_occorrenza_attesa`, lo STESSO calcolo della finestra, non un
+    secondo) e la cadenza approssimata. Nessun orario (non lo abbiamo) e
+    nessuna descrizione dell'evento (non sopravvive alla promozione): una
+    frase credibile e falsa sarebbe la peggiore forma di inspiegabilità."""
+    giorno = giorno_occorrenza_attesa(evento.ultima_occorrenza, evento.cadenza_giorni, data_visita)
+    quando = _giorno_relativo_it(giorno, data_visita)
+    if giorno < data_visita:
+        occorrenza = f"un'occorrenza era attesa {quando}"
+    else:
+        occorrenza = f"la prossima occorrenza è attesa {quando}"
     return (
-        f"{place_nome} ha un carattere legato a {_temi_leggibili(evento.temi)}: "
-        "un tratto ricorrente del luogo, non un appuntamento di oggi."
+        f"Presso {place_nome} si ripete qualcosa legato a {_temi_leggibili(evento.temi)}, "
+        f"osservato {_cadenza_leggibile(evento.cadenza_giorni)}: {occorrenza}. "
+        "È una stima dalla regolarità osservata, non un appuntamento confermato, "
+        "e non ne conosciamo l'orario."
     )
 
 
@@ -381,6 +448,8 @@ def _aggiungi_tappe_eventi_promossi(
     profile: EmotionalProfile,
     eventi_promossi: list[EventoPromosso],
     ora_inizio: time | None = None,
+    *,
+    data_visita: date | None,
 ) -> list[ItineraryStop]:
     """Aggiunge, IN CODA, le tappe degli eventi promossi pertinenti — mai una
     sostituzione (le tappe 1-4 e le eventuali tappe fluttuanti restano
@@ -403,9 +472,14 @@ def _aggiungi_tappe_eventi_promossi(
     caso non è fornita, la tappa-evento NON si aggiunge: meglio non
     aggiungerla che collocarla a un orario fabbricato (es. mezzanotte), lo
     stesso principio per cui `place_nome` ricade sul `place_id` grezzo invece
-    di inventare un nome."""
-    pertinenti = eventi_promossi_pertinenti(eventi_promossi, profile)
-    if not pertinenti:
+    di inventare un nome.
+
+    `data_visita` (`ctx.signal.data`) è keyword-only e SENZA default: decide
+    la finestra temporale (`rules.eventi_promossi_pertinenti`, fail-closed se
+    `None` — nessuna tappa-evento) e il giorno atteso raccontato nel
+    `reason`. Nessun chiamante può dimenticarla in silenzio."""
+    pertinenti = eventi_promossi_pertinenti(eventi_promossi, profile, data_visita)
+    if not pertinenti or data_visita is None:
         return stops
 
     place_nomi = {c.experience.place_id: c.place_nome for c in candidates}
@@ -439,7 +513,7 @@ def _aggiungi_tappe_eventi_promossi(
                 experience_id=evento.id,
                 arrivo=orario_corrente,
                 durata_min=DURATA_TAPPA_EVENTO_MIN,
-                reason=_reason_evento_promosso(evento, place_nome),
+                reason=_reason_evento_promosso(evento, place_nome, data_visita),
             )
         )
         orario_corrente = _somma_minuti(orario_corrente, DURATA_TAPPA_EVENTO_MIN)
@@ -492,6 +566,9 @@ def compose_itinerary(
     il grafo, non importa `graph` né `urban_memory`, e non scrive nulla). Se è
     `None` o vuota — ogni chiamante esistente oggi, che questo parametro non
     lo passa — il passo 6 è un no-op: comportamento invariato, bit per bit.
+    Un evento compare SOLO se `ctx.signal.data` cade nella finestra attorno a
+    un'occorrenza attesa (`rules.evento_in_finestra`); se `Signal.data` è
+    `None` il passo 6 è un no-op (fail-closed: mai una data inventata).
     Il parametro è ULTIMO proprio per non spostare `reason_fn`/`score_fn` e
     non rompere le chiamate posizionali già in essere.
 
@@ -513,7 +590,12 @@ def compose_itinerary(
     stops = _costruisci_stops(selezionati, profile, ctx.signal, fn)
     stops = _aggiungi_tappe_fluttuanti(stops, candidates, profile, ctx.signal)
     stops = _aggiungi_tappe_eventi_promossi(
-        stops, candidates, profile, eventi_promossi or [], ctx.signal.ora
+        stops,
+        candidates,
+        profile,
+        eventi_promossi or [],
+        ctx.signal.ora,
+        data_visita=ctx.signal.data,
     )
 
     return Itinerary(

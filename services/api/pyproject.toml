@@ -12,6 +12,7 @@ dependencies = [
     "uvicorn[standard]>=0.30",
     "pydantic>=2",
     "pydantic-settings>=2",
+    "tzdata>=2024.1",  # Windows non ha un database dei fusi di sistema (CITY_TZ)
 ]
 
 # NOTA — pacchetti locali (packages/contracts, services/graph, services/rag,

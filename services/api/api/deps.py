@@ -18,6 +18,7 @@ ogni richiesta sarebbe costoso e inutile. Stesso pattern per
 from __future__ import annotations
 
 from functools import lru_cache
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import marketplace
 import recommender
@@ -331,3 +332,18 @@ def get_evento_reader() -> Neo4jFrizioneClient | None:
         )
         return Neo4jFrizioneClient(driver, database=settings.neo4j_database or "neo4j")
     return None
+
+
+def get_city_tz() -> ZoneInfo | None:
+    """Fuso IANA della citta' da `CITY_TZ` (via `Settings`, .env/ambiente).
+
+    Nessun default nel codice: `None` se la variabile manca o non e' un
+    fuso IANA valido (il chiamante degrada fail-closed). Non cached di
+    proposito oltre a `get_settings`: la validazione e' economica."""
+    nome = get_settings().city_tz
+    if not nome or not nome.strip():
+        return None
+    try:
+        return ZoneInfo(nome.strip())
+    except (ZoneInfoNotFoundError, ValueError, OSError):
+        return None

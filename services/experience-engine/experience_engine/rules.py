@@ -14,6 +14,7 @@ solo dove è concentrato.
 from __future__ import annotations
 
 import math
+from datetime import date, timedelta
 
 from contracts import (
     EmotionalProfile,
@@ -66,14 +67,35 @@ DURATA_TAPPA_FLUTTUANTE_MIN = 15
 #: Durata (min) di una tappa aggiunta da un `:Evento` PROMOSSO
 #: (`contracts.EventoPromosso`, Fase 3). Stessa idea di
 #: `DURATA_TAPPA_FLUTTUANTE_MIN` sopra: una costante della FEATURE, non un
-#: campo dichiarato dall'evento — `EventoPromosso` resta minimale (nessuna
-#: durata sopravvive alla promozione, verificato).
+#: campo dichiarato dall'evento — `EventoPromosso` non porta alcuna durata
+#: (solo `ultima_occorrenza`/`cadenza_giorni`, per la finestra temporale:
+#: nessuna durata sopravvive alla promozione, verificato).
 #: TUNING: valore di PARTENZA, non calibrato su dati reali. La taratura è
 #: deliberatamente differita a quando esisterà un `:Evento` promosso vero da
 #: osservare; costante gemella (e non riuso diretto di
 #: `DURATA_TAPPA_FLUTTUANTE_MIN`) proprio perché i due livelli — "accade ora"
 #: e "programmato" — devono poter divergere senza toccarsi a vicenda.
 DURATA_TAPPA_EVENTO_MIN = 15
+
+#: Semi-ampiezza della finestra temporale di un `:Evento` PROMOSSO, come
+#: FRAZIONE della sua cadenza: la visita è "in finestra" se dista al più
+#: `FRAZIONE_FINESTRA_CADENZA * cadenza_giorni` giorni dall'occorrenza attesa
+#: più vicina. PROPORZIONALE alla cadenza, mai una finestra fissa in giorni:
+#: un evento settimanale ha ±1,05 giorni (≈ ±1), uno mensile (30 g) ±4,5.
+#: TUNING: valore di PARTENZA, non calibrato su dati reali — la taratura è
+#: deliberatamente differita a quando esisteranno `:Evento` promossi veri da
+#: osservare (stesso principio di `K_ORIZZONTE_DORMIENZA` in
+#: `urban_memory.frizione_pattern`). La finestra decide SOLO "quando"; "se
+#: l'evento è ancora vivo" resta alla frizione (`stato`, filtrato a monte).
+FRAZIONE_FINESTRA_CADENZA = 0.15
+
+#: Tolleranza assoluta (giorni) sul confronto col bordo della finestra: il
+#: bordo è INCLUSO, ma `k * cadenza_giorni` e `FRAZIONE * cadenza` sono float,
+#: quindi un bordo esatto in aritmetica reale (es. cadenza 20/3, semi-ampiezza
+#: 1,0) può risultare 0,9999999999 in float. Un miliardesimo di giorno
+#: (< 0,1 ms) è irrilevante per la semantica e assorbe l'errore di
+#: arrotondamento, invece di un confronto `<=` fragile.
+TOLLERANZA_FINESTRA_GIORNI = 1e-9
 
 # --- Pesi dello scoring (documentati: nessuno tocca partner_id/prezzo_eur) ---
 
@@ -312,17 +334,119 @@ def segnali_fluttuanti_pertinenti(
 # ---------------------------------------------------------------------------
 
 
-def eventi_promossi_pertinenti(
-    eventi: list[EventoPromosso], profile: EmotionalProfile
-) -> list[EventoPromosso]:
-    """Eventi promossi pertinenti per QUESTO profilo, nell'ordine in cui sono
-    arrivati (determinismo: nessun riordino inventato qui — stessa garanzia di
-    `segnali_fluttuanti_pertinenti` sopra).
+def occorrenza_attesa_giorni(
+    ultima_occorrenza: date, cadenza_giorni: float, data_visita: date
+) -> float:
+    """Occorrenza ATTESA più vicina a `data_visita`, espressa in giorni
+    (float) a partire da `ultima_occorrenza`: `k * cadenza_giorni` con `k`
+    INTERO e `k >= 1` (l'ultima occorrenza osservata è già passata: si
+    proietta solo in avanti da lì).
 
-    UNA sola condizione: `_coerente_col_profilo` — un tema in comune con
-    almeno una dimensione a cui il profilo tiene davvero (peso > 0). È
-    ESATTAMENTE la stessa funzione riusata dai fluttuanti, non un secondo
-    criterio: "il tema raggiunge chi è affine" si scrive in un posto solo.
+    Considera sia `floor` sia `ceil` del rapporto
+    `(data_visita - ultima_occorrenza) / cadenza_giorni`, entrambi clampati a
+    `k >= 1`, e sceglie quello a distanza minima da `data_visita`. A parità
+    esatta di distanza vince il `k` MINORE (tie-break deterministico). Una
+    visita precedente (o uguale) a `ultima_occorrenza` ricade su `k = 1`.
+
+    PURA: nessun "oggi" del sistema, nessuna locale. `cadenza_giorni > 0` è
+    garantito dal contratto (`EventoPromosso.cadenza_giorni`, `gt=0`)."""
+    delta = float((data_visita - ultima_occorrenza).days)
+    rapporto = delta / cadenza_giorni
+    k_basso = max(1, math.floor(rapporto))
+    k_alto = max(1, math.ceil(rapporto))
+    # min su (distanza, k): a parità di distanza vince il k minore.
+    k = min((k_basso, k_alto), key=lambda kk: (abs(delta - kk * cadenza_giorni), kk))
+    return k * cadenza_giorni
+
+
+def proiezione_occorrenza_attesa(
+    ultima_occorrenza: date, cadenza_giorni: float, data_visita: date
+) -> date | None:
+    """Giorno di calendario dell'occorrenza attesa più vicina
+    (`occorrenza_attesa_giorni`), arrotondato al giorno più vicino con il
+    mezzo giorno verso l'alto (`floor(x + 0.5)`, mai l'arrotondamento
+    bancario di `round`) — oppure `None` se la proiezione NON è
+    rappresentabile come `date`.
+
+    UNICO punto in cui la proiezione può fallire. `Signal.data` arriva dal
+    client: una visita vicina a `date.max`/`date.min`, o una cadenza
+    degenere (enorme, infinita, o così piccola che `delta / cadenza`
+    esplode a `inf`), può portare `ultima_occorrenza + k·cadenza` fuori
+    dall'intervallo di `date` (`OverflowError`) o produrre un float non
+    convertibile (`OverflowError`/`ValueError` da `math.floor`). FAIL-CLOSED
+    e SENZA inventare date: nessun clamp a `date.max`, nessuna data
+    "vicina" di ripiego — `None`, e il chiamante tratta l'evento come
+    FUORI finestra. PURA."""
+    try:
+        offset = occorrenza_attesa_giorni(ultima_occorrenza, cadenza_giorni, data_visita)
+        return ultima_occorrenza + timedelta(days=math.floor(offset + 0.5))
+    except (OverflowError, ValueError):
+        return None
+
+
+def giorno_occorrenza_attesa(
+    ultima_occorrenza: date, cadenza_giorni: float, data_visita: date
+) -> date:
+    """Giorno di calendario dell'occorrenza attesa più vicina
+    (`proiezione_occorrenza_attesa`). Serve SOLO a raccontarla nel `reason`:
+    la decisione "in finestra" la prende `evento_in_finestra` sui giorni
+    float, non su questo valore arrotondato.
+
+    PRECONDIZIONE: l'evento è in finestra (`evento_in_finestra` è `True`),
+    il che implica una proiezione rappresentabile. Il motore la chiama solo
+    sugli eventi già filtrati da `eventi_promossi_pertinenti`; chiamarla
+    fuori da quella garanzia con una proiezione non rappresentabile è un
+    errore di programmazione (`ValueError`), mai una data inventata."""
+    giorno = proiezione_occorrenza_attesa(ultima_occorrenza, cadenza_giorni, data_visita)
+    if giorno is None:
+        raise ValueError("occorrenza attesa non rappresentabile come date")
+    return giorno
+
+
+def evento_in_finestra(ultima_occorrenza: date, cadenza_giorni: float, data_visita: date) -> bool:
+    """`True` se `data_visita` cade nella finestra attorno all'occorrenza
+    attesa più vicina: `|data_visita - occorrenza| <=
+    FRAZIONE_FINESTRA_CADENZA * cadenza_giorni`, bordo INCLUSO (con
+    `TOLLERANZA_FINESTRA_GIORNI` contro l'errore float).
+
+    FAIL-CLOSED: se l'occorrenza attesa non è rappresentabile come `date`
+    (`proiezione_occorrenza_attesa` è `None` — es. `Signal.data` vicino a
+    `date.max`, cadenza degenere) l'evento è FUORI finestra, anche se in
+    aritmetica float risulterebbe dentro. Così nessun evento che compare può
+    poi far fallire il racconto del suo giorno nel `reason`.
+
+    Decide SOLO "quando". "Se l'evento è ancora vivo" (dormienza, battiti
+    mancati) NON è qui: lo decide la frizione, via `stato`, già filtrato a
+    monte dal BFF."""
+    if proiezione_occorrenza_attesa(ultima_occorrenza, cadenza_giorni, data_visita) is None:
+        return False
+    delta = float((data_visita - ultima_occorrenza).days)
+    occorrenza = occorrenza_attesa_giorni(ultima_occorrenza, cadenza_giorni, data_visita)
+    semi_ampiezza = FRAZIONE_FINESTRA_CADENZA * cadenza_giorni
+    return abs(delta - occorrenza) <= semi_ampiezza + TOLLERANZA_FINESTRA_GIORNI
+
+
+def eventi_promossi_pertinenti(
+    eventi: list[EventoPromosso], profile: EmotionalProfile, data_visita: date | None
+) -> list[EventoPromosso]:
+    """Eventi promossi pertinenti per QUESTO profilo e QUESTA data di visita,
+    nell'ordine in cui sono arrivati (determinismo: nessun riordino inventato
+    qui — stessa garanzia di `segnali_fluttuanti_pertinenti` sopra).
+
+    FAIL-CLOSED sulla data: se `data_visita` è `None` (il client non l'ha
+    dichiarata in `Signal.data`) la lista è VUOTA — mai una data inventata
+    (es. "oggi" del server), che farebbe comparire o sparire eventi per un
+    giorno che nessuno ha dichiarato. Parametro senza default, apposta: ogni
+    chiamante deve dire esplicitamente quale data sta usando (anche `None`).
+
+    Altrimenti DUE condizioni, entrambe necessarie:
+    1. `_coerente_col_profilo` — un tema in comune con almeno una dimensione
+       a cui il profilo tiene davvero (peso > 0). È ESATTAMENTE la stessa
+       funzione riusata dai fluttuanti, non un secondo criterio: "il tema
+       raggiunge chi è affine" si scrive in un posto solo.
+    2. `evento_in_finestra` — la visita cade vicino a un'occorrenza ATTESA,
+       proiettata da `ultima_occorrenza` + k·`cadenza_giorni`. Decide solo
+       "quando"; "se è vivo" resta allo `stato` filtrato a monte.
 
     PERCHÉ NON APPLICA L'AMMISSIBILITÀ COMMERCIALE (non è un'omissione).
     `segnali_fluttuanti_pertinenti` applica in più
@@ -347,4 +471,11 @@ def eventi_promossi_pertinenti(
     funzione produce solo la lista di eventi da aggiungere in coda, mai un
     input allo scoring delle esperienze del grafo.
     """
-    return [evento for evento in eventi if _coerente_col_profilo(evento.temi, profile)]
+    if data_visita is None:
+        return []
+    return [
+        evento
+        for evento in eventi
+        if _coerente_col_profilo(evento.temi, profile)
+        and evento_in_finestra(evento.ultima_occorrenza, evento.cadenza_giorni, data_visita)
+    ]

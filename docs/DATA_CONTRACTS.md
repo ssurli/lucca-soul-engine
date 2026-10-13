@@ -94,6 +94,14 @@ class Signal(BaseModel):              # stato del mondo, ORA
     # invariato finché il chiamante non lo popola. Usato per valutare
     # `ExperienceNode.orari_apertura`.
     giorno_settimana: int | None = None      # se presente: 0..6
+    # Data (calendario LOCALE della città) della visita, mandata dal CLIENT
+    # insieme a `ora` (stessa fonte, stesso orologio: nessuno sfasamento
+    # UTC/locale). Opzionale, default None: MAI una data fabbricata. Se None il
+    # contratto non decide: l'Experience Engine tratta l'assenza come
+    # fail-closed (nessun EventoPromosso). NON deriva `giorno_settimana`.
+    # Validatore: se `data` e `giorno_settimana` sono entrambi presenti deve
+    # valere `data.weekday() == giorno_settimana`, altrimenti ValueError.
+    data: date | None = None
     # Segnali FLUTTUANTI attivi ORA. Era `list[str]` (dichiarato nel
     # contratto, mai letto da nessuna logica — verificato prima di questo
     # cambio): un interruttore già cablato, mai acceso. Lista vuota
@@ -226,16 +234,31 @@ class EventoPromosso(BaseModel):
       fluttuanti attivi, mai con uno stato da ricontrollare a valle. Un
       `EventoPromosso` che raggiunge il motore è, per costruzione, sempre
       attivo.
-    - `cadenza_giorni`: non serve a questa v1, che non applica alcun filtro
-      temporale sulla cadenza — task esplicitamente futuro, fuori scope ora.
     - `promosso_da`/`promosso_il`: accountability della DECISIONE di
       promozione (chi, quando), non pertinente al CONSUMO in un itinerario.
     - nessun campo narrativo/descrizione: non esiste nulla di equivalente sul
       nodo `:Evento` reale — verificato, la `descrizione` del segnale
       fluttuante originale non sopravvive alla promozione (vedi
-      `50_promozione_evento_write.cypher`)."""
+      `50_promozione_evento_write.cypher`).
+
+    Finestra temporale: il contratto trasporta SOLO i FATTI grezzi
+    (`ultima_occorrenza`, `cadenza_giorni`); la proiezione (ultima + k*cadenza,
+    k>=1, occorrenza più vicina a `Signal.data`) e la DECISIONE "in finestra
+    sì/no" le prende solo l'Experience Engine (funzione pura). "Se è vivo" resta
+    a `stato` (già filtrato a monte): la finestra decide solo "quando".
+    `ultima_occorrenza` è data LOCALE della città, confrontabile con
+    `Signal.data`; la conversione dall'UTC del ledger la fa il BFF con un fuso
+    da configurazione (mai nel codice). Il `creato_il` della traccia nel ledger
+    è l'istante UTC dello SWEEP (`sweep_and_fetch_active`), pigro: avviene solo
+    quando qualcuno chiama POST /itinerary; la transizione a `expired` e il
+    timbro avvengono lì, anche giorni dopo (bassa affluenza) la fine reale
+    della finestra e l'occorrenza reale. Quindi `ultima_occorrenza` è sfasata
+    IN AVANTI rispetto all'occorrenza reale, potenzialmente più della finestra
+    stessa (oltre ±1 giorno per un settimanale): imprecisione già nel dato."""
     id: str        # id deterministico del nodo :Evento (evento_id_per_pattern)
     place_id: str  # il :Luogo a cui è ancorato (SI_SVOLGE_A)
+    ultima_occorrenza: date      # data LOCALE (non UTC) dell'ultima occorrenza nel ledger
+    cadenza_giorni: float        # > 0 e finito (Field(gt=0, allow_inf_nan=False)): inf/nan rifiutati
     temi: list[str]  # stessa forma di SegnaleFluttuante.temi/ExperienceNode.temi (min 1 elemento)
 ```
 
@@ -559,11 +582,13 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   costruzione. Nessun campo `valido_da`: il fluttuante "accade DA ADESSO", un inizio
   programmabile è per definizione un `:Evento` PROGRAMMATO (fuori scope,
   `docs/PROMOZIONE_TRACCIA.md`).
-- `EventoPromosso` (§2) è il contratto minimo — `id`/`place_id`/`temi` — con cui un `:Evento`
+- `EventoPromosso` (§2) è il contratto minimo — `id`/`place_id`/`temi` più i fatti della
+  finestra temporale `ultima_occorrenza` (data locale) e `cadenza_giorni` (> 0), mai una
+  occorrenza proiettata né una decisione "in finestra" — con cui un `:Evento`
   promosso e ATTIVO nel Knowledge Graph raggiunge `experience_engine.engine.compose_itinerary`
   come parametro iniettabile: il motore non importa `graph` né `rag`, stesso principio già
   applicato a `GraphCandidate`. Chi legge dal grafo (`services/api`) filtra GIÀ per
-  `stato='attivo'` PRIMA di costruire questo tipo: nessuno stato, nessuna cadenza, nessuna
+  `stato='attivo'` PRIMA di costruire questo tipo: nessuno stato, nessuna
   accountability di promozione (`promosso_da`/`promosso_il`) e nessun testo narrativo vivono
   in questo contratto — sono task futuri o informazioni non pertinenti al consumo in un
   itinerario (vedi il docstring del modello in `packages/contracts`).

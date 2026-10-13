@@ -36,8 +36,10 @@ Copre i criteri del task:
 from __future__ import annotations
 
 import ast
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import pytest
 
@@ -68,6 +70,14 @@ SeedCandidateSource = graph_source.SeedCandidateSource
 # 01_seed_lucca.cypher`), stesso place_id di riferimento usato da
 # `test_fluttuante.py`.
 PLACE_ID_SEED = "piazza-anfiteatro"
+
+# Date FISSE (mai date.today()). Ultima occorrenza nel ledger: lunedi' 2 marzo
+# 2026, 12:00 UTC (= 13:00 a Roma, stesso giorno). Con cadenza 30 l'occorrenza
+# attesa e' mercoledi' 1 aprile 2026 = `DATA_IN_FINESTRA` (coerente anche con
+# `giorno_settimana=2`, mercoledi').
+ULTIMA_OCCORRENZA_UTC = datetime(2026, 3, 2, 12, 0, tzinfo=UTC)
+DATA_IN_FINESTRA = "2026-04-01"
+ROMA = ZoneInfo("Europe/Rome")
 
 
 class _FakeCandidateSource:
@@ -114,6 +124,7 @@ def _visitor_context(**overrides: Any) -> dict[str, Any]:
             "stanchezza": 0.0,
             "ora": "10:00:00",
             "eventi_attivi": [],
+            "data": DATA_IN_FINESTRA,
         },
     }
     base.update(overrides)
@@ -140,23 +151,41 @@ class _EventoReaderStorageGiu:
         raise RuntimeError("grafo irraggiungibile (simulato)")
 
 
+class _FakeTraccia:
+    """Sostituto di `TracciaRepository`: SOLO `occorrenze_per_pattern`
+    (duck typing). `per_pattern=None` -> stesse occorrenze per ogni pattern;
+    una lista vuota simula un ledger senza storia per il pattern."""
+
+    def __init__(self, occorrenze: list[datetime]) -> None:
+        self._occorrenze = occorrenze
+        self.chiamate: list[tuple[str, list[str]]] = []
+
+    def occorrenze_per_pattern(self, place_id: str, temi: list[str]) -> list[datetime]:
+        self.chiamate.append((place_id, list(temi)))
+        return list(self._occorrenze)
+
+
 def _stub(
     monkeypatch: pytest.MonkeyPatch,
     *,
     evento_reader: Any,
     candidate_source: Any | None = None,
-) -> None:
-    """Sostituisce `get_evento_reader` E, SEMPRE, `get_candidate_source`
-    (default: `SeedCandidateSource()` reale) — stessa disciplina di
-    `_stub_repos` in `test_fluttuante.py`: evita che, in un ambiente con
-    `NEO4J_URI` configurato nel `.env`, il default di
-    `api.deps.get_candidate_source()` tenti una connessione di rete vera
-    durante il test. Il canale fluttuante (`get_segnale_repository`/
-    `get_traccia_repository`/`get_place_link_writer`) resta sui default reali
-    in-memory: non è oggetto di questo test."""
+    occorrenze: list[datetime] | None = None,
+    city_tz: Any = ROMA,
+) -> _FakeTraccia:
+    """Sostituisce `get_evento_reader`, `get_candidate_source` (default:
+    `SeedCandidateSource()` reale), `get_traccia_repository` (ledger finto:
+    default UNA occorrenza in `ULTIMA_OCCORRENZA_UTC`) e `get_city_tz`
+    (default Europe/Rome) - stessa disciplina di `_stub_repos` in
+    `test_fluttuante.py`: nessuna rete, nessun .env/CITY_TZ della macchina
+    nei test. I test sul fuso letto da ambiente usano `_stub_senza_tz`."""
     monkeypatch.setattr(api_main, "get_evento_reader", lambda: evento_reader)
     source = candidate_source if candidate_source is not None else SeedCandidateSource()
     monkeypatch.setattr(api_main, "get_candidate_source", lambda: source)
+    traccia = _FakeTraccia([ULTIMA_OCCORRENZA_UTC] if occorrenze is None else occorrenze)
+    monkeypatch.setattr(api_main, "get_traccia_repository", lambda: traccia)
+    monkeypatch.setattr(api_main, "get_city_tz", lambda: city_tz)
+    return traccia
 
 
 # ---------------------------------------------------------------------------
@@ -393,6 +422,196 @@ def test_evento_non_pertinente_non_entra_a_prescindere_dal_body(
     assert resp.status_code == 200
     ids = [s["experience_id"] for s in resp.json()["stops"]]
     assert "evento-non-pertinente-test" not in ids
+
+
+# ---------------------------------------------------------------------------
+# 4. Finestra temporale: il BFF fornisce i FATTI (ultima occorrenza dal
+#    ledger, in data LOCALE; cadenza), la decisione e' del motore.
+# ---------------------------------------------------------------------------
+
+
+def _evento_attivo(
+    evento_id: str = "evento-finestra-test", cadenza: float = 30.0, frenato: bool = False
+) -> EventoRicorrente:
+    return EventoRicorrente(
+        evento_id=evento_id,
+        place_id=PLACE_ID_SEED,
+        temi=("musica",),
+        stato="attivo",
+        cadenza_giorni=cadenza,
+        frenato=frenato,
+    )
+
+
+def _ids(resp: Any) -> list[str]:
+    return [s["experience_id"] for s in resp.json()["stops"]]
+
+
+def _post(monkeypatch: pytest.MonkeyPatch, evento: EventoRicorrente, ctx: dict, **kw: Any) -> Any:
+    _stub(
+        monkeypatch,
+        evento_reader=_FakeEventoReader([evento]),
+        candidate_source=_FakeCandidateSource([_candidato_arte()]),
+        **kw,
+    )
+    return TestClient(api_main.app).post("/itinerary", json=ctx)
+
+
+def test_finestra_fuori_finestra_non_entra(monkeypatch: pytest.MonkeyPatch) -> None:
+    ctx = _visitor_context()
+    ctx["signal"]["data"] = "2026-04-15"  # 14 giorni dall'attesa, finestra 4,5
+    resp = _post(monkeypatch, _evento_attivo(), ctx)
+    assert resp.status_code == 200
+    assert "evento-finestra-test" not in _ids(resp)
+
+
+def test_finestra_data_assente_nessun_evento(monkeypatch: pytest.MonkeyPatch) -> None:
+    ctx = _visitor_context()
+    del ctx["signal"]["data"]
+    resp = _post(monkeypatch, _evento_attivo(), ctx)
+    assert resp.status_code == 200
+    assert "evento-finestra-test" not in _ids(resp)
+
+
+def test_g_frenato_in_finestra_non_compare(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Controllo anti-vacuita': stesso scenario, non frenato -> compare.
+    resp_ok = _post(monkeypatch, _evento_attivo(frenato=False), _visitor_context())
+    assert "evento-finestra-test" in _ids(resp_ok)
+
+    traccia = _stub(
+        monkeypatch,
+        evento_reader=_FakeEventoReader([_evento_attivo(frenato=True)]),
+        candidate_source=_FakeCandidateSource([_candidato_arte()]),
+    )
+    resp = TestClient(api_main.app).post("/itinerary", json=_visitor_context())
+    assert resp.status_code == 200
+    assert "evento-finestra-test" not in _ids(resp)
+    assert traccia.chiamate == [], "un evento frenato non deve nemmeno interrogare il ledger"
+
+
+@pytest.mark.parametrize("valore", ["", "   ", "Mars/Olympus_Mons", "non-un-fuso"])
+def test_h_city_tz_assente_o_invalida_nessun_evento_ma_200(
+    monkeypatch: pytest.MonkeyPatch, valore: str
+) -> None:
+    """Passa dal VERO `api.deps.get_city_tz` (CITY_TZ letta da `Settings`),
+    non da uno stub: la cache di `get_settings` va azzerata prima e dopo."""
+    from api import deps, settings as api_settings
+
+    _stub(
+        monkeypatch,
+        evento_reader=_FakeEventoReader([_evento_attivo()]),
+        candidate_source=_FakeCandidateSource([_candidato_arte()]),
+    )
+    monkeypatch.setattr(api_main, "get_city_tz", deps.get_city_tz)  # ripristina il reale
+    monkeypatch.setenv("CITY_TZ", valore)
+    api_settings.get_settings.cache_clear()
+    try:
+        resp = TestClient(api_main.app).post("/itinerary", json=_visitor_context())
+        assert resp.status_code == 200
+        assert "evento-finestra-test" not in _ids(resp)
+        assert deps.get_city_tz() is None
+
+        # Controllo anti-vacuita': con un fuso valido lo stesso scenario fa comparire l'evento.
+        monkeypatch.setenv("CITY_TZ", "Europe/Rome")
+        api_settings.get_settings.cache_clear()
+        resp_ok = TestClient(api_main.app).post("/itinerary", json=_visitor_context())
+        assert "evento-finestra-test" in _ids(resp_ok)
+    finally:
+        api_settings.get_settings.cache_clear()
+
+
+def test_h_ledger_senza_occorrenze_per_il_pattern_evento_saltato(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    resp = _post(monkeypatch, _evento_attivo(), _visitor_context(), occorrenze=[])
+    assert resp.status_code == 200
+    assert "evento-finestra-test" not in _ids(resp)
+
+
+def test_h_conversione_fuso_la_data_locale_non_utc_arriva_al_motore(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Occorrenza 2026-03-02 23:30 UTC = 2026-03-03 00:30 a Roma (CET, +1).
+    Settimanale: attesa locale 10 marzo (UTC: 9 marzo). Visita 11 marzo:
+    dista 1 giorno dalla data LOCALE (dentro, finestra 1,05) ma 2 da quella
+    UTC (fuori). Compare solo se il BFF passa al motore la data locale."""
+    catturati: list[Any] = []
+    originale = api_main.compose_itinerary
+
+    def _spia(*args: Any, **kwargs: Any) -> Any:
+        catturati.extend(kwargs.get("eventi_promossi") or [])
+        return originale(*args, **kwargs)
+
+    monkeypatch.setattr(api_main, "compose_itinerary", _spia)
+    ctx = _visitor_context()
+    ctx["signal"]["data"] = "2026-03-11"  # mercoledi'
+    resp = _post(
+        monkeypatch,
+        _evento_attivo(cadenza=7.0),
+        ctx,
+        occorrenze=[datetime(2026, 3, 2, 23, 30, tzinfo=UTC)],
+    )
+
+    assert resp.status_code == 200
+    assert len(catturati) == 1
+    assert catturati[0].ultima_occorrenza.isoformat() == "2026-03-03"  # locale, non 03-02
+    assert catturati[0].cadenza_giorni == 7.0
+    assert "evento-finestra-test" in _ids(resp)
+
+
+def test_h_usa_l_occorrenza_piu_recente_del_ledger(monkeypatch: pytest.MonkeyPatch) -> None:
+    catturati: list[Any] = []
+    originale = api_main.compose_itinerary
+
+    def _spia(*args: Any, **kwargs: Any) -> Any:
+        catturati.extend(kwargs.get("eventi_promossi") or [])
+        return originale(*args, **kwargs)
+
+    monkeypatch.setattr(api_main, "compose_itinerary", _spia)
+    _post(
+        monkeypatch,
+        _evento_attivo(),
+        _visitor_context(),
+        occorrenze=[
+            datetime(2026, 1, 5, 9, 0, tzinfo=UTC),
+            ULTIMA_OCCORRENZA_UTC,
+            datetime(2026, 2, 1, 9, 0, tzinfo=UTC),
+        ],
+    )
+    assert [e.ultima_occorrenza.isoformat() for e in catturati] == ["2026-03-02"]
+
+
+@pytest.mark.parametrize("non_finita", [float("inf"), float("nan")])
+def test_h_cadenza_non_finita_salta_solo_quell_evento(
+    monkeypatch: pytest.MonkeyPatch, non_finita: float
+) -> None:
+    """Un evento con cadenza inf/nan viene saltato DA SOLO: l'altro, in
+    finestra, compare ancora e la risposta e' 200 (non si svuota la lista)."""
+    buono = _evento_attivo("evento-buono", cadenza=30.0)
+    rotto = _evento_attivo("evento-cadenza-rotta", cadenza=non_finita)
+    _stub(
+        monkeypatch,
+        evento_reader=_FakeEventoReader([rotto, buono]),
+        candidate_source=_FakeCandidateSource([_candidato_arte()]),
+    )
+    resp = TestClient(api_main.app).post("/itinerary", json=_visitor_context())
+    assert resp.status_code == 200
+    ids = _ids(resp)
+    assert "evento-buono" in ids
+    assert "evento-cadenza-rotta" not in ids
+
+
+def test_i_data_incoerente_con_giorno_settimana_422(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub(monkeypatch, evento_reader=_FakeEventoReader([]))
+    ctx = _visitor_context()
+    ctx["signal"]["data"] = "2026-04-01"  # mercoledi' = 2
+    ctx["signal"]["giorno_settimana"] = 0
+    resp = TestClient(api_main.app).post("/itinerary", json=ctx)
+    assert resp.status_code == 422
+
+    # Controllo: coerente (2) -> 200.
+    ctx["signal"]["giorno_settimana"] = 2
+    assert TestClient(api_main.app).post("/itinerary", json=ctx).status_code == 200
 
 
 # ---------------------------------------------------------------------------

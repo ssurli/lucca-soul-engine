@@ -246,6 +246,17 @@ class Signal(ContractModel):
     # `rientra_in_orario` (sotto) non esclude mai nulla per giorno:
     # comportamento INVARIATO finché il chiamante non lo popola.
     giorno_settimana: int | None = Field(default=None, ge=0, le=6)
+    # Data (calendario LOCALE della città) della visita, mandata dal CLIENT
+    # insieme a `ora`: stessa fonte e stesso orologio, quindi nessuno
+    # sfasamento UTC/locale tra le due. Serve a valutare la finestra
+    # temporale degli `EventoPromosso`. OPZIONALE, default None: MAI una data
+    # fabbricata — un default silenzioso (es. "oggi" del server) farebbe
+    # comparire o sparire eventi per una data che nessuno ha dichiarato. Se
+    # `None` il contratto non decide nulla: è l'Experience Engine a trattare
+    # l'assenza come fail-closed (nessun evento promosso). NON deriva
+    # `giorno_settimana`: il filtro orari resta com'è, finché non cambia in
+    # un cambio separato.
+    data: date | None = None
     # Segnali FLUTTUANTI attivi ORA (vedi `SegnaleFluttuante` sopra). Era
     # `list[str]` — dichiarato nel contratto, mai letto da nessuna logica
     # (né `experience_engine.rules`, né `.engine`, né l'adattamento):
@@ -268,6 +279,23 @@ class Signal(ContractModel):
                     f"{valore} non è in [0,1]"
                 )
         return v
+
+    @model_validator(mode="after")
+    def _data_coerente_con_giorno_settimana(self) -> Signal:
+        # Due fonti per lo stesso fatto che si contraddicono: meglio rifiutare
+        # che scegliere in silenzio quale delle due credere (il filtro orari
+        # legge `giorno_settimana`, la finestra eventi legge `data`).
+        if (
+            self.data is not None
+            and self.giorno_settimana is not None
+            and self.data.weekday() != self.giorno_settimana
+        ):
+            raise ValueError(
+                f"data {self.data.isoformat()} è un giorno {self.data.weekday()} "
+                f"(0=lunedì...6=domenica), incoerente con "
+                f"giorno_settimana={self.giorno_settimana}"
+            )
+        return self
 
 
 class PersonKind(str, Enum):
@@ -460,19 +488,43 @@ class EventoPromosso(ContractModel):
       fluttuanti attivi, mai con uno stato da ricontrollare a valle. Un
       `EventoPromosso` che raggiunge il motore è, per costruzione, sempre
       attivo.
-    - `cadenza_giorni`: non serve a questa v1, che non applica alcun filtro
-      temporale sulla cadenza — task esplicitamente futuro, fuori scope ora.
     - `promosso_da`/`promosso_il`: accountability della DECISIONE di
       promozione (chi, quando), non pertinente al CONSUMO in un itinerario.
     - nessun campo narrativo/descrizione: non esiste nulla di equivalente
       sul nodo `:Evento` reale — verificato, la `descrizione` del segnale
       fluttuante originale non sopravvive alla promozione (vedi
       `50_promozione_evento_write.cypher`).
+
+    Finestra temporale: il contratto trasporta SOLO i FATTI grezzi
+    (`ultima_occorrenza`, `cadenza_giorni`); la proiezione (ultima +
+    k*cadenza, k>=1, occorrenza più vicina a `Signal.data`) e la DECISIONE
+    "in finestra sì/no" le prende solo l'Experience Engine, con una funzione
+    pura. "Se è vivo" resta a `stato` (già filtrato a monte): la finestra
+    decide soltanto "quando". `ultima_occorrenza` è una data LOCALE della
+    città, confrontabile direttamente con `Signal.data`; la conversione dal
+    timestamp UTC del ledger la fa chi legge il ledger (il BFF), con un fuso
+    letto da configurazione, mai scritto nel codice. Il `creato_il` della
+    traccia nel ledger è l'istante UTC dello SWEEP (`sweep_and_fetch_active`),
+    che avviene in modo pigro solo quando qualcuno chiama POST /itinerary: la
+    transizione a `expired` e il timbro avvengono in quel momento, che può
+    essere successivo (anche di giorni, in bassa affluenza) alla fine reale
+    della finestra del segnale e all'occorrenza reale. Quindi
+    `ultima_occorrenza` è sfasata IN AVANTI rispetto all'occorrenza reale,
+    potenzialmente più della finestra stessa (es. oltre ±1 giorno per un
+    evento settimanale): quell'imprecisione è già dentro il dato.
     """
 
     # id deterministico del nodo `:Evento` (urban_memory.promozione_evento.evento_id_per_pattern)
     id: str
     place_id: str  # il `:Luogo` a cui è ancorato (`SI_SVOLGE_A`)
+    # Data LOCALE dell'ultima occorrenza nel ledger (non UTC): vedi docstring.
+    ultima_occorrenza: date
+    # gt=0: una cadenza nulla o negativa non ha senso e, usata dal motore per
+    # proiettare le occorrenze successive, produrrebbe una finestra
+    # degenere (divisione/ciclo infinito) invece di un errore esplicito.
+    # allow_inf_nan=False: `inf` passerebbe gt=0, ma una cadenza infinita non è
+    # un fatto reale (nessuna occorrenza successiva proiettabile); `nan` idem.
+    cadenza_giorni: float = Field(gt=0, allow_inf_nan=False)
     # Stessa forma di `SegnaleFluttuante.temi`/`ExperienceNode.temi`: riusa
     # l'identica logica di affinità (`experience_engine.rules.affinita_temi`),
     # non un secondo criterio inventato qui. min_length=1: un pattern

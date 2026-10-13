@@ -127,7 +127,8 @@ nei log applicativi; il contenuto di un `MemoryContribution` (`testo`,
 from __future__ import annotations
 
 import logging
-from datetime import date, time
+import math
+from datetime import UTC, date, time
 from typing import Annotated
 
 import contracts
@@ -174,6 +175,7 @@ from api import __version__
 from api.deps import (
     get_booking_repository,
     get_candidate_source,
+    get_city_tz,
     get_event_repository,
     get_evento_reader,
     get_memory_repository,
@@ -561,11 +563,20 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     deliberatamente qui, non nel Cypher) e li converte in
     `list[contracts.EventoPromosso]` — mapping diretto
     `EventoRicorrente.evento_id -> EventoPromosso.id`, `place_id ->
-    place_id`, `temi -> temi`; `cadenza_giorni`/`stato`/`frenato` restano
-    nell'`EventoRicorrente` letto qui e NON attraversano il confine verso il
-    motore (vedi il docstring di `contracts.EventoPromosso`: quel tipo
-    arriva al motore già filtrato ad `attivo` e non frenato, per
-    costruzione). `frenato` (docs/STATE_MACHINE.md §4-bis(b), freno di
+    place_id`, `temi -> temi`, `cadenza_giorni -> cadenza_giorni`; `stato`/
+    `frenato` restano nell'`EventoRicorrente` letto qui e NON attraversano il
+    confine verso il motore (quel tipo arriva già filtrato ad `attivo` e non
+    frenato). Il BFF fornisce SOLO i FATTI, la finestra la decide il motore:
+    per ogni evento legge le occorrenze dal ledger
+    (`get_traccia_repository().occorrenze_per_pattern(place_id, temi)`, una
+    query per evento); lista vuota => evento SALTATO (nessuna data
+    inventata); `cadenza_giorni <= 0` => saltato; altrimenti
+    `ultima_occorrenza = max(occorrenze)` (TIMESTAMPTZ UTC) convertita nella
+    DATA LOCALE della città col fuso `CITY_TZ` (`api.settings`/.env,
+    `api.deps.get_city_tz`; nessun default nel codice). FAIL-CLOSED: se
+    `CITY_TZ` manca o non è un fuso IANA valido => `eventi_promossi=[]` con
+    un warning senza PII, `/itinerary` risponde comunque 200. Un errore del
+    ledger degrada allo stesso modo. `frenato` (docs/STATE_MACHINE.md §4-bis(b), freno di
     emergenza) è un overlay ORTOGONALE a `stato`: un `:Evento` può essere
     `attivo` e `frenato=True` insieme, nel qual caso NON compare qui — il
     freno si tira/rilascia SOLO da CLI
@@ -623,22 +634,44 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     try:
         evento_reader = get_evento_reader()
         if evento_reader is not None:
-            eventi_promossi = [
-                EventoPromosso(
-                    id=evento.evento_id,
-                    place_id=evento.place_id,
-                    temi=list(evento.temi),
+            city_tz = get_city_tz()
+            if city_tz is None:
+                # Fail-closed: senza fuso valido non si inventa nessuna data.
+                _log.warning(
+                    "CITY_TZ assente o non valido: eventi_promossi=[] (fail-closed)"
                 )
-                for evento in evento_reader.eventi_ricorrenti()
-                if evento.stato == "attivo" and not evento.frenato
-            ]
+            else:
+                traccia_repo = get_traccia_repository()
+                for evento in evento_reader.eventi_ricorrenti():
+                    if evento.stato != "attivo" or evento.frenato:
+                        continue
+                    cadenza = evento.cadenza_giorni
+                    if not cadenza or not math.isfinite(cadenza) or cadenza <= 0:
+                        continue
+                    occorrenze = traccia_repo.occorrenze_per_pattern(
+                        evento.place_id, list(evento.temi)
+                    )
+                    if not occorrenze:
+                        continue  # nessuna data inventata
+                    ultima = max(occorrenze)
+                    if ultima.tzinfo is None:  # TIMESTAMPTZ UTC per contratto
+                        ultima = ultima.replace(tzinfo=UTC)
+                    eventi_promossi.append(
+                        EventoPromosso(
+                            id=evento.evento_id,
+                            place_id=evento.place_id,
+                            temi=list(evento.temi),
+                            ultima_occorrenza=ultima.astimezone(city_tz).date(),
+                            cadenza_giorni=evento.cadenza_giorni,
+                        )
+                    )
     except Exception:  # difesa in profondità: il consumo degli eventi
         # promossi è un arricchimento opzionale, mai un motivo di fallimento
         # di /itinerary — degrada a eventi_promossi=[] (nessuna tappa-evento
-        # composta), esattamente come eventi_attivi sopra. Cattura sia
-        # l'assenza/fallimento del client (`get_evento_reader`) sia un grafo
-        # irraggiungibile durante `eventi_ricorrenti()`
-        # (`urban_memory.frizione_pattern.FrizionePatternError`).
+        # composta), esattamente come eventi_attivi sopra. Cattura il client
+        # assente/fallito, il grafo irraggiungibile
+        # (`FrizionePatternError`) e un errore del ledger
+        # (`TracciaStorageError` o altro).
         eventi_promossi = []
 
     return compose_itinerary(
