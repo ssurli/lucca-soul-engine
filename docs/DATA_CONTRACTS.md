@@ -254,12 +254,14 @@ class EventoPromosso(BaseModel):
     `ultima_occorrenza` è data LOCALE della città, confrontabile con
     `Signal.data`; la conversione dall'UTC del ledger la fa il BFF con un fuso
     da configurazione (mai nel codice). Il `creato_il` della traccia nel ledger
-    è l'istante UTC dello SWEEP (`sweep_and_fetch_active`), pigro: avviene solo
-    quando qualcuno chiama POST /itinerary; la transizione a `expired` e il
-    timbro avvengono lì, anche giorni dopo (bassa affluenza) la fine reale
-    della finestra e l'occorrenza reale. Quindi `ultima_occorrenza` è sfasata
-    IN AVANTI rispetto all'occorrenza reale, potenzialmente più della finestra
-    stessa (oltre ±1 giorno per un settimanale): imprecisione già nel dato."""
+    è il `valido_fino` UTC del segnale scaduto (calcolato dal server in
+    submit_signal), non l'istante dello sweep pigro (`sweep_and_fetch_active`,
+    eseguito solo quando qualcuno chiama POST /itinerary): la transizione a
+    `expired` può avvenire giorni dopo, il timbro no. Resta l'imprecisione di
+    `valido_fino` rispetto all'occorrenza reale (è la fine dichiarata della
+    finestra del segnale, non il suo inizio), e le tracce depositate prima di
+    questa correzione, timbrate allo sweep, restano sfasate in avanti
+    (append-only, mai riscritte)."""
     id: str        # id deterministico del nodo :Evento (evento_id_per_pattern)
     place_id: str  # il :Luogo a cui è ancorato (SI_SVOLGE_A)
     ultima_occorrenza: date      # data LOCALE (non UTC) dell'ultima occorrenza nel ledger

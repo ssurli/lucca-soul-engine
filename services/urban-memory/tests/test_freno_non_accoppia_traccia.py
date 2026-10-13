@@ -215,7 +215,7 @@ def test_traccia_si_deposita_normalmente_mentre_levento_e_frenato() -> None:
     assert traccia.segnale_id == "violinista-piazza-anfiteatro-durante-il-freno"
     assert traccia.place_id == _PLACE_ID
     assert traccia.temi == _TEMI
-    assert traccia.creato_il == istante_sweep
+    assert traccia.creato_il == ORA + timedelta(minutes=1)  # valido_fino, non lo sweep
 
     # Il freno resta, indipendentemente, tirato: nessuno dei due percorsi ha
     # influenzato l'altro.

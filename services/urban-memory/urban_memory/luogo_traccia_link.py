@@ -37,7 +37,7 @@ gestita è necessaria (`Session.run`, non `Session.execute_write`).
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -60,13 +60,20 @@ def ultima_traccia_cypher(place_id: str, quando: datetime) -> tuple[str, dict[st
     connessione, nessuna esecuzione, nessun effetto collaterale oltre alla
     lettura statica del file `.cypher` versionato.
 
-    `quando` è serializzato come ISO 8601 (`.isoformat()`) — stesso pattern
-    di `graph_link.riguarda_to_cypher` per `creato_il`. Non validato
-    tz-aware QUI (funzione pura, come `riguarda_to_cypher`): è compito di
-    chi produce `quando` (`canale_fluttuante.sweep_and_fetch_active`, che lo
-    riceve già tz-aware da `datetime.now(UTC)`)."""
+    `quando` è il timbro della traccia (= `valido_fino` del segnale
+    scaduto, NON l'istante dello sweep), serializzato ISO 8601 NORMALIZZATO
+    in UTC (`.astimezone(UTC).isoformat()`): offset sempre `+00:00`. La
+    Cypher è monotona (tiene il massimo, confronto via `datetime()`), quindi
+    non dipende dal confronto lessicografico, ma la forma canonica evita
+    comunque formati misti nel grafo. `quando` DEVE essere tz-aware (un
+    naive verrebbe interpretato come ora locale da `astimezone`): il
+    chiamante, `canale_fluttuante`, passa `valido_fino`, che il contratto
+    `SegnaleFluttuante` garantisce tz-aware."""
     query = LUOGO_TRACCIA_WRITE_QUERY_PATH.read_text(encoding="utf-8")
-    params: dict[str, Any] = {"place_id": place_id, "quando": quando.isoformat()}
+    params: dict[str, Any] = {
+        "place_id": place_id,
+        "quando": quando.astimezone(UTC).isoformat(),
+    }
     return query, params
 
 

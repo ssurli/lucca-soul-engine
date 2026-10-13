@@ -35,8 +35,25 @@ def test_ultima_traccia_cypher_produce_match_set() -> None:
     query, params = ultima_traccia_cypher("piazza-anfiteatro", QUANDO)
 
     assert "MATCH (l:Luogo {id: $place_id})" in query
-    assert "SET l.ultima_traccia_il = $quando" in query
+    assert "SET l.ultima_traccia_il = CASE" in query
     assert params == {"place_id": "piazza-anfiteatro", "quando": QUANDO.isoformat()}
+
+
+def test_ultima_traccia_cypher_e_monotona() -> None:
+    """La scrittura tiene il massimo (confronto via datetime(), non stringhe):
+    un segnale scaduto prima, scritto dopo, non fa regredire la proprietà."""
+    query, _ = ultima_traccia_cypher("piazza-anfiteatro", QUANDO)
+    assert "datetime(l.ultima_traccia_il) < datetime($quando)" in query
+    assert "l.ultima_traccia_il IS NULL" in query
+
+
+def test_ultima_traccia_cypher_normalizza_in_utc() -> None:
+    from datetime import timedelta, timezone
+
+    roma = datetime(2026, 7, 15, 1, 59, 59, tzinfo=timezone(timedelta(hours=2)))
+    _, params = ultima_traccia_cypher("piazza-anfiteatro", roma)
+    assert params["quando"] == QUANDO.isoformat()
+    assert params["quando"].endswith("+00:00")
 
 
 def test_ultima_traccia_cypher_non_crea_mai_il_luogo() -> None:

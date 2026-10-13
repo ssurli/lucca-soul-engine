@@ -362,8 +362,10 @@ deposita UNA riga nel      un'occorrenza mai approvata non lascia
 ledger delle tracce        traccia — §5 del brief: "le rifiutate
 (place_id, temi,           non fanno traccia", estende "le
 creato_il — timbrato       rifiutate non fanno pattern" di Fase 2)
-dal SERVER in questo
-istante, automatico,
+dal SERVER: `valido_fino`
+del segnale (UTC, non
+l'istante dello sweep),
+automatico,
 in `services/urban-memory`
 (collocazione CHIUSA,
 Fase 3 — non più
@@ -696,7 +698,7 @@ questa esclusione, non aggiungerla come eccezione a posteriori.
 | imposta flag `richiede_revisione_umana` | Guardiano (chiunque) | chi, quando |
 | `submitted/blocked → approved/rejected` (fluttuante) | Guardiano | chi, quando, perché |
 | `submitted/blocked → expired` (fluttuante) | automatico (clock) | quando, sistema, sempre in audit |
-| `expired` (da `approved`) → deposita traccia | automatico (sistema) | quando (=`creato_il` della traccia), sistema, perché="finestra scaduta, occorrenza era approvata" — **non** è il log della traccia stessa (che resta anonima, senza contributor, `docs/PROMOZIONE_TRACCIA.md` §1): è il log della TRANSIZIONE, due record distinti (§1.4 non fa eccezione per l'automatico; §5 del brief impone comunque l'anagrafica minima sulla traccia) |
+| `expired` (da `approved`) → deposita traccia | automatico (sistema) | quando (= istante dello sweep che esegue la transizione; il `creato_il` della traccia è invece il `valido_fino` del segnale, `docs/PROMOZIONE_TRACCIA.md` §1), sistema, perché="finestra scaduta, occorrenza era approvata" — **non** è il log della traccia stessa (che resta anonima, senza contributor, `docs/PROMOZIONE_TRACCIA.md` §1): è il log della TRANSIZIONE, due record distinti (§1.4 non fa eccezione per l'automatico; §5 del brief impone comunque l'anagrafica minima sulla traccia) |
 | `attivo → sospeso` / `sospeso → dormiente` (frizione, §4-bis(a)) | automatico (K battiti mancati / orizzonte lungo superato) | quando si rileva, sistema, perché="cadenza mancata" / "sospensione oltre orizzonte" |
 | `sospeso → attivo` (frizione, §4-bis(a)) | automatico (traccia fresca depositata) | quando, sistema |
 | tira / rilascia freno di emergenza (§4-bis(b)) | **titolare di permesso-freno individuale** nel PRINCIPIO (sottoinsieme nominale di Promotori, MAI l'intero ruolo — CHIUSA); **REALE oggi**: chiunque abbia accesso alla CLI (`python -m urban_memory.freno_pattern`), percorso fidato/provvisorio, stessa postura di `curatela_pattern.py`/`frizione_pattern.py` — la lista nominale resta APERTA (riga sotto) | chi (`attore`, pseudonimo, validato obbligatorio), quando, motivazione testuale OBBLIGATORIA (validata prima di ogni scrittura) — persistita in `pattern_frenato` (append-only, interrogabile), distinguibile in audit dalle righe automatiche della frizione |

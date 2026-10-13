@@ -76,7 +76,9 @@
 >    un'ora del giorno (`time`), non una data. **Decisione accettata per sciogliere questo
 >    (Strada B, vedi §1 sotto): NON si aggiunge un campo a `SegnaleFluttuante`/`Signal` — restano
 >    transitori esattamente come da contratto oggi.** Il `creato_il` della traccia è
->    timbrato dal server nel momento di `expired`, non letto dal segnale.
+>    timbrato dal server nel momento di `expired`, non letto dal segnale. **Corretto in
+>    seguito** (bug di correttezza, §1 sotto): il timbro è il `valido_fino` del segnale —
+>    sempre un valore del server, calcolato in `submit_signal` — non l'istante dello sweep.
 > 3. Nessuna tabella Postgres esistente porta già `place_id`+`temi`: `behavior_event` è il
 >    precedente idiomatico più vicino (append-only, chiave surrogata, `TIMESTAMPTZ`) ma non
 >    la tabella giusta da cui proiettare una vista — serve una tabella nuova, con la stessa
@@ -111,15 +113,27 @@ distillato del passaggio, non un secondo `SegnaleFluttuante` persistito.
   `experience_engine.rules.affinita_temi`, un solo vocabolario di affinità, mai un secondo
   criterio inventato per la traccia.
 - **`creato_il`**: **Strada B** (decisione accettata, scioglie il check 2). Timbrato dal
-  SERVER nell'istante in cui l'occorrenza approvata raggiunge `expired` — stesso schema
-  concettuale di `behavior_event.ricevuto_il` (timestamp del server, non un istante
-  dichiarato dal chiamante). `SegnaleFluttuante`/`Signal` non guadagnano alcun campo:
+  SERVER nell'istante in cui l'occorrenza approvata raggiunge `expired` (design originario:
+  vedi la CORREZIONE in fondo a questo punto — il timbro reale è `valido_fino`, e l'analogia
+  con `behavior_event.ricevuto_il`, che è il `now()` della ricezione, non vale più). `SegnaleFluttuante`/`Signal` non guadagnano alcun campo:
   restano transitori esattamente come da contratto oggi (nessun tocco a
   `packages/contracts`). Semanticamente corretto, non solo comodo: la traccia data il
   **passaggio-diventato-passato** (il fantasma si stacca dall'occorrenza e si deposita sul
   luogo), non la nascita del segnale — coerente con "place-anchored, non
   occurrence-anchored" (brief §5): al luogo non importa quando l'occorrenza è nata, solo
   che è stata reale (approvata) e ora è storia (scaduta).
+  **CORREZIONE (bug di correttezza, REALE):** "l'istante in cui raggiunge `expired`" era in
+  pratica l'istante dello SWEEP PIGRO (`canale_fluttuante.sweep_and_fetch_active`, eseguito
+  solo quando qualcuno chiama `POST /itinerary`): con poco traffico la traccia di un evento
+  del sabato poteva essere timbrata lunedì, e la finestra degli `:Evento` e `cadenza_giorni`
+  ne ereditavano il rumore. Ora `creato_il = segnale.valido_fino` normalizzato in UTC — la
+  fine della finestra del segnale, il momento in cui il passaggio È diventato passato, non
+  quello in cui qualcuno se n'è accorto. Strada B intatta: `valido_fino` è calcolato dal
+  server (`submit_signal.py`), nessun campo nuovo su `SegnaleFluttuante`.
+  `:Luogo.ultima_traccia_il` riceve lo stesso valore, con scrittura MONOTONA
+  (`cypher/40_luogo_traccia_write.cypher`: tiene il massimo, perché un segnale scaduto prima
+  può essere spazzato dopo). Le tracce già nel ledger NON sono riscritte (append-only):
+  restano timbrate allo sweep — `docs/LIMITI.md`.
 
 **Identità della riga**: nessuna naturale, come `behavior_event` — due tracce identiche in
 `place_id`/`temi`/istante restano due passaggi distinti (due violinisti diversi nello
@@ -382,7 +396,8 @@ rilevamento e la promozione — verificato contro il codice:
     confermato, e non ne conosciamo l'orario"). Solo per eventi in finestra.
   - **App**: `Signal.data` compilata dall'app Flutter dallo stesso orologio di `ora`
     (`Signal.orologio`), NON verificata a compilazione (`flutter` assente — `docs/LIMITI.md`).
-  - **Limiti** (timbro del ledger sfasato in avanti dallo sweep pigro, cadenze quasi
+  - **Limiti** (tracce storiche timbrate allo sweep pigro e quindi sfasate in avanti — le
+    nuove sono timbrate a `valido_fino`, §1 —, cadenze quasi
     quotidiane sempre in finestra, finestra simmetrica "era attesa ieri", fuso del
     dispositivo): `docs/LIMITI.md`, voce "La finestra temporale degli `:Evento` promossi".
   - Verifica: giro DEDICATO di `ethics-guardian`, due passaggi. **FAIL iniziale** solo sulla
@@ -589,8 +604,8 @@ condizionato**, non più "nessuna scrittura" come accettato in Fase 2:
 - occorrenza **mai approvata** (mai decisa, o rifiutata) che raggiunge `expired` → nessuna
   scrittura, esattamente come prima.
 - occorrenza **approvata** che raggiunge `expired` (la sua finestra si chiude comunque, con
-  lo stesso orologio) → deposita una riga nel ledger (§1), timbrata dal server in
-  quell'istante.
+  lo stesso orologio) → deposita una riga nel ledger (§1), timbrata con il `valido_fino`
+  del segnale (valore calcolato dal server in `submit_signal`) (non con l'istante, più tardo, dello sweep pigro — §1).
 
 La transizione di stato (loggata per accountability, brief §1.4: chi=sistema, quando,
 perché) e la riga del ledger (anonima, senza contributor, brief §5) sono **due record
@@ -648,8 +663,9 @@ posto consultabile insieme alle altre domande della macchina a stati:
    `FRAZIONE_FINESTRA_CADENZA=0.15` è un valore di PARTENZA (stessa classe di
    `K_ORIZZONTE_DORMIENZA`), da calibrare sul pilota. Aperte, non decise: finestra simmetrica
    o asimmetrica (oggi un'occorrenza "attesa ieri" produce ancora una tappa); un pavimento di
-   cadenza per i pattern quasi quotidiani (oggi sempre in finestra); un timbro del ledger più
-   fedele dell'istante dello sweep pigro. Dettaglio: `docs/LIMITI.md`.
+   cadenza per i pattern quasi quotidiani (oggi sempre in finestra). Il timbro del ledger è
+   stato CORRETTO (`valido_fino` invece dell'istante dello sweep, §1); restano sfasate le
+   tracce storiche. Dettaglio: `docs/LIMITI.md`.
 
 ## 6. Scenario concreto — una giornata, un ciclo di vita
 

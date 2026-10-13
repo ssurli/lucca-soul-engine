@@ -10,9 +10,10 @@
 -- 1. `segnale_fluttuante` — colonne speculari a `contracts.SegnaleFluttuante`
 --    (docs/DATA_CONTRACTS.md), la tabella-segnale del canale persistente.
 -- 2. `traccia_luogo` — il ledger APPEND-ONLY depositato quando un segnale transita
---    attivo -> expired (Strada B: `creato_il` timbrato dal SERVER all'istante dello
---    sweep, MAI letto dal segnale — `SegnaleFluttuante` non porta un proprio
---    timestamp di creazione). Anagrafica MINIMA: place_id, temi[], creato_il —
+--    attivo -> expired (Strada B: `creato_il` = `valido_fino` del segnale, a sua volta
+--    calcolato dal SERVER in submit_signal; NON l'istante dello sweep pigro, che con
+--    poco traffico ritarda di giorni. `SegnaleFluttuante` non porta un proprio
+--    timestamp di creazione. Le righe storiche timbrate allo sweep non si riscrivono). Anagrafica MINIMA: place_id, temi[], creato_il —
 --    NIENTE contributor_id/PII/testo libero, stessa disciplina di
 --    `memory_contribution` per i campi sensibili.
 --

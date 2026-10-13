@@ -67,7 +67,9 @@ class Traccia:
     `id` è una chiave SURROGATA (generata dall'applicazione, `uuid4`), non
     una chiave naturale: due tracce identiche in place_id/temi/istante
     restano due passaggi distinti (stesso principio di `behavior_event`,
-    docs/PROMOZIONE_TRACCIA.md §1)."""
+    docs/PROMOZIONE_TRACCIA.md §1). `creato_il` è il `valido_fino` (UTC) del
+    segnale scaduto — quando il segnale è scaduto davvero, NON l'istante
+    dello sweep pigro che l'ha notato."""
 
     id: str
     segnale_id: str

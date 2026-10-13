@@ -9,6 +9,11 @@
 > (assenza di `creato_il`), sciolto da una decisione esplicita accettata dopo la verifica
 > (Strada B, vedi tabella). Dettagli estesi nella conversazione che ha prodotto questo
 > documento; qui la forma consultabile.
+>
+> **Nota successiva (registro storico, non riscritto):** la Strada B qui sotto timbrava la
+> traccia "al momento di `expired`", in pratica all'istante dello sweep pigro. Corretto poi:
+> `creato_il` = `valido_fino` del segnale, sempre un valore del server — vedi
+> `docs/PROMOZIONE_TRACCIA.md` §1 e `docs/LIMITI.md`.
 
 ## Le cinque verifiche
 

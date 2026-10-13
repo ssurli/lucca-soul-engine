@@ -513,14 +513,14 @@ class EventoPromosso(ContractModel):
     città, confrontabile direttamente con `Signal.data`; la conversione dal
     timestamp UTC del ledger la fa chi legge il ledger (il BFF), con un fuso
     letto da configurazione, mai scritto nel codice. Il `creato_il` della
-    traccia nel ledger è l'istante UTC dello SWEEP (`sweep_and_fetch_active`),
-    che avviene in modo pigro solo quando qualcuno chiama POST /itinerary: la
-    transizione a `expired` e il timbro avvengono in quel momento, che può
-    essere successivo (anche di giorni, in bassa affluenza) alla fine reale
-    della finestra del segnale e all'occorrenza reale. Quindi
-    `ultima_occorrenza` è sfasata IN AVANTI rispetto all'occorrenza reale,
-    potenzialmente più della finestra stessa (es. oltre ±1 giorno per un
-    evento settimanale): quell'imprecisione è già dentro il dato.
+    traccia nel ledger è il `valido_fino` UTC del segnale scaduto (calcolato
+    dal server in submit_signal), non l'istante dello sweep pigro
+    (`sweep_and_fetch_active`, eseguito solo quando qualcuno chiama POST
+    /itinerary): la transizione a `expired` può avvenire giorni dopo, il
+    timbro no. Resta l'imprecisione di `valido_fino` rispetto all'occorrenza
+    reale (è la fine dichiarata della finestra del segnale, non il suo
+    inizio), e le tracce depositate prima di questa correzione, timbrate allo
+    sweep, restano sfasate in avanti (append-only, mai riscritte).
     """
 
     # id deterministico del nodo `:Evento` (urban_memory.promozione_evento.evento_id_per_pattern)

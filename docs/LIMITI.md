@@ -1453,10 +1453,11 @@ Accettato: il ledger copre il futuro, il passato si ripromuove a mano.
 
 ### Cosa NON è garantito
 
-- **`ultima_occorrenza` è sfasata in avanti.** Il timbro di una traccia è l'istante dello
-  sweep pigro (`canale_fluttuante.sweep_and_fetch_active`, eseguito solo quando qualcuno chiama
-  `POST /itinerary`), non l'istante dell'occorrenza reale. In bassa affluenza lo scarto può
-  superare la finestra stessa (±1 giorno per un settimanale): la proiezione eredita lo scarto.
+- **`ultima_occorrenza` approssima l'occorrenza reale con la fine della finestra del
+  segnale.** Dopo la correzione del timbro (voce "Il timbro delle tracce era l'istante dello
+  sweep pigro" in fondo a questo file) il timbro è `valido_fino`, non più l'istante dello sweep
+  pigro: lo scarto è la durata dichiarata del segnale, non i giorni senza traffico. Le tracce
+  storiche, depositate prima della correzione, restano sfasate in avanti (append-only).
 - **Cadenze molto corte sono "sempre in finestra".** `cadenza_giorni` è una media di
   intervalli, vincolata solo a `> 0`: con cadenza ≤ ~1 giorno ogni giorno contiene
   un'occorrenza proiettata, e il pattern si comporta come nella v1 senza finestra. Non peggiora
@@ -1491,8 +1492,8 @@ Accettato: il ledger copre il futuro, il passato si ripromuove a mano.
 
 ### Cosa servirebbe per chiudere questi buchi (proposte, NON implementate ora)
 
-1. Timbro più fedele: uno sweep periodico indipendente da `/itinerary`, o timbrare la traccia
-   con la fine dichiarata della finestra del segnale invece che con l'istante dello sweep.
+1. ~~Timbro più fedele~~ **FATTO**: la traccia è timbrata con `valido_fino`, la fine
+   dichiarata della finestra del segnale (voce dedicata in fondo a questo file).
 2. Pavimento di cadenza (es. ≥ 2 giorni) in `rileva_candidati` o un avviso al Promotore in
    curatela per i pattern quasi quotidiani.
 3. Finestra asimmetrica (solo occorrenze ≥ `data_visita`, o un anticipo massimo minore del
@@ -1560,3 +1561,54 @@ istante UTC e il BFF converte; (2) chiudere il gap `partner_abbonamento_attivo` 
 Accettato. Verifica: giro dedicato di `ethics-guardian` sul cambiamento di comportamento —
 PASS condizionato all'aggiornamento di questo file; aggiornamento riverificato da un secondo
 giro indipendente: PASS.
+
+---
+
+## Il timbro delle tracce era l'istante dello sweep pigro: corretto, ma le tracce storiche restano
+
+**Introdotto:** correzione di un bug di correttezza (non etico) nel ledger delle tracce.
+**Componenti:** `urban_memory.canale_fluttuante.sweep_and_fetch_active`,
+`urban_memory.luogo_traccia_link`, `cypher/40_luogo_traccia_write.cypher`.
+
+### Cosa è garantito oggi
+
+- Una traccia nuova ha `creato_il = segnale.valido_fino`, normalizzato in UTC: un segnale
+  scaduto venerdì e spazzato lunedì deposita una traccia datata venerdì. Resta un timbro del
+  server (Strada B: `valido_fino` è calcolato in `submit_signal.py`), nessun campo nuovo su
+  `SegnaleFluttuante`. `sweep_scaduti`/`fetch_attivi` usano ancora l'istante della richiesta.
+- `:Luogo.ultima_traccia_il` riceve lo stesso valore, con scrittura monotona (tiene il
+  massimo, confronto con `datetime()` su entrambi i lati): un segnale scaduto prima ma spazzato
+  dopo — nello stesso sweep o in uno successivo — non la fa regredire. Dentro uno sweep i
+  depositi sono anche ordinati per `(valido_fino, id)`.
+- Tutti i lettori di `creato_il` ereditano la correzione senza modifiche:
+  `ricorrenza.rileva_candidati` (intervalli → `cadenza_giorni`), `frizione_pattern` (battiti
+  mancati), il BFF (`ultima_occorrenza` per la finestra degli `:Evento`).
+
+### Cosa NON è garantito
+
+- **Le tracce già nel ledger NON sono riscritte** (append-only, nessuna migrazione): restano
+  timbrate all'istante dello sweep, sfasate in avanti. Finché un pattern ha tracce storiche,
+  `cadenza_giorni` e la fase della finestra ne portano il rumore; l'effetto si diluisce con le
+  tracce nuove.
+- **`cadenza_giorni` di un `:Evento` già promosso è congelata** sul nodo e nel ledger
+  `pattern_promosso` al valore calcolato con i vecchi timbri: si corregge solo con una
+  ripromozione/ricalcolo esplicito, mai da sola.
+- **`ultima_traccia_il` storica** può essere più tarda del vero (era scritta con l'istante
+  dello sweep); con la scrittura monotona resta finché una traccia nuova non la supera.
+- **`valido_fino` non è l'occorrenza reale**: è la fine dichiarata della finestra del segnale
+  (scelta da chi lo inserisce, `--minuti` in `submit_signal`). Un segnale con finestra lunga
+  data la traccia alla sua fine, non al suo inizio.
+- **Chi inserisce il segnale sceglie la fase.** `valido_fino = now + --minuti`
+  (`submit_signal.py`): l'operatore della CLI fidata decide al minuto quando la traccia sarà
+  datata, quindi può influire sulla regolarità apparente di un pattern e sulla fase della
+  finestra di un `:Evento` — quando compare, mai quanta esposizione ottiene. Retrodatare non
+  è possibile dalla CLI (con `--minuti <= 0` il segnale nasce `expired` e non deposita
+  nulla); una traccia non può essere datata nel futuro (lo sweep prende solo
+  `valido_fino <= adesso`). Con accesso diretto al DB si poteva già scrivere in
+  `traccia_luogo`: non è un vettore nuovo.
+- La monotonia della Cypher è verificata sul testo della query, non contro un Neo4j reale
+  (nessun harness Neo4j nei test).
+
+### Decisione
+
+Accettato. Le tracce storiche non si toccano: il ledger resta append-only.

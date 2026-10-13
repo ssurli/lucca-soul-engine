@@ -30,6 +30,14 @@ ordine:
     segnale commerciale, vedi il paragrafo dedicato più sotto), e aggiorna
     la proprietà derivata `:Luogo.ultima_traccia_il` (best-effort, via
     `place_link_writer` — vedi sotto). ISOLATO PER SEGNALE, vedi sotto.
+    **Il timbro (`Traccia.creato_il` e `ultima_traccia_il`) è il
+    `valido_fino` del segnale scaduto, normalizzato UTC — NON l'istante
+    dello sweep**: lo sweep è pigro (solo su POST /itinerary), con poco
+    traffico un segnale del sabato verrebbe timbrato lunedì e la fase
+    (giorno/ora) della ricorrenza sarebbe rumore. Resta un timbro del server
+    (`valido_fino` è calcolato in `submit_signal`). `istante` serve solo a
+    `sweep_scaduti`/`fetch_attivi`. Le tracce depositate PRIMA di questa
+    correzione (timbrate allo sweep) non si riscrivono (append-only).
 (c) **fetcha gli attivi** — `SegnaleFluttuanteRepository.fetch_attivi`,
     con lo STESSO `now` di (a): quello che popola `Signal.eventi_attivi`.
 
@@ -124,7 +132,8 @@ __all__ = ["PlaceLinkWriter", "persist_signal", "sweep_and_fetch_active"]
 
 _logger = logging.getLogger(__name__)
 
-#: Riceve `(place_id, quando)` e aggiorna `ultima_traccia_il` sul `:Luogo`
+#: Riceve `(place_id, quando)` — `quando` = `valido_fino` UTC del segnale, la
+#: scrittura è monotona (massimo) — e aggiorna `ultima_traccia_il` sul `:Luogo`
 #: nel Knowledge Graph — tipicamente `urban_memory.luogo_traccia_link.
 #: Neo4jLuogoTracciaLinker.scrivi` (metodo legato, con un driver reale). Mai
 #: un valore di ritorno: l'esito si legge dall'assenza/presenza
@@ -182,6 +191,12 @@ def sweep_and_fetch_active(
     istante = now if now is not None else datetime.now(UTC)
 
     scaduti = segnale_repo.sweep_scaduti(istante)
+    # Ordine di deposito: per `valido_fino` (UTC) poi id — cronologico e
+    # deterministico (lo sweep itera per id, non per tempo). Pulizia del
+    # ledger/della sequenza di scritture; la correttezza di
+    # `ultima_traccia_il` NON dipende da questo ordine (la Cypher è monotona,
+    # serve comunque fra sweep diversi).
+    scaduti = sorted(scaduti, key=lambda s: (s.valido_fino.astimezone(UTC), s.id))
     for segnale in scaduti:
         if not segnale_fluttuante_ammissibile(segnale):
             # "Nessuno spazio è acquistabile" (CLAUDE.md) applicato ANCHE
@@ -191,12 +206,18 @@ def sweep_and_fetch_active(
             # contribuisce al ledger né alla proprietà derivata sul luogo.
             continue
 
+        # Timbro della traccia = QUANDO il segnale è scaduto davvero
+        # (`valido_fino`, calcolato dal server in submit_signal: resta un
+        # timbro del server, Strada B), non quando lo sweep pigro l'ha
+        # notato. Normalizzato UTC: psycopg restituisce TIMESTAMPTZ nel fuso
+        # della sessione.
+        timbro = segnale.valido_fino.astimezone(UTC)
         try:
             traccia_repo.deposita(
                 segnale_id=segnale.id,
                 place_id=segnale.place_id,
                 temi=list(segnale.temi),
-                creato_il=istante,
+                creato_il=timbro,
             )
         except Exception as exc:
             # PERDITA PERMANENTE E SILENZIOSA per QUESTO segnale (vedi
@@ -218,7 +239,7 @@ def sweep_and_fetch_active(
 
         if place_link_writer is not None:
             try:
-                place_link_writer(segnale.place_id, istante)
+                place_link_writer(segnale.place_id, timbro)
             except Exception as exc:
                 # Proprietà DERIVATA, best-effort (docs/PROMOZIONE_TRACCIA.md
                 # §2a): la traccia su Postgres (già depositata sopra) resta

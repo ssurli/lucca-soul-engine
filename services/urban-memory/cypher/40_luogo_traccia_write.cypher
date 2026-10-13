@@ -25,6 +25,18 @@
 //
 // Parametri:
 //   $place_id   string        id del :Luogo che ha ricevuto la traccia
-//   $quando     string (ISO)  istante del deposito (timbrato dal server, tz-aware UTC)
+//   $quando     string (ISO)  timbro della traccia = `valido_fino` del segnale
+//                             scaduto (calcolato dal server in submit_signal),
+//                             normalizzato UTC. NON l'istante dello sweep pigro.
+//
+// MONOTONA: `ultima_traccia_il` tiene il MASSIMO. Un segnale scaduto prima può
+// essere scritto dopo (sweep per id, o spazzato in una chiamata successiva):
+// senza la guardia la proprietà regredirebbe. Il confronto è fra `datetime()`
+// (non fra stringhe: i valori già presenti possono avere formati/offset diversi).
 MATCH (l:Luogo {id: $place_id})
-SET l.ultima_traccia_il = $quando
+SET l.ultima_traccia_il = CASE
+  WHEN l.ultima_traccia_il IS NULL
+    OR datetime(l.ultima_traccia_il) < datetime($quando)
+  THEN $quando
+  ELSE l.ultima_traccia_il
+END

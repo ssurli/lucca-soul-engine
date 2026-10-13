@@ -9,7 +9,7 @@ da `test_segnale_repository.py`/`test_traccia_repository.py`)."""
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
 
 import pytest
 from contracts import SegnaleFluttuante
@@ -66,7 +66,8 @@ def test_segnale_attivo_compare_tra_gli_eventi_attivi() -> None:
 def test_segnale_scaduto_non_compare_e_deposita_traccia_una_sola_volta() -> None:
     """Cammino felice della scadenza: un segnale scaduto (a) NON compare tra
     gli attivi e (b) deposita ESATTAMENTE una traccia — con `place_id`/`temi`
-    presi dal segnale e `creato_il` timbrato dal server (Strada B)."""
+    presi dal segnale e `creato_il` = `valido_fino` del segnale (valore del
+    server, Strada B), non l'istante dello sweep."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
     segnale_repo.persist(_segnale(id="scade-oggi", valido_fino=ORA + timedelta(minutes=1)))
@@ -81,7 +82,8 @@ def test_segnale_scaduto_non_compare_e_deposita_traccia_una_sola_volta() -> None
     assert traccia.segnale_id == "scade-oggi"
     assert traccia.place_id == "piazza-anfiteatro"
     assert traccia.temi == ("musica", "arte")
-    assert traccia.creato_il == istante_sweep
+    # Specifica corretta: il timbro è valido_fino del segnale, non lo sweep.
+    assert traccia.creato_il == ORA + timedelta(minutes=1)
 
 
 def test_creato_il_della_traccia_e_tz_aware() -> None:
@@ -93,6 +95,76 @@ def test_creato_il_della_traccia_e_tz_aware() -> None:
 
     traccia = traccia_repo.list_for_place("piazza-anfiteatro")[0]
     assert traccia.creato_il.tzinfo is not None
+
+
+# ---------------------------------------------------------------------------
+# TIMBRO = valido_fino del segnale, non l'istante dello sweep pigro
+# ---------------------------------------------------------------------------
+
+
+def test_timbro_e_valido_fino_non_lo_sweep_tardivo() -> None:
+    """Segnale scaduto "venerdì", sweep "lunedì" (3 giorni dopo): traccia e
+    place_link_writer ricevono venerdì, non lunedì."""
+    segnale_repo = InMemorySegnaleFluttuanteRepository()
+    traccia_repo = InMemoryTracciaRepository()
+    venerdi = ORA + timedelta(minutes=1)
+    lunedi = venerdi + timedelta(days=3)
+    segnale_repo.persist(_segnale(id="sabato-sera", valido_fino=venerdi))
+    chiamate: list[tuple[str, datetime]] = []
+
+    sweep_and_fetch_active(
+        segnale_repo,
+        traccia_repo,
+        place_link_writer=lambda p, q: chiamate.append((p, q)),
+        now=lunedi,
+    )
+
+    assert traccia_repo.list_for_place("piazza-anfiteatro")[0].creato_il == venerdi
+    assert chiamate == [("piazza-anfiteatro", venerdi)]
+
+
+def test_valido_fino_non_utc_e_normalizzato_in_utc() -> None:
+    segnale_repo = InMemorySegnaleFluttuanteRepository()
+    traccia_repo = InMemoryTracciaRepository()
+    plus2 = timezone(timedelta(hours=2))
+    valido = (ORA + timedelta(minutes=1)).astimezone(plus2)
+    segnale_repo.persist(_segnale(id="roma", valido_fino=valido))
+    chiamate: list[tuple[str, datetime]] = []
+
+    sweep_and_fetch_active(
+        segnale_repo,
+        traccia_repo,
+        place_link_writer=lambda p, q: chiamate.append((p, q)),
+        now=ORA + timedelta(days=1),
+    )
+
+    creato = traccia_repo.list_for_place("piazza-anfiteatro")[0].creato_il
+    assert creato == valido  # stesso istante
+    assert creato.utcoffset() == timedelta(0)
+    assert chiamate[0][1].utcoffset() == timedelta(0)
+
+
+def test_depositi_e_scritture_luogo_in_ordine_cronologico_non_per_id() -> None:
+    """Due segnali dello stesso luogo, id in ordine INVERSO rispetto al tempo:
+    il writer li riceve dal più vecchio al più recente, quindi l'ultimo valore
+    scritto (e, con la Cypher monotona, il finale) è il più recente."""
+    segnale_repo = InMemorySegnaleFluttuanteRepository()
+    traccia_repo = InMemoryTracciaRepository()
+    prima = ORA + timedelta(minutes=1)
+    dopo = ORA + timedelta(minutes=30)
+    segnale_repo.persist(_segnale(id="a-recente", valido_fino=dopo))
+    segnale_repo.persist(_segnale(id="b-vecchio", valido_fino=prima))
+    chiamate: list[tuple[str, datetime]] = []
+
+    sweep_and_fetch_active(
+        segnale_repo,
+        traccia_repo,
+        place_link_writer=lambda p, q: chiamate.append((p, q)),
+        now=ORA + timedelta(days=3),
+    )
+
+    assert [q for _, q in chiamate] == [prima, dopo]
+    assert max(q for _, q in chiamate) == chiamate[-1][1] == dopo
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +210,7 @@ def test_place_link_writer_invocato_per_ogni_segnale_scaduto() -> None:
     istante = ORA + timedelta(hours=1)
     sweep_and_fetch_active(segnale_repo, traccia_repo, place_link_writer=_writer, now=istante)
 
-    assert chiamate == [("piazza-anfiteatro", istante)]
+    assert chiamate == [("piazza-anfiteatro", ORA + timedelta(minutes=1))]
 
 
 def test_place_link_writer_none_di_default_non_e_mai_chiamato() -> None:
@@ -274,7 +346,7 @@ def test_segnale_non_commerciale_scaduto_deposita_come_prima_regressione() -> No
     tracce = traccia_repo.list_for_place("piazza-anfiteatro")
     assert len(tracce) == 1
     assert tracce[0].segnale_id == "ammissibile"
-    assert chiamate == [("piazza-anfiteatro", ORA + timedelta(hours=1))]
+    assert chiamate == [("piazza-anfiteatro", ORA + timedelta(minutes=1))]
 
 
 def test_batch_misto_solo_il_non_commerciale_deposita_isolamento_per_segnale() -> None:
