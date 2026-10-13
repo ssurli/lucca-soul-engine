@@ -238,13 +238,20 @@ class Signal(ContractModel):
     # Giorno della settimana (0=lunedì...6=domenica, coerente con
     # `datetime.date.weekday()`), per valutare `ExperienceNode.orari_apertura`
     # (Wave 3a+, validazione minima — vedi FasciaApertura sotto). OPZIONALE,
-    # default None: MAI un giorno fabbricato quando il chiamante non lo
-    # specifica — un default silenzioso (es. "sempre lunedì") escluderebbe
-    # candidati per un motivo che nessuno ha davvero dichiarato, lo stesso
-    # errore che `soddisfazione`/`UrbanIntelligenceIndex` evita restando
-    # esplicitamente `None` invece di stimare. Se `None`,
-    # `rientra_in_orario` (sotto) non esclude mai nulla per giorno:
-    # comportamento INVARIATO finché il chiamante non lo popola.
+    # default None. NON è un giorno fabbricato: se `data` è presente, il
+    # giorno è DERIVATO da una data dichiarata dal client
+    # (`giorno_settimana = data.weekday()`, vedi il validatore sotto), quindi
+    # `data` è la fonte unica del "quando" per giorno. Se `data` è `None` e il
+    # chiamante non lo specifica resta `None` (nessun default silenzioso tipo
+    # "sempre lunedì": escluderebbe candidati per un motivo che nessuno ha
+    # dichiarato); `rientra_in_orario` (sotto) allora non esclude nulla per
+    # giorno.
+    # ATTENZIONE (cambio di comportamento): la derivazione ACCENDE per la
+    # prima volta in produzione il filtro duro 5 sugli orari di apertura per
+    # giorno (`rientra_in_orario`), finora inerte perché nessun client mandava
+    # `giorno_settimana`; ora l'app manda `data`. Impatta composizione
+    # (`passa_filtri_duri`) e adattamento (`_migliore_alternativa`): candidati
+    # chiusi in quel giorno/ora vengono esclusi.
     giorno_settimana: int | None = Field(default=None, ge=0, le=6)
     # Data (calendario LOCALE della città) della visita, mandata dal CLIENT
     # insieme a `ora`: stessa fonte e stesso orologio, quindi nessuno
@@ -253,9 +260,8 @@ class Signal(ContractModel):
     # fabbricata — un default silenzioso (es. "oggi" del server) farebbe
     # comparire o sparire eventi per una data che nessuno ha dichiarato. Se
     # `None` il contratto non decide nulla: è l'Experience Engine a trattare
-    # l'assenza come fail-closed (nessun evento promosso). NON deriva
-    # `giorno_settimana`: il filtro orari resta com'è, finché non cambia in
-    # un cambio separato.
+    # l'assenza come fail-closed (nessun evento promosso). Se presente,
+    # DERIVA `giorno_settimana` (= `data.weekday()`) quando questo è omesso.
     data: date | None = None
     # Segnali FLUTTUANTI attivi ORA (vedi `SegnaleFluttuante` sopra). Era
     # `list[str]` — dichiarato nel contratto, mai letto da nessuna logica
@@ -285,11 +291,14 @@ class Signal(ContractModel):
         # Due fonti per lo stesso fatto che si contraddicono: meglio rifiutare
         # che scegliere in silenzio quale delle due credere (il filtro orari
         # legge `giorno_settimana`, la finestra eventi legge `data`).
-        if (
-            self.data is not None
-            and self.giorno_settimana is not None
-            and self.data.weekday() != self.giorno_settimana
-        ):
+        if self.data is None:
+            return self
+        if self.giorno_settimana is None:
+            # Derivazione: `data` è la fonte unica del giorno. ContractModel
+            # NON è frozen e non ha validate_assignment, quindi l'assegnazione
+            # diretta è corretta e non ri-esegue i validatori.
+            self.giorno_settimana = self.data.weekday()
+        elif self.data.weekday() != self.giorno_settimana:
             raise ValueError(
                 f"data {self.data.isoformat()} è un giorno {self.data.weekday()} "
                 f"(0=lunedì...6=domenica), incoerente con "

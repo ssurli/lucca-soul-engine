@@ -422,12 +422,16 @@ Wave 3a effettivamente costruito.
 
 `ExperienceNode.orari_apertura` (fasce settimanali RICORRENTI, `FasciaApertura`:
 `giorno_settimana` + `apertura` + `chiusura`), `Signal.giorno_settimana` (opzionale, mai
-fabbricato), e la funzione pura condivisa `contracts.rientra_in_orario` — riusata IDENTICA da
+fabbricato dal server; **da quando esiste `Signal.data`, RICAVATO da `data.weekday()` se il
+client manda solo la data** — vedi la voce "`giorno_settimana` ricavato da `Signal.data`" in
+fondo a questo file), e la funzione pura condivisa `contracts.rientra_in_orario` — riusata IDENTICA da
 `experience_engine.rules.passa_filtri_duri` (quinto filtro duro sull'itinerario) e da
 `marketplace.service.request_booking` (rifiuta con `ExperienceNotAvailableError` PRIMA di
 persistere, stesso schema di `ExperienceNotBookableError`). Lista `orari_apertura` vuota o
-`giorno_settimana` assente = nessun vincolo, mai un'esclusione fabbricata: comportamento
-invariato per ogni esperienza del seed di oggi, che non dichiara ancora orari.
+`giorno_settimana` assente = nessun vincolo, mai un'esclusione fabbricata. **Aggiornamento:**
+l'app Flutter manda sempre `data`, quindi per l'app il giorno è ora sempre presente e il filtro
+è ATTIVO in composizione e in adattamento; l'effetto reale resta nullo finché nessuna sorgente
+del grafo popola `orari_apertura` (oggi nessuna: il seed non dichiara orari).
 
 ### Cosa resta fuori scope, deliberatamente — vedi la voce successiva
 
@@ -1468,8 +1472,9 @@ Accettato: il ledger copre il futuro, il passato si ripromuove a mano.
   finestra produce comunque una tappa; il `reason` lo dichiara ("un'occorrenza era attesa
   ieri", "stima", "orario ignoto"), ma la tappa propone 15 minuti per qualcosa che forse non
   c'è più.
-- **Fuso del dispositivo vs fuso della città.** L'app manda la data locale del DISPOSITIVO;
-  il BFF converte il ledger con `CITY_TZ`. Un dispositivo in un altro fuso può sfalsare di ±1
+- **Fuso del dispositivo vs fuso della città.** L'app manda la data locale del DISPOSITIVO
+  (e, dal commit successivo, da quella data è ricavato anche `giorno_settimana` per il filtro
+  orari — vedi la voce dedicata in fondo); il BFF converte il ledger con `CITY_TZ`. Un dispositivo in un altro fuso può sfalsare di ±1
   giorno: per cadenze brevi (finestra < 1 giorno) la finestra reale può essere mancata.
 - **Una query al ledger per ogni evento attivo, a ogni `/itinerary`**
   (`occorrenze_per_pattern`, che restituisce tutte le occorrenze per prenderne il massimo).
@@ -1498,3 +1503,60 @@ Accettato: il ledger copre il futuro, il passato si ripromuove a mano.
 
 Accettato come v1 della finestra. Verifica: giro dedicato di `ethics-guardian` (vedi
 `docs/PROMOZIONE_TRACCIA.md` §3, nota sulla finestra).
+
+---
+
+## `giorno_settimana` ricavato da `Signal.data`: il filtro orari si accende per l'app
+
+**Introdotto:** subito dopo la finestra temporale degli `:Evento` promossi, in un commit
+separato perché è un CAMBIAMENTO DI COMPORTAMENTO, non un refactoring. **Componenti:**
+`contracts.Signal` (validatore `_data_coerente_con_giorno_settimana`), filtro duro 5
+(`contracts.rientra_in_orario` in `experience_engine.rules.passa_filtri_duri` e in
+`engine._migliore_alternativa`).
+
+### Cosa è garantito oggi
+
+- `Signal.data` è la fonte unica del "quando" per giorno: se il client manda solo `data`,
+  `giorno_settimana = data.weekday()`; se manda entrambi e discordano → 422; se non manda
+  nessuno dei due → `None`, il filtro non esclude nulla per giorno (invariato). Il giorno non è
+  mai fabbricato dal server: è derivato da una data dichiarata dal client.
+- `calcola_score` non legge né il giorno né la data: il filtro esclude soltanto, non assegna
+  punteggio. Nessun vettore commerciale. `marketplace.request_booking` non usa `Signal`
+  (ricava giorno/ora da `BookingRequest.quando`): non è toccato.
+- **Effetto reale oggi: nullo.** Nessuna sorgente del grafo popola `orari_apertura` (grep su
+  `services/graph` vuoto): `rientra_in_orario` con lista vuota ritorna sempre `True`. Il filtro
+  è acceso, ma non ha ancora nulla da escludere.
+
+### Cosa NON è garantito
+
+Il filtro, prima inerte in produzione, rende OPERATIVI limiti già dichiarati nella voce sugli
+orari di apertura (più sopra in questo file), che vanno letti ora come attivi per l'app:
+
+- **Giorno e ora vengono dal dispositivo, non dalla città.** `ora` e `data` escono dallo
+  stesso `DateTime.now()` (`Signal.orologio`): coerenti tra loro, non con il fuso della città.
+  Un dispositivo in un altro fuso, o con l'orologio sbagliato, produce giorno e ora sbagliati:
+  il filtro può escludere a torto un'esperienza aperta, o includerne una chiusa. Danno di
+  accessibilità e distribuzione, non di ricavi. Il BFF non riconcilia `ora`/`giorno_settimana`
+  con `CITY_TZ` (lo fa solo per il ledger degli eventi).
+- **Data auto-dichiarata.** Un client che mente sulla data influenza solo il proprio
+  itinerario (può vedere esperienze chiuse), mai quello di altri, né ledger, eventi o indici.
+- **Istante singolo ora operativo** (punto 3 della voce sugli orari): il filtro valuta l'ora
+  d'inizio della composizione, non l'ora effettiva della tappa.
+- **Orari auto-dichiarati** (punto 4 della stessa voce): diventa concreto appena il grafo
+  popola gli orari — l'unico incentivo a mentire è "sempre aperto".
+- **`_migliore_alternativa` non verifica `partner_abbonamento_attivo`** (gap pre-esistente,
+  punto 2 della stessa voce): non chiuso né peggiorato da questo cambio; il percorso di
+  adattamento è ora raggiunto con il filtro orari attivo.
+
+### Condizione di riesame (vincolante prima del primo orario reale)
+
+Prima di popolare il primo `orari_apertura` reale nel grafo: (1) risolvere il fuso — il BFF
+ricalcola `ora`/`data`/giorno in `CITY_TZ` dall'istante della richiesta, oppure l'app invia un
+istante UTC e il BFF converte; (2) chiudere il gap `partner_abbonamento_attivo` in
+`_migliore_alternativa`.
+
+### Decisione
+
+Accettato. Verifica: giro dedicato di `ethics-guardian` sul cambiamento di comportamento —
+PASS condizionato all'aggiornamento di questo file; aggiornamento riverificato da un secondo
+giro indipendente: PASS.

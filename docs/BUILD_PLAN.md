@@ -102,13 +102,15 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   promette che il Marketplace "gestisce disponibilità"; `request_booking` non applicava alcuna
   validazione su `BookingRequest.quando` (né orari, né capienza, né conflitti). Aggiunta
   validazione MINIMA: `ExperienceNode.orari_apertura` (fasce settimanali ricorrenti,
-  `FasciaApertura`), `Signal.giorno_settimana` (opzionale, mai fabbricato), e
+  `FasciaApertura`), `Signal.giorno_settimana` (opzionale, mai fabbricato; poi ricavato da `Signal.data` quando il client manda solo la data — `docs/LIMITI.md`), e
   `contracts.rientra_in_orario` — una sola funzione pura riusata IDENTICA dal quinto filtro duro
   di `experience_engine.rules.passa_filtri_duri` (itinerario) e da
   `marketplace.service.request_booking` (`ExperienceNotAvailableError`, stesso schema di
   `ExperienceNotBookableError`, rifiuta PRIMA di persistere). Nessuna esperienza esistente
   dichiara ancora orari: comportamento invariato per il seed di oggi (lista vuota/giorno assente
-  = nessun vincolo, mai un'esclusione fabbricata). Capienza, conflitti di slot, eccezioni
+  = nessun vincolo, mai un'esclusione fabbricata; per l'app il giorno non è più assente — è
+  ricavato da `Signal.data` — quindi il filtro è acceso, con effetto nullo finché il seed non
+  dichiara orari). Capienza, conflitti di slot, eccezioni
   calendariali e festività restano DELIBERATAMENTE fuori scope — non fabbricati senza una
   bottega reale davanti (`docs/LIMITI.md`, due voci dedicate). `contract-keeper`: nuovi campi
   in `packages/contracts`/`docs/DATA_CONTRACTS.md`. Test aggiunti in `tests/test_contracts.py`,

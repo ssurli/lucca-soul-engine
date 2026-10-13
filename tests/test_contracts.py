@@ -607,9 +607,28 @@ def test_signal_data_e_giorno_settimana_incoerenti_rifiutati() -> None:
         make_signal(data=date(2026, 10, 13), giorno_settimana=2)
 
 
-def test_signal_solo_data_o_solo_giorno_settimana_ok() -> None:
-    assert make_signal(data=date(2026, 10, 13)).giorno_settimana is None
+def test_signal_solo_giorno_settimana_ok() -> None:
     assert make_signal(giorno_settimana=3).data is None
+
+
+def test_signal_solo_data_deriva_giorno_settimana() -> None:
+    assert make_signal(data=date(2026, 10, 12)).giorno_settimana == 0  # lunedì
+    assert make_signal(data=date(2026, 10, 13)).giorno_settimana == 1  # martedì
+    assert make_signal(data=date(2026, 10, 18)).giorno_settimana == 6  # domenica
+
+
+def test_signal_nessuno_dei_due_resta_none() -> None:
+    signal = make_signal()
+    assert signal.data is None
+    assert signal.giorno_settimana is None
+
+
+def test_signal_round_trip_stabile_con_giorno_derivato() -> None:
+    signal = make_signal(data=date(2026, 10, 18))
+    again = Signal.model_validate(signal.model_dump())
+    assert again == signal
+    assert again.giorno_settimana == 6
+    assert Signal.model_validate_json(signal.model_dump_json()) == signal
 
 
 # ---------------------------------------------------------------------------

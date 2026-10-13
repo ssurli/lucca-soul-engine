@@ -88,19 +88,24 @@ class Signal(BaseModel):              # stato del mondo, ORA
     affollamento: dict[str, float]    # place_id -> 0..1 (validato: ogni valore in [0,1])
     stanchezza: float                 # 0..1, sale durante la giornata
     ora: time
-    # 0=lunedì...6=domenica (date.weekday()). Opzionale, default None: MAI un
-    # giorno fabbricato quando il chiamante non lo specifica. Se None,
-    # `rientra_in_orario` (§2) non esclude mai nulla per giorno — comportamento
-    # invariato finché il chiamante non lo popola. Usato per valutare
-    # `ExperienceNode.orari_apertura`.
+    # 0=lunedì...6=domenica (date.weekday()). Opzionale, default None. Se `data`
+    # è presente e questo è None viene DERIVATO = data.weekday() (non è un
+    # giorno fabbricato: viene da una data dichiarata dal client; `data` è la
+    # fonte unica del "quando" per giorno). Se `data` è None resta com'è
+    # (anche None) e `rientra_in_orario` (§2) non esclude nulla per giorno.
+    # ATTENZIONE: la derivazione ACCENDE in produzione il filtro duro 5 sugli
+    # orari di apertura (composizione `passa_filtri_duri`, adattamento
+    # `_migliore_alternativa`), prima inerte perché nessun client mandava il
+    # giorno. Usato per valutare `ExperienceNode.orari_apertura`.
     giorno_settimana: int | None = None      # se presente: 0..6
     # Data (calendario LOCALE della città) della visita, mandata dal CLIENT
     # insieme a `ora` (stessa fonte, stesso orologio: nessuno sfasamento
     # UTC/locale). Opzionale, default None: MAI una data fabbricata. Se None il
     # contratto non decide: l'Experience Engine tratta l'assenza come
-    # fail-closed (nessun EventoPromosso). NON deriva `giorno_settimana`.
-    # Validatore: se `data` e `giorno_settimana` sono entrambi presenti deve
-    # valere `data.weekday() == giorno_settimana`, altrimenti ValueError.
+    # fail-closed (nessun EventoPromosso). Se presente DERIVA `giorno_settimana`.
+    # Validatore: `data` presente e `giorno_settimana` None -> derivato;
+    # entrambi presenti devono valere `data.weekday() == giorno_settimana`,
+    # altrimenti ValueError.
     data: date | None = None
     # Segnali FLUTTUANTI attivi ORA. Era `list[str]` (dichiarato nel
     # contratto, mai letto da nessuna logica — verificato prima di questo
@@ -559,7 +564,8 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   implica il valore valorizzato e l'eventuale motivo assente; `disponibile=False` implica il
   contrario.
 - `ExperienceNode.orari_apertura` (lista vuota di default) e `Signal.giorno_settimana`
-  (`None` di default) non escludono MAI nulla quando non dichiarati: `rientra_in_orario`
+  (`None` di default, ricavato da `Signal.data` se il client manda solo la data) non
+  escludono MAI nulla quando non dichiarati: `rientra_in_orario`
   ritorna sempre `True` in assenza di uno dei due dati — nessuna esclusione fabbricata per
   un'informazione che il chiamante non ha fornito. La stessa funzione, lo stesso modello,
   alimenta sia il quinto filtro duro di `experience_engine.rules.passa_filtri_duri` sia la

@@ -47,7 +47,10 @@ introducendo l'iniezione.
    scoring.
 5. `not rientra_in_orario(orari_apertura, signal.giorno_settimana, signal.ora)` → esclusa
    (Wave 3a+, orari di apertura). Se `orari_apertura=[]` o `signal.giorno_settimana is None`
-   il filtro non esclude MAI nulla — nessun default fabbricato.
+   il filtro non esclude MAI nulla — nessun default fabbricato. `giorno_settimana` è RICAVATO
+   da `Signal.data` quando il client manda solo la data (l'app lo fa sempre): per l'app il
+   filtro è attivo; effetto reale nullo finché il grafo non popola `orari_apertura`
+   (`docs/LIMITI.md`, voce "`giorno_settimana` ricavato da `Signal.data`").
 
 Nessun sesto filtro esiste oggi. Se se ne aggiunge uno, va qui — non altrove, non
 duplicato.
