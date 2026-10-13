@@ -5,9 +5,9 @@ BFF (`services/api`); non conosce Neo4j, Postgres né alcun servizio interno.
 
 ## Avvio
 
-1. Avvia il BFF locale (default `http://localhost:8000`):
-   ```
-   uvicorn services.api.main:app --reload
+1. Avvia il BFF locale (default `http://localhost:8000`), dalla radice del repo:
+   ```powershell
+   .venv\Scripts\python.exe -m uvicorn api.main:app --app-dir services\api --port 8000
    ```
 2. Avvia l'app:
    ```

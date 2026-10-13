@@ -116,7 +116,7 @@ legge solo `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD`, `NEO4J_DATABASE`,
 Dalla radice del repo (perché `Settings` legge `.env` dalla working directory):
 
 ```powershell
-uvicorn api.main:app --reload
+.venv\Scripts\python.exe -m uvicorn api.main:app --app-dir services\api --port 8000
 ```
 
 - `GET http://127.0.0.1:8000/health` → `{"status": "ok", "service": "lucca-soul-bff", "version": "..."}`
