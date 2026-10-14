@@ -512,12 +512,19 @@ PAVIMENTO_BAGLIORE: Final = 0.05
 #: TUNING: valore di PARTENZA, non calibrato — taratura differita al pilota.
 EMIVITA_BAGLIORE_GIORNI: Final = 30.0
 
-#: Bagliore minimo perché il `reason` dica che un luogo "torna spesso a
-#: vivere". Sotto soglia nessuna frase: una sola traccia (peso <= 1.0) non
-#: rende "vivo" un luogo — servono almeno due passaggi recenti, o molti
-#: passaggi vecchi. TUNING: valore di PARTENZA, non calibrato — taratura
-#: differita al pilota.
-SOGLIA_BAGLIORE: Final = 2.0
+#: Bagliore RECENTE minimo (`bagliore_recente`, sola parte decadente, MAI il
+#: pavimento) perché il `reason` dica che un luogo "torna spesso a vivere".
+#: La frase è al presente: deve poggiare solo su passaggi recenti. Una
+#: traccia da sola non basta MAI (massimo decadente per traccia =
+#: 1 − PAVIMENTO = 0.95 < 1.5); due tracce bastano se entrambe hanno meno di
+#: ~10 giorni, tre se meno di ~28. Il pavimento, che si accumula senza limite
+#: (ledger immortale), conta SOLO in `bagliore()`, per consumatori futuri: qui
+#: il contributo di ogni traccia tende a 0. Non è però un tetto assoluto sui
+#: passaggi vecchi: con N tracce di età d la frase resta accesa finché
+#: d <= EMIVITA·log2(0.95·N / SOGLIA) — la finestra cresce in modo
+#: logaritmico con N (N=10 ~80 giorni, N=40 ~140), limitata ma non nulla.
+#: TUNING: valore di PARTENZA, non calibrato — taratura differita al pilota.
+SOGLIA_BAGLIORE: Final = 1.5
 
 
 def temi_leggibili(temi: Sequence[str]) -> str:
@@ -542,6 +549,18 @@ def _come_utc(istante: datetime) -> datetime:
     return istante.astimezone(UTC)
 
 
+def _parte_decadente(delta: timedelta) -> float:
+    """Parte DECADENTE del peso di una traccia trascorso `delta`:
+    `(1 − PAVIMENTO) · 0.5 ** (giorni / EMIVITA)`, in (0, 1 − PAVIMENTO].
+
+    Unico punto del calcolo del decadimento, usato sia da `peso_traccia` sia
+    da `bagliore_recente`/`tema_dominante`. Un `delta` negativo (traccia "nel
+    futuro" rispetto ad `adesso`, es. orologi disallineati) è trattato come 0:
+    valore massimo, mai oltre."""
+    giorni = max(0.0, delta.total_seconds() / 86400.0)
+    return (1.0 - PAVIMENTO_BAGLIORE) * 0.5 ** (giorni / EMIVITA_BAGLIORE_GIORNI)
+
+
 def peso_traccia(delta: timedelta) -> float:
     """Peso di una traccia trascorso `delta` dalla sua creazione:
     `PAVIMENTO + (1 − PAVIMENTO) · 0.5 ** (giorni / EMIVITA)`.
@@ -549,31 +568,45 @@ def peso_traccia(delta: timedelta) -> float:
     Monotona decrescente in `delta`, in (PAVIMENTO, 1.0], MAI zero. Un
     `delta` negativo (traccia "nel futuro" rispetto ad `adesso`, es. orologi
     disallineati) è trattato come 0: peso 1.0, mai oltre."""
-    giorni = max(0.0, delta.total_seconds() / 86400.0)
-    return PAVIMENTO_BAGLIORE + (1.0 - PAVIMENTO_BAGLIORE) * 0.5 ** (
-        giorni / EMIVITA_BAGLIORE_GIORNI
-    )
+    return PAVIMENTO_BAGLIORE + _parte_decadente(delta)
 
 
 def bagliore(tracce: Sequence[tuple[datetime, Sequence[str]]], adesso: datetime) -> float:
     """Bagliore di un luogo: Σ `peso_traccia(adesso − creato_il)` su TUTTE le
-    sue tracce (§2b: dieci passaggi recenti brillano più di uno solo).
+    sue tracce (§2b: dieci passaggi recenti brillano più di uno solo),
+    pavimento INCLUSO. Non decide la frase del `reason` (quella usa
+    `bagliore_recente`): il pavimento si accumula senza limite su un ledger
+    immortale, quindi qui resta solo per consumatori futuri.
     `creato_il`/`adesso` naive sono trattati come UTC. Lista vuota → 0.0."""
     ora = _come_utc(adesso)
     return sum((peso_traccia(ora - _come_utc(creato_il)) for creato_il, _ in tracce), 0.0)
 
 
+def bagliore_recente(tracce: Sequence[tuple[datetime, Sequence[str]]], adesso: datetime) -> float:
+    """Bagliore RECENTE di un luogo: Σ della sola parte DECADENTE del peso,
+    `(1 − PAVIMENTO) · 0.5 ** (giorni / EMIVITA)`, su tutte le tracce — il
+    pavimento ESCLUSO. Tende a 0 per tracce vecchie, per quante siano: è la
+    grandezza su cui `frase_bagliore` confronta `SOGLIA_BAGLIORE`.
+    Stessa gestione di `peso_traccia`: `delta` negativo -> 0 giorni;
+    `creato_il`/`adesso` naive trattati come UTC. Lista vuota → 0.0."""
+    ora = _come_utc(adesso)
+    return sum((_parte_decadente(ora - _come_utc(creato_il)) for creato_il, _ in tracce), 0.0)
+
+
 def tema_dominante(
     tracce: Sequence[tuple[datetime, Sequence[str]]], adesso: datetime
 ) -> str | None:
-    """Tema col peso massimo fra le tracce: ogni tema riceve lo STESSO peso
-    della traccia che lo contiene (una traccia che ripete un tema lo conta
-    una volta sola). Temi vuoti/solo spazi ignorati. Spareggio alfabetico
-    (deterministico). `None` se nessun tema."""
+    """Tema col peso RECENTE massimo fra le tracce: ogni tema riceve la sola
+    parte DECADENTE del peso della traccia che lo contiene (coerente con
+    `bagliore_recente`, su cui si decide la frase: il tema detto al presente
+    è quello dei passaggi recenti). Una traccia che ripete un tema lo conta
+    una volta sola. Temi vuoti/solo spazi ignorati. Spareggio alfabetico
+    (deterministico, anche se tutti i pesi decadenti fossero 0 — caso in cui
+    `frase_bagliore` è comunque già `None`). `None` se nessun tema."""
     ora = _come_utc(adesso)
     pesi: dict[str, float] = {}
     for creato_il, temi in tracce:
-        peso = peso_traccia(ora - _come_utc(creato_il))
+        peso = _parte_decadente(ora - _come_utc(creato_il))
         for tema in dict.fromkeys(t for t in temi if t.strip()):
             pesi[tema] = pesi.get(tema, 0.0) + peso
     if not pesi:
@@ -585,13 +618,16 @@ def frase_bagliore(
     tracce: Sequence[tuple[datetime, Sequence[str]]], adesso: datetime
 ) -> str | None:
     """Frase deterministica per il `reason` di una tappa GIÀ SCELTA, oppure
-    `None` (tracce vuote, bagliore sotto `SOGLIA_BAGLIORE`, nessun tema).
+    `None` (tracce vuote, `bagliore_recente` sotto `SOGLIA_BAGLIORE`, nessun
+    tema). La soglia è sul bagliore RECENTE, mai su `bagliore()`: la frase è
+    al presente ("torna spesso"), quindi passaggi vecchi — anche molti — non
+    la accendono mai.
 
     Dice SOLO luogo (implicito: è la tappa) + tema: mai descrizioni, autori,
     date — il contenuto delle tracce resta nel ledger. Nessun articolo
     inventato (nessuna tabella tema→articolo): il tema è reso leggibile con
     `temi_leggibili`, lo stesso helper del `reason` delle tappe-evento."""
-    if not tracce or bagliore(tracce, adesso) < SOGLIA_BAGLIORE:
+    if not tracce or bagliore_recente(tracce, adesso) < SOGLIA_BAGLIORE:
         return None
     tema = tema_dominante(tracce, adesso)
     if tema is None:

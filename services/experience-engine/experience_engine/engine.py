@@ -266,18 +266,28 @@ def _costruisci_stops(
     sempre: la frase non passa mai dall'LLM) e PRIMA della disclosure partner,
     che resta l'ultima frase. Le tappe sono GIÀ scelte: il bagliore non
     decide quali, quante né in che ordine. `None`/vuoto o `adesso=None` ->
-    nessuna frase, `reason` identico a prima."""
+    nessuna frase, `reason` identico a prima.
+
+    Una sola frase per luogo per itinerario: se più tappe condividono lo
+    stesso `place_id` (fino a 2, `_seleziona_tappe`), la frase va SOLO sulla
+    prima in ordine di tappa; le successive dello stesso luogo hanno il
+    `reason` senza frase (ripeterla sarebbe rumore, non spiegazione)."""
     stops: list[ItineraryStop] = []
     orario = signal.ora
+    luoghi_con_frase: set[str] = set()
     for i, cand in enumerate(selezionati):
         if i > 0:
             orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
         segnali = segnali_rilevanti(cand, signal)
         reason = reason_fn(cand, profile, segnali)
-        if tracce_per_luogo and adesso is not None:
-            tracce = tracce_per_luogo.get(cand.experience.place_id)
+        place_id = cand.experience.place_id
+        if tracce_per_luogo and adesso is not None and place_id not in luoghi_con_frase:
+            tracce = tracce_per_luogo.get(place_id)
             if tracce:
-                reason = _con_bagliore(reason, cand, frase_bagliore(tracce, adesso))
+                frase = frase_bagliore(tracce, adesso)
+                if frase:
+                    luoghi_con_frase.add(place_id)
+                    reason = _con_bagliore(reason, cand, frase)
         reason = _con_disclosure(reason, cand)
         stops.append(
             ItineraryStop(
@@ -570,6 +580,8 @@ def compose_itinerary(
     score_fn: ScoreFn | None = None,
     eventi_promossi: list[EventoPromosso] | None = None,
     tracce_per_luogo: dict[str, list[tuple[datetime, tuple[str, ...]]]] | None = None,
+    *,
+    adesso: datetime | None = None,
 ) -> Itinerary:
     """Compone un `Itinerary` a regole per il contesto dato.
 
@@ -611,13 +623,19 @@ def compose_itinerary(
 
     `tracce_per_luogo` (`place_id` -> tracce `(creato_il, temi)` del ledger,
     lette dal chiamante) aggiunge al `reason` delle SOLE tappe permanenti già
-    scelte al passo 4 la frase del bagliore (`rules.frase_bagliore`, sopra
-    `rules.SOGLIA_BAGLIORE`), prima della disclosure partner. Non tocca i
-    passi 1-3 né 5-6: nessuno score, nessuna selezione, nessun ordine cambia;
-    tappe fluttuanti ed eventi promossi non ricevono la frase. L'istante
-    `adesso` (`datetime.now(UTC)`) è calcolato UNA volta qui e passato giù.
-    `None`/vuoto -> comportamento invariato, bit per bit. È l'ULTIMO
-    parametro, per non spostare le chiamate posizionali esistenti.
+    scelte al passo 4 la frase del bagliore (`rules.frase_bagliore`: soglia
+    `rules.SOGLIA_BAGLIORE` sul bagliore RECENTE, `rules.bagliore_recente`),
+    prima della disclosure partner, al più UNA volta per luogo (la prima
+    tappa di quel `place_id`). Non tocca i passi 1-3 né 5-6: nessuno score,
+    nessuna selezione, nessun ordine cambia; tappe fluttuanti ed eventi
+    promossi non ricevono la frase. `None`/vuoto -> comportamento invariato,
+    bit per bit. È l'ultimo parametro posizionale, per non spostare le
+    chiamate posizionali esistenti.
+
+    `adesso` (keyword-only, dopo `tracce_per_luogo`) è l'istante su cui si
+    calcola il decadimento delle tracce: il chiamante (BFF) può passarlo per
+    avere un solo orologio iniettabile. Se `None` e `tracce_per_luogo` non è
+    vuoto, è `datetime.now(UTC)`, calcolato UNA volta qui e passato giù.
 
     Determinismo totale: a parità di score l'ordine è per `experience_id`.
     Due profili diversi possono produrre itinerari diversi — è il criterio
@@ -634,7 +652,8 @@ def compose_itinerary(
     ]
     valutati = _ordina_per_score(ammessi, profile, ctx.signal, score)
     selezionati = _seleziona_tappe(valutati, profile.tempo_disponibile_min)
-    adesso = datetime.now(UTC) if tracce_per_luogo else None
+    if adesso is None and tracce_per_luogo:
+        adesso = datetime.now(UTC)
     stops = _costruisci_stops(selezionati, profile, ctx.signal, fn, tracce_per_luogo, adesso)
     stops = _aggiungi_tappe_fluttuanti(stops, candidates, profile, ctx.signal)
     stops = _aggiungi_tappe_eventi_promossi(

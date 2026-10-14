@@ -173,6 +173,7 @@ from urban_memory import (
 
 from api import __version__
 from api.deps import (
+    get_adesso,
     get_booking_repository,
     get_candidate_source,
     get_city_tz,
@@ -608,7 +609,13 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     ledger, mai dal body della richiesta. FAIL-CLOSED come `eventi_promossi`:
     qualunque errore (ledger irraggiungibile o altro) degrada a
     `tracce_per_luogo={}` con un warning che riporta solo il tipo
-    dell'errore (nessun PII), itinerario invariato, MAI un 500."""
+    dell'errore (nessun PII), itinerario invariato, MAI un 500.
+
+    Orologio del bagliore: `adesso = get_adesso()` è letto UNA volta per
+    richiesta (`datetime.now(UTC)` in `api.deps`, sostituibile nei test via
+    monkeypatch di `api.main.get_adesso`) e passato a `compose_itinerary(...,
+    adesso=adesso)`, così il motore non legge mai l'orologio da sé e i test
+    sono deterministici. `sweep_and_fetch_active` usa il proprio orologio."""
     source = get_candidate_source()
     candidates = source.candidates(ctx)
     try:
@@ -709,6 +716,7 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
         )
         tracce_per_luogo = {}
 
+    adesso = get_adesso()
     return compose_itinerary(
         ctx,
         candidates,
@@ -716,6 +724,7 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
         score_fn=score_fn,
         eventi_promossi=eventi_promossi,
         tracce_per_luogo=tracce_per_luogo,
+        adesso=adesso,
     )
 
 

@@ -17,6 +17,7 @@ ogni richiesta sarebbe costoso e inutile. Stesso pattern per
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -270,6 +271,13 @@ def get_traccia_repository() -> TracciaRepository:
                 "impossibile inizializzare la persistenza del ledger delle tracce"
             ) from exc
     return InMemoryTracciaRepository()
+
+
+def get_adesso() -> datetime:
+    """Punto unico dell'orologio per il bagliore (`compose_itinerary(...,
+    adesso=...)`). NON in `lru_cache`: va riletto a ogni richiesta.
+    Sostituibile nei test via monkeypatch come gli altri `get_*`."""
+    return datetime.now(UTC)
 
 
 @lru_cache

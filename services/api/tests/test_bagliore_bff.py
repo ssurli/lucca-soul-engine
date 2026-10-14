@@ -165,3 +165,53 @@ def test_le_tracce_non_vengono_dal_body(monkeypatch: pytest.MonkeyPatch, extra: 
     ok = client.post("/itinerary", json=_body())
     assert ok.status_code == 200
     assert all("torna spesso a vivere" not in s["reason"] for s in ok.json()["stops"])
+
+
+# --- orologio iniettato (api.main.get_adesso) -------------------------------
+
+FISSO = datetime(2030, 1, 15, 9, 0, tzinfo=UTC)  # futuro: con now() reale non darebbe frase
+
+
+def _repo_fisso(n: int = 3) -> _RepoSpia:
+    repo = _RepoSpia()
+    for i in range(n):
+        repo.deposita(
+            segnale_id=f"f{i}", place_id=PLACE, temi=["arte"],
+            creato_il=FISSO - timedelta(days=1 + i),
+        )
+    return repo
+
+
+def test_adesso_fissato_frase_deterministica(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub(monkeypatch, _repo_fisso())
+    monkeypatch.setattr(api_main, "get_adesso", lambda: FISSO)
+    client = TestClient(api_main.app)
+    r1 = client.post("/itinerary", json=_body()).json()
+    r2 = client.post("/itinerary", json=_body()).json()
+    stops = {s["experience_id"]: s["reason"] for s in r1["stops"]}
+    assert FRASE in stops["exp-bagliore-1"]
+    assert [s["reason"] for s in r1["stops"]] == [s["reason"] for s in r2["stops"]]
+
+
+def test_adesso_fissato_lontano_nessuna_frase(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub(monkeypatch, _repo_fisso())
+    monkeypatch.setattr(api_main, "get_adesso", lambda: FISSO + timedelta(days=3 * 365))
+    resp = TestClient(api_main.app).post("/itinerary", json=_body())
+    assert resp.status_code == 200
+    assert all("torna spesso a vivere" not in s["reason"] for s in resp.json()["stops"])
+
+
+def test_get_adesso_letto_una_volta_per_richiesta(monkeypatch: pytest.MonkeyPatch) -> None:
+    _stub(monkeypatch, _repo_fisso())
+    letture: list[int] = []
+
+    def _adesso() -> datetime:
+        letture.append(1)
+        return FISSO
+
+    monkeypatch.setattr(api_main, "get_adesso", _adesso)
+    client = TestClient(api_main.app)
+    client.post("/itinerary", json=_body())
+    assert len(letture) == 1
+    client.post("/itinerary", json=_body())
+    assert len(letture) == 2

@@ -83,9 +83,63 @@ def test_sotto_soglia_nessuna_frase() -> None:
     assert rules.frase_bagliore([], ADESSO) is None
 
 
-def test_molte_tracce_vecchie_possono_superare_la_soglia() -> None:
-    tracce = [_t(3650, "arte")] * 50  # 50 * ~0.05 = 2.5 >= 2.0
+def test_molte_tracce_vecchie_superano_la_soglia_in_bagliore_ma_nessuna_frase() -> None:
+    # Spec cambiata: la frase e' al presente, decide `bagliore_recente`.
+    tracce = [_t(3650, "arte")] * 50  # bagliore() = 50 * ~0.05 = 2.5 >= soglia
     assert rules.bagliore(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE
+    assert rules.bagliore_recente(tracce, ADESSO) < 1e-6
+    assert rules.frase_bagliore(tracce, ADESSO) is None
+
+
+def test_40_tracce_di_3_anni_fa_nessuna_frase() -> None:
+    tracce = [_t(3 * 365, "arte")] * 40
+    assert rules.bagliore(tracce, ADESSO) == pytest.approx(2.0, abs=0.01)
+    assert rules.bagliore_recente(tracce, ADESSO) < 1e-6
+    assert rules.frase_bagliore(tracce, ADESSO) is None
+
+
+def test_2_tracce_di_ieri_frase() -> None:
+    assert rules.frase_bagliore([_t(1, "arte"), _t(1, "arte")], ADESSO) == FRASE_ARTE
+
+
+def test_una_traccia_da_sola_non_basta_mai() -> None:
+    assert rules.SOGLIA_BAGLIORE > 1 - rules.PAVIMENTO_BAGLIORE
+    assert rules.frase_bagliore([_t(0, "arte")], ADESSO) is None
+    assert rules.bagliore_recente([_t(0, "arte")], ADESSO) == pytest.approx(
+        1 - rules.PAVIMENTO_BAGLIORE
+    )
+
+
+@pytest.mark.parametrize(
+    ("n", "giorni", "frase"),
+    [
+        (2, 5, True),
+        (2, 10, True),
+        (2, 11, False),
+        (2, 15, False),
+        (3, 20, True),
+        (3, 27, True),
+        (3, 29, False),
+        (3, 40, False),
+    ],
+)
+def test_bordi_della_soglia(n: int, giorni: float, frase: bool) -> None:
+    tracce = [_t(giorni, "arte")] * n
+    assert (rules.bagliore_recente(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE) is frase
+    assert rules.frase_bagliore(tracce, ADESSO) == (FRASE_ARTE if frase else None)
+
+
+def test_bagliore_invariata_pavimento_incluso() -> None:
+    assert rules.peso_traccia(timedelta(days=30)) == pytest.approx(0.525)
+    assert rules.bagliore([_t(30, "arte")], ADESSO) == pytest.approx(0.525)
+    assert rules.bagliore([_t(0, "arte")] * 2, ADESSO) == pytest.approx(2.0)
+    assert rules.bagliore([], ADESSO) == 0.0
+
+
+def test_tema_dominante_pesato_sulla_sola_parte_decadente() -> None:
+    tracce = [_t(3 * 365, "musica")] * 40 + [_t(1, "arte")] * 2
+    # col pavimento "musica" vincerebbe (40*0.05 = 2.0 > 2*~0.98)
+    assert rules.tema_dominante(tracce, ADESSO) == "arte"
     assert rules.frase_bagliore(tracce, ADESSO) == FRASE_ARTE
 
 
@@ -360,3 +414,44 @@ def test_guard_non_e_vacuo() -> None:
         return rules.bagliore(tracce_per_luogo, s)
 
     assert _identificatori(finta) & NOMI_BAGLIORE_VIETATI
+
+
+# --- una frase per luogo, adesso iniettato ----------------------------------
+
+
+def _tracce_fisse(*temi: str, n: int = 3) -> list[tuple[datetime, tuple[str, ...]]]:
+    return [(ADESSO - timedelta(days=1 + i), tuple(temi)) for i in range(n)]
+
+
+def test_due_tappe_stesso_luogo_frase_una_sola_volta_sulla_prima() -> None:
+    cands = [
+        _cand("exp-a1", "luogo-a", ["arte"], 100.0),
+        _cand("exp-a2", "luogo-a", ["arte"], 150.0),
+        _cand("exp-b", "luogo-b", ["arte"], 200.0),
+    ]
+    tracce = {"luogo-a": _tracce_fisse("arte"), "luogo-b": _tracce_fisse("arte")}
+    it = compose_itinerary(_ctx(), cands, _Spia(), tracce_per_luogo=tracce, adesso=ADESSO)
+    del_luogo_a = [s for s in it.stops if s.experience_id in ("exp-a1", "exp-a2")]
+    assert len(del_luogo_a) == 2  # il caso e' davvero esercitato
+    assert [FRASE_ARTE in s.reason for s in del_luogo_a] == [True, False]
+    assert sum(s.reason.count(FRASE_ARTE) for s in it.stops) == 2  # una per luogo
+    b = next(s for s in it.stops if s.experience_id == "exp-b")
+    assert FRASE_ARTE in b.reason
+
+
+def test_adesso_e_keyword_only() -> None:
+    with pytest.raises(TypeError):
+        compose_itinerary(  # type: ignore[misc]
+            _ctx(), _candidati(), _Spia(), None, None, None, ADESSO
+        )
+
+
+def test_adesso_esplicito_deterministico_e_governa_il_decadimento() -> None:
+    tracce = {"luogo-a": _tracce_fisse("arte")}
+    r1 = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, adesso=ADESSO)
+    r2 = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, adesso=ADESSO)
+    assert [s.reason for s in r1.stops] == [s.reason for s in r2.stops]
+    assert any(FRASE_ARTE in s.reason for s in r1.stops)
+    tardi = ADESSO + timedelta(days=3 * 365)
+    r3 = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, adesso=tardi)
+    assert all(FRASE_ARTE not in s.reason for s in r3.stops)
