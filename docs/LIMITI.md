@@ -1622,3 +1622,41 @@ giro indipendente: PASS.
 ### Decisione
 
 Accettato. Le tracce storiche non si toccano: il ledger resta append-only.
+
+---
+
+## mypy non passa: 15 errori preesistenti in `services/urban-memory`, oggi NON è un gate
+
+**Introdotto:** constatazione, non una modifica di codice. CLAUDE.md dichiara `ruff` + `mypy`
+come convenzione, ma `mypy` oggi è rosso.
+
+### Cosa è stato verificato (eseguito, non dedotto)
+
+`.venv\Scripts\python.exe -m mypy services/urban-memory/urban_memory` (mypy 2.3.0, config
+`[tool.mypy]` del `pyproject.toml` di radice, al commit `4cd1637`):
+`Found 15 errors in 5 files (checked 23 source files)`.
+
+| File | Errori | Codici |
+|---|---|---|
+| `urban_memory/luogo_traccia_link.py` | 5 | 2 `arg-type`, 1 `assignment`, 2 `union-attr` |
+| `urban_memory/graph_link.py` | 4 | 1 `arg-type`, 1 `assignment`, 2 `union-attr` |
+| `urban_memory/promozione_evento.py` | 4 | 1 `arg-type`, 1 `assignment`, 2 `union-attr` |
+| `urban_memory/freno_pattern.py` | 1 | 1 `arg-type` |
+| `urban_memory/frizione_pattern.py` | 1 | 1 `arg-type` |
+
+Causa comune visibile nell'output: il Protocol locale `_Driver` (`session(self, database=...)`)
+non è compatibile con la firma di `neo4j.Driver.session` (argomenti keyword-only), più gli
+`union-attr` su un `_Driver | None` non ristretto. Errori preesistenti: stesso conteggio prima e
+dopo `4cd1637` (nessuno dei 5 file è toccato da quel commit).
+
+### Cosa NON è garantito
+
+- **mypy non è un gate.** Finché resta rosso, un errore NUOVO si confonde con i 15 vecchi: il
+  conteggio va confrontato a mano, nessun controllo lo impedisce.
+- Verificato solo `services/urban-memory/urban_memory`; gli altri servizi non sono stati misurati
+  in questa voce.
+
+### Decisione
+
+Da azzerare in un task dedicato, non ora. Fino ad allora, chi tocca `urban-memory` riporta il
+conteggio mypy prima/dopo (deve restare 15, o scendere).
