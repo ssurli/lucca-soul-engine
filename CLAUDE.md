@@ -47,18 +47,23 @@ Urban Digital Twin
 > **Ambiente: Windows / PowerShell.** Gli script per l'utente vanno in PowerShell (`.ps1`) o
 > come comandi Python. Non dare per scontato `bash`.
 >
-> **DUE PROFILI, UN SOLO CODICE.** Il progetto gira su due macchine con configurazioni diverse:
+> **UN SOLO AMBIENTE REALE: il notebook (no Docker).** Oggi il progetto gira SOLO lì:
 >
-> | | Notebook (no Docker) | PC fisso (con Docker) |
+> | | Notebook (no Docker) — **reale** | PC fisso (con Docker) — **ipotesi futura** |
 > |---|---|---|
 > | Neo4j | Aura cloud (`neo4j+s://`) | Community locale (`bolt://`) |
 > | Postgres | Neon (`sslmode=require`) | Postgres locale |
 > | Vector store | pgvector su Neon | pgvector locale |
 >
+> Il profilo "PC fisso con Docker" **non esiste oggi**: nessuna configurazione, nessun comando e
+> nessuna verifica è mai stata eseguita su di esso. Non citarlo come ambiente in cui qualcosa è
+> stato provato, e non dare istruzioni che lo presuppongano.
+>
 > **Il codice non deve MAI sapere dove gira.** Tutto passa da `NEO4J_URI` e `DATABASE_URL`,
-> letti dal `.env`. Niente `if local/cloud` nel codice, niente host hardcoded, niente due
-> implementazioni RAG: **pgvector in entrambi i profili**. Se un agente propone Qdrant o un
-> percorso specifico per un profilo, è un errore: rifiutalo.
+> letti dal `.env`, così un eventuale secondo profilo resta solo un `.env` diverso. Niente
+> `if local/cloud` nel codice, niente host hardcoded, niente due implementazioni RAG:
+> **pgvector sempre**. Se un agente propone Qdrant o un percorso specifico per un profilo, è un
+> errore: rifiutalo.
 
 ### Connessioni — trappole da evitare
 - **Neo4j Aura vuole `neo4j+s://`** (TLS), non `bolt://`. Le variabili sono `NEO4J_URI`,
