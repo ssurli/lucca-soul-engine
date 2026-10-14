@@ -899,7 +899,8 @@ def test_extra_forbid_su_evento_promosso() -> None:
     with pytest.raises(ValidationError):
         make_evento_promosso(promosso_da="promotore-pseudo-1")  # accountability, non consumo
     with pytest.raises(ValidationError):
-        make_evento_promosso(descrizione="un violinista suona in piazza")  # non sopravvive alla promozione
+        # non sopravvive alla promozione
+        make_evento_promosso(descrizione="un violinista suona in piazza")
 
 
 @pytest.mark.parametrize("cadenza", [0, 0.0, -1.0, -7])
