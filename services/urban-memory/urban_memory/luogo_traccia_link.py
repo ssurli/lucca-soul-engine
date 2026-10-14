@@ -39,9 +39,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from ._env import neo4j_config_from_env
+from ._neo4j_tipi import Driver, ReadSession
 
 __all__ = [
     "LUOGO_TRACCIA_WRITE_QUERY_PATH",
@@ -87,29 +88,11 @@ class LuogoTracciaLinkError(Exception):
     """
 
 
-class _Result(Protocol):
-    def single(self) -> Any: ...
-
-
-class _Session(Protocol):
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> _Result: ...
-
-    def __enter__(self) -> _Session: ...
-
-    def __exit__(self, *exc_info: object) -> None: ...
-
-
-class _Driver(Protocol):
-    def session(self, database: str | None = None) -> _Session: ...
-
-    def close(self) -> None: ...
-
-
 def scrivi_ultima_traccia(
     place_id: str,
     quando: datetime,
     *,
-    driver: _Driver | None = None,
+    driver: Driver[ReadSession] | None = None,
     database: str | None = None,
     dotenv_path: Path | None = None,
 ) -> None:
@@ -163,7 +146,7 @@ class Neo4jLuogoTracciaLinker:
     (`api.deps.get_place_link_writer`, una sola istanza per l'intero ciclo
     di vita del processo, mai un driver per richiesta)."""
 
-    def __init__(self, driver: _Driver, database: str = "neo4j") -> None:
+    def __init__(self, driver: Driver[ReadSession], database: str = "neo4j") -> None:
         self._driver = driver
         self._database = database
 

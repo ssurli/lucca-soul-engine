@@ -67,9 +67,10 @@ import logging
 from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from ._env import database_url_from_env, neo4j_config_from_env
+from ._neo4j_tipi import Driver, ReadSession
 from .freno_repository import (
     FrenoStorageError,
     PatternFrenato,
@@ -113,26 +114,8 @@ class FrenoPatternError(Exception):
     (più?) nel grafo è un no-op silenzioso (`MATCH` puro), mai un errore."""
 
 
-class _Result(Protocol):
-    def data(self) -> list[dict[str, Any]]: ...
-
-
-class _Session(Protocol):
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> _Result: ...
-
-    def __enter__(self) -> _Session: ...
-
-    def __exit__(self, *exc_info: object) -> None: ...
-
-
-class _Driver(Protocol):
-    def session(self, database: str | None = None) -> _Session: ...
-
-    def close(self) -> None: ...
-
-
 def scrivi_freno_evento(
-    evento_id: str, frenato: bool, *, driver: _Driver, database: str | None = None
+    evento_id: str, frenato: bool, *, driver: Driver[ReadSession], database: str | None = None
 ) -> None:
     """Scrive `e.frenato = frenato` per l'`:Evento` con id `evento_id` —
     `MATCH`+`SET` puro, mai un `MERGE`, e MAI tocca `e.stato`. No-op
@@ -162,7 +145,7 @@ class Neo4jFrenoClient:
     responsabilità distinte, stessa disciplina del resto del servizio (la
     frizione decide `stato`, il freno decide `frenato`)."""
 
-    def __init__(self, driver: _Driver, database: str = "neo4j") -> None:
+    def __init__(self, driver: Driver[ReadSession], database: str = "neo4j") -> None:
         self._driver = driver
         self._database = database
 

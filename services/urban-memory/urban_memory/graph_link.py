@@ -52,6 +52,7 @@ from typing import Any, Protocol
 from contracts import MemoryContribution
 
 from ._env import neo4j_config_from_env
+from ._neo4j_tipi import Driver, Result, WriteSession
 
 __all__ = [
     "riguarda_to_cypher",
@@ -164,46 +165,13 @@ def riguarda_check_cypher(contribution: MemoryContribution) -> tuple[str, dict[s
 # ---------------------------------------------------------------------------
 
 
-class _Result(Protocol):
-    """Sottoinsieme di `neo4j.Result` usato qui: solo `.single()` (un solo
-    record atteso, sia dalla verifica sia da `count_memoria`)."""
-
-    def single(self) -> Any: ...
-
-
 class _Transaction(Protocol):
     """Sottoinsieme di `neo4j.ManagedTransaction` usato da
     `_link_transaction`: solo `.run(query, params)`. Un `Protocol` (non il
     tipo concreto) così un test può passare una transazione FINTA che
     registra query+parametri senza aprire nulla di reale."""
 
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> _Result: ...
-
-
-class _Session(Protocol):
-    """Sottoinsieme di `neo4j.Session` usato qui: `.execute_write(...)` per
-    l'aggancio ATOMICO (verifica + scrittura nella stessa transazione, con
-    rollback automatico se la funzione di transazione solleva), `.run(...)`
-    per la sola lettura di `Neo4jMemoryLinker.count_memoria` (fuori da
-    qualunque scrittura, non necessita di una transazione gestita)."""
-
-    def execute_write(self, transaction_function: Any, *args: Any, **kwargs: Any) -> Any: ...
-
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> _Result: ...
-
-    def __enter__(self) -> _Session: ...
-
-    def __exit__(self, *exc_info: object) -> None: ...
-
-
-class _Driver(Protocol):
-    """Sottoinsieme di `neo4j.Driver` usato qui: solo `.session(database=...)`
-    (e `.close()` per chi possiede il driver). Un `Protocol` per lo stesso
-    motivo di `_Session`: testabile con un driver finto."""
-
-    def session(self, database: str | None = None) -> _Session: ...
-
-    def close(self) -> None: ...
+    def run(self, query: str, parameters: dict[str, Any] | None = None) -> Result: ...
 
 
 def _link_transaction(tx: _Transaction, contribution: MemoryContribution) -> None:
@@ -232,7 +200,7 @@ def _link_transaction(tx: _Transaction, contribution: MemoryContribution) -> Non
 def link_to_graph(
     contribution: MemoryContribution,
     *,
-    driver: _Driver | None = None,
+    driver: Driver[WriteSession] | None = None,
     database: str | None = None,
     dotenv_path: Path | None = None,
 ) -> None:
@@ -318,7 +286,7 @@ class Neo4jMemoryLinker:
     cablaggio nel BFF.
     """
 
-    def __init__(self, driver: _Driver, database: str = "neo4j") -> None:
+    def __init__(self, driver: Driver[WriteSession], database: str = "neo4j") -> None:
         self._driver = driver
         self._database = database
 

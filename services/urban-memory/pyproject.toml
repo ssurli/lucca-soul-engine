@@ -10,7 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2",
     "psycopg[binary]>=3",
-    "neo4j>=5",
+    "neo4j>=6.2,<7",
 ]
 
 # NOTA — pacchetto contratti (packages/contracts):

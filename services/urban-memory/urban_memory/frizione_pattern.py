@@ -66,9 +66,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from ._env import database_url_from_env, neo4j_config_from_env
+from ._neo4j_tipi import Driver, ReadSession
 from .migrate import migrate
 from .traccia_repository import PostgresTracciaRepository, TracciaRepository
 
@@ -195,26 +196,8 @@ class FrizionePatternError(Exception):
     `luogo_traccia_link.LuogoTracciaLinkError`."""
 
 
-class _Result(Protocol):
-    def data(self) -> list[dict[str, Any]]: ...
-
-
-class _Session(Protocol):
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> _Result: ...
-
-    def __enter__(self) -> _Session: ...
-
-    def __exit__(self, *exc_info: object) -> None: ...
-
-
-class _Driver(Protocol):
-    def session(self, database: str | None = None) -> _Session: ...
-
-    def close(self) -> None: ...
-
-
 def leggi_eventi_ricorrenti(
-    *, driver: _Driver, database: str | None = None
+    *, driver: Driver[ReadSession], database: str | None = None
 ) -> list[EventoRicorrente]:
     """Tutti gli `:Evento {ricorrente: true}` esistenti nel grafo, con le
     proprietà necessarie alla frizione. Lista vuota se non ne esiste alcuno
@@ -249,7 +232,7 @@ def leggi_eventi_ricorrenti(
 
 
 def scrivi_stato_evento(
-    evento_id: str, nuovo_stato: str, *, driver: _Driver, database: str | None = None
+    evento_id: str, nuovo_stato: str, *, driver: Driver[ReadSession], database: str | None = None
 ) -> None:
     """Scrive `e.stato = nuovo_stato` per l'`:Evento` con id `evento_id` —
     `MATCH`+`SET` puro, mai un `MERGE`. No-op silenzioso se `evento_id` non
@@ -275,7 +258,7 @@ class Neo4jFrizioneClient:
     `luogo_traccia_link.Neo4jLuogoTracciaLinker`. Usato dal comando batch
     (`main()` sotto), una sola istanza per l'intera corsa."""
 
-    def __init__(self, driver: _Driver, database: str = "neo4j") -> None:
+    def __init__(self, driver: Driver[ReadSession], database: str = "neo4j") -> None:
         self._driver = driver
         self._database = database
 

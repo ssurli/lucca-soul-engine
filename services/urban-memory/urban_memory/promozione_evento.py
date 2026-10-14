@@ -28,9 +28,10 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 from ._env import neo4j_config_from_env
+from ._neo4j_tipi import Driver, ReadSession
 
 __all__ = [
     "PROMOZIONE_EVENTO_WRITE_QUERY_PATH",
@@ -122,24 +123,6 @@ class LuogoMancanteError(PromozioneEventoError):
     `python -m graph.loader`) — usato dal ripristino per il report."""
 
 
-class _Result(Protocol):
-    def single(self) -> Any: ...
-
-
-class _Session(Protocol):
-    def run(self, query: str, parameters: dict[str, Any] | None = None) -> _Result: ...
-
-    def __enter__(self) -> _Session: ...
-
-    def __exit__(self, *exc_info: object) -> None: ...
-
-
-class _Driver(Protocol):
-    def session(self, database: str | None = None) -> _Session: ...
-
-    def close(self) -> None: ...
-
-
 def ripristino_evento_cypher(
     place_id: str,
     evento_id: str,
@@ -181,7 +164,7 @@ def scrivi_evento_ripristinato(
     ultimo_ricalcolo_il: datetime | None,
     frenato: bool,
     *,
-    driver: _Driver,
+    driver: Driver[ReadSession],
     database: str | None = None,
 ) -> str:
     """Proietta nel grafo un `:Evento` dal ledger (idempotente). Solleva
@@ -221,7 +204,7 @@ def scrivi_evento_promosso(
     promotore: str,
     *,
     promosso_il: datetime | None = None,
-    driver: _Driver | None = None,
+    driver: Driver[ReadSession] | None = None,
     database: str | None = None,
     dotenv_path: Path | None = None,
 ) -> str:
@@ -286,7 +269,7 @@ class Neo4jPromozioneWriter:
     comando di curatela (`urban_memory.curatela_pattern`), una sola istanza
     per l'intera corsa (può promuovere più pattern)."""
 
-    def __init__(self, driver: _Driver, database: str = "neo4j") -> None:
+    def __init__(self, driver: Driver[ReadSession], database: str = "neo4j") -> None:
         self._driver = driver
         self._database = database
 
