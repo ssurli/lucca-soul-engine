@@ -382,7 +382,7 @@ l'intera app, mai i path di scrittura). Questo limite va riletto — non ignorat
 
 ### Cosa diceva il materiale di pitch
 
-Il White Paper (`docs/LUCCA_SOUL_LAB_Portfolio_v1.0.pdf`, pagina Marketplace) promette
+Il White Paper (`LUCCA_SOUL_LAB_Portfolio_v1.1.pdf`, pagina 20 "Marketplace") promette
 esplicitamente: *"La piattaforma mette in rete chi crea cultura e **gestisce disponibilità**,
 prenotazioni, pagamenti, recensioni e statistiche."* — "gestisce disponibilità" è una capacità
 dichiarata del concept, non una frase generica.
@@ -581,7 +581,7 @@ pseudonimo, mai loggato.
 
 1. **Nessun meccanismo di prova di presenza, in nessuna forma.** Cercato in tutto il repo
    (contratti, grafo, BFF, recommender, app Flutter) e nel White Paper
-   (`docs/LUCCA_SOUL_LAB_Portfolio_v1.0.pdf`): zero occorrenze di GPS, check-in, QR,
+   (`LUCCA_SOUL_LAB_Portfolio_v1.1.pdf`): zero occorrenze di GPS, check-in, QR,
    conferma operatore, geolocalizzazione, beacon, NFC. `services/recommender/README.md`
    DOCUMENTA esplicitamente l'assunzione su cui poggia l'intero schema di pesi
    (`PESI_TIPO`): `tipo="stop"` vale il doppio di `view` perché significa "presenza fisica

@@ -55,6 +55,12 @@ Aggiungi, nell'ordine — una frase per punto, senza dilungarti:
 > «E cambia mentre la giornata cambia. Se comincia a piovere, il percorso si riscrive verso
 > luoghi al chiuso. Se le Mura sono sature, ti sposta — e mai verso un altro posto affollato.»
 
+**La città in tempo reale.**
+> «E reagisce a ciò che accade adesso. Se c'è un violinista che suona in una piazza, e a te
+> interessa la musica, il sistema ti ci porta — te lo aggiunge al volo. Ma se una gelateria
+> prova a segnalarsi da sola per farsi passare gente davanti, quella non entra: un segnale non
+> può mai essere un'attività commerciale. È la differenza fra sentire la città e farsi vendere.»
+
 **Il vincolo etico, in forma di fatto.**
 > «Un algoritmo normale ottimizza i click. Applicato a una città, quello vuol dire mandare
 > tutti dove sono già tutti. Il nostro ottimizza la distribuzione dei flussi. E lo dimostriamo:
@@ -178,7 +184,79 @@ Questa è la domanda a cui hai la risposta migliore. Non rispondere con un princ
 
 ---
 
-## 5. Cosa NON dire
+## 5. «Ma non lo fa già un RAG con gli embedding?»
+
+È l'obiezione più prevedibile di tutte — la prima cosa che viene in mente a chiunque conosca
+un po' di tecnologia. Un modello generico, messo davanti alla stessa sfida, ci arriva in trenta
+secondi: vettori, recensioni, similarità. Averla vista costruire è un vantaggio: sai esattamente
+com'è fatta la soluzione ovvia, e perché non è la tua.
+
+### La soluzione ovvia
+
+Prendi le recensioni (TripAdvisor, Google, blog), estrai gli aggettivi emotivi, trasformi tutto
+in vettori. L'utente esprime un mood, lo trasformi in un vettore, e cerchi i luoghi **più vicini**
+in quello spazio. Poi un LLM scrive l'itinerario con tono empatico.
+
+È RAG standard, fatto bene. E ha tre debolezze strutturali — che sono i tuoi tre punti di forza.
+
+### Perché la tua è un'altra cosa
+
+**Il sistema ovvio misura una distanza. Il tuo attraversa una rete.**
+
+La similarità ti porta a ciò che *assomiglia* al tuo mood: cerchi «malinconia», trovi luoghi già
+etichettati malinconici. È un abbinamento accurato — l'opposto della sorpresa. Il tuo motore non
+abbina, **cammina**: da Puccini arriva al liutaio seguendo una *relazione*, non perché il liutaio
+abbia recensioni malinconiche. La serendipità vera nasce dal seguire una connessione verso qualcosa
+che non ti aspettavi, non dal trovare ciò che ti somiglia.
+
+### Le tre debolezze del modello ovvio
+
+**Si fonda sulle recensioni — cioè sulla popolarità.** I luoghi senza recensioni non esistono:
+il liutaio con dodici commenti è invisibile accanto alle Mura con diecimila. È esattamente il bias
+che genera overtourism, ed è il motivo per cui hai scartato le stelle di Google. Il sistema ovvio
+ci costruisce sopra tutto; tu l'hai escluso per principio.
+
+**Non ha dove mettere l'etica.** Un sistema a pura similarità manda tutti i «malinconici» nello
+stesso chiostro nascosto, finché non è più nascosto. La funzione obiettivo è una sola — la
+vicinanza — e non c'è posto per un vincolo di distribuzione. Il tuo penalizza la concentrazione
+per progetto.
+
+**Non ha memoria della città.** Il modello ovvio legge recensioni che stanno già su internet.
+Tu accumuli i racconti dei cittadini, che su internet non ci sono e non ci saranno mai. Il suo
+contenuto è scaricabile; il tuo no.
+
+### Chi decide — la differenza che riassume tutto
+
+Nel sistema ovvio, l'LLM riceve i luoghi già scelti dalla similarità e il contesto iniettato nel
+prompt, e **decide**. Se sbaglia tono, ignora il meteo o si fa influenzare da una recensione, non
+c'è nulla sotto a correggerlo.
+
+Nel tuo, l'LLM **racconta ma non decide**. La scelta l'ha già fatta l'Experience Engine con i
+filtri duri; il modello aggiunge la spiegazione. È il motivo per cui il tuo sistema è verificabile
+e il suo no: nel suo, per sapere perché ha proposto quel luogo devi interrogare un LLM; nel tuo,
+la ragione è nel grafo e nei vincoli, e la puoi mostrare a un Comune.
+
+Nota anche l'adattamento: «se piove, orienta verso un caffè con vetrate» nel modello ovvio è un
+suggerimento iniettato nel prompt, che l'LLM può ignorare. Nel tuo è un **filtro duro**: se piove,
+il posto all'aperto è escluso prima che l'LLM parli. La differenza è fra «chiedo gentilmente al
+modello di tenerne conto» e «la regola non è negoziabile».
+
+### La risposta, pronta
+
+> «Quella è la soluzione ovvia, e l'ho vista costruire da un modello generico in trenta secondi.
+> Si fonda sulle recensioni — quindi sulla popolarità, il bias che genera overtourism — mette il
+> modello linguistico al centro della decisione, e non ha nessun posto dove applicare un vincolo
+> etico. Io ho fatto il contrario: ragiono per relazioni, non per somiglianza; il modello racconta
+> ma non decide; e i vincoli sono nel codice, verificabili. È più difficile da costruire. È anche
+> l'unica versione che si può vendere a un Comune.»
+
+**Una nota onesta:** la similarità vettoriale non è sbagliata come *componente* — è utile dentro
+il tuo sistema, per il RAG che genera le spiegazioni. Ma è un mattone, non l'edificio. Il modello
+ovvio scambia il mattone per l'edificio; tu hai costruito l'edificio.
+
+---
+
+## 6. Cosa NON dire
 
 **Non dire «usiamo l'intelligenza artificiale».**
 Lo dicono tutti, non distingue nulla, e sposta l'attenzione sulla tecnologia invece che sulla
@@ -205,7 +283,7 @@ documentazione.» Chi dichiara un confine rende credibile tutto il resto.
 
 ---
 
-## 6. Le tre frasi da sapere a memoria
+## 7. Le tre frasi da sapere a memoria
 
 Se ne ricordi solo tre, siano queste.
 
@@ -219,7 +297,7 @@ Se ne ricordi solo tre, siano queste.
 
 ---
 
-## 7. Se hai trenta secondi e una sola cosa da dire
+## 8. Se hai trenta secondi e una sola cosa da dire
 
 Il liutaio.
 
