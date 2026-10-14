@@ -1625,7 +1625,37 @@ Accettato. Le tracce storiche non si toccano: il ledger resta append-only.
 
 ---
 
-## mypy non passa: 15 errori preesistenti in `services/urban-memory`, oggi NON è un gate
+## mypy: `services/urban-memory` azzerato (erano 15 errori); restano `graph` (67) e `recommender` (1)
+
+> **CHIUSA per `urban-memory`** (commit `bd4168d`): `mypy services/urban-memory/urban_memory`
+> → `Success: no issues found in 24 source files`. Le due cause reali (verificate con un
+> probe su una copia, non dedotte): (1) `neo4j.Driver.session` è keyword-only; (2)
+> `neo4j.Session.__exit__` ha 3 parametri fissi, mentre il Protocol dichiarava
+> `__exit__(self, *exc_info)`. Correggere solo (1) lasciava 15 errori. I 6 `union-attr` erano
+> una cascata degli `assignment` rifiutati (il restringimento `if driver is None: driver = ...`
+> esisteva già): spariti senza guardie aggiunte né `# type: ignore`. I Protocol
+> (`Result`/`ReadSession`/`WriteSession`/`Driver[S_co]`) sono ora definiti UNA volta in
+> `urban_memory/_neo4j_tipi.py` al posto di 5 copie. Nessun cambio di comportamento, nessun
+> test modificato.
+>
+> **Il risultato dipende dalla versione di neo4j installata** (verificato con neo4j 6.2.0 nel
+> `.venv`): i Protocol ricalcano la firma esatta del driver, quindi una major nuova può
+> romperli in silenzio. Per questo `services/urban-memory/pyproject.toml` dichiara
+> `neo4j>=6.2,<7`. `services/graph` e `services/intelligence-index` dichiarano ancora
+> `neo4j>=5` (riportato, non corretto): nessuno dei due ha oggi un Protocol che ricalca la
+> firma del driver, ma il pin largo resta incoerente con quello di `urban-memory`.
+>
+> **Altri servizi** (stesso comando, mypy 2.3.0, config di radice, misurati e NON corretti —
+> task separato):
+>
+> | Servizio | Errori |
+> |---|---|
+> | `services/graph/graph` | 67 in 4 file: `source.py` 34, `seed_lucca.py` 20, `topology.py` 9, `export_cypher.py` 4 |
+> | `services/recommender/recommender` | 1: `features.py:93` (`float` assegnato a `int`) |
+> | `api`, `experience-engine`, `intelligence-index`, `marketplace`, `rag`, `packages/contracts` | 0 |
+>
+> mypy resta NON un gate a livello di repo finché `graph` e `recommender` sono rossi. Il testo
+> sotto è lo stato storico prima della correzione.
 
 **Introdotto:** constatazione, non una modifica di codice. CLAUDE.md dichiara `ruff` + `mypy`
 come convenzione, ma `mypy` oggi è rosso.
@@ -1659,7 +1689,9 @@ dopo `4cd1637` (nessuno dei 5 file è toccato da quel commit).
 ### Decisione
 
 Da azzerare in un task dedicato, non ora. Fino ad allora, chi tocca `urban-memory` riporta il
-conteggio mypy prima/dopo (deve restare 15, o scendere).
+conteggio mypy prima/dopo (deve restare 15, o scendere). **Aggiornamento:** azzerato per
+`urban-memory` (vedi il riquadro in testa alla voce): da qui in poi chi tocca `urban-memory`
+deve lasciarlo a 0.
 
 ---
 
