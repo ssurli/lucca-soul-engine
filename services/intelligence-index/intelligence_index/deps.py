@@ -96,7 +96,7 @@ def get_event_source() -> BehaviorEventSource:
     env = merged_env()
     if env.get("DATABASE_URL"):
         try:
-            return PostgresBehaviorEventSource.from_env()
+            return PostgresBehaviorEventSource(env["DATABASE_URL"])
         except ValueError:
             raise
     return InMemoryBehaviorEventSource()
@@ -111,7 +111,7 @@ def get_memory_repository() -> MemoryRepository:
     env = merged_env()
     if env.get("DATABASE_URL"):
         try:
-            return PostgresMemoryRepository.from_env()
+            return PostgresMemoryRepository(env["DATABASE_URL"])
         except MemoryStorageError:
             raise
         except Exception as exc:  # difesa in profondità: mai un errore grezzo
