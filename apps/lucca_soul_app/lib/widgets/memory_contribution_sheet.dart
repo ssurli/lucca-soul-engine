@@ -191,7 +191,7 @@ class _MemoryContributionSheetState extends State<MemoryContributionSheet> {
             ),
             const SizedBox(height: 16),
             DropdownButtonFormField<String>(
-              value: _licenza,
+              initialValue: _licenza,
               decoration: InputDecoration(
                 labelText: strings.memoryLicenseLabel,
                 border: const OutlineInputBorder(),

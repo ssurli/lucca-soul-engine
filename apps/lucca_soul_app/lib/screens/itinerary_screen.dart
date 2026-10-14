@@ -250,7 +250,7 @@ class _StopCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: scheme.primaryContainer.withOpacity(evidenziata ? 0.6 : 1.0),
+                color: scheme.primaryContainer.withValues(alpha: evidenziata ? 0.6 : 1.0),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(

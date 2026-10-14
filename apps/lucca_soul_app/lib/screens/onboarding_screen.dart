@@ -157,7 +157,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       final EmotionalProfile profilo = await widget.bffClient.onboarding(request);
       if (!mounted) return;
       Navigator.of(context).push(
-        MaterialPageRoute(
+        MaterialPageRoute<void>(
           builder: (_) => ItineraryScreen(
             bffClient: widget.bffClient,
             personId: widget.personId,

@@ -496,9 +496,7 @@ class _IndexSection extends StatelessWidget {
               _IndicatorCard(
                 icon: Icons.star_outline,
                 label: strings.indicatorSoddisfazioneLabel,
-                value: index.soddisfazione == null
-                    ? null
-                    : index.soddisfazione!.toStringAsFixed(1),
+                value: index.soddisfazione?.toStringAsFixed(1),
                 unavailableLabel: strings.indicatorSoddisfazioneUnavailable,
               ),
               _IndicatorCard(

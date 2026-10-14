@@ -86,7 +86,7 @@ class _HomeScreen extends StatelessWidget {
                     icon: const Icon(Icons.explore_outlined),
                     label: const Text('Sono un visitatore'),
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
+                      MaterialPageRoute<void>(
                         builder: (_) => OnboardingScreen(bffClient: bffClient, personId: personId),
                       ),
                     ),
@@ -99,7 +99,7 @@ class _HomeScreen extends StatelessWidget {
                     icon: const Icon(Icons.groups_outlined),
                     label: const Text('Sono cittadino/a di Lucca'),
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
+                      MaterialPageRoute<void>(
                         builder: (_) => CitizenScreen(bffClient: bffClient, personId: personId),
                       ),
                     ),
@@ -112,7 +112,7 @@ class _HomeScreen extends StatelessWidget {
                     icon: const Icon(Icons.bar_chart_outlined),
                     label: const Text('Dashboard Comune / Operatori'),
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => DashboardScreen(bffClient: bffClient)),
+                      MaterialPageRoute<void>(builder: (_) => DashboardScreen(bffClient: bffClient)),
                     ),
                   ),
                 ),

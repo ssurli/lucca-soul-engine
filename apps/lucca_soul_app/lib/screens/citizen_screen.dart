@@ -109,7 +109,7 @@ class _CitizenScreenState extends State<CitizenScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: DropdownButtonFormField<String>(
-                value: _placeId,
+                initialValue: _placeId,
                 decoration: InputDecoration(
                   labelText: strings.citizenPlaceLabel,
                   border: const OutlineInputBorder(),
