@@ -103,17 +103,16 @@ def get_memory_repository() -> MemoryRepository:
     `MemoryStorageError` — mai lasciato propagare come eccezione psycopg
     grezza. Questa funzione non implementa NESSUNA logica di database: si
     limita ad avvolgere in `MemoryStorageError` anche un eventuale
-    fallimento della sola costruzione (`from_env()`, che legge
-    `DATABASE_URL` e può sollevare `ValueError` se la variabile risulta
-    assente qui pur essendo vista come presente da `api.settings.Settings`
-    — stesso `.env`, letture indipendenti), così che
+    fallimento della sola costruzione (il DSN è quello già letto da
+    `api.settings.Settings` per decidere: nessuna seconda lettura del
+    `.env`), così che
     `api.main.memory_storage_error_handler` (503, mai un 500 opaco) catturi
     ANCHE questo caso, non solo i fallimenti nelle operazioni successive.
     """
     settings = get_settings()
     if settings.database_url:
         try:
-            return PostgresMemoryRepository.from_env()
+            return PostgresMemoryRepository(settings.database_url)
         except MemoryStorageError:
             raise
         except Exception as exc:  # difesa in profondità: mai un errore grezzo
@@ -142,17 +141,16 @@ def get_booking_repository() -> marketplace.BookingRepository:
     `MarketplaceStorageError` — mai lasciato propagare come eccezione psycopg
     grezza. Questa funzione non implementa NESSUNA logica di database: si
     limita ad avvolgere in `MarketplaceStorageError` anche un eventuale
-    fallimento della sola costruzione (`from_env()`, che legge `DATABASE_URL`
-    e può sollevare `ValueError` se la variabile risulta assente qui pur
-    essendo vista come presente da `api.settings.Settings` — stesso `.env`,
-    letture indipendenti), così che un handler analogo a
+    fallimento della sola costruzione (il DSN è quello già letto da
+    `api.settings.Settings` per decidere: nessuna seconda lettura del
+    `.env`), così che un handler analogo a
     `api.main.memory_storage_error_handler` (503, mai un 500 opaco) catturi
     ANCHE questo caso, non solo i fallimenti nelle operazioni successive.
     """
     settings = get_settings()
     if settings.database_url:
         try:
-            return marketplace.PostgresBookingRepository.from_env()
+            return marketplace.PostgresBookingRepository(settings.database_url)
         except marketplace.MarketplaceStorageError:
             raise
         except Exception as exc:  # difesa in profondità: mai un errore grezzo
@@ -184,10 +182,9 @@ def get_event_repository() -> recommender.BehaviorEventRepository:
     già in `RecommenderStorageError` — mai lasciato propagare come
     eccezione psycopg grezza. Questa funzione non implementa NESSUNA logica
     di database: si limita ad avvolgere in `RecommenderStorageError` anche
-    un eventuale fallimento della sola costruzione (`from_env()`, che legge
-    `DATABASE_URL` e può sollevare `ValueError` se la variabile risulta
-    assente qui pur essendo vista come presente da `api.settings.Settings`
-    — stesso `.env`, letture indipendenti), così che
+    un eventuale fallimento della sola costruzione (il DSN è quello già letto
+    da `api.settings.Settings` per decidere: nessuna seconda lettura del
+    `.env`), così che
     `api.main.event_storage_error_handler` (503 su `POST /events`, mai un
     500 opaco) catturi ANCHE questo caso, non solo i fallimenti nelle
     operazioni successive.
@@ -201,7 +198,9 @@ def get_event_repository() -> recommender.BehaviorEventRepository:
     settings = get_settings()
     if settings.database_url:
         try:
-            return recommender.PostgresBehaviorEventRepository.from_env()
+            return recommender.PostgresBehaviorEventRepository(
+                settings.database_url
+            )
         except recommender.RecommenderStorageError:
             raise
         except Exception as exc:  # difesa in profondità: mai un errore grezzo
@@ -245,7 +244,7 @@ def get_segnale_repository() -> SegnaleFluttuanteRepository:
     settings = get_settings()
     if settings.database_url:
         try:
-            return PostgresSegnaleFluttuanteRepository.from_env()
+            return PostgresSegnaleFluttuanteRepository(settings.database_url)
         except SegnaleStorageError:
             raise
         except Exception as exc:  # difesa in profondità: mai un errore grezzo
@@ -263,7 +262,7 @@ def get_traccia_repository() -> TracciaRepository:
     settings = get_settings()
     if settings.database_url:
         try:
-            return PostgresTracciaRepository.from_env()
+            return PostgresTracciaRepository(settings.database_url)
         except TracciaStorageError:
             raise
         except Exception as exc:  # difesa in profondità: mai un errore grezzo
