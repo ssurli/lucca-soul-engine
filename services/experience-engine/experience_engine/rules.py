@@ -14,7 +14,9 @@ solo dove è concentrato.
 from __future__ import annotations
 
 import math
-from datetime import date, timedelta
+from collections.abc import Sequence
+from datetime import UTC, date, datetime, timedelta
+from typing import Final
 
 from contracts import (
     EmotionalProfile,
@@ -479,3 +481,119 @@ def eventi_promossi_pertinenti(
         if _coerente_col_profilo(evento.temi, profile)
         and evento_in_finestra(evento.ultima_occorrenza, evento.cadenza_giorni, data_visita)
     ]
+
+
+# ---------------------------------------------------------------------------
+# Bagliore (docs/PROMOZIONE_TRACCIA.md §2b) — quanto un luogo "torna a vivere"
+# secondo le tracce del ledger. Entra SOLO nel `reason` di tappe GIÀ SCELTE:
+# mai nello scoring, mai nella selezione, mai nell'ordine delle tappe.
+#
+# COLLOCAZIONE: qui, in `rules.py` del motore, e non in `urban-memory` né in
+# `contracts`. Il motore è l'UNICO componente che decide (anche cosa dire nel
+# `reason` deterministico), ed è oggi l'unico consumatore del bagliore: un
+# vincolo concentrato in un solo punto è auditabile. Se un secondo
+# consumatore (es. un cruscotto dell'Urban Intelligence Index) ne avesse
+# bisogno, la funzione andrebbe spostata in un punto condiviso, non copiata.
+#
+# PURE: nessun orologio (l'istante `adesso` è SEMPRE un parametro), nessun
+# I/O. Le tracce arrivano già lette dal chiamante come coppie
+# `(creato_il, temi)`.
+# ---------------------------------------------------------------------------
+
+#: Residuo minimo del peso di una traccia, per quanto vecchia: il peso non
+#: arriva MAI a zero (§2b: "con un pavimento positivo"). TUNING: valore di
+#: PARTENZA, non calibrato su dati reali — la taratura è deliberatamente
+#: differita al pilota (stessa classe di `K_BATTITI_SOSPENSIONE` in
+#: `urban_memory.frizione_pattern`).
+PAVIMENTO_BAGLIORE: Final = 0.05
+
+#: Emivita (giorni) della parte decadente del peso di una traccia: dopo
+#: `EMIVITA_BAGLIORE_GIORNI` giorni la parte sopra il pavimento si dimezza.
+#: TUNING: valore di PARTENZA, non calibrato — taratura differita al pilota.
+EMIVITA_BAGLIORE_GIORNI: Final = 30.0
+
+#: Bagliore minimo perché il `reason` dica che un luogo "torna spesso a
+#: vivere". Sotto soglia nessuna frase: una sola traccia (peso <= 1.0) non
+#: rende "vivo" un luogo — servono almeno due passaggi recenti, o molti
+#: passaggi vecchi. TUNING: valore di PARTENZA, non calibrato — taratura
+#: differita al pilota.
+SOGLIA_BAGLIORE: Final = 2.0
+
+
+def temi_leggibili(temi: Sequence[str]) -> str:
+    """Rende leggibile una lista di temi GREZZI (id/slug del grafo, es.
+    "musica-di-strada") per un `reason`.
+
+    `EventoPromosso.temi`, `SegnaleFluttuante.temi`, `ExperienceNode.temi` e
+    i temi delle tracce portano id, non nomi umani (i nomi leggibili dei
+    `:Tema` viaggiano su un campo separato della query candidati,
+    `temi_nomi`, che qui non esiste). Sostituisce i trattini con spazi e
+    unisce con virgola: trasformazione PURA, mai un lookup a un nodo `:Tema`
+    che questa funzione non ha modo di fare — meglio un id reso leggibile che
+    un nome fabbricato. Usata dal `reason` delle tappe-evento
+    (`engine._reason_evento_promosso`) e da `frase_bagliore`: un solo punto."""
+    return ", ".join(tema.replace("-", " ") for tema in temi)
+
+
+def _come_utc(istante: datetime) -> datetime:
+    """Un `datetime` naive è trattato come UTC; uno aware è convertito a UTC."""
+    if istante.tzinfo is None:
+        return istante.replace(tzinfo=UTC)
+    return istante.astimezone(UTC)
+
+
+def peso_traccia(delta: timedelta) -> float:
+    """Peso di una traccia trascorso `delta` dalla sua creazione:
+    `PAVIMENTO + (1 − PAVIMENTO) · 0.5 ** (giorni / EMIVITA)`.
+
+    Monotona decrescente in `delta`, in (PAVIMENTO, 1.0], MAI zero. Un
+    `delta` negativo (traccia "nel futuro" rispetto ad `adesso`, es. orologi
+    disallineati) è trattato come 0: peso 1.0, mai oltre."""
+    giorni = max(0.0, delta.total_seconds() / 86400.0)
+    return PAVIMENTO_BAGLIORE + (1.0 - PAVIMENTO_BAGLIORE) * 0.5 ** (
+        giorni / EMIVITA_BAGLIORE_GIORNI
+    )
+
+
+def bagliore(tracce: Sequence[tuple[datetime, Sequence[str]]], adesso: datetime) -> float:
+    """Bagliore di un luogo: Σ `peso_traccia(adesso − creato_il)` su TUTTE le
+    sue tracce (§2b: dieci passaggi recenti brillano più di uno solo).
+    `creato_il`/`adesso` naive sono trattati come UTC. Lista vuota → 0.0."""
+    ora = _come_utc(adesso)
+    return sum((peso_traccia(ora - _come_utc(creato_il)) for creato_il, _ in tracce), 0.0)
+
+
+def tema_dominante(
+    tracce: Sequence[tuple[datetime, Sequence[str]]], adesso: datetime
+) -> str | None:
+    """Tema col peso massimo fra le tracce: ogni tema riceve lo STESSO peso
+    della traccia che lo contiene (una traccia che ripete un tema lo conta
+    una volta sola). Temi vuoti/solo spazi ignorati. Spareggio alfabetico
+    (deterministico). `None` se nessun tema."""
+    ora = _come_utc(adesso)
+    pesi: dict[str, float] = {}
+    for creato_il, temi in tracce:
+        peso = peso_traccia(ora - _come_utc(creato_il))
+        for tema in dict.fromkeys(t for t in temi if t.strip()):
+            pesi[tema] = pesi.get(tema, 0.0) + peso
+    if not pesi:
+        return None
+    return min(pesi, key=lambda t: (-pesi[t], t))
+
+
+def frase_bagliore(
+    tracce: Sequence[tuple[datetime, Sequence[str]]], adesso: datetime
+) -> str | None:
+    """Frase deterministica per il `reason` di una tappa GIÀ SCELTA, oppure
+    `None` (tracce vuote, bagliore sotto `SOGLIA_BAGLIORE`, nessun tema).
+
+    Dice SOLO luogo (implicito: è la tappa) + tema: mai descrizioni, autori,
+    date — il contenuto delle tracce resta nel ledger. Nessun articolo
+    inventato (nessuna tabella tema→articolo): il tema è reso leggibile con
+    `temi_leggibili`, lo stesso helper del `reason` delle tappe-evento."""
+    if not tracce or bagliore(tracce, adesso) < SOGLIA_BAGLIORE:
+        return None
+    tema = tema_dominante(tracce, adesso)
+    if tema is None:
+        return None
+    return f"È un luogo che torna spesso a vivere di {temi_leggibili([tema])}."

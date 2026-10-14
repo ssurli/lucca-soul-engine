@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 from contracts import (
     EmotionalProfile,
@@ -42,11 +42,13 @@ from .rules import (
     TOLLERANZA_DIVERSITA,
     calcola_score,
     eventi_promossi_pertinenti,
+    frase_bagliore,
     giorno_occorrenza_attesa,
     passa_filtri_duri,
     segnali_fluttuanti_pertinenti,
     segnali_rilevanti,
     stima_trasferimento_min,
+    temi_leggibili,
 )
 
 __all__ = ["compose_itinerary", "adapt_itinerary", "ReasonFn", "AdaptReasonFn", "ScoreFn"]
@@ -144,6 +146,34 @@ def _con_disclosure(reason: str, candidate: GraphCandidate) -> str:
     return f"{testo} {coda}".strip()
 
 
+def _con_bagliore(reason: str, candidate: GraphCandidate, frase: str | None) -> str:
+    """Inserisce la frase del bagliore (`rules.frase_bagliore`) nel `reason`
+    di una tappa GIÀ SCELTA, PRIMA della disclosure partner.
+
+    La disclosure ("Offerta da ...") deve restare SEMPRE l'ultima frase. Due
+    casi:
+    - `reason_fn` NON ha incluso l'attribuzione: la frase si appende in coda,
+      e `_con_disclosure` (chiamata dopo) appenderà l'attribuzione dopo di
+      essa;
+    - `reason_fn` HA GIÀ incluso l'attribuzione: `_con_disclosure` non la
+      riappende (idempotente), quindi la frase va inserita PRIMA
+      dell'ultima occorrenza dell'attribuzione, non in coda.
+    `frase=None` -> `reason` restituito identico (bit per bit)."""
+    if not frase:
+        return reason
+    attribuzione = (getattr(candidate, "attribuzione", None) or "").strip()
+    idx = reason.rfind(attribuzione) if attribuzione else -1
+    if idx >= 0:
+        prima = reason[:idx].rstrip()
+        dopo = reason[idx:]
+    else:
+        prima = reason.rstrip()
+        dopo = ""
+    if prima and not prima.endswith("."):
+        prima += "."
+    return " ".join(parte for parte in (prima, frase, dopo) if parte)
+
+
 def _ordina_per_score(
     candidates: list[GraphCandidate],
     profile: EmotionalProfile,
@@ -221,19 +251,34 @@ def _costruisci_stops(
     profile: EmotionalProfile,
     signal: Signal,
     reason_fn: ReasonFn,
+    tracce_per_luogo: dict[str, list[tuple[datetime, tuple[str, ...]]]] | None = None,
+    adesso: datetime | None = None,
 ) -> list[ItineraryStop]:
     """Trasforma i candidati scelti in tappe con orari progressivi e `reason`.
 
     Ogni tappa DEVE avere un `reason` non vuoto (spiegabilità obbligatoria):
     lo compone `reason_fn` a partire dalle connessioni del grafo e dai segnali
-    rilevanti per quella tappa."""
+    rilevanti per quella tappa.
+
+    Bagliore (`rules.frase_bagliore`): se `tracce_per_luogo` ha tracce per il
+    `place_id` della tappa, il MOTORE aggiunge in modo deterministico una
+    frase DOPO `reason_fn` (che riceve esattamente gli stessi argomenti di
+    sempre: la frase non passa mai dall'LLM) e PRIMA della disclosure partner,
+    che resta l'ultima frase. Le tappe sono GIÀ scelte: il bagliore non
+    decide quali, quante né in che ordine. `None`/vuoto o `adesso=None` ->
+    nessuna frase, `reason` identico a prima."""
     stops: list[ItineraryStop] = []
     orario = signal.ora
     for i, cand in enumerate(selezionati):
         if i > 0:
             orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
         segnali = segnali_rilevanti(cand, signal)
-        reason = _con_disclosure(reason_fn(cand, profile, segnali), cand)
+        reason = reason_fn(cand, profile, segnali)
+        if tracce_per_luogo and adesso is not None:
+            tracce = tracce_per_luogo.get(cand.experience.place_id)
+            if tracce:
+                reason = _con_bagliore(reason, cand, frase_bagliore(tracce, adesso))
+        reason = _con_disclosure(reason, cand)
         stops.append(
             ItineraryStop(
                 experience_id=cand.experience.id,
@@ -346,18 +391,9 @@ def _aggiungi_tappe_fluttuanti(
 # tracciabilità della tappa verso l'`:Evento` che l'ha generata.
 
 
-def _temi_leggibili(temi: list[str]) -> str:
-    """Rende leggibile una lista di temi GREZZI (id/slug del grafo, es.
-    "musica-di-strada") per il `reason` di una tappa-evento.
-
-    `EventoPromosso.temi` porta lo stesso contenuto grezzo di
-    `SegnaleFluttuante.temi` e di `ExperienceNode.temi` — id, non nomi umani
-    (i nomi leggibili dei `:Tema` viaggiano su un campo separato della query
-    candidati, `temi_nomi`, che qui non esiste). Sostituisce i trattini con
-    spazi e unisce con virgola: trasformazione PURA, mai un lookup a un nodo
-    `:Tema` che questa funzione non ha modo di fare — meglio un id reso
-    leggibile che un nome fabbricato."""
-    return ", ".join(tema.replace("-", " ") for tema in temi)
+# `temi_leggibili` (resa leggibile dei temi grezzi nel `reason`) vive in
+# `rules.py`: la usano sia `_reason_evento_promosso` qui sotto sia
+# `rules.frase_bagliore` — un solo punto, nessuna copia.
 
 
 # Nomi italiani in CODICE, mai `strftime("%A")`/`%B`: il risultato non deve
@@ -435,7 +471,7 @@ def _reason_evento_promosso(evento: EventoPromosso, place_nome: str, data_visita
     else:
         occorrenza = f"la prossima occorrenza è attesa {quando}"
     return (
-        f"Presso {place_nome} si ripete qualcosa legato a {_temi_leggibili(evento.temi)}, "
+        f"Presso {place_nome} si ripete qualcosa legato a {temi_leggibili(evento.temi)}, "
         f"osservato {_cadenza_leggibile(evento.cadenza_giorni)}: {occorrenza}. "
         "È una stima dalla regolarità osservata, non un appuntamento confermato, "
         "e non ne conosciamo l'orario."
@@ -533,6 +569,7 @@ def compose_itinerary(
     reason_fn: ReasonFn | None = None,
     score_fn: ScoreFn | None = None,
     eventi_promossi: list[EventoPromosso] | None = None,
+    tracce_per_luogo: dict[str, list[tuple[datetime, tuple[str, ...]]]] | None = None,
 ) -> Itinerary:
     """Compone un `Itinerary` a regole per il contesto dato.
 
@@ -572,6 +609,16 @@ def compose_itinerary(
     Il parametro è ULTIMO proprio per non spostare `reason_fn`/`score_fn` e
     non rompere le chiamate posizionali già in essere.
 
+    `tracce_per_luogo` (`place_id` -> tracce `(creato_il, temi)` del ledger,
+    lette dal chiamante) aggiunge al `reason` delle SOLE tappe permanenti già
+    scelte al passo 4 la frase del bagliore (`rules.frase_bagliore`, sopra
+    `rules.SOGLIA_BAGLIORE`), prima della disclosure partner. Non tocca i
+    passi 1-3 né 5-6: nessuno score, nessuna selezione, nessun ordine cambia;
+    tappe fluttuanti ed eventi promossi non ricevono la frase. L'istante
+    `adesso` (`datetime.now(UTC)`) è calcolato UNA volta qui e passato giù.
+    `None`/vuoto -> comportamento invariato, bit per bit. È l'ULTIMO
+    parametro, per non spostare le chiamate posizionali esistenti.
+
     Determinismo totale: a parità di score l'ordine è per `experience_id`.
     Due profili diversi possono produrre itinerari diversi — è il criterio
     d'accettazione centrale della wave.
@@ -587,7 +634,8 @@ def compose_itinerary(
     ]
     valutati = _ordina_per_score(ammessi, profile, ctx.signal, score)
     selezionati = _seleziona_tappe(valutati, profile.tempo_disponibile_min)
-    stops = _costruisci_stops(selezionati, profile, ctx.signal, fn)
+    adesso = datetime.now(UTC) if tracce_per_luogo else None
+    stops = _costruisci_stops(selezionati, profile, ctx.signal, fn, tracce_per_luogo, adesso)
     stops = _aggiungi_tappe_fluttuanti(stops, candidates, profile, ctx.signal)
     stops = _aggiungi_tappe_eventi_promossi(
         stops,
