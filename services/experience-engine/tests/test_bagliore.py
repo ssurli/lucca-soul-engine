@@ -455,3 +455,74 @@ def test_adesso_esplicito_deterministico_e_governa_il_decadimento() -> None:
     tardi = ADESSO + timedelta(days=3 * 365)
     r3 = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, adesso=tardi)
     assert all(FRASE_ARTE not in s.reason for s in r3.stops)
+
+
+# --- tetto sull'eta' dell'ultima traccia ------------------------------------
+
+
+def test_tetto_e_derivato_dall_emivita() -> None:
+    assert rules.ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI == 2 * rules.EMIVITA_BAGLIORE_GIORNI
+
+
+def test_40_tracce_con_ultima_a_130_giorni_decide_il_tetto() -> None:
+    tracce = [_t(130, "arte")] * 40
+    # senza il tetto la soglia sarebbe superata: decide il tetto
+    assert rules.bagliore_recente(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE
+    assert rules.frase_bagliore(tracce, ADESSO) is None
+
+
+def test_tetto_2_tracce_di_ieri_frase() -> None:
+    assert rules.frase_bagliore([_t(1, "arte"), _t(1, "arte")], ADESSO) == FRASE_ARTE
+
+
+def test_bordo_59_giorni_frase() -> None:
+    tracce = [_t(59, "arte")] * 10
+    assert rules.bagliore_recente(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE
+    assert rules.frase_bagliore(tracce, ADESSO) == FRASE_ARTE
+
+
+def test_bordo_61_giorni_nessuna_frase_decide_il_tetto() -> None:
+    tracce = [_t(61, "arte")] * 10
+    assert rules.bagliore_recente(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE
+    assert rules.frase_bagliore(tracce, ADESSO) is None
+
+
+def test_bordo_esattamente_60_giorni_ammesso() -> None:
+    tracce = [_t(60, "arte")] * 10
+    assert rules.bagliore_recente(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE
+    assert rules.frase_bagliore(tracce, ADESSO) == FRASE_ARTE
+
+
+def test_bordo_60_giorni_piu_un_secondo_nessuna_frase() -> None:
+    tracce = [(ADESSO - timedelta(days=60, seconds=1), ("arte",))] * 10
+    assert rules.bagliore_recente(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE
+    assert rules.frase_bagliore(tracce, ADESSO) is None
+
+
+def test_molte_vecchie_piu_una_recente_decide_l_ultima() -> None:
+    vecchie = [_t(130, "arte")] * 40
+    assert rules.frase_bagliore(vecchie, ADESSO) is None
+    tracce = [*vecchie, _t(1, "arte")]
+    assert rules.bagliore_recente(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE
+    assert rules.frase_bagliore(tracce, ADESSO) == FRASE_ARTE
+
+
+def test_traccia_nel_futuro_non_e_esclusa_dal_tetto() -> None:
+    futura = (ADESSO + timedelta(days=5), ("arte",))
+    tracce = [*([_t(130, "arte")] * 40), futura]
+    assert rules.bagliore_recente(tracce, ADESSO) >= rules.SOGLIA_BAGLIORE
+    assert rules.frase_bagliore(tracce, ADESSO) == FRASE_ARTE
+    # solo tracce future: eta' 0, pesano 1 ciascuna
+    assert rules.frase_bagliore([futura, futura], ADESSO) == FRASE_ARTE
+
+
+def test_naive_e_aware_misti_nel_tetto() -> None:
+    naive_ieri = (datetime(2026, 5, 31, 12, 0), ("arte",))
+    aware_ieri = (datetime(2026, 5, 31, 12, 0, tzinfo=UTC), ("arte",))
+    assert rules.frase_bagliore([naive_ieri, aware_ieri], ADESSO) == FRASE_ARTE
+    # adesso naive con tracce aware
+    adesso_naive = datetime(2026, 6, 1, 12, 0)
+    assert rules.frase_bagliore([aware_ieri, naive_ieri], adesso_naive) == FRASE_ARTE
+    # naive oltre il tetto
+    vecchia_naive = (datetime(2026, 3, 1, 12, 0), ("arte",))
+    assert rules.frase_bagliore([vecchia_naive] * 40, ADESSO) is None

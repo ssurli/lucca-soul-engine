@@ -519,12 +519,24 @@ EMIVITA_BAGLIORE_GIORNI: Final = 30.0
 #: 1 − PAVIMENTO = 0.95 < 1.5); due tracce bastano se entrambe hanno meno di
 #: ~10 giorni, tre se meno di ~28. Il pavimento, che si accumula senza limite
 #: (ledger immortale), conta SOLO in `bagliore()`, per consumatori futuri: qui
-#: il contributo di ogni traccia tende a 0. Non è però un tetto assoluto sui
-#: passaggi vecchi: con N tracce di età d la frase resta accesa finché
-#: d <= EMIVITA·log2(0.95·N / SOGLIA) — la finestra cresce in modo
-#: logaritmico con N (N=10 ~80 giorni, N=40 ~140), limitata ma non nulla.
+#: il contributo di ogni traccia tende a 0. Da sola la soglia non sarebbe un
+#: tetto assoluto sui passaggi vecchi: con N tracce di età d la frase
+#: resterebbe accesa finché d <= EMIVITA·log2(0.95·N / SOGLIA) — finestra
+#: logaritmica in N (N=10 ~80 giorni, N=40 ~140). Questa finestra è ora
+#: TAGLIATA a `ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI` dall'ultima traccia,
+#: qualunque sia N (vedi sotto).
 #: TUNING: valore di PARTENZA, non calibrato — taratura differita al pilota.
 SOGLIA_BAGLIORE: Final = 1.5
+
+#: Età massima (giorni) della traccia PIÙ RECENTE di un luogo perché la frase
+#: del bagliore possa accendersi: oltre, `frase_bagliore` è `None` a
+#: prescindere dal bagliore, per quante tracce vecchie ci siano. DERIVATA
+#: dall'emivita, non una costante indipendente: resta UNA sola manopola da
+#: tarare (`EMIVITA_BAGLIORE_GIORNI`). 60 giorni (2 emivite) coprono un
+#: evento mensile con margine: 30 secchi lo farebbero sparire alla vigilia
+#: dell'occorrenza successiva. Confronto stretto: esattamente 60 giorni è
+#: ammesso.
+ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI: Final = 2 * EMIVITA_BAGLIORE_GIORNI
 
 
 def temi_leggibili(temi: Sequence[str]) -> str:
@@ -618,16 +630,31 @@ def frase_bagliore(
     tracce: Sequence[tuple[datetime, Sequence[str]]], adesso: datetime
 ) -> str | None:
     """Frase deterministica per il `reason` di una tappa GIÀ SCELTA, oppure
-    `None` (tracce vuote, `bagliore_recente` sotto `SOGLIA_BAGLIORE`, nessun
-    tema). La soglia è sul bagliore RECENTE, mai su `bagliore()`: la frase è
-    al presente ("torna spesso"), quindi passaggi vecchi — anche molti — non
-    la accendono mai.
+    `None` (tracce vuote, traccia più recente con età oltre
+    `ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI`, `bagliore_recente` sotto
+    `SOGLIA_BAGLIORE`, nessun tema). La soglia è sul bagliore RECENTE, mai su
+    `bagliore()`: la frase è al presente ("torna spesso"). In più, se
+    l'ultimo passaggio è più vecchio di `ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI`
+    giorni la frase è spenta qualunque sia il numero di tracce: se anche
+    l'ULTIMO passaggio è vecchio, nessun numero di tracce la accende. Con una
+    traccia recente, invece, le tracce vecchie contano ancora nella somma e
+    possono portarla sopra soglia. Età dell'ultima traccia =
+    `adesso − max(creato_il)` (naive → UTC); una traccia "nel futuro" ha età
+    0; confronto stretto (esattamente il tetto è ammesso). Unico punto di
+    questo controllo: `bagliore`/`bagliore_recente`/`tema_dominante` non lo
+    applicano.
 
     Dice SOLO luogo (implicito: è la tappa) + tema: mai descrizioni, autori,
     date — il contenuto delle tracce resta nel ledger. Nessun articolo
     inventato (nessuna tabella tema→articolo): il tema è reso leggibile con
     `temi_leggibili`, lo stesso helper del `reason` delle tappe-evento."""
-    if not tracce or bagliore_recente(tracce, adesso) < SOGLIA_BAGLIORE:
+    if not tracce:
+        return None
+    ora = _come_utc(adesso)
+    ultima = max(_come_utc(creato_il) for creato_il, _ in tracce)
+    if ora - ultima > timedelta(days=ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI):
+        return None
+    if bagliore_recente(tracce, adesso) < SOGLIA_BAGLIORE:
         return None
     tema = tema_dominante(tracce, adesso)
     if tema is None:
