@@ -70,6 +70,15 @@ Verificato sia da lettura diretta sia da un test-guard AST + un test comportamen
 - **`Signal.eventi_attivi`** (segnali fluttuanti) — mai letto: nessuna esperienza
   permanente vede il proprio punteggio cambiare per via di un segnale fluttuante.
 - **`ExperienceNode.orari_apertura`** — letto SOLO dal filtro duro 5, mai dallo scoring.
+- **Il bagliore** (`tracce_per_luogo`, `rules.bagliore`/`frase_bagliore`/`tema_dominante`/
+  `peso_traccia`, `docs/PROMOZIONE_TRACCIA.md` §2b) — mai letto da `calcola_score` né da
+  `passa_filtri_duri`. Entra SOLO nel `reason` di tappe permanenti GIÀ scelte
+  (`engine._costruisci_stops` → `_con_bagliore`, dopo `reason_fn` e prima della disclosure
+  partner, che resta l'ultima frase): non aggiunge, toglie né riordina tappe, e `reason_fn`
+  non riceve mai la frase. Verificato da un test-guard AST
+  (`services/experience-engine/tests/test_bagliore.py::test_guard_score_e_filtri_non_referenziano_il_bagliore`,
+  con `test_guard_non_e_vacuo`) e da test comportamentali nello stesso file (score e tappe
+  bit-identici con e senza `tracce_per_luogo`; unica differenza ammessa il `reason`).
 
 Nessun prezzo altera lo score: non esiste un pagamento che modifichi questo comportamento
 (CLAUDE.md, «nessuno spazio è acquistabile»).

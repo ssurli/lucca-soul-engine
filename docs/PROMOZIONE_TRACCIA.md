@@ -208,7 +208,8 @@ diversi sullo stesso deposito, non lo stesso controllo raccontato due volte.
 
 Due meccanismi distinti — tenerli separati evita di confonderli in fase di implementazione.
 **Stato epistemico diverso tra i due, come per gli invarianti del motore — non
-confonderli**: (a) è REALE, (b) resta DESIGN.
+confonderli**: (a) è REALE, (b) è REALE dal bagliore-nel-reason (consumatore: solo il
+`reason` del motore, mai lo scoring).
 
 ### (a) `:Luogo.ultima_traccia_il` — proprietà derivata, un solo scopo — **REALE, implementato**
 
@@ -236,11 +237,38 @@ già visto per la label `:Evento` riservata ma vuota nello schema.
   stretta), qui non c'è nulla da "esistere": un errore di sincronia produce al più un dato
   stantio, mai un dato invalido.
 
-### (b) Il bagliore — MAI stored, calcolato in lettura
+### (b) Il bagliore — MAI stored, calcolato in lettura — **REALE, implementato (solo nel `reason`)**
 
 Non una proprietà sul grafo, non una colonna in Postgres. Calcolato al momento del bisogno
-da chi lo consuma (candidati: `experience-engine` per scoring/`reason`, `index-engineer` per
-un cruscotto — nessuno dei due è deciso o cablato qui, restano consumatori futuri).
+da chi lo consuma.
+
+**Verificato contro il codice** (il disegno sotto è rispecchiato dal codice):
+- **Fatti (BFF).** `api.main.create_itinerary` legge, PRIMA di `compose_itinerary`, le tracce
+  dei luoghi di TUTTI i candidati con UNA lettura batch
+  (`TracciaRepository.tracce_per_luoghi`, `WHERE place_id = ANY(...)`, indicizzata — EXPLAIN
+  su Neon: Bitmap Index Scan) e le passa come ultimo parametro
+  `tracce_per_luogo: dict[str, list[tuple[datetime, tuple[str, ...]]]]` (solo tipi base,
+  nessun tipo nuovo nel contratto). Le tracce vengono solo dal ledger, mai dal body.
+  Fail-closed: qualunque eccezione → `{}`, nessuna frase, itinerario invariato, mai un 500.
+- **Decisione (motore, funzione pura in `experience_engine/rules.py`).** `peso_traccia(Δt) =
+  PAVIMENTO_BAGLIORE + (1 − PAVIMENTO_BAGLIORE) · 0.5^(giorni / EMIVITA_BAGLIORE_GIORNI)`,
+  `bagliore = Σ peso`, `tema_dominante` = tema col peso cumulato maggiore (stesso peso del
+  bagliore, spareggio alfabetico), `frase_bagliore` = None sotto `SOGLIA_BAGLIORE`. Costanti
+  di partenza 0.05 / 30 giorni / 2.0, tuning differito. Collocata nel motore perché è
+  l'unico componente che decide e l'unico consumatore oggi; un secondo consumatore la
+  sposterebbe in `packages/contracts`, mai una copia.
+- **Dove entra.** SOLO nel `reason` delle tappe permanenti GIÀ scelte
+  (`engine._costruisci_stops` → `_con_bagliore`): frase deterministica, aggiunta dal motore
+  DOPO `reason_fn` (mai passata all'LLM) e PRIMA della disclosure partner, che resta l'ultima
+  frase: «È un luogo che torna spesso a vivere di <tema>.» (senza articolo, valida per
+  qualunque tema). Non tocca `calcola_score`/`passa_filtri_duri`, non aggiunge, toglie né
+  riordina tappe (`docs/ENGINE_INVARIANTS.md` §3, test-guard AST).
+
+**Cosa resta fuori:** nessuno scoring (il bagliore non ordina nulla); nessun cruscotto
+`index-engineer`; nessuna frase sulle tappe fluttuanti, sulle tappe-evento promosso, né sulle
+tappe sostituite da `adapt_itinerary` (che non legge il ledger); taratura delle costanti;
+somma pesata in SQL (duplicherebbe la funzione pura). Limiti in `docs/LIMITI.md`, voci
+"Il bagliore nel reason" e "La lettura batch del ledger cresce senza limite".
 
 **Forma** (non i numeri — brief §4.1 lo chiede esplicitamente come forma):
 
@@ -636,8 +664,10 @@ posto consultabile insieme alle altre domande della macchina a stati:
    doppio-occhio sul tiro (stessa domanda di `docs/STATE_MACHINE.md` §7 item 16, non
    duplicata in due forme diverse). Il residuo (chi amministra la lista) è dettaglio
    implementativo, ripiegato nel tuning dell'item 3 sotto — non una domanda di design a sé.
-3. **Forma della curva di decadimento (bagliore, §2b) — disegnata, i numeri no**: tasso di
-   decadimento e valore del pavimento restano design puro, nessun valore reale nel codice.
+3. **Forma della curva di decadimento (bagliore, §2b) — REALE, i numeri no**: decadimento
+   esponenziale con pavimento, valori di PARTENZA nel codice (`PAVIMENTO_BAGLIORE=0.05`,
+   `EMIVITA_BAGLIORE_GIORNI=30.0`, `SOGLIA_BAGLIORE=2.0` in `experience_engine.rules`), da
+   calibrare sul pilota, non definitivi.
    **La frizione a cadenza (§3, §4-bis(a) di `docs/STATE_MACHINE.md`) è invece PARZIALMENTE
    CHIUSA nel codice** (stessa classe della soglia N/tolleranza dell'item 1): K battiti
    mancati per sospendere (`K_BATTITI_SOSPENSIONE=2`), l'orizzonte assoluto di dormienza
@@ -653,12 +683,11 @@ posto consultabile insieme alle altre domande della macchina a stati:
 4. ~~**Collocazione del codice del ledger**: `services/urban-memory` o un servizio nuovo
    dedicato?~~ **CHIUSA** — `services/urban-memory` (§1 sopra), decisione presa
    dall'orchestratore al momento dell'implementazione, non da questo documento di design.
-5. **Chi consuma il bagliore** (§2b): `experience-engine` per lo scoring/`reason`,
-   `index-engineer` per un cruscotto, entrambi, nessuno dei due ancora — non deciso, resta
-   un consumatore futuro. Nota per quando si deciderà: `ENGINE_INVARIANTS.md` §3 registra
-   oggi che `Signal.eventi_attivi` non altera mai lo score di un'esperienza permanente —
-   se il bagliore entrasse nello scoring, quell'invariante andrebbe riverificato esplicitamente,
-   non presunto ancora valido.
+5. **Chi consuma il bagliore** (§2b): **PARZIALMENTE CHIUSA** — `experience-engine`, SOLO
+   per il `reason` di tappe già scelte, mai per lo scoring (`ENGINE_INVARIANTS.md` §3:
+   «`calcola_score` non legge mai il bagliore», con test-guard AST). Restano aperti un
+   cruscotto `index-engineer` e un eventuale uso nello scoring: quest'ultimo richiederebbe di
+   riaprire esplicitamente §3, non è un'estensione naturale.
 6. **Finestra temporale degli `:Evento` promossi — REALE, i numeri no**:
    `FRAZIONE_FINESTRA_CADENZA=0.15` è un valore di PARTENZA (stessa classe di
    `K_ORIZZONTE_DORMIENZA`), da calibrare sul pilota. Aperte, non decise: finestra simmetrica

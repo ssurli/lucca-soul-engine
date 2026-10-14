@@ -1660,3 +1660,86 @@ dopo `4cd1637` (nessuno dei 5 file è toccato da quel commit).
 
 Da azzerare in un task dedicato, non ora. Fino ad allora, chi tocca `urban-memory` riporta il
 conteggio mypy prima/dopo (deve restare 15, o scendere).
+
+---
+
+## Il bagliore nel reason: una frase, nessuno scoring — limiti e cosa servirebbe con un canale pubblico
+
+**Introdotto:** bagliore reale (`docs/PROMOZIONE_TRACCIA.md` §2b). **Componenti:**
+`experience_engine.rules` (`peso_traccia`, `bagliore`, `tema_dominante`, `frase_bagliore`),
+`experience_engine.engine._con_bagliore`, `api.main.create_itinerary`,
+`urban_memory.traccia_repository.tracce_per_luoghi`. Revisione `ethics-guardian`: PASS.
+
+### Cosa è garantito oggi
+
+- Il bagliore entra SOLO nel `reason` di tappe permanenti già scelte: score, filtri,
+  selezione e ordine sono bit-identici con e senza tracce (`docs/ENGINE_INVARIANTS.md` §3,
+  test-guard AST + test comportamentali in `services/experience-engine/tests/test_bagliore.py`).
+- La frase è deterministica, aggiunta dal motore dopo `reason_fn` (mai vista dall'LLM), prima
+  della disclosure partner, e dice solo luogo + tema: nessuna descrizione, autore o data (la
+  traccia non li ha).
+- Le tracce commerciali non esistono: lo sweep salta i segnali non ammissibili PRIMA di
+  `deposita` (`urban_memory.canale_fluttuante.sweep_and_fetch_active`), unico scrittore del
+  ledger in produzione.
+- Il bagliore si nutre solo di segnali fluttuanti inseriti dalla CLI fidata, non di visite,
+  click o `behavior_event`: un luogo più visitato non diventa per questo più "vivo", quindi
+  la frase non si auto-alimenta.
+- Fail-closed: ledger irraggiungibile → nessuna frase, itinerario invariato, mai un 500.
+
+### Cosa NON è garantito
+
+- **Prova sociale residua.** «Torna spesso a vivere di X» è una spinta verso luoghi già
+  animati: non cambia le tappe, ma può influire sulla scelta della persona che legge.
+  Rischio giudicato basso (misura vitalità culturale, non folla); da misurare nel pilota
+  sull'indicatore di distribuzione dei flussi, con e senza frase. Mitigazione possibile, non
+  fatta: sopprimere la frase sopra una soglia di affollamento del luogo. La frase non va mai
+  estesa a un ranking, un badge o una lista di "luoghi vivi".
+- **Gonfiabile con un canale pubblico.** Oggi l'unico ingresso è la CLI fidata (tetto 24h,
+  una traccia per segnale, `segnale_id` UNIQUE). Con una sottomissione pubblica basterebbero
+  segnali brevi ripetuti sullo stesso luogo. Prima di aprirla servono: autenticazione e
+  pseudonimo del contributore, rate-limit per contributore e per luogo, conteggio di
+  contributori DISTINTI (oggi il peso somma tutte le tracce senza saturazione), curatela del
+  segnale.
+- **I temi sono stringhe libere** (`--tema`) e finiscono nel `reason` pubblico
+  (`temi_leggibili` sostituisce solo i trattini). Accettabile con la CLI fidata; prima di un
+  canale pubblico serve una whitelist (temi esistenti nel grafo), altrimenti un tema potrebbe
+  contenere un marchio o dati personali.
+- **Costanti non calibrate** (`PAVIMENTO_BAGLIORE=0.05`, `EMIVITA_BAGLIORE_GIORNI=30.0`,
+  `SOGLIA_BAGLIORE=2.0`). Esempio reale su Neon al 2026-10-14: `piazza-anfiteatro` ha 2
+  tracce "musica" del giorno prima, bagliore ≈ 1.96 < 2.0 → nessuna frase.
+- **`adesso` non è iniettabile**: `compose_itinerary` usa `datetime.now(UTC)`, quindi lo
+  stesso input può dare un `reason` diverso attraversando la soglia nel tempo (le funzioni
+  pure in `rules.py` ricevono `adesso` esplicito e sono testate così).
+- **Frase ripetuta**: due esperienze dello stesso luogo nello stesso itinerario ricevono
+  entrambe la frase.
+- **Nessuna frase** sulle tappe fluttuanti, sulle tappe-evento promosso, né sulle tappe
+  sostituite da `adapt_itinerary` (non legge il ledger); le tappe non toccate da un
+  adattamento conservano il `reason` originale, frase compresa.
+- Il ramo Postgres di `tracce_per_luoghi` è eseguito una volta contro Neon in sola lettura
+  (risultato e EXPLAIN corretti), ma i test parametrizzati su Postgres sono saltati in
+  ambiente senza Postgres 16.
+
+### Decisione
+
+Accettato per il pilota. Le difese per un canale pubblico (contributori distinti, whitelist
+dei temi, rate-limit) sono precondizioni di quel canale, non di questa voce.
+
+---
+
+## La lettura batch del ledger cresce senza limite
+
+**Componenti:** `urban_memory.traccia_repository.tracce_per_luoghi`, `api.main.create_itinerary`.
+
+### Cosa NON è garantito
+
+Il ledger delle tracce è immortale (append-only, nessuna cancellazione). A ogni
+`POST /itinerary` il BFF legge TUTTE le tracce dei luoghi di tutti i candidati: il costo
+della lettura e del calcolo cresce linearmente con la storia, senza tetto. Con pochi segnali
+(pilota) è trascurabile; una query indicizzata, nessuna traversata del grafo.
+
+### Decisione
+
+Accettato per il pilota. La via futura — somma pesata calcolata in SQL — oggi duplicherebbe
+la funzione pura `experience_engine.rules.bagliore` in un secondo punto (e un vincolo
+applicato in due punti non è più auditabile): non si fa. Da riconsiderare quando il volume
+del ledger lo renderà necessario, con un solo punto di verità.
