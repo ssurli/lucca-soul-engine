@@ -311,6 +311,7 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   Stesso principio di `soddisfazione`/`nuovi_percorsi` sopra: un buco dichiarato, non un verde
   presunto — dettaglio completo (cosa servirebbe per chiudere il buco, comandi esatti) in
   `docs/LIMITI.md`.
+  **Limite dichiarato**: verificato il 2026-10-14: flutter analyze 0 issue, flutter test 38/38.
   **→ LIMITE TROVATO DURANTE LA VERIFICA MANUALE CONTRO NEON/AURA REALI** (2026-07-21): il gate
   k=10 di `GET /dashboard/*` è periodo-scoped e si è confermato reale (evento sintetico su un
   periodo futuro, "2027-01", isolato dal mese corrente). Ma `recommender.repository.
