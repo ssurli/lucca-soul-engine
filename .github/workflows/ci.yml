@@ -12,22 +12,55 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
-          python-version: "3.11"
+          python-version: "3.13"
 
       - name: Install dependencies
         run: |
           pip install -e packages/contracts -e services/graph -e services/rag -e services/experience-engine -e services/urban-memory -e services/marketplace -e services/recommender -e services/intelligence-index -e services/api
-          pip install pytest ruff httpx
+          pip install pytest ruff httpx "mypy==2.3.0"
 
       - name: Lint (ruff)
         run: ruff check .
+
+      # Gate dichiarato in CLAUDE.md (Convenzioni): ogni pacchetto deve dare Success
+      # con la config di radice. Un pacchetto per invocazione, come in locale.
+      - name: Type check (mypy)
+        shell: bash
+        run: |
+          for pkg in packages/contracts/contracts services/api/api services/experience-engine/experience_engine services/graph/graph services/intelligence-index/intelligence_index services/marketplace/marketplace services/rag/rag services/recommender/recommender services/urban-memory/urban_memory; do
+            echo "::group::mypy $pkg"
+            mypy "$pkg"
+            echo "::endgroup::"
+          done
 
       - name: Test (pytest)
         run: pytest
 
       - name: Test services (graph, experience-engine, urban-memory, marketplace, recommender, intelligence-index, api)
         run: pytest services/graph/tests services/experience-engine/tests services/urban-memory/tests services/marketplace/tests services/recommender/tests services/intelligence-index/tests services/api/tests
+
+  flutter:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/lucca_soul_app
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: "3.47.7"
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
