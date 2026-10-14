@@ -173,5 +173,9 @@ sistema. Non trattarlo come un utente di seconda classe.
 ## Convenzioni
 
 - Python tipizzato, Pydantic v2, `ruff` + `mypy`, `pytest`.
+- **mypy a 0 è un gate per ogni commit.** Ogni pacchetto toccato (`services/*/<pacchetto>`,
+  `packages/contracts/contracts`) deve dare `Success` con
+  `.venv\Scripts\python.exe -m mypy` e la config di radice. Nessun `# type: ignore` per
+  farlo passare.
 - Cypher versionato in `services/graph/cypher/`.
 - Un solo ingresso per l'app: il BFF (`services/api`). L'app non chiama mai i servizi interni.
