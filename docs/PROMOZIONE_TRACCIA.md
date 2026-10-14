@@ -252,9 +252,14 @@ da chi lo consuma.
   Fail-closed: qualunque eccezione → `{}`, nessuna frase, itinerario invariato, mai un 500.
 - **Decisione (motore, funzione pura in `experience_engine/rules.py`).** `peso_traccia(Δt) =
   PAVIMENTO_BAGLIORE + (1 − PAVIMENTO_BAGLIORE) · 0.5^(giorni / EMIVITA_BAGLIORE_GIORNI)`,
-  `bagliore = Σ peso`, `tema_dominante` = tema col peso cumulato maggiore (stesso peso del
-  bagliore, spareggio alfabetico), `frase_bagliore` = None sotto `SOGLIA_BAGLIORE`. Costanti
-  di partenza 0.05 / 30 giorni / 2.0, tuning differito. Collocata nel motore perché è
+  `bagliore = Σ peso` (pavimento incluso, per consumatori futuri). La FRASE decide invece
+  sulla sola parte decadente, `bagliore_recente = Σ (1 − PAVIMENTO_BAGLIORE) ·
+  0.5^(giorni / EMIVITA_BAGLIORE_GIORNI)`: il pavimento, sommato su un ledger immortale,
+  renderebbe "vivo" per sempre un luogo morto da anni. `tema_dominante` = tema con la parte
+  decadente cumulata maggiore (spareggio alfabetico), `frase_bagliore` = None sotto
+  `SOGLIA_BAGLIORE` (su `bagliore_recente`; una traccia da sola non basta mai). Costanti di
+  partenza 0.05 / 30 giorni / 1.5, tuning differito. Una sola frase per luogo per itinerario;
+  `adesso` arriva dall'orologio del server via BFF. Collocata nel motore perché è
   l'unico componente che decide e l'unico consumatore oggi; un secondo consumatore la
   sposterebbe in `packages/contracts`, mai una copia.
 - **Dove entra.** SOLO nel `reason` delle tappe permanenti GIÀ scelte
@@ -666,7 +671,7 @@ posto consultabile insieme alle altre domande della macchina a stati:
    implementativo, ripiegato nel tuning dell'item 3 sotto — non una domanda di design a sé.
 3. **Forma della curva di decadimento (bagliore, §2b) — REALE, i numeri no**: decadimento
    esponenziale con pavimento, valori di PARTENZA nel codice (`PAVIMENTO_BAGLIORE=0.05`,
-   `EMIVITA_BAGLIORE_GIORNI=30.0`, `SOGLIA_BAGLIORE=2.0` in `experience_engine.rules`), da
+   `EMIVITA_BAGLIORE_GIORNI=30.0`, `SOGLIA_BAGLIORE=1.5`, sulla sola parte decadente, in `experience_engine.rules`), da
    calibrare sul pilota, non definitivi.
    **La frizione a cadenza (§3, §4-bis(a) di `docs/STATE_MACHINE.md`) è invece PARZIALMENTE
    CHIUSA nel codice** (stessa classe della soglia N/tolleranza dell'item 1): K battiti
@@ -733,7 +738,10 @@ sabato sera per sei settimane di fila.
    stato cancellato, solo spento. Il bagliore calcolato in lettura, nel frattempo, è
    scivolato verso il pavimento (mai zero): le vecchie tracce sbiadiscono, non si
    seppelliscono — il luogo "ricorda debolmente" anche molto tempo dopo che il fenomeno è
-   tornato silenzioso.
+   tornato silenzioso. Quel ricordo vive SOLO in `bagliore()` (consumatori futuri): la frase
+   nel `reason` decide sulla sola parte decadente, quindi si spegne man mano che le ultime
+   tracce decadono (emivita 30 giorni): con N passaggi dopo l'ultimo sabato la frase resta
+   accesa per circa 30·log2(0.95·N/1.5) giorni (N=10 ~80, N=40 ~140), poi tace per sempre.
 7. **Variante — il Comune vieta i busker con effetto immediato, sabato 4** (invece del
    ritiro graduale sopra): il pattern è ancora `attivo` (nessun battito mancato), ma un
    Promotore con **permesso-freno** (uno dei pochi della lista nominale, non l'intero ruolo)

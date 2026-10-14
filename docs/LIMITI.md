@@ -1668,7 +1668,10 @@ conteggio mypy prima/dopo (deve restare 15, o scendere).
 **Introdotto:** bagliore reale (`docs/PROMOZIONE_TRACCIA.md` §2b). **Componenti:**
 `experience_engine.rules` (`peso_traccia`, `bagliore`, `tema_dominante`, `frase_bagliore`),
 `experience_engine.engine._con_bagliore`, `api.main.create_itinerary`,
-`urban_memory.traccia_repository.tracce_per_luoghi`. Revisione `ethics-guardian`: PASS.
+`urban_memory.traccia_repository.tracce_per_luoghi`. Revisione `ethics-guardian`: PASS
+sull'introduzione; PASS con condizione sulla correzione della soglia (soglia su
+`bagliore_recente`, 1.5) — condizione: dichiarare la finestra logaritmica in N, chiusa qui
+sotto e nel commento di `SOGLIA_BAGLIORE`.
 
 ### Cosa è garantito oggi
 
@@ -1705,13 +1708,37 @@ conteggio mypy prima/dopo (deve restare 15, o scendere).
   canale pubblico serve una whitelist (temi esistenti nel grafo), altrimenti un tema potrebbe
   contenere un marchio o dati personali.
 - **Costanti non calibrate** (`PAVIMENTO_BAGLIORE=0.05`, `EMIVITA_BAGLIORE_GIORNI=30.0`,
-  `SOGLIA_BAGLIORE=2.0`). Esempio reale su Neon al 2026-10-14: `piazza-anfiteatro` ha 2
-  tracce "musica" del giorno prima, bagliore ≈ 1.96 < 2.0 → nessuna frase.
-- **`adesso` non è iniettabile**: `compose_itinerary` usa `datetime.now(UTC)`, quindi lo
-  stesso input può dare un `reason` diverso attraversando la soglia nel tempo (le funzioni
-  pure in `rules.py` ricevono `adesso` esplicito e sono testate così).
-- **Frase ripetuta**: due esperienze dello stesso luogo nello stesso itinerario ricevono
-  entrambe la frase.
+  `SOGLIA_BAGLIORE=1.5`). La soglia decide sulla SOLA parte decadente (`bagliore_recente` =
+  Σ (1 − PAVIMENTO)·0.5^(giorni/EMIVITA)), non su `bagliore()`: una traccia da sola non basta
+  mai (massimo 0.95 < 1.5, relazione fissata da un test), due bastano se hanno meno di
+  ~10 giorni, tre se meno di ~28.
+- **Corretto: i passaggi vecchi accendevano la frase per sempre.** Con la soglia su
+  `bagliore()` (pavimento incluso) il pavimento per traccia si accumulava senza limite nel
+  ledger immortale: 40 tracce di 3 anni fa davano 2.0 = soglia → «torna spesso a vivere di
+  musica», falsa per un luogo morto da anni. Ora contano solo i passaggi recenti, anche per
+  `tema_dominante`; `bagliore()` resta invariata (pavimento incluso, §2b) per consumatori
+  futuri, ma non decide nulla oggi.
+- **La frase può ancora essere falsa, per una finestra limitata.** Con N tracce di età d
+  (dall'ultima) la frase resta accesa finché d ≤ 30·log2(0.95·N/1.5) giorni: N=2 ~10, N=3
+  ~28, N=5 ~50, N=10 ~80, N=40 ~140, N=100 ~179. Un luogo molto frequentato che smette
+  continua a «tornare spesso a vivere» per qualche mese. La finestra cresce di ~30 giorni a
+  ogni raddoppio di N: limitata, non nulla. Correzione possibile, non fatta (non richiesta):
+  nessuna frase se la traccia più recente ha più di X giorni, o un tetto di tracce per luogo
+  nel conteggio.
+- **Accendere la frase costa 2 sottomissioni.** Anche un solo operatore della CLI fidata,
+  con 2 segnali sullo stesso luogo, la accende per ~10 giorni (3 per ~28). Con la soglia
+  precedente (2.0 sul totale) due tracce la accendevano solo per un istante: la durata è un
+  effetto nuovo, voluto dalla scelta di soglia. Non esiste un prezzo che la compri (nessuna
+  violazione di «visibilità non acquistabile»), e la frase non tocca score né ordine.
+- **Le 2 tracce su Neon sono dati di test, non segnali reali.** Le 2 tracce "musica" di
+  `piazza-anfiteatro` del 2026-10-13 (13:08 e 13:10 UTC) vengono dal test di monotonia, non
+  da segnali reali. Con la soglia 1.5 producono la frase fino a circa 10 giorni dopo (≈
+  2026-10-23); il ledger è immortale e NON vengono cancellate: restano nel ledger, e dopo
+  quella data contano solo in `bagliore()` (che non decide nulla).
+- **`adesso`** è letto UNA volta per richiesta dall'orologio del server (`api.deps.get_adesso`)
+  e passato al motore (`compose_itinerary(..., *, adesso=...)`, keyword-only); mai dal body.
+- **Una sola frase per luogo per itinerario**: se due tappe permanenti condividono il
+  `place_id`, la frase va solo sulla prima.
 - **Nessuna frase** sulle tappe fluttuanti, sulle tappe-evento promosso, né sulle tappe
   sostituite da `adapt_itinerary` (non legge il ledger); le tappe non toccate da un
   adattamento conservano il `reason` originale, frase compresa.
