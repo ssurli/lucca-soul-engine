@@ -9,6 +9,9 @@
 >
 > Ambiente di verifica: Python 3.13.7, `.venv` con tutti i pacchetti `lucca-*` in editable
 > mode (stessa lista di `.github/workflows/ci.yml`), `.env` con credenziali reali Aura/Neon.
+>
+> **Aggiornamento 2026-10-14 (solo app Flutter):** `flutter analyze` e `flutter test` rieseguiti
+> sul notebook con Flutter 3.47.7 — vedi §2.2 e §4. Il resto del documento resta al 2026-07-22.
 
 ---
 
@@ -27,7 +30,7 @@
 | 3b | `services/recommender` | ML classico su `BehaviorEvent`: produce una `score_fn` che **penalizza** (mai premia) la concentrazione storica di flusso su un luogo — plug-in opzionale dentro l'Experience Engine, mai un secondo decisore. |
 | 4 | `services/intelligence-index` | Calcola gli 8 indicatori dell'Urban Intelligence Index per periodo, gate di privacy k=10 applicato in un solo punto centrale, mai un valore pubblicato sotto soglia. |
 | 4 | `GET /dashboard/index`, `GET /dashboard/flows` (BFF) | Wrapper HTTP puri sull'Index — rispondono SEMPRE 200, "dato insufficiente" è un campo del body, mai un errore HTTP. |
-| 4 | `apps/lucca_soul_app` — `DashboardScreen` + `scripts/dashboard_viewer.html` | Due viste dello stesso substrato dati (Comune: 8 indicatori; Hotel/Museo: 2 mirati) — una in Flutter (scritta, non ancora compilata in questa sessione), una statica HTML (verificata dal vivo). |
+| 4 | `apps/lucca_soul_app` — `DashboardScreen` + `scripts/dashboard_viewer.html` | Due viste dello stesso substrato dati (Comune: 8 indicatori; Hotel/Museo: 2 mirati) — una in Flutter (analizzata e testata, mai avviata), una statica HTML (verificata dal vivo). |
 
 ---
 
@@ -65,10 +68,12 @@ ogni `services/*/tests`), interprete `.venv`:
 - Gli skip sono TUTTI ambientali, non nascosti: Postgres locale non disponibile in questa
   sessione (persistenza reale testata altrove, contro Neon vero — vedi §3) o percorso
   offline non applicabile quando `DATABASE_URL` è configurato.
-- `apps/lucca_soul_app` (Flutter): 3 file di test scritti (`models_test.dart`,
-  `memory_test.dart`, `itinerary_diff_test.dart`, più `dashboard_models_test.dart` e
-  `periodo_test.dart` per la Wave 4) — **mai eseguiti** in questa sessione (SDK Flutter/Dart
-  assente). Dichiarato in `docs/LIMITI.md`, non contato tra i 451 passati sopra.
+- `apps/lucca_soul_app` (Flutter): 5 file di test (`models_test.dart`, `memory_test.dart`,
+  `itinerary_diff_test.dart`, `dashboard_models_test.dart`, `periodo_test.dart`).
+  Rieseguiti il 2026-10-14 sul notebook, Flutter 3.47.7: **`flutter analyze` 0 issue,
+  `flutter test` 38/38 passati**. Non contati tra i 451 passati sopra (suite separata).
+  **L'app non è mai stata avviata:** mancano le cartelle piattaforma (`android/`, `web/`,
+  `windows/`…), quindi `flutter run` non ha un target — vedi `docs/LIMITI.md`.
 
 ### 2.3 Servizi ed endpoint
 
@@ -174,8 +179,9 @@ di non chiuderlo ora. In una riga ciascuno:
 3. **`nuovi_percorsi`** — oggi riceve sempre `itinerari_periodo=[]` (nessuna persistenza reale
    degli itinerari generati): il valore `0.0` prodotto va letto come "wiring assente", non
    "nessun percorso nuovo osservato".
-4. **Dashboard Flutter (`DashboardScreen`)** — scritta seguendo le convenzioni dell'app, MAI
-   compilata né testata in questa sessione (SDK assente): verificata solo a lettura.
+4. **Dashboard Flutter (`DashboardScreen`)** — passa `flutter analyze` e i test di
+   `dashboard_models_test.dart` (2026-10-14, Flutter 3.47.7), ma come tutta l'app non è mai
+   stata avviata: nessuno l'ha vista girare su uno schermo.
 5. **`behavior_event` senza scoping temporale** — il Recommender legge l'intera tabella senza
    filtro su `ts`: un evento sintetico di verifica (anche datato nel futuro) altera SUBITO il
    ranking reale finché non viene ripulito (`scripts/pulisci_eventi_prefisso.py`).
@@ -261,5 +267,5 @@ esperienza vissuta ──▶ POST /memory (MemoryContribution, consenso obbligat
                    (gate k=10 in UN solo punto — intelligence_index.soglia — mai aggirabile)
                               │
                               ▼
-                   DashboardScreen (Flutter, non compilata) | scripts/dashboard_viewer.html (verificato)
+                   DashboardScreen (Flutter, testata, mai avviata) | scripts/dashboard_viewer.html (verificato)
 ```
