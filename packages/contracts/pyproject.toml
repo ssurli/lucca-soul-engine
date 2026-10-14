@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lucca-contracts"
 version = "0.1.0"
 description = "Lucca Soul Lab — Engine: contratti dati condivisi (Pydantic v2). Single source of verità per tutti i servizi (services/api, experience-engine, graph, rag, recommender, urban-memory, intelligence-index)."
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2",
 ]

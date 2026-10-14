@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lucca-recommender"
 version = "0.1.0"
 description = "Lucca Soul Lab — Engine: Recommender ML (Wave 3b). Impara l'algoritmo dai comportamenti storici (BehaviorEvent), non il modello linguistico: produce una score_fn compatibile con experience_engine.engine.ScoreFn che riusa calcola_score per la pertinenza e la penalizza (mai premia) in proporzione alla concentrazione storica di flusso sul luogo fisico. Nessuna feature commerciale, nessun segnale di notorietà esterna, nessun dato di Urban Memory/Index."
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2",
     "psycopg[binary]>=3",

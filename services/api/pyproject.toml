@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lucca-api"
 version = "0.1.0"
 description = "Lucca Soul Lab — Engine: BFF FastAPI. Unico ingresso per l'app Flutter; orchestra i servizi interni (experience-engine, graph, rag, recommender). Non tocca mai i database direttamente in Wave 0."
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",

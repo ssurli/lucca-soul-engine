@@ -37,7 +37,6 @@ Due modi d'uso, per due situazioni diverse:
 from __future__ import annotations
 
 from collections.abc import Collection, Iterable
-from typing import TypeVar
 
 __all__ = [
     "SOGLIA_MINIMA_PERSONE",
@@ -52,8 +51,6 @@ __all__ = [
 #: esplicito di questa wave). k=10 è il valore concordato col committente:
 #: non è negoziabile a livello di singola funzione indicatore, solo qui.
 SOGLIA_MINIMA_PERSONE: int = 10
-
-_T = TypeVar("_T")
 
 
 def persone_sufficienti(
@@ -104,9 +101,9 @@ def richiedi_soglia(
         raise DatiInsufficientiError(contesto, len(ids), soglia)
 
 
-def valore_se_soglia(
-    person_ids: Collection[str], valore: _T, *, soglia: int = SOGLIA_MINIMA_PERSONE
-) -> _T | None:
+def valore_se_soglia[T](
+    person_ids: Collection[str], valore: T, *, soglia: int = SOGLIA_MINIMA_PERSONE
+) -> T | None:
     """Ritorna `valore` se `person_ids` raggiunge `soglia`, altrimenti `None`
     ("dato insufficiente" esplicito, mai un valore fabbricato). A differenza
     di `richiedi_soglia`, NON interrompe il chiamante: adatto ad aggregazioni

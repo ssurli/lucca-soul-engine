@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lucca-marketplace"
 version = "0.1.0"
 description = "Lucca Soul Lab — Engine: Marketplace (Wave 3a). Prenotazioni (`Booking`) e commissione (`CommissionRecord`, dato CONTABILE registrato SOLO dopo la conferma). Il modello di ricavo dei partner resta un abbonamento di presenza (sì/no, `Partner.abbonamento_attivo`): questo servizio non introduce alcuna asta sulla visibilità, nessun campo 'peso'/'boost'/'priorita_pagata', e non è mai importato da `experience_engine` (né lo importa)."
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2",
     "psycopg[binary]>=3",

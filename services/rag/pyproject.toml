@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lucca-rag"
 version = "0.1.0"
 description = "Lucca Soul Lab — Engine: servizio RAG. Onboarding conversazionale -> EmotionalProfile; generazione del `reason` (spiegabilità). L'LLM dialoga, non decide: la scelta delle tappe resta dell'AI Experience Engine."
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2",
 ]

@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lucca-intelligence-index"
 version = "0.1.0"
 description = "Lucca Soul Lab — Engine: Urban Intelligence Index (Wave 4). Calcola gli 8 indicatori di UrbanIntelligenceIndex per un periodo, da BehaviorEvent (Postgres/Neon), dal grafo (grado semantico, snapshot VICINO) e da Urban Memory (contributi curati). Nessun dato commerciale/partner come input: la salute CULTURALE della città, non quella economica."
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2",
     "psycopg[binary]>=3",

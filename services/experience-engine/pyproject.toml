@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lucca-experience-engine"
 version = "0.1.0"
 description = "Lucca Soul Lab — Engine: AI Experience Engine (il \"brevetto\"). L'UNICO componente che DECIDE: combina candidati del grafo, segnale e vincoli etici in un Itinerary a regole, deterministico e spiegabile. Il grafo propone, la RAG racconta, il recommender ordina: la scelta e i vincoli vivono qui, in un solo punto verificabile."
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2",
 ]

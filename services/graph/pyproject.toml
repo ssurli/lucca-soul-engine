@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "lucca-graph"
 version = "0.1.0"
 description = "Lucca Soul Lab — Engine: Urban Knowledge Graph (Neo4j). Schema, Cypher versionato, seed Lucca e query dei candidati esperienza per l'AI Experience Engine."
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 dependencies = [
     "pydantic>=2",
     "neo4j>=6.2,<7",
