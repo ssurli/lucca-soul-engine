@@ -155,6 +155,8 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
   corretto.
 - Aura Free si cancella dopo 30 giorni: procedura in `services/urban-memory/README.md`,
   sezione "Aura cancellata".
+- Messaggi di commit con virgolette o accenti:
+  git commit -F file_temporaneo, non -m (PS 5.1 spezza gli argomenti con virgolette).
 
 ### C. Gate
 Valgono i passi 3–4 del *Protocollo di orchestrazione*. In più: `ethics-guardian` e
