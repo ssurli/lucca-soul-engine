@@ -8,7 +8,10 @@ importa `experience_engine`, nessuna riga di `experience_engine` importa
 
 **Lato SCRITTURA** (`persist_signal`): persiste un `SegnaleFluttuante`
 (stato `ATTIVO`, il default del contratto — a meno che `valido_fino` sia già
-nel passato). Invocato SOLO da un percorso RISTRETTO/FIDATO provvisorio
+nel passato; durata massima `DURATA_MASSIMA_SEGNALE_MIN` = 1440 min, oltre
+→ `SegnaleDurataEccessivaError`, mai troncamento: la traccia è datata
+`valido_fino`, la durata ne sposta la fase). Invocato SOLO da un percorso
+RISTRETTO/FIDATO provvisorio
 (`python -m urban_memory.submit_signal`) — stesso principio di
 `link_to_graph`, invocato solo da `verify.py`/`link.py`. NON un endpoint
 HTTP pubblico (fase-fiducia, fuori scope — CLAUDE.md, `docs/LIMITI.md`).
@@ -121,16 +124,36 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from typing import Final
 
 from contracts import SegnaleFluttuante, segnale_fluttuante_ammissibile
 
 from .segnale_repository import SegnaleFluttuanteRepository
 from .traccia_repository import TracciaRepository
 
-__all__ = ["PlaceLinkWriter", "persist_signal", "sweep_and_fetch_active"]
+__all__ = [
+    "DURATA_MASSIMA_SEGNALE_MIN",
+    "PlaceLinkWriter",
+    "SegnaleDurataEccessivaError",
+    "persist_signal",
+    "sweep_and_fetch_active",
+]
 
 _logger = logging.getLogger(__name__)
+
+#: Tetto alla durata di validità di un segnale (minuti da ORA a `valido_fino`):
+#: 24h. Dato che la traccia è datata `valido_fino`, la durata sposta in avanti
+#: la fase (giorno/ora) della ricorrenza: il tetto limita lo spostamento.
+#: Valore provvisorio — tuning differito. Applicato SOLO in `persist_signal`
+#: (il contratto resta puro, senza orologio).
+DURATA_MASSIMA_SEGNALE_MIN: Final = 1440
+
+
+class SegnaleDurataEccessivaError(ValueError):
+    """`valido_fino` oltre `DURATA_MASSIMA_SEGNALE_MIN` da ora: rifiutato,
+    mai troncato."""
+
 
 #: Riceve `(place_id, quando)` — `quando` = `valido_fino` UTC del segnale, la
 #: scrittura è monotona (massimo) — e aggiorna `ultima_traccia_il` sul `:Luogo`
@@ -143,15 +166,36 @@ PlaceLinkWriter = Callable[[str, datetime], None]
 
 
 def persist_signal(
-    repo: SegnaleFluttuanteRepository, segnale: SegnaleFluttuante
+    repo: SegnaleFluttuanteRepository,
+    segnale: SegnaleFluttuante,
+    *,
+    now: datetime | None = None,
 ) -> SegnaleFluttuante:
-    """Persiste `segnale` nel canale fluttuante. Nessuna logica di dominio
-    ulteriore qui: il contratto (`packages/contracts.SegnaleFluttuante`) ha
-    già validato tz-awareness di `valido_fino`, `non_commerciale` esplicito,
-    `temi`/`descrizione` non vuoti — e ha già normalizzato `stato=EXPIRED`
-    se `valido_fino` era già nel passato al momento della costruzione.
+    """Persiste `segnale` nel canale fluttuante. Il contratto
+    (`packages/contracts.SegnaleFluttuante`) ha già validato tz-awareness di
+    `valido_fino`, `non_commerciale` esplicito, `temi`/`descrizione` non
+    vuoti — e ha già normalizzato `stato=EXPIRED` se `valido_fino` era già
+    nel passato al momento della costruzione.
+
+    Unico controllo qui: la durata. Se `valido_fino - now` supera
+    `DURATA_MASSIMA_SEGNALE_MIN` (confronto stretto: esattamente il tetto è
+    accettato) solleva `SegnaleDurataEccessivaError` PRIMA di toccare il
+    repository (nessuna riga persistita); mai troncamento. `now`: iniettabile
+    per i test (default `datetime.now(UTC)`).
+
     Invocato SOLO da un percorso ristretto/fidato (vedi il docstring del
-    modulo)."""
+    modulo). Il tetto vive qui, non nel repository: non vale per INSERT
+    diretti nel DB né per chi chiama `repo.persist` direttamente."""
+    istante = now if now is not None else datetime.now(UTC)
+    durata = segnale.valido_fino - istante
+    if durata > timedelta(minutes=DURATA_MASSIMA_SEGNALE_MIN):
+        richiesti = int(durata.total_seconds() // 60)
+        raise SegnaleDurataEccessivaError(
+            f"durata del segnale troppo lunga: richiesti {richiesti} minuti, "
+            f"massimo consentito {DURATA_MASSIMA_SEGNALE_MIN} minuti "
+            f"({DURATA_MASSIMA_SEGNALE_MIN // 60} ore). "
+            "Il segnale non è stato persistito."
+        )
     return repo.persist(segnale)
 
 

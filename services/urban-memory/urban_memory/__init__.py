@@ -81,7 +81,13 @@ tardi, quando il grafo torna raggiungibile.
 from __future__ import annotations
 
 from .audit import audit
-from .canale_fluttuante import PlaceLinkWriter, persist_signal, sweep_and_fetch_active
+from .canale_fluttuante import (
+    DURATA_MASSIMA_SEGNALE_MIN,
+    PlaceLinkWriter,
+    SegnaleDurataEccessivaError,
+    persist_signal,
+    sweep_and_fetch_active,
+)
 from .cestino_repository import (
     CestinoStorageError,
     InMemoryPatternCestinatoRepository,
@@ -206,6 +212,8 @@ __all__ = [
     "PatternAggregato",
     "PlaceLinkWriter",
     "persist_signal",
+    "DURATA_MASSIMA_SEGNALE_MIN",
+    "SegnaleDurataEccessivaError",
     "sweep_and_fetch_active",
     "LUOGO_TRACCIA_WRITE_QUERY_PATH",
     "ultima_traccia_cypher",

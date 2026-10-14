@@ -1597,11 +1597,21 @@ giro indipendente: PASS.
   dello sweep); con la scrittura monotona resta finché una traccia nuova non la supera.
 - **`valido_fino` non è l'occorrenza reale**: è la fine dichiarata della finestra del segnale
   (scelta da chi lo inserisce, `--minuti` in `submit_signal`). Un segnale con finestra lunga
-  data la traccia alla sua fine, non al suo inizio.
-- **Chi inserisce il segnale sceglie la fase.** `valido_fino = now + --minuti`
-  (`submit_signal.py`): l'operatore della CLI fidata decide al minuto quando la traccia sarà
-  datata, quindi può influire sulla regolarità apparente di un pattern e sulla fase della
-  finestra di un `:Evento` — quando compare, mai quanta esposizione ottiene. Retrodatare non
+  data la traccia alla sua fine, non al suo inizio. La durata è però limitata a
+  `DURATA_MASSIMA_SEGNALE_MIN = 1440` minuti (24h), applicato in `persist_signal`: la fase
+  della traccia è spostata in avanti al massimo di 24h rispetto all'inserimento. Oltre il
+  tetto: errore esplicito (`SegnaleDurataEccessivaError`), mai troncamento silenzioso. Il
+  valore è da tarare (tuning differito).
+- **Chi inserisce il segnale sceglie la fase, entro il tetto.** `valido_fino = now + --minuti`
+  (`submit_signal.py`, `--minuti` <= 1440): l'operatore della CLI fidata decide al minuto
+  quando la traccia sarà datata, quindi può influire sulla regolarità apparente di un pattern
+  e sulla fase della finestra di un `:Evento` (al massimo 24h in avanti) — quando compare,
+  mai quanta esposizione ottiene. Il tetto vive in `persist_signal`, non nel repository: NON
+  vale per codice Python che chiami `PostgresSegnaleFluttuanteRepository.persist` direttamente
+  (oggi lo fanno solo i test). Il tetto NON vale nemmeno per INSERT diretti nel DB: nessun CHECK
+  (lo schema non ha una colonna di inserimento, quindi il vincolo non è esprimibile in SQL),
+  e i 2 segnali storici (entrambi `expired`) non hanno un istante di inserimento verificabile,
+  quindi il rispetto del tetto non è accertabile per loro. Retrodatare non
   è possibile dalla CLI (con `--minuti <= 0` il segnale nasce `expired` e non deposita
   nulla); una traccia non può essere datata nel futuro (lo sweep prende solo
   `valido_fino <= adesso`). Con accesso diretto al DB si poteva già scrivere in

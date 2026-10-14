@@ -26,6 +26,8 @@ comando `migrate` separato preventivo.
 `--minuti` (default 60): quanti minuti da ORA il segnale resta valido —
 `valido_fino = datetime.now(UTC) + timedelta(minutes=minuti)`, sempre
 tz-aware (il contratto lo impone: `SegnaleFluttuante._valido_fino_tz_aware`).
+Massimo 1440 minuti (`DURATA_MASSIMA_SEGNALE_MIN`, 24h): oltre, `persist_signal`
+rifiuta con `SegnaleDurataEccessivaError` (mai troncamento) e la CLI esce con 1.
 
 `--commerciale`: dichiara il segnale COMMERCIALE (`non_commerciale=False`).
 Di default un segnale è `non_commerciale=True` — persistibile comunque se
@@ -45,7 +47,11 @@ from datetime import UTC, datetime, timedelta
 from contracts import SegnaleFluttuante
 
 from ._env import database_url_from_env
-from .canale_fluttuante import persist_signal
+from .canale_fluttuante import (
+    DURATA_MASSIMA_SEGNALE_MIN,
+    SegnaleDurataEccessivaError,
+    persist_signal,
+)
 from .migrate import migrate
 from .segnale_repository import PostgresSegnaleFluttuanteRepository, SegnaleStorageError
 
@@ -82,7 +88,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--minuti",
         type=int,
         default=60,
-        help="minuti da ORA a cui il segnale scade (default: 60).",
+        help=(
+            "minuti da ORA a cui il segnale scade (default: 60, massimo: "
+            f"{DURATA_MASSIMA_SEGNALE_MIN}; oltre, il segnale è rifiutato)."
+        ),
     )
     parser.add_argument(
         "--commerciale",
@@ -123,6 +132,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     repo = PostgresSegnaleFluttuanteRepository(dsn)
     try:
         persistito = persist_signal(repo, segnale)
+    except SegnaleDurataEccessivaError as exc:
+        print(f"   FALLITO: {exc}")
+        raise SystemExit(1) from exc
     except SegnaleStorageError as exc:
         print(f"   FALLITO: storage non disponibile/errore — {exc}")
         raise SystemExit(1) from exc
