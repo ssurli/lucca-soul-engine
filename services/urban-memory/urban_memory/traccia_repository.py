@@ -41,6 +41,7 @@ livello applicativo (in-memory) — così un bug futuro che chiamasse
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -152,6 +153,20 @@ class TracciaRepository(Protocol):
         malfunzionamento di questo metodo)."""
         ...
 
+    def tracce_per_luoghi(self, place_ids: Sequence[str]) -> dict[str, list[Traccia]]:
+        """Lettura BATCH del ledger per il bagliore
+        (`docs/PROMOZIONE_TRACCIA.md` §2b): per ogni `place_id` richiesto CHE
+        HA almeno una traccia, la lista delle sue tracce in ordine
+        (`creato_il`, `id`). I `place_id` senza tracce sono ASSENTI dal dict
+        (mai chiavi con lista vuota). `place_ids` vuoto -> `{}` senza toccare
+        il DB; i duplicati in input sono tollerati.
+
+        Solo lettura grezza: nessuna aggregazione, nessun peso (la somma
+        pesata vive in una funzione pura del motore; farla qui la
+        duplicherebbe). Il ledger è immortale e la lettura cresce senza
+        limite col tempo: accettato per il pilota."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # In-memory — percorso di test e di default finché DATABASE_URL non c'è
@@ -208,6 +223,14 @@ class InMemoryTracciaRepository:
             if traccia.place_id == place_id and tuple(sorted(traccia.temi)) == temi_canonici
         ]
         return sorted(occorrenze)
+
+    def tracce_per_luoghi(self, place_ids: Sequence[str]) -> dict[str, list[Traccia]]:
+        richiesti = set(place_ids)
+        risultato: dict[str, list[Traccia]] = {}
+        for traccia in sorted(self._store.values(), key=lambda t: (t.creato_il, t.id)):
+            if traccia.place_id in richiesti:
+                risultato.setdefault(traccia.place_id, []).append(traccia)
+        return risultato
 
 
 # ---------------------------------------------------------------------------
@@ -347,6 +370,30 @@ class PostgresTracciaRepository:
                 f"temi={temi_canonici!r}: {exc}"
             ) from exc
         return [riga["creato_il"] for riga in righe]
+
+    def tracce_per_luoghi(self, place_ids: Sequence[str]) -> dict[str, list[Traccia]]:
+        """UNA sola query per tutti i luoghi richiesti (indice
+        `traccia_luogo_place_id_idx`). Nessuna aggregazione: lettura grezza.
+        Il ledger è immortale e la lettura cresce senza limite (accettato
+        per il pilota)."""
+        if not place_ids:
+            return {}
+        query = (
+            "SELECT id, segnale_id, place_id, temi, creato_il FROM traccia_luogo "
+            "WHERE place_id = ANY(%(place_ids)s) ORDER BY place_id, creato_il, id"
+        )
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, {"place_ids": list(place_ids)})
+                    righe = list(cur.fetchall())
+        except psycopg.Error as exc:
+            raise TracciaStorageError(f"lettura batch fallita su traccia_luogo: {exc}") from exc
+        risultato: dict[str, list[Traccia]] = {}
+        for riga in righe:
+            traccia = _from_row(riga)
+            risultato.setdefault(traccia.place_id, []).append(traccia)
+        return risultato
 
 
 def _from_row(riga: dict[str, Any]) -> Traccia:
