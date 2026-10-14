@@ -1625,7 +1625,18 @@ Accettato. Le tracce storiche non si toccano: il ledger resta append-only.
 
 ---
 
-## mypy: `services/urban-memory` (erano 15) e `services/graph` (erano 67) azzerati; resta `recommender` (1)
+## mypy: azzerato in tutti i servizi (erano 15 in `urban-memory`, 67 in `graph`, 1 in `recommender`)
+
+> **CHIUSA.** mypy 2.3.0, config di radice, un comando per pacchetto: `Success` con 0 errori su
+> `services/{api,experience-engine,graph,intelligence-index,marketplace,rag,recommender,urban-memory}`
+> e `packages/contracts`. Da qui mypy a 0 è un gate per ogni commit (CLAUDE.md, Convenzioni).
+>
+> **`recommender`** (1 errore, `features.py:93`): `Counter[str]` riceveva pesi `float`.
+> `conteggio_pesato_per_esperienza` usa ora `dict[str, float]` con `.get(..., 0.0)`, lo stesso
+> idioma di `pesare_conteggi_grezzi`. Vecchia e nuova versione confrontate su 2000 casi casuali
+> (chiavi, valori, tipi, ordine di inserimento, compresi `skip` a peso 0.0 e tipi sconosciuti):
+> identiche. Nessun test modificato: suite `recommender` 31 passed, 6 skipped.
+> `ethics-guardian`: PASS.
 
 > **CHIUSA per `graph`**: `mypy services/graph/graph` → `Success: no issues found in 9 source
 > files` (mypy 2.3.0, neo4j 6.2.0). Le cause, raggruppate eseguendo mypy e confermate con una
@@ -1648,7 +1659,7 @@ Accettato. Le tracce storiche non si toccano: il ledger resta append-only.
 >
 > Fuori da questo task e preesistenti (misurati su `main` prima della modifica): `ruff check .`
 > segnala 1 `E501` in `tests/test_contracts.py:902`; `ruff format --check services/graph`
-> riformatterebbe 5 file. mypy resta NON un gate a livello di repo finché `recommender` è rosso.
+> riformatterebbe 5 file.
 
 > **CHIUSA per `urban-memory`** (commit `bd4168d`): `mypy services/urban-memory/urban_memory`
 > → `Success: no issues found in 24 source files`. Le due cause reali (verificate con un
@@ -1674,7 +1685,7 @@ Accettato. Le tracce storiche non si toccano: il ledger resta append-only.
 > | Servizio | Errori |
 > |---|---|
 > | `services/graph/graph` | 67 in 4 file: `source.py` 34, `seed_lucca.py` 20, `topology.py` 9, `export_cypher.py` 4 — **azzerati**, vedi il riquadro in testa |
-> | `services/recommender/recommender` | 1: `features.py:93` (`float` assegnato a `int`) |
+> | `services/recommender/recommender` | 1: `features.py:93` (`float` assegnato a `int`) — **azzerato**, vedi il riquadro in testa |
 > | `api`, `experience-engine`, `intelligence-index`, `marketplace`, `rag`, `packages/contracts` | 0 |
 >
 > Il testo sotto è lo stato storico prima delle correzioni.
