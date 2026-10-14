@@ -6,7 +6,7 @@ Neon (un DSN `postgresql://...`), solo locale: dimostra che la persistenza
 funziona davvero, non che un mock si comporta come ci si aspetta. Se i
 binari Postgres 16 (o i permessi per avviarli) non sono disponibili in
 questo ambiente, i test che dipendono da `postgres_cluster` sono saltati con
-`pytest.skip` — non falliscono.
+`pytest.skip` — non falliscono (salvo `REQUIRE_POSTGRES=1`: allora sì).
 """
 
 from __future__ import annotations
@@ -195,9 +195,19 @@ def _start_ephemeral_postgres() -> _EphemeralPostgres | None:
 def postgres_cluster() -> Iterator[_EphemeralPostgres]:
     """Cluster Postgres 16 EFFIMERO condiviso dall'intera sessione di test.
     Salta (`pytest.skip`) tutti i test che lo richiedono se questo ambiente
-    non può avviarlo — non li fa fallire."""
+    non può avviarlo — non li fa fallire. Eccezione: con `REQUIRE_POSTGRES=1`
+    (impostata in CI sul job ubuntu) fa FALLIRE (`pytest.fail`), così uno
+    skip silenzioso non nasconde test di persistenza mai eseguiti."""
     cluster = _start_ephemeral_postgres()
     if cluster is None:
+        if os.environ.get("REQUIRE_POSTGRES") == "1":
+            pytest.fail(
+                "REQUIRE_POSTGRES=1 ma Postgres 16 non si avvia: binari "
+                "initdb/pg_ctl non trovati o avvio fallito. In questo "
+                "ambiente i test di persistenza reale non possono essere "
+                "saltati.",
+                pytrace=False,
+            )
         pytest.skip(
             "Postgres 16 non disponibile in questo ambiente (binari assenti "
             "o permessi insufficienti per avviarlo): test di persistenza "

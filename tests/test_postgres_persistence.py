@@ -6,8 +6,8 @@ GATED: usa il cluster Postgres 16 EFFIMERO già scritto per
 `tests/conftest.py` — vedi lì per i dettagli, non duplicata qui). Se questo
 ambiente non può avviare Postgres 16 (binari assenti, o pytest gira come
 root senza un utente `postgres`/`sudo` per delegargli l'avvio), il test è
-SALTATO (`pytest.skip`), non fallito: la CI resta verde anche su un runner
-senza Postgres.
+SALTATO (`pytest.skip`), non fallito, salvo `REQUIRE_POSTGRES=1` (CI ubuntu):
+allora FALLISCE, per non nascondere uno skip silenzioso.
 
 Criterio verificato: `migrate` -> `submit_contribution` -> `curate_contribution`
 -> una NUOVA `PostgresMemoryRepository`, istanziata sullo STESSO DSN ma come

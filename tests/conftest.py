@@ -3,7 +3,8 @@
 Carica (senza duplicare né modificare) le fixture Postgres effimere già
 scritte per `services/urban-memory/tests/conftest.py` — un cluster Postgres
 16 vero, usa e getta, con `pytest.skip` automatico se i binari non sono
-disponibili in questo ambiente. Le riusiamo qui per
+disponibili in questo ambiente (`pytest.fail` se `REQUIRE_POSTGRES=1`). Le
+riusiamo qui per
 `tests/test_postgres_persistence.py`, che verifica il criterio del
 committente END-TO-END attraverso il BFF/servizio, non solo a livello del
 singolo servizio (già coperto da `services/urban-memory/tests/`).

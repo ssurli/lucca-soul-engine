@@ -7,9 +7,10 @@ di `services/marketplace/tests/conftest.py` (a sua volta ricalcato su
 `services/urban-memory/tests/conftest.py`). Se i binari Postgres 16 (o i
 permessi per avviarli) non sono disponibili in questo ambiente, i test che
 dipendono da `postgres_cluster` sono saltati con `pytest.skip` — non
-falliscono. Versione CORRETTA per Windows: `pwd` (Unix-only) è importato
-SOLO dentro il ramo che lo usa, mai a livello di modulo — un import a
-livello di modulo romperebbe la sola collection della suite su Windows.
+falliscono (salvo `REQUIRE_POSTGRES=1`: allora sì). Versione CORRETTA per
+Windows: `pwd` (Unix-only) è importato SOLO dentro il ramo che lo usa, mai a
+livello di modulo — un import a livello di modulo romperebbe la sola
+collection della suite su Windows.
 """
 
 from __future__ import annotations
@@ -164,9 +165,19 @@ def _start_ephemeral_postgres() -> _EphemeralPostgres | None:
 def postgres_cluster() -> Iterator[_EphemeralPostgres]:
     """Cluster Postgres 16 EFFIMERO condiviso dall'intera sessione di test.
     Salta (`pytest.skip`) tutti i test che lo richiedono se questo ambiente
-    non può avviarlo — non li fa fallire."""
+    non può avviarlo — non li fa fallire. Eccezione: con `REQUIRE_POSTGRES=1`
+    (impostata in CI sul job ubuntu) fa FALLIRE (`pytest.fail`), così uno
+    skip silenzioso non nasconde test di persistenza mai eseguiti."""
     cluster = _start_ephemeral_postgres()
     if cluster is None:
+        if os.environ.get("REQUIRE_POSTGRES") == "1":
+            pytest.fail(
+                "REQUIRE_POSTGRES=1 ma Postgres 16 non si avvia: binari "
+                "initdb/pg_ctl non trovati o avvio fallito. In questo "
+                "ambiente i test di persistenza reale non possono essere "
+                "saltati.",
+                pytrace=False,
+            )
         pytest.skip(
             "Postgres 16 non disponibile in questo ambiente (binari assenti "
             "o permessi insufficienti per avviarlo): test di persistenza "

@@ -11,6 +11,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      # Solo ubuntu: se i binari Postgres mancano (es. nuova immagine runner) i test
+      # di persistenza FALLISCONO invece di essere saltati. Su windows restano skip.
+      REQUIRE_POSTGRES: ${{ startsWith(matrix.os, 'ubuntu') && '1' || '0' }}
     steps:
       - uses: actions/checkout@v6
 
