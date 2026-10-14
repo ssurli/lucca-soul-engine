@@ -128,7 +128,7 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import UTC, date, time
+from datetime import UTC, date, datetime, time
 from typing import Annotated
 
 import contracts
@@ -595,7 +595,20 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     itinerary` risponde comunque 200. Il client non può in alcun modo
     influenzare questa lista (letta SOLO dal grafo, mai dal body della
     richiesta): stessa proprietà di sicurezza già garantita per
-    `eventi_attivi`."""
+    `eventi_attivi`.
+
+    Bagliore di un luogo (docs/PROMOZIONE_TRACCIA.md §2b): dopo il blocco
+    `eventi_promossi` e prima di `compose_itinerary`, il BFF legge dal ledger
+    server-side (`get_traccia_repository().tracce_per_luoghi(place_ids)`, una
+    sola lettura per i `place_id` distinti dei candidati) le tracce dei luoghi
+    candidati e le passa come `tracce_per_luogo` (`place_id -> [(creato_il
+    UTC, temi)]`; un `creato_il` naive è letto come UTC). Il BFF fornisce
+    SOLO i FATTI: nessun calcolo di peso o soglia qui, la decisione (se e
+    quale frase di bagliore) è del motore. Le tracce vengono SOLO dal
+    ledger, mai dal body della richiesta. FAIL-CLOSED come `eventi_promossi`:
+    qualunque errore (ledger irraggiungibile o altro) degrada a
+    `tracce_per_luogo={}` con un warning che riporta solo il tipo
+    dell'errore (nessun PII), itinerario invariato, MAI un 500."""
     source = get_candidate_source()
     candidates = source.candidates(ctx)
     try:
@@ -674,12 +687,35 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
         # (`TracciaStorageError` o altro).
         eventi_promossi = []
 
+    tracce_per_luogo: dict[str, list[tuple[datetime, tuple[str, ...]]]] = {}
+    try:
+        place_ids = sorted({c.experience.place_id for c in candidates})
+        letture = get_traccia_repository().tracce_per_luoghi(place_ids)
+        tracce_per_luogo = {
+            pid: [
+                (
+                    t.creato_il if t.creato_il.tzinfo else t.creato_il.replace(tzinfo=UTC),
+                    tuple(t.temi),
+                )
+                for t in tr
+            ]
+            for pid, tr in letture.items()
+        }
+    except Exception as exc:  # fail-closed come eventi_promossi: nessuna frase,
+        # itinerario invariato, mai un 500. Solo il tipo dell'errore nel log.
+        _log.warning(
+            "tracce_per_luogo non disponibili (%s): bagliore omesso (fail-closed)",
+            type(exc).__name__,
+        )
+        tracce_per_luogo = {}
+
     return compose_itinerary(
         ctx,
         candidates,
         reason_fn=compose_reason,
         score_fn=score_fn,
         eventi_promossi=eventi_promossi,
+        tracce_per_luogo=tracce_per_luogo,
     )
 
 
