@@ -179,7 +179,11 @@ def test_finestra_eventi_non_dipende_da_giorno_settimana() -> None:
         id="exp-aperta-sempre", titolo="Facciata", place_id="luogo-evt", temi=["arte"],
         durata_min=30, al_chiuso=False, accessibile=True,
     )
-    c = [GraphCandidate(experience=base, place_nome="Piazza", connessioni=['Evoca il tema "Arte".'])]
+    c = [
+        GraphCandidate(
+            experience=base, place_nome="Piazza", connessioni=['Evoca il tema "Arte".']
+        )
+    ]
 
     def _con(signal: Signal) -> list[str]:
         ctx = VisitorContext(person_id="p", profile=_profilo(), signal=signal)

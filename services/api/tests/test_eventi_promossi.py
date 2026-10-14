@@ -495,7 +495,8 @@ def test_h_city_tz_assente_o_invalida_nessun_evento_ma_200(
 ) -> None:
     """Passa dal VERO `api.deps.get_city_tz` (CITY_TZ letta da `Settings`),
     non da uno stub: la cache di `get_settings` va azzerata prima e dopo."""
-    from api import deps, settings as api_settings
+    from api import deps
+    from api import settings as api_settings
 
     _stub(
         monkeypatch,
