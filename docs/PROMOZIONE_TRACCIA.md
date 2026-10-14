@@ -257,7 +257,8 @@ da chi lo consuma.
   0.5^(giorni / EMIVITA_BAGLIORE_GIORNI)`: il pavimento, sommato su un ledger immortale,
   renderebbe "vivo" per sempre un luogo morto da anni. `tema_dominante` = tema con la parte
   decadente cumulata maggiore (spareggio alfabetico), `frase_bagliore` = None sotto
-  `SOGLIA_BAGLIORE` (su `bagliore_recente`; una traccia da sola non basta mai). Costanti di
+  `SOGLIA_BAGLIORE` (su `bagliore_recente`; una traccia da sola non basta mai) e None se
+  l'ultima traccia ha più di `ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI = 2 × EMIVITA` giorni. Costanti di
   partenza 0.05 / 30 giorni / 1.5, tuning differito. Una sola frase per luogo per itinerario;
   `adesso` arriva dall'orologio del server via BFF. Collocata nel motore perché è
   l'unico componente che decide e l'unico consumatore oggi; un secondo consumatore la
@@ -741,7 +742,9 @@ sabato sera per sei settimane di fila.
    tornato silenzioso. Quel ricordo vive SOLO in `bagliore()` (consumatori futuri): la frase
    nel `reason` decide sulla sola parte decadente, quindi si spegne man mano che le ultime
    tracce decadono (emivita 30 giorni): con N passaggi dopo l'ultimo sabato la frase resta
-   accesa per circa 30·log2(0.95·N/1.5) giorni (N=10 ~80, N=40 ~140), poi tace per sempre.
+   accesa per circa 30·log2(0.95·N/1.5) giorni, ma MAI oltre
+   `ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI = 2 × EMIVITA_BAGLIORE_GIORNI` (oggi 60) dall'ultima
+   traccia, qualunque sia N; poi tace finché non arriva una nuova traccia.
 7. **Variante — il Comune vieta i busker con effetto immediato, sabato 4** (invece del
    ritiro graduale sopra): il pattern è ancora `attivo` (nessun battito mancato), ma un
    Promotore con **permesso-freno** (uno dei pochi della lista nominale, non l'intero ruolo)

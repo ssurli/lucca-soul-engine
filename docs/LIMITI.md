@@ -1718,13 +1718,35 @@ sotto e nel commento di `SOGLIA_BAGLIORE`.
   musica», falsa per un luogo morto da anni. Ora contano solo i passaggi recenti, anche per
   `tema_dominante`; `bagliore()` resta invariata (pavimento incluso, §2b) per consumatori
   futuri, ma non decide nulla oggi.
-- **La frase può ancora essere falsa, per una finestra limitata.** Con N tracce di età d
-  (dall'ultima) la frase resta accesa finché d ≤ 30·log2(0.95·N/1.5) giorni: N=2 ~10, N=3
-  ~28, N=5 ~50, N=10 ~80, N=40 ~140, N=100 ~179. Un luogo molto frequentato che smette
-  continua a «tornare spesso a vivere» per qualche mese. La finestra cresce di ~30 giorni a
-  ogni raddoppio di N: limitata, non nulla. Correzione possibile, non fatta (non richiesta):
-  nessuna frase se la traccia più recente ha più di X giorni, o un tetto di tracce per luogo
-  nel conteggio.
+- **La frase può ancora essere falsa, per al massimo 60 giorni.** Con N tracce (tutte di
+  età d dall'ultima) la soglia da sola terrebbe accesa la frase finché
+  d ≤ 30·log2(0.95·N/1.5) giorni, una finestra che cresce di ~30 giorni a ogni raddoppio di N.
+  È ora TAGLIATA da `ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI = 2 × EMIVITA_BAGLIORE_GIORNI` (oggi
+  60): se l'ultima traccia del luogo è più vecchia, nessuna frase, a prescindere dal bagliore.
+
+  | N tracce | Finestra della sola soglia | Finestra effettiva (con età massima) |
+  |---|---|---|
+  | 2 | ~10 giorni | ~10 giorni |
+  | 3 | ~28 giorni | ~28 giorni |
+  | 5 | ~50 giorni | ~50 giorni |
+  | 7 | ~64 giorni | 60 giorni |
+  | 10 | ~80 giorni | 60 giorni |
+  | 40 | ~140 giorni | 60 giorni |
+  | 100 | ~179 giorni | 60 giorni |
+
+  Da N ≥ 7 decide l'età massima, non la soglia. Derivata dall'emivita, non indipendente: una
+  sola manopola da tarare; 60 giorni coprono un evento mensile con margine (30 secchi lo
+  farebbero sparire alla vigilia dell'occorrenza successiva). Resta vero che un luogo che
+  smette può «tornare spesso a vivere» fino a 60 giorni dopo l'ultima traccia. Non fatto: un
+  tetto di tracce per luogo nel conteggio.
+- **Il tetto guarda solo l'ULTIMA traccia, non il peso delle vecchie.** Una traccia fresca
+  più molte vecchie può ancora superare la soglia: es. 100 tracce di ~180 giorni fa (≈ 1.48)
+  più UNA di ieri (≈ 0.92) danno ≈ 2.4 > 1.5. Serve comunque una traccia fresca, che oggi
+  nasce solo dalla CLI fidata. La tabella sopra vale per tracce tutte della stessa età.
+- **`creato_il` nel futuro allunga il tetto.** Il tetto usa `max(creato_il)`: una traccia
+  datata nel futuro lo terrebbe aperto fino a quella data + 60 giorni. Oggi `creato_il` è un
+  timbro del server (`valido_fino` calcolato in `submit_signal`, tetto 24h), quindi non è
+  sfruttabile; con un canale pubblico va validato che non sia nel futuro.
 - **Accendere la frase costa 2 sottomissioni.** Anche un solo operatore della CLI fidata,
   con 2 segnali sullo stesso luogo, la accende per ~10 giorni (3 per ~28). Con la soglia
   precedente (2.0 sul totale) due tracce la accendevano solo per un istante: la durata è un
