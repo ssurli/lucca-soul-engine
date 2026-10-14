@@ -176,7 +176,7 @@ funzione, nel README del servizio e qui. Questo limite va riletto prima di:
 
 ---
 
-## La dashboard Flutter (Wave 4) è scritta ma non verificata a compilazione/esecuzione
+## L'app Flutter è analizzata e testata, ma non è mai stata AVVIATA
 
 **Introdotto:** Wave 4. **Componente:** `apps/lucca_soul_app`.
 
@@ -196,65 +196,44 @@ Sono stati scritti anche due file di test (`test/dashboard_models_test.dart`,
 `test/itinerary_diff_test.dart`): nessuna dipendenza da widget/device, solo round-trip JSON e
 funzioni di formattazione data.
 
-Tutto questo è stato prodotto e revisionato **solo per lettura**: struttura, nomi dei campi
-JSON (confrontati riga per riga con `docs/DATA_CONTRACTS.md`), tipi, generics, presenza di
-`const`/`required` dove atteso.
+### Verificato (2026-10-14, notebook, Flutter 3.47.7 / Dart 3.13.5)
 
-### Cosa NON è garantito
+Eseguito da `apps/lucca_soul_app/`:
+- `flutter pub get` — dipendenze risolte, `pubspec.lock` versionato.
+- `flutter analyze` — **No issues found**, con le regole di `analysis_options.yaml`
+  (`strict-casts`, `strict-inference`, `require_trailing_commas`, …). Al primo giro gli issue
+  erano 8 (inferenza di `MaterialPageRoute`, API deprecate `value`/`withOpacity`, un `?.`):
+  corretti senza cambio di comportamento. Le icone `Icons.*` scelte "alla cieca" esistono tutte.
+- `flutter test` — **38 passed**, l'intera suite (`models_test`, `memory_test`,
+  `itinerary_diff_test`, `dashboard_models_test`, `periodo_test`).
 
-Nessuno di questi file è mai stato **compilato**. In questa sessione non era disponibile né
-`flutter` né `dart` (`which flutter`/`which dart` falliscono, `apps/lucca_soul_app` non ha mai
-visto un `flutter pub get`). Di conseguenza:
-- Non è provato che il codice sia sintatticamente valido oltre la lettura manuale: un refuso di
-  generics, un import mancante, un parametro posizionale scambiato per nominale — niente di
-  tutto ciò sarebbe stato per forza notato a occhio.
-- Le icone `Icons.*` usate in `dashboard_screen.dart` sono state scelte "alla cieca", preferendo
-  deliberatamente nomi storici e ben noti dell'icon font Material (es. `Icons.favorite_border`
-  invece di `Icons.favorite_outline`, `Icons.pie_chart_outline` invece di
-  `Icons.scatter_plot_outlined`) proprio perché non era possibile verificare con l'analyzer se un
-  nome esiste nella versione del pacchetto `flutter` risolta dal `pubspec.yaml`.
-- I due nuovi file di test non sono mai stati **eseguiti**: `flutter test` non è mai girato, quindi
-  non c'è nessuna prova che le asserzioni scritte in `dashboard_models_test.dart`/
-  `periodo_test.dart` passino — potrebbero fallire per un dettaglio di formattazione o di
-  arrotondamento mai osservato perché mai fatto girare.
-- `flutter analyze` non è mai girato: le regole di `apps/lucca_soul_app/analysis_options.yaml`
-  (`strict-casts`, `strict-inference`, `require_trailing_commas`, `prefer_const_constructors`) non
-  sono mai state applicate al nuovo codice, solo emulate a mano nella lettura.
+Il codice quindi compila staticamente e i test puri (modelli, round-trip JSON, formattazione
+date) passano.
 
-Questo è esattamente lo stesso tipo di buco di `soddisfazione` sopra (Wave 4,
-`services/intelligence-index`): un dato/uno stato dichiarato assente, non un valore fabbricato per
-sembrare completo. Qui il "valore fabbricato" sarebbe presentare la dashboard come "fatta" quando
-in realtà è "scritta, non provata".
+### Cosa NON è garantito (limite residuo dichiarato)
+
+L'app **non è mai stata avviata**: `apps/lucca_soul_app` non ha cartelle piattaforma (`android/`,
+`ios/`, `web/`, `windows/`, `linux/`, `macos/` assenti), quindi `flutter run` non ha un target.
+Di conseguenza:
+- nessuna schermata (onboarding, itinerario, Cittadino, dashboard) è mai stata **vista** a
+  schermo; layout, overflow e navigazione sono verificati solo per lettura;
+- la chiamata reale dell'app al BFF (`BffClient`) non è mai partita da un'app in esecuzione: i
+  test sono puri, senza widget né rete;
+- non esistono widget test né test di integrazione.
 
 ### Cosa servirebbe per chiudere il buco
 
-1. **Flutter SDK** installato su una macchina (versione compatibile col vincolo
-   `flutter: ">=3.19.0"` di `apps/lucca_soul_app/pubspec.yaml`; `dart >=3.3.0 <4.0.0`).
-2. Nell'ordine, da `apps/lucca_soul_app/`:
-   - `flutter pub get` — risolve le dipendenze (`http`, `flutter_lints`), scarica il toolchain.
-   - `flutter analyze` — verifica statica reale: tipi, generics, regole di
-     `analysis_options.yaml`, nomi di icone/API inesistenti.
-   - `flutter test` — esegue TUTTA la suite (`test/models_test.dart`, `test/memory_test.dart`,
-     `test/itinerary_diff_test.dart`, e i due nuovi `test/dashboard_models_test.dart`,
-     `test/periodo_test.dart`), non solo i file nuovi: un regressione sui modelli esistenti
-     sarebbe altrettanto grave di un test nuovo che fallisce.
-3. **Eventualmente**, un job CI dedicato (es. GitHub Actions, `actions/flutter-action` più
-   `flutter pub get && flutter analyze && flutter test`) che scatti automaticamente ad ogni push
-   che tocca `apps/lucca_soul_app/**`. Senza CI, questo buco si ripresenterà identico ad ogni wave
-   futura che tocchi l'app Flutter in una sessione senza una macchina con Flutter disponibile —
-   una CI lo renderebbe strutturalmente impossibile da ignorare, non affidato alla memoria di chi
-   orchestra la wave successiva.
+1. Generare le cartelle piattaforma (es. `flutter create --platforms=web,windows .` in
+   `apps/lucca_soul_app/`, rivedendo il diff: non deve sovrascrivere `lib/` né `pubspec.yaml`).
+2. Avviare l'app contro il BFF locale e percorrere a mano i flussi principali.
+3. **Eventualmente**, un job CI (`flutter pub get && flutter analyze && flutter test`) su ogni push
+   che tocca `apps/lucca_soul_app/**`, così analisi e test non dipendono dalla macchina di chi
+   orchestra la wave.
 
 ### Decisione
 
-Non verificato ora. Il codice della dashboard resta nello stato "scritto, non compilato" finché
-qualcuno non esegue i tre comandi del punto 2 sopra su una macchina con Flutter SDK installato.
-Questo limite va riletto prima di:
-- presentare la dashboard Comune/Operatori come pronta a un cliente reale (Comune, hotel, museo);
-- aggiungere altro codice sopra `apps/lucca_soul_app/lib/screens/dashboard_screen.dart` e i suoi
-  modelli, che aggraverebbe il buco invece di chiuderlo se non verificato incrementalmente;
-- decidere di investire nel job CI del punto 3, che è l'unico modo per non ripetere questo stesso
-  limite ad ogni wave successiva che tocchi l'app.
+Analisi e test verificati; esecuzione no. Questo limite va riletto prima di presentare l'app o la
+dashboard Comune/Operatori come pronta a un cliente reale (Comune, hotel, museo).
 
 ---
 
@@ -1481,11 +1460,11 @@ Accettato: il ledger copre il futuro, il passato si ripromuove a mano.
   (`occorrenze_per_pattern`, che restituisce tutte le occorrenze per prenderne il massimo).
   Accettato ora; ottimizzazione futura: un metodo batch che restituisca `max(creato_il)` per
   tutti i pattern in una sola query.
-- **App non verificata a compilazione.** La compilazione di `Signal.data` nell'app Flutter
-  (`Signal.orologio`, `signal_presets.dart`) è scritta ma non compilata né testata: `flutter`/
-  `dart` non sono installati (stessa condizione della voce sulla dashboard Flutter). Usa un
-  record con nome (Dart 3; `pubspec.yaml` dichiara `sdk >=3.3.0`). Senza questa parte, in
-  produzione nessun evento comparirebbe mai (fail-closed).
+- **App analizzata e testata, non avviata.** La compilazione di `Signal.data` nell'app Flutter
+  (`Signal.orologio`, `signal_presets.dart`) passa `flutter analyze` e i test `Signal.data` di
+  `models_test.dart` (Flutter 3.47.7, 2026-10-14), ma l'app non è mai stata avviata (vedi la voce
+  sull'app Flutter). Senza questa parte, in produzione nessun evento comparirebbe mai
+  (fail-closed).
 - **Itinerario a cavallo della mezzanotte.** La finestra usa la data della visita al momento
   della composizione (stesso limite "istante singolo" dei filtri duri, voce sugli orari di
   apertura): una tappa-evento collocata dopo la mezzanotte è valutata sulla data d'inizio.
