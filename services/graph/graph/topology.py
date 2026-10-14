@@ -71,11 +71,11 @@ def _all_edges() -> list[Edge]:
     seconda fonte di verità."""
     edges: list[Edge] = []
 
-    for rel in VICINO:
-        edges.append(Edge(rel.da_id, "VICINO", rel.a_id))
+    for vicino in VICINO:
+        edges.append(Edge(vicino.da_id, "VICINO", vicino.a_id))
 
-    for rel in LEGATO_A:
-        edges.append(Edge(rel.artista_id, "LEGATO_A", rel.luogo_id))
+    for legato in LEGATO_A:
+        edges.append(Edge(legato.artista_id, "LEGATO_A", legato.luogo_id))
 
     for esperienza in ESPERIENZE:
         edges.append(Edge(esperienza.id, "SI_SVOLGE_A", esperienza.place_id))
@@ -84,11 +84,11 @@ def _all_edges() -> list[Edge]:
         if esperienza.partner_id is not None:
             edges.append(Edge(esperienza.partner_id, "OFFRE", esperienza.id))
 
-    for rel in BOTTEGA_EVOCA:
-        edges.append(Edge(rel.bottega_id, "EVOCA", rel.tema_id))
+    for evoca in BOTTEGA_EVOCA:
+        edges.append(Edge(evoca.bottega_id, "EVOCA", evoca.tema_id))
 
-    for rel in BOTTEGA_ISPIRATA_DA:
-        edges.append(Edge(rel.bottega_id, "ISPIRATA_DA", rel.artista_id))
+    for ispirata in BOTTEGA_ISPIRATA_DA:
+        edges.append(Edge(ispirata.bottega_id, "ISPIRATA_DA", ispirata.artista_id))
 
     return edges
 

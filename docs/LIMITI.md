@@ -1625,7 +1625,30 @@ Accettato. Le tracce storiche non si toccano: il ledger resta append-only.
 
 ---
 
-## mypy: `services/urban-memory` azzerato (erano 15 errori); restano `graph` (67) e `recommender` (1)
+## mypy: `services/urban-memory` (erano 15) e `services/graph` (erano 67) azzerati; resta `recommender` (1)
+
+> **CHIUSA per `graph`**: `mypy services/graph/graph` → `Success: no issues found in 9 source
+> files` (mypy 2.3.0, neo4j 6.2.0). Le cause, raggruppate eseguendo mypy e confermate con una
+> prova su una copia prima di toccare il repo:
+>
+> | Causa | Errori | Correzione |
+> |---|---|---|
+> | variabile di ciclo `rel` riusata su tipi di relazione diversi (mypy fissa il tipo al primo ciclo) | 46: `seed_lucca.py` 20, `source.py` 13, `topology.py` 9, `export_cypher.py` 4 | un nome per ciclo: `vicino`, `legato`, `evoca`, `ispirata`, `abbonamento` |
+> | `Neo4jCandidateSource._to_candidate(record: object)` | 20 (`index`) | `record: neo4j.Record` |
+> | `params = {"temi": [], ...}` senza annotazione | 1 (`var-annotated`) | `params: dict[str, object]` |
+>
+> `__exit__(self, *exc_info)` di `Neo4jCandidateSource` NON è stato toccato: è il protocollo
+> di contesto di una classe nostra, non ricalca la firma del driver e non produce errori (la
+> causa ipotizzata per analogia con `urban-memory` era sbagliata). Nessun `# type: ignore`,
+> nessun cambio di comportamento, nessun test modificato: suite `graph` 57 passed, `api` 75
+> passed; `ruff check services/graph` pulito. `services/graph/pyproject.toml` passa da
+> `neo4j>=5` a `neo4j>=6.2,<7`: con `record: neo4j.Record` il typing di `graph` dipende dalla
+> superficie dei tipi di neo4j, come in `urban-memory`. `services/intelligence-index` dichiara
+> ancora `neo4j>=5` (riportato, non corretto).
+>
+> Fuori da questo task e preesistenti (misurati su `main` prima della modifica): `ruff check .`
+> segnala 1 `E501` in `tests/test_contracts.py:902`; `ruff format --check services/graph`
+> riformatterebbe 5 file. mypy resta NON un gate a livello di repo finché `recommender` è rosso.
 
 > **CHIUSA per `urban-memory`** (commit `bd4168d`): `mypy services/urban-memory/urban_memory`
 > → `Success: no issues found in 24 source files`. Le due cause reali (verificate con un
@@ -1650,12 +1673,11 @@ Accettato. Le tracce storiche non si toccano: il ledger resta append-only.
 >
 > | Servizio | Errori |
 > |---|---|
-> | `services/graph/graph` | 67 in 4 file: `source.py` 34, `seed_lucca.py` 20, `topology.py` 9, `export_cypher.py` 4 |
+> | `services/graph/graph` | 67 in 4 file: `source.py` 34, `seed_lucca.py` 20, `topology.py` 9, `export_cypher.py` 4 — **azzerati**, vedi il riquadro in testa |
 > | `services/recommender/recommender` | 1: `features.py:93` (`float` assegnato a `int`) |
 > | `api`, `experience-engine`, `intelligence-index`, `marketplace`, `rag`, `packages/contracts` | 0 |
 >
-> mypy resta NON un gate a livello di repo finché `graph` e `recommender` sono rossi. Il testo
-> sotto è lo stato storico prima della correzione.
+> Il testo sotto è lo stato storico prima delle correzioni.
 
 **Introdotto:** constatazione, non una modifica di codice. CLAUDE.md dichiara `ruff` + `mypy`
 come convenzione, ma `mypy` oggi è rosso.

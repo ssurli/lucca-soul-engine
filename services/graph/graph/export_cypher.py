@@ -277,12 +277,12 @@ def build_seed() -> str:
         parts.append(_partner_statement(partner))
 
     parts.append("\n// --- Relazioni: VICINO (Luogo -> Luogo) --------------------------------")
-    for rel in VICINO:
-        parts.append(_vicino_statement(rel))
+    for vicino in VICINO:
+        parts.append(_vicino_statement(vicino))
 
     parts.append("\n// --- Relazioni: LEGATO_A (Artista -> Luogo) ----------------------------")
-    for rel in LEGATO_A:
-        parts.append(_legato_a_statement(rel))
+    for legato in LEGATO_A:
+        parts.append(_legato_a_statement(legato))
 
     parts.append("\n// --- Relazioni: SI_SVOLGE_A (Esperienza -> Luogo), da place_id --------")
     for esperienza in ESPERIENZE:
@@ -303,8 +303,8 @@ def build_seed() -> str:
         "// Non di prossimità: la bottega evoca i temi del suo mestiere anche a\n"
         "// prescindere dall'esperienza specifica che offre."
     )
-    for rel in BOTTEGA_EVOCA:
-        parts.append(_bottega_evoca_statement(rel))
+    for evoca in BOTTEGA_EVOCA:
+        parts.append(_bottega_evoca_statement(evoca))
 
     parts.append(
         "\n// --- Relazioni SEMANTICHE: ISPIRATA_DA (Bottega -> Artista) -------------\n"
@@ -314,8 +314,8 @@ def build_seed() -> str:
         "// È ciò che rende percorribile, per sole connessioni semantiche,\n"
         "// \"Puccini -> ... -> liutaio -> violino\" (vedi graph/topology.py)."
     )
-    for rel in BOTTEGA_ISPIRATA_DA:
-        parts.append(_ispirata_da_statement(rel))
+    for ispirata in BOTTEGA_ISPIRATA_DA:
+        parts.append(_ispirata_da_statement(ispirata))
 
     parts.append(
         "\n// --- Relazioni COMMERCIALI: HA_ABBONAMENTO (Bottega -> Partner) ---------\n"
@@ -323,8 +323,8 @@ def build_seed() -> str:
         "// decide presenza/assenza di un'esperienza tra i candidati, mai il ranking.\n"
         "// Una Bottega senza questa relazione è sempre visibile (default True)."
     )
-    for rel in HA_ABBONAMENTO:
-        parts.append(_ha_abbonamento_statement(rel))
+    for abbonamento in HA_ABBONAMENTO:
+        parts.append(_ha_abbonamento_statement(abbonamento))
 
     return "\n".join(parts) + "\n"
 

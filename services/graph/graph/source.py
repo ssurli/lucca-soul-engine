@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Protocol
 
 from contracts import ExperienceNode, GraphCandidate, Partner, VisitorContext
-from neo4j import Driver, GraphDatabase
+from neo4j import Driver, GraphDatabase, Record
 
 from graph.errors import translate_driver_errors
 from graph.seed_lucca import (
@@ -99,25 +99,25 @@ class SeedCandidateSource:
         self._temi: dict[str, Tema] = {t.id: t for t in TEMI}
 
         self._artisti_per_luogo: dict[str, list[str]] = {}
-        for rel in LEGATO_A:
-            self._artisti_per_luogo.setdefault(rel.luogo_id, []).append(rel.artista_id)
+        for legato in LEGATO_A:
+            self._artisti_per_luogo.setdefault(legato.luogo_id, []).append(legato.artista_id)
 
         self._vicini: dict[str, list[tuple[str, int]]] = {}
-        for rel in VICINO:
-            self._vicini.setdefault(rel.da_id, []).append((rel.a_id, rel.metri))
-            self._vicini.setdefault(rel.a_id, []).append((rel.da_id, rel.metri))
+        for vicino in VICINO:
+            self._vicini.setdefault(vicino.da_id, []).append((vicino.a_id, vicino.metri))
+            self._vicini.setdefault(vicino.a_id, []).append((vicino.da_id, vicino.metri))
 
         # Relazioni SEMANTICHE della bottega (non di prossimità): temi che
         # evoca oltre a quelli della singola esperienza, e artisti il cui
         # lavoro la ispira (con il racconto già in italiano).
         self._bottega_evoca: dict[str, list[str]] = {}
-        for rel in BOTTEGA_EVOCA:
-            self._bottega_evoca.setdefault(rel.bottega_id, []).append(rel.tema_id)
+        for evoca in BOTTEGA_EVOCA:
+            self._bottega_evoca.setdefault(evoca.bottega_id, []).append(evoca.tema_id)
 
         self._bottega_ispirata_da: dict[str, list[tuple[str, str]]] = {}
-        for rel in BOTTEGA_ISPIRATA_DA:
-            self._bottega_ispirata_da.setdefault(rel.bottega_id, []).append(
-                (rel.artista_id, rel.racconto)
+        for ispirata in BOTTEGA_ISPIRATA_DA:
+            self._bottega_ispirata_da.setdefault(ispirata.bottega_id, []).append(
+                (ispirata.artista_id, ispirata.racconto)
             )
 
         # Marketplace (Wave 3a): stato dell'abbonamento del Partner collegato
@@ -283,7 +283,7 @@ class Neo4jCandidateSource:
 
     def candidates(self, ctx: VisitorContext) -> list[GraphCandidate]:
         vicino_a = ctx.luoghi_gia_visti[-1] if ctx.luoghi_gia_visti else None
-        params = {
+        params: dict[str, object] = {
             "temi": [],
             "al_chiuso": None,
             "accessibile": None,
@@ -295,7 +295,7 @@ class Neo4jCandidateSource:
         return [self._to_candidate(record) for record in records]
 
     @staticmethod
-    def _to_candidate(record: object) -> GraphCandidate:
+    def _to_candidate(record: Record) -> GraphCandidate:
         esperienza = ExperienceNode(
             id=record["id"],
             titolo=record["titolo"],

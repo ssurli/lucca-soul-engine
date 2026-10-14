@@ -669,42 +669,44 @@ def _validate() -> None:
                 f"{esperienza.id}: partner_id {esperienza.partner_id!r} non è una Bottega del seed"
             )
 
-    for rel in VICINO:
-        assert rel.da_id in luoghi_ids, f"VICINO: luogo sconosciuto {rel.da_id!r}"
-        assert rel.a_id in luoghi_ids, f"VICINO: luogo sconosciuto {rel.a_id!r}"
-        assert rel.metri >= 0, f"VICINO {rel.da_id}->{rel.a_id}: metri negativi"
-        assert rel.creato_il.tzinfo is not None, (
-            f"VICINO {rel.da_id}->{rel.a_id}: creato_il non timezone-aware "
+    for vicino in VICINO:
+        assert vicino.da_id in luoghi_ids, f"VICINO: luogo sconosciuto {vicino.da_id!r}"
+        assert vicino.a_id in luoghi_ids, f"VICINO: luogo sconosciuto {vicino.a_id!r}"
+        assert vicino.metri >= 0, f"VICINO {vicino.da_id}->{vicino.a_id}: metri negativi"
+        assert vicino.creato_il.tzinfo is not None, (
+            f"VICINO {vicino.da_id}->{vicino.a_id}: creato_il non timezone-aware "
             "(serve per confrontarlo con datetime.now(UTC) negli snapshot)"
         )
 
-    for rel in LEGATO_A:
-        assert rel.artista_id in artisti_ids, f"LEGATO_A: artista sconosciuto {rel.artista_id!r}"
-        assert rel.luogo_id in luoghi_ids, f"LEGATO_A: luogo sconosciuto {rel.luogo_id!r}"
+    for legato in LEGATO_A:
+        assert legato.artista_id in artisti_ids, (
+            f"LEGATO_A: artista sconosciuto {legato.artista_id!r}"
+        )
+        assert legato.luogo_id in luoghi_ids, f"LEGATO_A: luogo sconosciuto {legato.luogo_id!r}"
 
-    for rel in BOTTEGA_EVOCA:
-        assert rel.bottega_id in botteghe_ids, (
-            f"BOTTEGA_EVOCA: bottega sconosciuta {rel.bottega_id!r}"
+    for evoca in BOTTEGA_EVOCA:
+        assert evoca.bottega_id in botteghe_ids, (
+            f"BOTTEGA_EVOCA: bottega sconosciuta {evoca.bottega_id!r}"
         )
-        assert rel.tema_id in temi_ids, f"BOTTEGA_EVOCA: tema sconosciuto {rel.tema_id!r}"
+        assert evoca.tema_id in temi_ids, f"BOTTEGA_EVOCA: tema sconosciuto {evoca.tema_id!r}"
 
-    for rel in BOTTEGA_ISPIRATA_DA:
-        assert rel.bottega_id in botteghe_ids, (
-            f"BOTTEGA_ISPIRATA_DA: bottega sconosciuta {rel.bottega_id!r}"
+    for ispirata in BOTTEGA_ISPIRATA_DA:
+        assert ispirata.bottega_id in botteghe_ids, (
+            f"BOTTEGA_ISPIRATA_DA: bottega sconosciuta {ispirata.bottega_id!r}"
         )
-        assert rel.artista_id in artisti_ids, (
-            f"BOTTEGA_ISPIRATA_DA: artista sconosciuto {rel.artista_id!r}"
+        assert ispirata.artista_id in artisti_ids, (
+            f"BOTTEGA_ISPIRATA_DA: artista sconosciuto {ispirata.artista_id!r}"
         )
-        assert rel.racconto, (
-            f"BOTTEGA_ISPIRATA_DA {rel.bottega_id}->{rel.artista_id}: racconto vuoto"
+        assert ispirata.racconto, (
+            f"BOTTEGA_ISPIRATA_DA {ispirata.bottega_id}->{ispirata.artista_id}: racconto vuoto"
         )
 
-    for rel in HA_ABBONAMENTO:
-        assert rel.bottega_id in botteghe_ids, (
-            f"HA_ABBONAMENTO: bottega sconosciuta {rel.bottega_id!r}"
+    for abbonamento in HA_ABBONAMENTO:
+        assert abbonamento.bottega_id in botteghe_ids, (
+            f"HA_ABBONAMENTO: bottega sconosciuta {abbonamento.bottega_id!r}"
         )
-        assert rel.partner_id in partner_ids, (
-            f"HA_ABBONAMENTO: partner sconosciuto {rel.partner_id!r}"
+        assert abbonamento.partner_id in partner_ids, (
+            f"HA_ABBONAMENTO: partner sconosciuto {abbonamento.partner_id!r}"
         )
     bottega_con_abbonamento = [rel.bottega_id for rel in HA_ABBONAMENTO]
     assert len(bottega_con_abbonamento) == len(set(bottega_con_abbonamento)), (
@@ -744,11 +746,11 @@ def artisti_per_luogo(place_id: str) -> list[Artista]:
 def vicini_di(place_id: str) -> list[tuple[str, int]]:
     """Luoghi vicini a `place_id` (relazione trattata come non orientata)."""
     risultato: list[tuple[str, int]] = []
-    for rel in VICINO:
-        if rel.da_id == place_id:
-            risultato.append((rel.a_id, rel.metri))
-        elif rel.a_id == place_id:
-            risultato.append((rel.da_id, rel.metri))
+    for vicino in VICINO:
+        if vicino.da_id == place_id:
+            risultato.append((vicino.a_id, vicino.metri))
+        elif vicino.a_id == place_id:
+            risultato.append((vicino.da_id, vicino.metri))
     return risultato
 
 
