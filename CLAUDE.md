@@ -38,7 +38,7 @@ Urban Digital Twin
 | Layer | Tecnologia | Dove gira |
 |---|---|---|
 | App | Flutter | locale |
-| BFF / API | FastAPI (Python 3.12, Pydantic v2) | locale |
+| BFF / API | FastAPI (Python 3.13, Pydantic v2) | locale |
 | Urban Knowledge Graph | Neo4j | **Aura (cloud)** — `neo4j+s://` |
 | Transazionale + eventi + memoria | PostgreSQL | **Neon (cloud)** — `sslmode=require` |
 | RAG / Vector store | **pgvector dentro Neon** + Anthropic API | cloud (nessun Docker) |
@@ -162,6 +162,7 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
 Valgono i passi 3–4 del *Protocollo di orchestrazione*. In più: `ethics-guardian` e
 `test-engineer` sono agenti **separati** da chi ha scritto il codice. Un'autovalutazione
 dell'autore non è mai un gate superato.
+Un gate è verde solo se lo è la CI su GitHub: dopo ogni push controlla `gh run list`/`gh run watch`. Un verde locale non basta.
 Dopo una modifica a CLAUDE.md o a .claude/agents/, riavvia la sessione prima di
 delegare: i subagent della sessione corrente lavorano con la versione caricata
 all'avvio. La prova che un subagent ha caricato una versione si legge dal **nome** dei tool
