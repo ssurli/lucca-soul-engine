@@ -21,7 +21,6 @@ ciclo di feedback verso il reranking individuale.
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Iterable
 
 from contracts import BehaviorEvent
@@ -88,10 +87,12 @@ def conteggio_pesato_per_esperienza(eventi: Iterable[BehaviorEvent]) -> dict[str
     (il dettaglio per persona non sopravvive all'aggregazione). Usato da
     `InMemoryBehaviorEventRepository.conteggio_per_esperienza`.
     """
-    pesi: Counter[str] = Counter()
+    pesi: dict[str, float] = {}
     for evento in eventi:
-        pesi[evento.experience_id] += PESI_TIPO.get(evento.tipo, 0.0)
-    return dict(pesi)
+        pesi[evento.experience_id] = pesi.get(evento.experience_id, 0.0) + PESI_TIPO.get(
+            evento.tipo, 0.0
+        )
+    return pesi
 
 
 def pesare_conteggi_grezzi(conteggi: Iterable[tuple[str, str, int]]) -> dict[str, float]:
