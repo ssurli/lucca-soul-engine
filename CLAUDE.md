@@ -143,6 +143,8 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
   basta (i `.cypher` sono letti una volta, istanze in `lru_cache` in `services/api/api/deps.py`).
 - Un comando nativo che esce con 1 **NON** interrompe uno script PS: ogni passo di una procedura
   va seguito da `if ($LASTEXITCODE -ne 0) { throw "..." }`.
+- Se un comando può non esistere, verificalo con `Get-Command` prima di usarlo: un comando
+  inesistente non imposta `$LASTEXITCODE`.
 - TLS dietro proxy aziendale: `pip install pip-system-certs` (vedi `README.md`).
 - PS 5.1 mostra il JSON UTF-8 come Latin-1 (`Ã¨` per `è`): è solo visualizzazione, il dato è
   corretto.
