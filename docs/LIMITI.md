@@ -2062,3 +2062,38 @@ Far arrivare il budget all'adattamento: per esempio un profilo o un `tempo_dispo
 nell'`AdaptRequest`, oppure il budget registrato nell'`Itinerary` composto. Tocca lo stesso
 contratto della voce "Adattamento senza alternativa: silenzio verso il visitatore": un solo
 passaggio da `contract-keeper` per entrambe (candidato in `docs/BUILD_PLAN.md`).
+
+## Configurazione: sei lettori del `.env` invece di uno, e config letta all'import del BFF (APERTO)
+
+**Trovato:** 2026-10-15, nel §0 sull'isolamento dei test da Neon/Aura (verificato con una sonda
+che intercettava `psycopg.connect` e `GraphDatabase.driver` su un ambiente con host `.invalid`).
+**Non corretto:** qui è registrato come debito. I test sono isolati dal `conftest.py` di radice,
+che aggira entrambi i punti senza toccare il codice di produzione.
+
+### Cosa è stato verificato
+
+- **Sei lettori indipendenti del `.env`.** `services/api/api/settings.py` (`ENV_FILE`, sostituibile)
+  e cinque moduli con il percorso cablato su `_repo_root() / ".env"`: `graph/env.py`,
+  `urban_memory/_env.py`, `intelligence_index/_env.py`, `marketplace/_env.py`,
+  `recommender/_env.py`. Ognuno ha il proprio parser minimale. Il BFF stesso legge la
+  configurazione da due di essi: `api.settings` per `api.deps`, `intelligence_index._env` per
+  `intelligence_index.deps` (dashboard).
+- **Config letta all'import.** `services/api/api/main.py` chiama `get_settings()` a livello di
+  modulo (in fondo al file): basta importare `api.main` perché le `Settings` finiscano in
+  `lru_cache`. Nei test questo accade durante la collection, prima di qualunque fixture: per questo
+  l'isolamento sta in `pytest_configure`, non solo in una fixture autouse.
+
+### Conseguenze
+
+- Isolare un processo dal `.env` richiede di conoscere e sostituire sei punti; un settimo lettore
+  aggiunto in futuro non sarebbe coperto dal `conftest.py` di radice finché qualcuno non lo
+  aggiunge lì.
+- I sottoprocessi lanciati dai test non ereditano le sostituzioni di percorso: vedono il `.env`
+  reale e restano isolati solo se ricevono variabili fittizie esplicite (oggi lo fanno
+  `test_cli_help_senza_connessioni.py`; `test_import_senza_cli_precaricate.py` importa soltanto).
+
+### Direzione possibile (non decisa)
+
+Un solo lettore condiviso (per esempio in `packages/contracts` o un piccolo pacchetto di
+configurazione) con un unico punto di override, e lettura delle `Settings` alla prima richiesta
+invece che all'import di `api.main`.

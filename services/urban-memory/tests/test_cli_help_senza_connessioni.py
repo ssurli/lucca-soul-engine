@@ -1,4 +1,4 @@
-"""`--help` di `verify` e `migrate` stampa l'aiuto ed esce con 0 SENZA leggere
+"""`--help` di `verify`, `migrate` e `audit` stampa l'aiuto ed esce con 0 SENZA leggere
 l'ambiente e SENZA aprire connessioni (prima di questa correzione queste CLI
 non avevano argparse: `--help` le eseguiva davvero contro il database).
 
@@ -15,9 +15,9 @@ import sys
 from types import ModuleType
 
 import pytest
-from urban_memory import migrate, verify
+from urban_memory import audit, migrate, verify
 
-MODULI = ["verify", "migrate"]
+MODULI = ["verify", "migrate", "audit"]
 
 _ENV_FITTIZIO = {
     "DATABASE_URL": "postgresql://u:p@127.0.0.1:1/x",
@@ -31,6 +31,7 @@ _ENV_FITTIZIO = {
 def test_help_in_sottoprocesso_esce_0_senza_connessioni(nome: str) -> None:
     env = {**os.environ, **_ENV_FITTIZIO}
     env["PYTHONPATH"] = os.pathsep.join(p for p in sys.path if p)
+    env["PYTHONIOENCODING"] = "utf-8"  # help di audit con accenti: la pipe Windows usa cp1252
     risultato = subprocess.run(
         [sys.executable, "-m", f"urban_memory.{nome}", "--help"],
         capture_output=True,
@@ -48,7 +49,7 @@ def test_help_in_sottoprocesso_esce_0_senza_connessioni(nome: str) -> None:
     assert "===" not in risultato.stdout
 
 
-@pytest.mark.parametrize("modulo", [verify, migrate], ids=MODULI)
+@pytest.mark.parametrize("modulo", [verify, migrate, audit], ids=MODULI)
 def test_help_in_process_non_tocca_ambiente_ne_connessioni(
     modulo: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -58,16 +59,16 @@ def test_help_in_process_non_tocca_ambiente_ne_connessioni(
     for nome in ("database_url_from_env", "migrate", "neo4j_config_from_env", "place_id_esempio"):
         if hasattr(modulo, nome):
             monkeypatch.setattr(modulo, nome, _vietato)
-    if modulo is verify:
-        monkeypatch.setattr(verify.Neo4jMemoryLinker, "from_env", classmethod(_vietato))
-        monkeypatch.setattr(verify, "PostgresMemoryRepository", _vietato)
+    if modulo is verify or modulo is audit:
+        monkeypatch.setattr(modulo.Neo4jMemoryLinker, "from_env", classmethod(_vietato))
+        monkeypatch.setattr(modulo, "PostgresMemoryRepository", _vietato)
 
     with pytest.raises(SystemExit) as exc_info:
         modulo.main(["--help"])
     assert exc_info.value.code == 0
 
 
-@pytest.mark.parametrize("modulo", [verify, migrate], ids=MODULI)
+@pytest.mark.parametrize("modulo", [verify, migrate, audit], ids=MODULI)
 def test_main_senza_argomenti_non_legge_sys_argv(
     modulo: ModuleType, monkeypatch: pytest.MonkeyPatch
 ) -> None:

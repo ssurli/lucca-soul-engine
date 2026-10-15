@@ -1,6 +1,9 @@
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra --strict-markers --strict-config"
+markers = [
+    "reale: test che usa l'infrastruttura reale (Neon/Aura); saltato salvo LSL_TEST_REALE=1, mai in CI",
+]
 
 [tool.ruff]
 line-length = 100

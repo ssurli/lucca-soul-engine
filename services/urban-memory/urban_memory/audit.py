@@ -38,6 +38,7 @@ correggere `riguarda` a mano).
 from __future__ import annotations
 
 import argparse
+import sys
 from collections.abc import Callable, Sequence
 
 from contracts import MemoryContribution
@@ -111,8 +112,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
 
-def main(argv: Sequence[str] | None = None) -> None:
-    _build_parser().parse_args(argv)  # solo -h/--help per ora: valida prima di toccare l'ambiente
+def main(argv: Sequence[str] = ()) -> None:
+    # Parsing PRIMA di ogni lettura d'ambiente o connessione: --help esce con 0.
+    # Default `()` (non `None`): senza argomenti non si legge il sys.argv del processo.
+    _build_parser().parse_args(list(argv))
 
     print("=== Audit — contributi curati con target invalidi nel grafo ===\n")
     dsn = database_url_from_env()
@@ -131,4 +134,4 @@ def main(argv: Sequence[str] | None = None) -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

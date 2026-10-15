@@ -20,11 +20,14 @@ def test_env_file_predefinito_e_la_radice_del_repo(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     monkeypatch.chdir(tmp_path)
-    radice = api_settings.ENV_FILE.parent
-    assert api_settings.ENV_FILE.name == ".env"
+    # Il conftest di radice ripunta `ENV_FILE` a un file inesistente (isolamento
+    # dall'infrastruttura reale): il default del codice e' `RADICE_REPO / ".env"`.
+    predefinito = api_settings.RADICE_REPO / ".env"
+    radice = predefinito.parent
+    assert predefinito.name == ".env"
     assert (radice / "CLAUDE.md").is_file()
     assert (radice / "services").is_dir()
-    assert api_settings.ENV_FILE.is_absolute()
+    assert predefinito.is_absolute()
 
 
 def test_stessi_valori_da_cwd_diversi(
