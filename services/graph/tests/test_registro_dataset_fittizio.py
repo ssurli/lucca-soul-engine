@@ -12,7 +12,7 @@ from datetime import time
 from pathlib import Path
 
 import pytest
-from contracts import EmotionalProfile, ExperienceNode, Signal, VisitorContext
+from contracts import EmotionalProfile, ExperienceNode, Signal, VisitorContext, VocabolarioTemi
 from graph import loader
 from graph.dataset import Bottega, DatasetCitta, Luogo, Tema
 from graph.export_cypher import build_seed
@@ -56,6 +56,13 @@ def _dataset_finto(nome: str = SLUG) -> DatasetCitta:
         vicino=[],
         vicino_epoca=LUCCA.vicino_epoca,
         id_esempio_memoria="zz-bottega-inventata",
+        vocabolario=VocabolarioTemi(
+            contemplativi=frozenset({"zz-tema"}),
+            arte=frozenset(),
+            insoliti=frozenset(),
+            verde=frozenset({"zz-tema"}),
+            bambini="zz-tema",
+        ),
     )
 
 
@@ -141,3 +148,25 @@ def test_statements_del_seed_predefinito_non_vuoto() -> None:
     stmts = loader._statements(file_seed_cypher(LUCCA))
     assert len(stmts) > 10
     assert all(s and not s.startswith("//") for s in stmts)
+
+
+def test_vocabolario_lucca_e_quello_storico_del_motore() -> None:
+    v = LUCCA.vocabolario
+    assert v.contemplativi == frozenset({"silenzio", "verde", "panorama", "romanico"})
+    assert v.arte == frozenset({"arte", "puccini", "musica", "romanico", "liuteria"})
+    assert v.insoliti == frozenset({"artigianato", "liuteria", "romanico", "medievale"})
+    assert v.verde == frozenset({"verde", "panorama"})
+    assert v.bambini == "con-bambini"
+
+
+def test_vocabolario_con_id_inesistente_e_rifiutato() -> None:
+    base = _dataset_finto()
+    voc = VocabolarioTemi(
+        contemplativi=frozenset({"zz-tema", "zz-fantasma"}),
+        arte=frozenset(),
+        insoliti=frozenset(),
+        verde=frozenset(),
+        bambini="zz-assente",
+    )
+    with pytest.raises(ValueError, match="zz-assente, zz-fantasma"):
+        DatasetCitta(**{**base.__dict__, "vocabolario": voc})

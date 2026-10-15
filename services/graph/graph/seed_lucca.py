@@ -60,7 +60,7 @@ Marketplace (Wave 3a — `docs/DATA_CONTRACTS.md` §5):
 
 from __future__ import annotations
 
-from contracts import ExperienceNode, Partner
+from contracts import ExperienceNode, Partner, VocabolarioTemi
 
 from graph.dataset import VICINO_EPOCA_PREDEFINITA as _EPOCA
 from graph.dataset import (
@@ -651,6 +651,17 @@ def _validate() -> None:
 
 _validate()
 
+# Vocabolario tematico di Lucca: sono i vocabolari che prima vivevano nel
+# motore (experience-engine), spostati qui perché dato della città. Ogni id
+# deve essere un `Tema` di questo dataset (verificato da `DatasetCitta`).
+VOCABOLARIO = VocabolarioTemi(
+    contemplativi=frozenset({"silenzio", "verde", "panorama", "romanico"}),
+    arte=frozenset({"arte", "puccini", "musica", "romanico", "liuteria"}),
+    insoliti=frozenset({"artigianato", "liuteria", "romanico", "medievale"}),
+    verde=frozenset({"verde", "panorama"}),
+    bambini="con-bambini",
+)
+
 DATASET = DatasetCitta(
     nome="lucca",
     luoghi=LUOGHI,
@@ -667,6 +678,7 @@ DATASET = DatasetCitta(
     vicino_epoca=VICINO_EPOCA,
     # Bottega reale del seed: bersaglio della memoria di prova di Urban Memory.
     id_esempio_memoria="liuteria-lucchese",
+    vocabolario=VOCABOLARIO,
 )
 
 

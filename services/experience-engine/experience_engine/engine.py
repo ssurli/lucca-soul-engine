@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 from datetime import UTC, date, datetime, time, timedelta
+from functools import partial
 
 from contracts import (
     EmotionalProfile,
@@ -30,6 +31,7 @@ from contracts import (
     SegnaleFluttuante,
     Signal,
     VisitorContext,
+    VocabolarioTemi,
     rientra_in_orario,
 )
 
@@ -253,6 +255,8 @@ def _costruisci_stops(
     reason_fn: ReasonFn,
     tracce_per_luogo: dict[str, list[tuple[datetime, tuple[str, ...]]]] | None = None,
     adesso: datetime | None = None,
+    *,
+    vocabolario: VocabolarioTemi,
 ) -> list[ItineraryStop]:
     """Trasforma i candidati scelti in tappe con orari progressivi e `reason`.
 
@@ -271,14 +275,17 @@ def _costruisci_stops(
     Una sola frase per luogo per itinerario: se più tappe condividono lo
     stesso `place_id` (fino a 2, `_seleziona_tappe`), la frase va SOLO sulla
     prima in ordine di tappa; le successive dello stesso luogo hanno il
-    `reason` senza frase (ripeterla sarebbe rumore, non spiegazione)."""
+    `reason` senza frase (ripeterla sarebbe rumore, non spiegazione).
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio."""
     stops: list[ItineraryStop] = []
     orario = signal.ora
     luoghi_con_frase: set[str] = set()
     for i, cand in enumerate(selezionati):
         if i > 0:
             orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
-        segnali = segnali_rilevanti(cand, signal)
+        segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
         reason = reason_fn(cand, profile, segnali)
         place_id = cand.experience.place_id
         if tracce_per_luogo and adesso is not None and place_id not in luoghi_con_frase:
@@ -338,6 +345,8 @@ def _aggiungi_tappe_fluttuanti(
     candidates: list[GraphCandidate],
     profile: EmotionalProfile,
     signal: Signal,
+    *,
+    vocabolario: VocabolarioTemi,
 ) -> list[ItineraryStop]:
     """Aggiunge, IN CODA, le tappe fluttuanti pertinenti — mai una
     sostituzione (le tappe 1-4 restano esattamente come composte). Rispetta
@@ -347,8 +356,13 @@ def _aggiungi_tappe_fluttuanti(
     Ogni tappa fluttuante costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessuna
     `distanza_m` nota per un segnale, stessa stima prudente già usata
     altrove per una distanza sconosciuta) + `DURATA_TAPPA_FLUTTUANTE_MIN`
-    (una tappa "breve" per definizione)."""
-    pertinenti = segnali_fluttuanti_pertinenti(signal.eventi_attivi, profile)
+    (una tappa "breve" per definizione).
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio."""
+    pertinenti = segnali_fluttuanti_pertinenti(
+        signal.eventi_attivi, profile, vocabolario=vocabolario
+    )
     if not pertinenti:
         return stops
 
@@ -496,6 +510,7 @@ def _aggiungi_tappe_eventi_promossi(
     ora_inizio: time | None = None,
     *,
     data_visita: date | None,
+    vocabolario: VocabolarioTemi,
 ) -> list[ItineraryStop]:
     """Aggiunge, IN CODA, le tappe degli eventi promossi pertinenti — mai una
     sostituzione (le tappe 1-4 e le eventuali tappe fluttuanti restano
@@ -523,8 +538,13 @@ def _aggiungi_tappe_eventi_promossi(
     `data_visita` (`ctx.signal.data`) è keyword-only e SENZA default: decide
     la finestra temporale (`rules.eventi_promossi_pertinenti`, fail-closed se
     `None` — nessuna tappa-evento) e il giorno atteso raccontato nel
-    `reason`. Nessun chiamante può dimenticarla in silenzio."""
-    pertinenti = eventi_promossi_pertinenti(eventi_promossi, profile, data_visita)
+    `reason`. Nessun chiamante può dimenticarla in silenzio.
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio."""
+    pertinenti = eventi_promossi_pertinenti(
+        eventi_promossi, profile, data_visita, vocabolario=vocabolario
+    )
     if not pertinenti or data_visita is None:
         return stops
 
@@ -582,6 +602,7 @@ def compose_itinerary(
     tracce_per_luogo: dict[str, list[tuple[datetime, tuple[str, ...]]]] | None = None,
     *,
     adesso: datetime | None = None,
+    vocabolario: VocabolarioTemi,
 ) -> Itinerary:
     """Compone un `Itinerary` a regole per il contesto dato.
 
@@ -637,12 +658,17 @@ def compose_itinerary(
     avere un solo orologio iniettabile. Se `None` e `tracce_per_luogo` non è
     vuoto, è `datetime.now(UTC)`, calcolato UNA volta qui e passato giù.
 
+    `vocabolario` (keyword-only, obbligatorio): vocabolario dei temi della
+    città, dato del dataset; il motore non ne ha uno proprio.
+    Inoltrato a ogni regola che legge i temi; se `score_fn` è `None` lo score
+    di default è `rules.calcola_score` legato a questo vocabolario.
+
     Determinismo totale: a parità di score l'ordine è per `experience_id`.
     Due profili diversi possono produrre itinerari diversi — è il criterio
     d'accettazione centrale della wave.
     """
     fn = reason_fn or _fallback_reason
-    score = score_fn or calcola_score
+    score: ScoreFn = score_fn or partial(calcola_score, vocabolario=vocabolario)
     profile = ctx.profile
 
     ammessi = [
@@ -654,8 +680,18 @@ def compose_itinerary(
     selezionati = _seleziona_tappe(valutati, profile.tempo_disponibile_min)
     if adesso is None and tracce_per_luogo:
         adesso = datetime.now(UTC)
-    stops = _costruisci_stops(selezionati, profile, ctx.signal, fn, tracce_per_luogo, adesso)
-    stops = _aggiungi_tappe_fluttuanti(stops, candidates, profile, ctx.signal)
+    stops = _costruisci_stops(
+        selezionati,
+        profile,
+        ctx.signal,
+        fn,
+        tracce_per_luogo,
+        adesso,
+        vocabolario=vocabolario,
+    )
+    stops = _aggiungi_tappe_fluttuanti(
+        stops, candidates, profile, ctx.signal, vocabolario=vocabolario
+    )
     stops = _aggiungi_tappe_eventi_promossi(
         stops,
         candidates,
@@ -663,6 +699,7 @@ def compose_itinerary(
         eventi_promossi or [],
         ctx.signal.ora,
         data_visita=ctx.signal.data,
+        vocabolario=vocabolario,
     )
 
     return Itinerary(
@@ -681,6 +718,8 @@ def _migliore_alternativa(
     richiede_accessibile: bool,
     solo_al_chiuso: bool,
     max_affollamento: float,
+    *,
+    vocabolario: VocabolarioTemi,
 ) -> GraphCandidate | None:
     """Migliore candidato non già usato che rispetta i vincoli del segnale.
 
@@ -700,7 +739,10 @@ def _migliore_alternativa(
     sempre in composizione iniziale. Non è un problema introdotto da questo
     fix (preesisteva anche prima degli orari di apertura): documentato in
     `docs/LIMITI.md`, non corretto qui perché fuori dallo scope di questa
-    verifica (che riguardava gli orari, non l'abbonamento)."""
+    verifica (che riguardava gli orari, non l'abbonamento).
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio."""
     ammessi: list[GraphCandidate] = []
     for c in candidates:
         e = c.experience
@@ -717,7 +759,12 @@ def _migliore_alternativa(
         ammessi.append(c)
     if not ammessi:
         return None
-    ammessi.sort(key=lambda c: (-calcola_score(c, profile, signal), c.experience.id))
+    ammessi.sort(
+        key=lambda c: (
+            -calcola_score(c, profile, signal, vocabolario=vocabolario),
+            c.experience.id,
+        )
+    )
     return ammessi[0]
 
 
@@ -728,6 +775,8 @@ def adapt_itinerary(
     profile: EmotionalProfile | None = None,
     reason_fn: ReasonFn | None = None,
     adapt_reason_fn: AdaptReasonFn | None = None,
+    *,
+    vocabolario: VocabolarioTemi,
 ) -> Itinerary:
     """Riscrive SOLO ciò che il nuovo segnale tocca.
 
@@ -741,6 +790,9 @@ def adapt_itinerary(
     Le tappe non toccate restano IDENTICHE, `reason` compreso. Se nulla va
     riscritto, l'itinerario originale è restituito invariato
     (`adattato_da_segnale` resta False).
+
+    `vocabolario` (keyword-only, obbligatorio): vocabolario dei temi della
+    città, dato del dataset; il motore non ne ha uno proprio.
     """
     fn = reason_fn or _fallback_reason
     adapt_fn = adapt_reason_fn or _fallback_adapt_reason
@@ -783,6 +835,7 @@ def adapt_itinerary(
             richiede_accessibile=richiede_accessibile,
             solo_al_chiuso=piove_e_aperto,
             max_affollamento=SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
+            vocabolario=vocabolario,
         )
         if alt is None:
             nuovi_candidati.append(_marca_reason(cand, stop.reason))
@@ -806,7 +859,9 @@ def adapt_itinerary(
     if not cambiato:
         return itinerary
 
-    stops = _ricostruisci_stops(nuovi_candidati, profilo_effettivo, signal, fn)
+    stops = _ricostruisci_stops(
+        nuovi_candidati, profilo_effettivo, signal, fn, vocabolario=vocabolario
+    )
     return Itinerary(
         person_id=itinerary.person_id,
         stops=stops,
@@ -893,9 +948,14 @@ def _ricostruisci_stops(
     profile: EmotionalProfile,
     signal: Signal,
     reason_fn: ReasonFn,
+    *,
+    vocabolario: VocabolarioTemi,
 ) -> list[ItineraryStop]:
     """Ricalcola orari progressivi conservando i `reason` già decisi (tappe
-    intatte o sostituite) e componendo quelli mancanti via `reason_fn`."""
+    intatte o sostituite) e componendo quelli mancanti via `reason_fn`.
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio."""
     stops: list[ItineraryStop] = []
     orario = signal.ora
     for i, cand in enumerate(correnti):
@@ -903,7 +963,8 @@ def _ricostruisci_stops(
             orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
         reason = getattr(cand, "reason_deciso", None)
         if not reason:
-            reason = reason_fn(cand, profile, segnali_rilevanti(cand, signal))
+            segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
+            reason = reason_fn(cand, profile, segnali)
         # Disclosure in coda (idempotente: non duplica se già presente, es.
         # nelle tappe non toccate che conservano il reason originale).
         reason = _con_disclosure(reason, cand)

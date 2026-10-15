@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from contracts import ExperienceNode, Partner
+from contracts import ExperienceNode, Partner, VocabolarioTemi
 
 # `VICINO` non porta uno storico reale: il seed non ha mai registrato QUANDO
 # un arco di prossimità fisica è stato scritto. Tutti gli archi dei dataset
@@ -134,6 +134,9 @@ class DatasetCitta:
     bersaglio di una memoria di prova: la validazione ne garantisce
     l'esistenza (un id inesistente riprodurrebbe il bug delle memorie
     orfane).
+
+    `vocabolario` è il dato della città con cui il motore legge i `Tema`
+    (gruppi tematici): ogni suo id deve essere l'id di un `Tema` del dataset.
     """
 
     nome: str
@@ -150,6 +153,7 @@ class DatasetCitta:
     vicino: list[RelazioneVicino]
     vicino_epoca: datetime
     id_esempio_memoria: str
+    vocabolario: VocabolarioTemi
 
     def __post_init__(self) -> None:
         ids_validi = {b.id for b in self.botteghe} | {luogo.id for luogo in self.luoghi}
@@ -157,4 +161,17 @@ class DatasetCitta:
             raise ValueError(
                 f"dataset {self.nome!r}: id_esempio_memoria {self.id_esempio_memoria!r} "
                 "non è una Bottega né un Luogo del dataset"
+            )
+        id_vocabolario = {
+            *self.vocabolario.contemplativi,
+            *self.vocabolario.arte,
+            *self.vocabolario.insoliti,
+            *self.vocabolario.verde,
+            self.vocabolario.bambini,
+        }
+        mancanti = sorted(id_vocabolario - {t.id for t in self.temi})
+        if mancanti:
+            raise ValueError(
+                f"dataset {self.nome!r}: il vocabolario cita id che non sono Tema "
+                f"del dataset: {', '.join(mancanti)}"
             )

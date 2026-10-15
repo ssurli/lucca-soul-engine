@@ -33,9 +33,11 @@ def ambiente_isolato(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterato
         monkeypatch.delenv(var, raising=False)
     get_settings.cache_clear()
     deps.get_candidate_source.cache_clear()
+    deps.get_dataset.cache_clear()
     yield
     get_settings.cache_clear()
     deps.get_candidate_source.cache_clear()
+    deps.get_dataset.cache_clear()
 
 
 def test_senza_city_seed_usa_il_dataset_predefinito() -> None:
@@ -52,6 +54,7 @@ def test_city_seed_invalido_fallisce_in_modo_leggibile(
     monkeypatch.setenv("CITY_SEED", "nessuna-citta")
     get_settings.cache_clear()
     deps.get_candidate_source.cache_clear()
+    deps.get_dataset.cache_clear()
     with pytest.raises(ValueError, match="nessuna_citta"):
         deps.get_candidate_source()
 
@@ -69,6 +72,7 @@ def test_city_seed_passa_per_settings_al_registro(
     monkeypatch.setenv("CITY_SEED", "qualche-slug")
     get_settings.cache_clear()
     deps.get_candidate_source.cache_clear()
+    deps.get_dataset.cache_clear()
     deps.get_candidate_source()
     assert visti == ["qualche-slug"]
 
@@ -88,5 +92,6 @@ def test_city_seed_invalido_fallisce_anche_con_credenziali_neo4j(
     monkeypatch.setenv("CITY_SEED", "nessuna-citta")
     get_settings.cache_clear()
     deps.get_candidate_source.cache_clear()
+    deps.get_dataset.cache_clear()
     with pytest.raises(ValueError, match="nessuna_citta"):
         deps.get_candidate_source()

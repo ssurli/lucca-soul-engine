@@ -34,6 +34,7 @@ from .models import (
     StatoSegnaleFluttuante,
     UrbanIntelligenceIndex,
     VisitorContext,
+    VocabolarioTemi,
     rientra_in_orario,
     segnale_fluttuante_ammissibile,
 )
@@ -68,6 +69,7 @@ __all__ = [
     "StatoSegnaleFluttuante",
     "UrbanIntelligenceIndex",
     "VisitorContext",
+    "VocabolarioTemi",
     "rientra_in_orario",
     "segnale_fluttuante_ammissibile",
 ]

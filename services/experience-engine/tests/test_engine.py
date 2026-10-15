@@ -16,7 +16,9 @@ from __future__ import annotations
 
 import inspect
 import re
+from collections.abc import Callable
 from datetime import UTC, date, datetime, time
+from functools import partial
 
 import pytest
 from contracts import (
@@ -32,6 +34,7 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine import adapt_itinerary, compose_itinerary, rules
+from graph.seed_lucca import VOCABOLARIO
 from graph.source import SeedCandidateSource
 from rag.reasons import adapt_reason, compose_reason
 
@@ -67,8 +70,8 @@ def test_due_profili_diversi_danno_itinerari_diversi(source: SeedCandidateSource
     )
     ctx1 = _ctx(contemplativo)
     ctx2 = _ctx(amante_arte)
-    it1 = compose_itinerary(ctx1, _candidati(source, ctx1), compose_reason)
-    it2 = compose_itinerary(ctx2, _candidati(source, ctx2), compose_reason)
+    it1 = compose_itinerary(ctx1, _candidati(source, ctx1), compose_reason, vocabolario=VOCABOLARIO)
+    it2 = compose_itinerary(ctx2, _candidati(source, ctx2), compose_reason, vocabolario=VOCABOLARIO)
 
     ids1 = [s.experience_id for s in it1.stops]
     ids2 = [s.experience_id for s in it2.stops]
@@ -83,8 +86,8 @@ def test_determinismo_stesso_input_stesso_output(source: SeedCandidateSource) ->
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    a = compose_itinerary(ctx, cands, compose_reason)
-    b = compose_itinerary(ctx, cands, compose_reason)
+    a = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
+    b = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     assert [s.experience_id for s in a.stops] == [s.experience_id for s in b.stops]
     assert [s.arrivo for s in a.stops] == [s.arrivo for s in b.stops]
 
@@ -99,12 +102,14 @@ def test_adapt_pioggia_sostituisce_le_tappe_allaperto(source: SeedCandidateSourc
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    base = compose_itinerary(ctx, cands, compose_reason)
+    base = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     al_chiuso = {c.experience.id: c.experience.al_chiuso for c in cands}
     assert any(not al_chiuso[s.experience_id] for s in base.stops)  # c'erano tappe aperte
 
     pioggia = Signal(meteo="pioggia", affollamento={}, stanchezza=0.2, ora=time(10, 0))
-    adattato = adapt_itinerary(base, pioggia, cands, profile, compose_reason, adapt_reason)
+    adattato = adapt_itinerary(
+        base, pioggia, cands, profile, compose_reason, adapt_reason, vocabolario=VOCABOLARIO,
+    )
 
     assert adattato.adattato_da_segnale is True
     assert all(al_chiuso[s.experience_id] for s in adattato.stops)
@@ -122,12 +127,14 @@ def test_adapt_affollamento_sostituisce_la_tappa_in_quel_luogo(
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    base = compose_itinerary(ctx, cands, compose_reason)
+    base = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     per_id = {c.experience.id: c for c in cands}
     place0 = per_id[base.stops[0].experience_id].experience.place_id
 
     crowd = Signal(meteo="sereno", affollamento={place0: 0.9}, stanchezza=0.2, ora=time(10, 0))
-    adattato = adapt_itinerary(base, crowd, cands, profile, compose_reason, adapt_reason)
+    adattato = adapt_itinerary(
+        base, crowd, cands, profile, compose_reason, adapt_reason, vocabolario=VOCABOLARIO,
+    )
 
     assert adattato.adattato_da_segnale is True
     assert adattato.stops[0].experience_id != base.stops[0].experience_id
@@ -146,9 +153,11 @@ def test_adapt_senza_segnale_rilevante_restituisce_invariato(
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    base = compose_itinerary(ctx, cands, compose_reason)
+    base = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     # Stesso meteo sereno, niente affollamento, poca stanchezza: nulla da riscrivere.
-    invariato = adapt_itinerary(base, _sereno(), cands, profile, compose_reason, adapt_reason)
+    invariato = adapt_itinerary(
+        base, _sereno(), cands, profile, compose_reason, adapt_reason, vocabolario=VOCABOLARIO,
+    )
     assert invariato is base
     assert invariato.adattato_da_segnale is False
 
@@ -160,9 +169,11 @@ def test_adapt_stanchezza_accorcia_litinerario(source: SeedCandidateSource) -> N
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    base = compose_itinerary(ctx, cands, compose_reason)
+    base = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     stanco = Signal(meteo="sereno", affollamento={}, stanchezza=0.9, ora=time(10, 0))
-    adattato = adapt_itinerary(base, stanco, cands, profile, compose_reason, adapt_reason)
+    adattato = adapt_itinerary(
+        base, stanco, cands, profile, compose_reason, adapt_reason, vocabolario=VOCABOLARIO,
+    )
     if len(base.stops) > 1:
         assert len(adattato.stops) < len(base.stops)
         assert adattato.adattato_da_segnale is True
@@ -178,7 +189,7 @@ def test_ogni_tappa_ha_reason_non_vuoto(source: SeedCandidateSource) -> None:
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    it = compose_itinerary(ctx, cands, compose_reason)
+    it = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     assert it.stops
     for s in it.stops:
         assert s.reason and s.reason.strip()
@@ -191,7 +202,7 @@ def test_reason_fallback_interno_senza_rag(source: SeedCandidateSource) -> None:
         tempo_disponibile_min=120,
     )
     ctx = _ctx(profile)
-    it = compose_itinerary(ctx, _candidati(source, ctx))
+    it = compose_itinerary(ctx, _candidati(source, ctx), vocabolario=VOCABOLARIO)
     assert it.stops
     for s in it.stops:
         assert s.reason and s.reason.strip().endswith(".")
@@ -209,7 +220,7 @@ def test_accessibilita_richiesta_esclude_le_non_accessibili(
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    it = compose_itinerary(ctx, cands, compose_reason)
+    it = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     acc = {c.experience.id: c.experience.accessibile for c in cands}
     assert it.stops
     assert all(acc[s.experience_id] for s in it.stops)
@@ -225,12 +236,14 @@ def test_adapt_non_degrada_accessibilita_con_profilo_assente(
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    base = compose_itinerary(ctx, cands, compose_reason)
+    base = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     per_id = {c.experience.id: c for c in cands}
     # Affolla tutti i luoghi delle tappe attuali per forzare sostituzioni.
     affollamento = {per_id[s.experience_id].experience.place_id: 0.95 for s in base.stops}
     crowd = Signal(meteo="sereno", affollamento=affollamento, stanchezza=0.1, ora=time(10, 0))
-    adattato = adapt_itinerary(base, crowd, cands, None, compose_reason, adapt_reason)
+    adattato = adapt_itinerary(
+        base, crowd, cands, None, compose_reason, adapt_reason, vocabolario=VOCABOLARIO,
+    )
     acc = {c.experience.id: c.experience.accessibile for c in cands}
     assert all(acc[s.experience_id] for s in adattato.stops)
 
@@ -293,7 +306,9 @@ def test_scoring_penalizza_affollamento() -> None:
     )
     vuoto = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
     pieno = Signal(meteo="sereno", affollamento={"luogo": 0.7}, stanchezza=0.0, ora=time(10, 0))
-    assert rules.calcola_score(cand, profile, pieno) < rules.calcola_score(cand, profile, vuoto)
+    assert rules.calcola_score(
+        cand, profile, pieno, vocabolario=VOCABOLARIO,
+    ) < rules.calcola_score(cand, profile, vuoto, vocabolario=VOCABOLARIO)
 
 
 def _candidato(
@@ -339,8 +354,10 @@ def test_scoring_invariante_a_partner_prezzo_attribuzione() -> None:
         partner_id="bottega-1", prezzo_eur=25.0,
         attribuzione="Offerta da Bottega Rossi, bottega di liuteria.",
     )
-    assert rules.calcola_score(neutro, profile, signal) == rules.calcola_score(
-        commerciale, profile, signal
+    assert rules.calcola_score(
+        neutro, profile, signal, vocabolario=VOCABOLARIO,
+    ) == rules.calcola_score(
+        commerciale, profile, signal, vocabolario=VOCABOLARIO
     )
 
 
@@ -361,7 +378,7 @@ def test_scoring_bit_identico_con_abbonamento_e_prenotabilita_variati() -> None:
 
     # Candidato di riferimento: nessun partner, nessun prezzo.
     riferimento = _candidato()
-    score_riferimento = rules.calcola_score(riferimento, profile, signal)
+    score_riferimento = rules.calcola_score(riferimento, profile, signal, vocabolario=VOCABOLARIO)
 
     # Ogni combinazione commerciale possibile deve dare lo STESSO identico score.
     varianti = [
@@ -378,7 +395,9 @@ def test_scoring_bit_identico_con_abbonamento_e_prenotabilita_variati() -> None:
     ]
     for variante in varianti:
         # `==` su float è voluto: pretendiamo identità bit-a-bit, non prossimità.
-        assert rules.calcola_score(variante, profile, signal) == score_riferimento
+        assert rules.calcola_score(
+            variante, profile, signal, vocabolario=VOCABOLARIO,
+        ) == score_riferimento
 
 
 def test_partner_non_attivo_escluso_dai_filtri_duri() -> None:
@@ -523,6 +542,7 @@ def test_adapt_non_sostituisce_con_unalternativa_chiusa_in_quellorario() -> None
     risultato = adapt_itinerary(
         itinerario, segnale_pioggia, candidati, profile,
         reason_fn=compose_reason, adapt_reason_fn=adapt_reason,
+        vocabolario=VOCABOLARIO,
     )
 
     assert risultato.stops[0].experience_id == "exp-originale", (
@@ -547,20 +567,22 @@ def test_reason_contiene_attribuzione_ma_score_invariato() -> None:
     senza_attr = _candidato()
 
     # Score invariato.
-    assert rules.calcola_score(con_attr, profile, signal) == rules.calcola_score(
-        senza_attr, profile, signal
+    assert rules.calcola_score(
+        con_attr, profile, signal, vocabolario=VOCABOLARIO,
+    ) == rules.calcola_score(
+        senza_attr, profile, signal, vocabolario=VOCABOLARIO
     )
 
     # Il reason finale contiene la disclosure, in coda.
     ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
-    it = compose_itinerary(ctx, [con_attr], compose_reason)
+    it = compose_itinerary(ctx, [con_attr], compose_reason, vocabolario=VOCABOLARIO)
     assert len(it.stops) == 1
     reason = it.stops[0].reason
     assert attribuzione in reason
     assert reason.strip().endswith(attribuzione)
 
     # Senza attribuzione, il reason non la inventa.
-    it2 = compose_itinerary(ctx, [senza_attr], compose_reason)
+    it2 = compose_itinerary(ctx, [senza_attr], compose_reason, vocabolario=VOCABOLARIO)
     assert "Offerta da" not in it2.stops[0].reason
 
 
@@ -580,8 +602,14 @@ def test_compose_senza_score_fn_uguale_al_default_esplicito(
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    implicito = compose_itinerary(ctx, cands, compose_reason)
-    esplicito = compose_itinerary(ctx, cands, compose_reason, score_fn=rules.calcola_score)
+    implicito = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
+    esplicito = compose_itinerary(
+        ctx,
+        cands,
+        compose_reason,
+        score_fn=partial(rules.calcola_score, vocabolario=VOCABOLARIO),
+        vocabolario=VOCABOLARIO,
+    )
     assert [s.experience_id for s in implicito.stops] == [
         s.experience_id for s in esplicito.stops
     ]
@@ -603,10 +631,12 @@ def test_score_fn_iniettato_cambia_realmente_lordine(source: SeedCandidateSource
     def score_invertito(
         cand: GraphCandidate, prof: EmotionalProfile, sig: Signal
     ) -> float:
-        return -rules.calcola_score(cand, prof, sig)
+        return -rules.calcola_score(cand, prof, sig, vocabolario=VOCABOLARIO)
 
-    default = compose_itinerary(ctx, cands, compose_reason)
-    invertito = compose_itinerary(ctx, cands, compose_reason, score_fn=score_invertito)
+    default = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
+    invertito = compose_itinerary(
+        ctx, cands, compose_reason, score_fn=score_invertito, vocabolario=VOCABOLARIO,
+    )
 
     ids_default = [s.experience_id for s in default.stops]
     ids_invertito = [s.experience_id for s in invertito.stops]
@@ -625,7 +655,7 @@ def test_score_fn_forza_una_tappa_specifica_in_testa(source: SeedCandidateSource
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    default = compose_itinerary(ctx, cands, compose_reason)
+    default = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     # Scegli un candidato ammesso che NON è già la prima tappa del default.
     ammessi = [
         c for c in cands
@@ -639,7 +669,9 @@ def test_score_fn_forza_una_tappa_specifica_in_testa(source: SeedCandidateSource
     ) -> float:
         return 1.0 if cand.experience.id == bersaglio.experience.id else 0.0
 
-    forzato = compose_itinerary(ctx, cands, compose_reason, score_fn=score_favorisce)
+    forzato = compose_itinerary(
+        ctx, cands, compose_reason, score_fn=score_favorisce, vocabolario=VOCABOLARIO,
+    )
     assert forzato.stops[0].experience_id == bersaglio.experience.id
 
 
@@ -674,7 +706,9 @@ def test_score_fn_non_puo_salvare_candidato_escluso_dal_filtro_duro(
     ) -> float:
         return 1.0 if cand.experience.id == "exp-inaccessibile" else 0.0
 
-    it = compose_itinerary(ctx, cands, compose_reason, score_fn=score_massimo_allescluso)
+    it = compose_itinerary(
+        ctx, cands, compose_reason, score_fn=score_massimo_allescluso, vocabolario=VOCABOLARIO,
+    )
     assert it.stops
     ids = [s.experience_id for s in it.stops]
     assert "exp-inaccessibile" not in ids
@@ -694,12 +728,14 @@ def test_disclosure_non_duplicata_in_adapt() -> None:
     signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.2, ora=time(10, 0))
     cand = _candidato(attribuzione=attribuzione)
     ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
-    base = compose_itinerary(ctx, [cand], compose_reason)
+    base = compose_itinerary(ctx, [cand], compose_reason, vocabolario=VOCABOLARIO)
     # Segnale che tocca un ALTRO luogo: questa tappa resta intatta.
     crowd = Signal(
         meteo="sereno", affollamento={"altro-luogo": 0.9}, stanchezza=0.2, ora=time(10, 0)
     )
-    adattato = adapt_itinerary(base, crowd, [cand], profile, compose_reason, adapt_reason)
+    adattato = adapt_itinerary(
+        base, crowd, [cand], profile, compose_reason, adapt_reason, vocabolario=VOCABOLARIO,
+    )
     reason = adattato.stops[0].reason if adattato.stops else base.stops[0].reason
     assert reason.count(attribuzione) == 1
 
@@ -743,7 +779,7 @@ def test_segnale_fluttuante_coerente_aggiunge_tappa_con_reason() -> None:
         eventi_attivi=[_violinista()],
     )
     ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
-    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason)
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason, vocabolario=VOCABOLARIO)
 
     assert len(it.stops) == 2
     tappa = it.stops[-1]
@@ -769,7 +805,7 @@ def test_segnale_fluttuante_non_coerente_non_aggiunge_tappa() -> None:
         meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0), eventi_attivi=[segnale]
     )
     ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
-    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason)
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason, vocabolario=VOCABOLARIO)
 
     assert len(it.stops) == 1
     assert all(not s.experience_id.startswith("fluttuante-") for s in it.stops)
@@ -787,7 +823,7 @@ def test_segnale_fluttuante_commerciale_mai_aggiunto_anche_se_coerente() -> None
         eventi_attivi=[_violinista(non_commerciale=False)],
     )
     ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
-    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason)
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason, vocabolario=VOCABOLARIO)
 
     assert len(it.stops) == 1
     assert all(not s.experience_id.startswith("fluttuante-") for s in it.stops)
@@ -809,14 +845,16 @@ def test_segnale_fluttuante_non_altera_score_esperienze_permanenti() -> None:
     )
 
     # `==` su float è voluto: bit-identico, non prossimità.
-    assert rules.calcola_score(cand, profile, signal_senza) == rules.calcola_score(
-        cand, profile, signal_con
+    assert rules.calcola_score(
+        cand, profile, signal_senza, vocabolario=VOCABOLARIO,
+    ) == rules.calcola_score(
+        cand, profile, signal_con, vocabolario=VOCABOLARIO
     )
 
     ctx_senza = VisitorContext(person_id="p", profile=profile, signal=signal_senza)
     ctx_con = VisitorContext(person_id="p", profile=profile, signal=signal_con)
-    it_senza = compose_itinerary(ctx_senza, [cand], compose_reason)
-    it_con = compose_itinerary(ctx_con, [cand], compose_reason)
+    it_senza = compose_itinerary(ctx_senza, [cand], compose_reason, vocabolario=VOCABOLARIO)
+    it_con = compose_itinerary(ctx_con, [cand], compose_reason, vocabolario=VOCABOLARIO)
     reali_con = [s for s in it_con.stops if not s.experience_id.startswith("fluttuante-")]
 
     assert [s.experience_id for s in it_senza.stops] == [s.experience_id for s in reali_con]
@@ -837,7 +875,9 @@ def test_segnale_fluttuante_non_forzato_senza_budget() -> None:
     )
     ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
     # L'unico candidato reale (30 min) consuma TUTTO il budget da solo.
-    it = compose_itinerary(ctx, [_candidato_arte(durata_min=30)], compose_reason)
+    it = compose_itinerary(
+        ctx, [_candidato_arte(durata_min=30)], compose_reason, vocabolario=VOCABOLARIO,
+    )
 
     assert len(it.stops) == 1
     assert not it.stops[0].experience_id.startswith("fluttuante-")
@@ -852,7 +892,7 @@ def test_eventi_attivi_vuoto_di_default_non_aggiunge_nulla() -> None:
     )
     signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0))
     ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
-    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason)
+    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason, vocabolario=VOCABOLARIO)
 
     assert len(it.stops) == 1
     assert all(not s.experience_id.startswith("fluttuante-") for s in it.stops)
@@ -880,7 +920,7 @@ def test_tappa_fluttuante_sopravvive_invariata_a_un_adapt_successivo() -> None:
     )
     cand = _candidato_arte()
     ctx = VisitorContext(person_id="p", profile=profile, signal=signal)
-    base = compose_itinerary(ctx, [cand], compose_reason)
+    base = compose_itinerary(ctx, [cand], compose_reason, vocabolario=VOCABOLARIO)
     assert base.stops[-1].experience_id == "fluttuante-violinista-1"
 
     alternativa = ExperienceNode(
@@ -893,7 +933,13 @@ def test_tappa_fluttuante_sopravvive_invariata_a_un_adapt_successivo() -> None:
         meteo="sereno", affollamento={"luogo-fisso": 0.9}, stanchezza=0.0, ora=time(10, 0)
     )
     adattato = adapt_itinerary(
-        base, crowd, [cand, cand_alt], profile, compose_reason, adapt_reason
+        base,
+        crowd,
+        [cand, cand_alt],
+        profile,
+        compose_reason,
+        adapt_reason,
+        vocabolario=VOCABOLARIO,
     )
 
     assert adattato.adattato_da_segnale is True  # prova che una VERA ricostruzione è avvenuta
@@ -958,7 +1004,11 @@ def test_evento_promosso_pertinente_aggiunge_tappa_in_coda() -> None:
         signal=_signal_evento(),
     )
     it = compose_itinerary(
-        ctx, [_candidato_arte()], compose_reason, eventi_promossi=[_evento_musica()]
+        ctx,
+        [_candidato_arte()],
+        compose_reason,
+        eventi_promossi=[_evento_musica()],
+        vocabolario=VOCABOLARIO,
     )
 
     assert len(it.stops) == 2
@@ -987,7 +1037,9 @@ def test_evento_promosso_non_pertinente_non_aggiunge_tappa() -> None:
         person_id="p", profile=profile,
         signal=_signal_evento(),
     )
-    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason, eventi_promossi=[evento])
+    it = compose_itinerary(
+        ctx, [_candidato_arte()], compose_reason, eventi_promossi=[evento], vocabolario=VOCABOLARIO,
+    )
 
     assert len(it.stops) == 1
     assert all(not s.experience_id.startswith("evento-") for s in it.stops)
@@ -997,7 +1049,11 @@ def test_evento_promosso_non_pertinente_non_aggiunge_tappa() -> None:
     ctx_affine = VisitorContext(person_id="p", profile=_profilo_arte(), signal=_signal_evento())
     evento_affine = evento.model_copy(update={"temi": ["musica"]})
     it_affine = compose_itinerary(
-        ctx_affine, [_candidato_arte()], compose_reason, eventi_promossi=[evento_affine]
+        ctx_affine,
+        [_candidato_arte()],
+        compose_reason,
+        eventi_promossi=[evento_affine],
+        vocabolario=VOCABOLARIO,
     )
     assert it_affine.stops[-1].experience_id == evento.id
 
@@ -1014,6 +1070,7 @@ def test_evento_promosso_non_forzato_senza_budget() -> None:
     it = compose_itinerary(
         ctx, [_candidato_arte(durata_min=30)], compose_reason,
         eventi_promossi=[_evento_musica()],
+        vocabolario=VOCABOLARIO,
     )
 
     assert len(it.stops) == 1
@@ -1033,9 +1090,13 @@ def test_eventi_promossi_none_o_vuoto_lascia_itinerario_identico(
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
 
-    senza = compose_itinerary(ctx, cands, compose_reason)
-    none_esplicito = compose_itinerary(ctx, cands, compose_reason, eventi_promossi=None)
-    vuoto = compose_itinerary(ctx, cands, compose_reason, eventi_promossi=[])
+    senza = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
+    none_esplicito = compose_itinerary(
+        ctx, cands, compose_reason, eventi_promossi=None, vocabolario=VOCABOLARIO,
+    )
+    vuoto = compose_itinerary(
+        ctx, cands, compose_reason, eventi_promossi=[], vocabolario=VOCABOLARIO,
+    )
 
     for altro in (none_esplicito, vuoto):
         assert [s.experience_id for s in senza.stops] == [s.experience_id for s in altro.stops]
@@ -1056,13 +1117,13 @@ def test_evento_promosso_non_altera_score_ne_tappe_reali() -> None:
 
     # `==` su float è voluto: bit-identico, non prossimità. `calcola_score` non
     # ha nemmeno un parametro in cui un evento promosso possa entrare.
-    prima = rules.calcola_score(cand, profile, signal)
+    prima = rules.calcola_score(cand, profile, signal, vocabolario=VOCABOLARIO)
     it_con = compose_itinerary(
-        ctx, [cand], compose_reason, eventi_promossi=[_evento_musica()]
+        ctx, [cand], compose_reason, eventi_promossi=[_evento_musica()], vocabolario=VOCABOLARIO
     )
-    assert rules.calcola_score(cand, profile, signal) == prima
+    assert rules.calcola_score(cand, profile, signal, vocabolario=VOCABOLARIO) == prima
 
-    it_senza = compose_itinerary(ctx, [cand], compose_reason)
+    it_senza = compose_itinerary(ctx, [cand], compose_reason, vocabolario=VOCABOLARIO)
     reali_con = [s for s in it_con.stops if not s.experience_id.startswith("evento-")]
 
     assert [s.experience_id for s in it_senza.stops] == [s.experience_id for s in reali_con]
@@ -1074,7 +1135,9 @@ def _reason_evento(evento: EventoPromosso, data_visita: date) -> str:
     ctx = VisitorContext(
         person_id="p", profile=_profilo_arte(), signal=_signal_evento(data_visita)
     )
-    it = compose_itinerary(ctx, [_candidato_arte()], compose_reason, eventi_promossi=[evento])
+    it = compose_itinerary(
+        ctx, [_candidato_arte()], compose_reason, eventi_promossi=[evento], vocabolario=VOCABOLARIO,
+    )
     assert it.stops[-1].experience_id == evento.id  # in finestra: la tappa c'è davvero
     return it.stops[-1].reason
 
@@ -1142,8 +1205,12 @@ def test_evento_promosso_determinismo_stesso_input_stesso_output() -> None:
             ultima_occorrenza=_ULTIMA_OCCORRENZA, cadenza_giorni=7.0,
         ),
     ]
-    a = compose_itinerary(ctx, [_candidato_arte()], compose_reason, eventi_promossi=eventi)
-    b = compose_itinerary(ctx, [_candidato_arte()], compose_reason, eventi_promossi=eventi)
+    a = compose_itinerary(
+        ctx, [_candidato_arte()], compose_reason, eventi_promossi=eventi, vocabolario=VOCABOLARIO,
+    )
+    b = compose_itinerary(
+        ctx, [_candidato_arte()], compose_reason, eventi_promossi=eventi, vocabolario=VOCABOLARIO,
+    )
 
     assert [s.experience_id for s in a.stops] == [s.experience_id for s in b.stops]
     assert [s.arrivo for s in a.stops] == [s.arrivo for s in b.stops]
@@ -1168,7 +1235,9 @@ def test_tappa_evento_promosso_sopravvive_invariata_a_un_adapt_successivo() -> N
         person_id="p", profile=profile,
         signal=_signal_evento(),
     )
-    base = compose_itinerary(ctx, [cand], compose_reason, eventi_promossi=[_evento_musica()])
+    base = compose_itinerary(
+        ctx, [cand], compose_reason, eventi_promossi=[_evento_musica()], vocabolario=VOCABOLARIO,
+    )
     assert base.stops[-1].experience_id == _ID_EVENTO_MUSICA
 
     alternativa = ExperienceNode(
@@ -1182,7 +1251,13 @@ def test_tappa_evento_promosso_sopravvive_invariata_a_un_adapt_successivo() -> N
         data=_DATA_IN_FINESTRA,
     )
     adattato = adapt_itinerary(
-        base, crowd, [cand, cand_alt], profile, compose_reason, adapt_reason
+        base,
+        crowd,
+        [cand, cand_alt],
+        profile,
+        compose_reason,
+        adapt_reason,
+        vocabolario=VOCABOLARIO,
     )
 
     assert adattato.adattato_da_segnale is True  # prova che una VERA ricostruzione è avvenuta
@@ -1227,10 +1302,12 @@ def test_adapt_senza_rag_usa_fallback_a_due_frasi(source: SeedCandidateSource) -
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)
-    base = compose_itinerary(ctx, cands, compose_reason)
+    base = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO)
     pioggia = Signal(meteo="pioggia", affollamento={}, stanchezza=0.2, ora=time(10, 0))
 
-    adattato = adapt_itinerary(base, pioggia, cands, profile, compose_reason)
+    adattato = adapt_itinerary(
+        base, pioggia, cands, profile, compose_reason, vocabolario=VOCABOLARIO,
+    )
 
     sostituite = [s for s in adattato.stops if s.reason.startswith("Sostituita per")]
     assert sostituite, "la pioggia deve sostituire almeno una tappa all'aperto"
@@ -1251,3 +1328,36 @@ def test_fallback_adapt_reason_segnale_vuoto() -> None:
         _fallback_adapt_reason("Luigi Boccherini è legato a questo luogo.", "  ")
         == "Sostituita. Luigi Boccherini è legato a questo luogo."
     )
+
+
+# --- vocabolario dei temi: parametro OBBLIGATORIO, nessun default nel motore --
+
+
+def test_vocabolario_obbligatorio_senza_default() -> None:
+    """Il vocabolario dei temi è dato della città (dataset), non del motore:
+    `compose_itinerary`, `adapt_itinerary` e `calcola_score` senza
+    `vocabolario` devono sollevare `TypeError` — nessun default silenzioso.
+    Le chiamate passano da `Callable[..., object]` per non far scattare mypy
+    su un errore voluto."""
+    profile = EmotionalProfile(
+        curiosita=0.5, contemplazione=0.5, arte=0.5, con_bambini=False,
+        tempo_disponibile_min=120,
+    )
+    signal = _sereno()
+    ctx = _ctx(profile, signal)
+    cand = _candidato()
+    itinerario = compose_itinerary(ctx, [cand], vocabolario=VOCABOLARIO)
+
+    componi: Callable[..., object] = compose_itinerary
+    adatta: Callable[..., object] = adapt_itinerary
+    punteggio: Callable[..., object] = rules.calcola_score
+
+    with pytest.raises(TypeError, match="vocabolario"):
+        componi(ctx, [cand])
+    with pytest.raises(TypeError, match="vocabolario"):
+        adatta(itinerario, signal, [cand], profile)
+    with pytest.raises(TypeError, match="vocabolario"):
+        punteggio(cand, profile, signal)
+    # Nemmeno posizionale: il parametro è keyword-only.
+    with pytest.raises(TypeError):
+        punteggio(cand, profile, signal, VOCABOLARIO)

@@ -46,7 +46,7 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine.engine import compose_itinerary
-from graph.seed_lucca import ESPERIENZE, LUOGHI
+from graph.seed_lucca import ESPERIENZE, LUOGHI, VOCABOLARIO
 from graph.source import SeedCandidateSource
 from intelligence_index.distribuzione import distribuzione_flussi as _distribuzione_flussi
 from rag.reasons import compose_reason
@@ -182,7 +182,7 @@ def scenario_distribuzione() -> dict[str, Any]:
     candidati = fonte.candidates(ctx_neutro)
 
     repo_concentrato = _repository_storico_concentrato()
-    score_fn_b = costruisci_score_fn(repo_concentrato, candidati)
+    score_fn_b = costruisci_score_fn(repo_concentrato, candidati, vocabolario=VOCABOLARIO)
 
     itinerari_a: list[Itinerary] = []
     itinerari_b: list[Itinerary] = []
@@ -191,10 +191,22 @@ def scenario_distribuzione() -> dict[str, Any]:
             person_id=f"visitor-w3b-{i}", profile=profilo, signal=SIGNALE_BASE
         )
         itinerari_a.append(
-            compose_itinerary(ctx, candidati, reason_fn=compose_reason, score_fn=None)
+            compose_itinerary(
+                ctx,
+                candidati,
+                reason_fn=compose_reason,
+                score_fn=None,
+                vocabolario=VOCABOLARIO,
+            )
         )
         itinerari_b.append(
-            compose_itinerary(ctx, candidati, reason_fn=compose_reason, score_fn=score_fn_b)
+            compose_itinerary(
+                ctx,
+                candidati,
+                reason_fn=compose_reason,
+                score_fn=score_fn_b,
+                vocabolario=VOCABOLARIO,
+            )
         )
 
     return {"candidati": candidati, "itinerari_a": itinerari_a, "itinerari_b": itinerari_b}
@@ -292,14 +304,20 @@ def _itinerari_b_per_repo(
     """Itinerari (configurazione B, con recommender) per i 10
     `PROFILI_DIVERSI`, addestrati sullo storico di `repo` — stessi candidati e
     stesso segnale della fixture `contesto_base_w3b`."""
-    score_fn_b = costruisci_score_fn(repo, candidati)
+    score_fn_b = costruisci_score_fn(repo, candidati, vocabolario=VOCABOLARIO)
     itinerari_b: list[Itinerary] = []
     for i, profilo in enumerate(PROFILI_DIVERSI):
         ctx = VisitorContext(
             person_id=f"visitor-w3b-scenario-{i}", profile=profilo, signal=SIGNALE_BASE
         )
         itinerari_b.append(
-            compose_itinerary(ctx, candidati, reason_fn=compose_reason, score_fn=score_fn_b)
+            compose_itinerary(
+                ctx,
+                candidati,
+                reason_fn=compose_reason,
+                score_fn=score_fn_b,
+                vocabolario=VOCABOLARIO,
+            )
         )
     return itinerari_b
 
@@ -431,7 +449,13 @@ def contesto_base_w3b() -> dict[str, Any]:
             person_id=f"visitor-w3b-scenari-{i}", profile=profilo, signal=SIGNALE_BASE
         )
         itinerari_a.append(
-            compose_itinerary(ctx, candidati, reason_fn=compose_reason, score_fn=None)
+            compose_itinerary(
+                ctx,
+                candidati,
+                reason_fn=compose_reason,
+                score_fn=None,
+                vocabolario=VOCABOLARIO,
+            )
         )
 
     return {"candidati": candidati, "itinerari_a": itinerari_a}
@@ -546,13 +570,17 @@ def test_cold_start_end_to_end_itinerario_bit_identico_a_score_fn_none() -> None
     candidati = fonte.candidates(ctx)
 
     repo_vuoto = InMemoryBehaviorEventRepository()
-    score_fn_cold_start = costruisci_score_fn(repo_vuoto, candidati)
+    score_fn_cold_start = costruisci_score_fn(repo_vuoto, candidati, vocabolario=VOCABOLARIO)
 
     itinerario_deterministico = compose_itinerary(
-        ctx, candidati, reason_fn=compose_reason, score_fn=None
+        ctx, candidati, reason_fn=compose_reason, score_fn=None, vocabolario=VOCABOLARIO
     )
     itinerario_cold_start = compose_itinerary(
-        ctx, candidati, reason_fn=compose_reason, score_fn=score_fn_cold_start
+        ctx,
+        candidati,
+        reason_fn=compose_reason,
+        score_fn=score_fn_cold_start,
+        vocabolario=VOCABOLARIO,
     )
 
     assert itinerario_deterministico.stops, "precondizione: servono tappe da confrontare"

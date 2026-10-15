@@ -177,6 +177,7 @@ from api.deps import (
     get_booking_repository,
     get_candidate_source,
     get_city_tz,
+    get_dataset,
     get_event_repository,
     get_evento_reader,
     get_memory_repository,
@@ -618,8 +619,13 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     sono deterministici. `sweep_and_fetch_active` usa il proprio orologio."""
     source = get_candidate_source()
     candidates = source.candidates(ctx)
+    # Fuori dal try: un CITY_SEED invalido non va mascherato da "recommender
+    # non disponibile".
+    vocabolario = get_dataset().vocabolario
     try:
-        score_fn = recommender.costruisci_score_fn(get_event_repository(), candidates)
+        score_fn = recommender.costruisci_score_fn(
+            get_event_repository(), candidates, vocabolario=vocabolario
+        )
     except Exception:  # difesa in profondità: il recommender è un arricchimento
         # opzionale, mai un motivo di fallimento di /itinerary — degrada al
         # ranking deterministico (score_fn=None -> calcola_score da solo).
@@ -725,6 +731,7 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
         eventi_promossi=eventi_promossi,
         tracce_per_luogo=tracce_per_luogo,
         adesso=adesso,
+        vocabolario=vocabolario,
     )
 
 
@@ -751,6 +758,7 @@ def adapt_itinerary_endpoint(request: AdaptRequest) -> Itinerary:
         profile=None,
         reason_fn=compose_reason,
         adapt_reason_fn=adapt_reason,
+        vocabolario=get_dataset().vocabolario,
     )
 
 

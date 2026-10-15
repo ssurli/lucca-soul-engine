@@ -12,6 +12,7 @@ aggregabili/anonimi.
 
 from __future__ import annotations
 
+import re
 from datetime import UTC, date, datetime, time
 from enum import Enum
 from typing import Literal
@@ -30,6 +31,7 @@ __all__ = [
     "ExperienceNode",
     "GraphCandidate",
     "EventoPromosso",
+    "VocabolarioTemi",
     "ExperienceCandidate",
     "ItineraryStop",
     "Itinerary",
@@ -539,6 +541,64 @@ class EventoPromosso(ContractModel):
     # non un secondo criterio inventato qui. min_length=1: un pattern
     # promosso è sempre ancorato ad almeno un tema.
     temi: list[str] = Field(min_length=1)
+
+
+_SLUG_TEMA = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+def _valida_slug_tema(valore: str) -> str:
+    if not _SLUG_TEMA.fullmatch(valore):
+        raise ValueError(
+            f"id di Tema non valido: {valore!r} (atteso slug minuscolo, "
+            "es. 'con-bambini'; non vuoto)"
+        )
+    return valore
+
+
+class VocabolarioTemi(ContractModel):
+    """Le categorie tematiche con cui il motore legge i `Tema` di una città.
+
+    È DATO DELLA CITTÀ, non del motore: lo dichiara il dataset della città
+    selezionata (`CITY_SEED`, services/graph) e attraversa i confini
+    graph -> api -> experience-engine -> recommender. Il motore lo riceve e
+    non lo inventa: nessun vocabolario di default cablato nel motore.
+
+    Serve SOLO all'affinità tematica (stessi vincoli etici di
+    `calcola_score`): non influenza la presenza dei partner, non contiene
+    campi commerciali, non è un canale per pesare uno spazio. Nessun nome di
+    città nei tipi: i valori sono id di `Tema`, i nomi dei campi sono
+    categorie.
+
+    Semantica (invariata rispetto alle costanti storiche dell'engine):
+    - `contemplativi`, `arte`, `insoliti`, `verde`: GRUPPI di id di Tema;
+      insiemi vuoti AMMESSI (una città può non avere temi "insoliti").
+    - `bambini`: UN solo id di Tema (match per appartenenza `in temi`).
+
+    Immutabile (`frozen`) e hashable. Gli insiemi si serializzano in JSON
+    come liste (ordine non garantito: non fare affidamento sull'ordine).
+    Invariante NON verificata qui: ogni id deve essere un `Tema` del dataset;
+    il contratto non conosce i temi, la validazione è del dataset in graph.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    contemplativi: frozenset[str]
+    arte: frozenset[str]
+    insoliti: frozenset[str]
+    verde: frozenset[str]
+    bambini: str
+
+    @field_validator("contemplativi", "arte", "insoliti", "verde")
+    @classmethod
+    def _gruppo_slug(cls, v: frozenset[str]) -> frozenset[str]:
+        for tema in v:
+            _valida_slug_tema(tema)
+        return v
+
+    @field_validator("bambini")
+    @classmethod
+    def _bambini_slug(cls, v: str) -> str:
+        return _valida_slug_tema(v)
 
 
 # ---------------------------------------------------------------------------

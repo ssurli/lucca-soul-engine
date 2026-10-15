@@ -33,6 +33,7 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine import adapt_itinerary, compose_itinerary, rules
+from graph.seed_lucca import VOCABOLARIO
 from rag.reasons import adapt_reason, compose_reason
 
 LUNEDI = date(2026, 3, 2)
@@ -66,7 +67,7 @@ def _ids(it: Itinerary) -> list[str]:
 
 def _compose(signal: Signal, candidati: list[GraphCandidate]) -> Itinerary:
     ctx = VisitorContext(person_id="p", profile=_profilo(), signal=signal)
-    return compose_itinerary(ctx, candidati, compose_reason)
+    return compose_itinerary(ctx, candidati, compose_reason, vocabolario=VOCABOLARIO)
 
 
 def _signal(**kw) -> Signal:
@@ -143,6 +144,7 @@ def _adatta_pioggia(data: date) -> Itinerary:
     return adapt_itinerary(
         itinerario, _signal(meteo="pioggia", data=data), candidati, _profilo(),
         reason_fn=compose_reason, adapt_reason_fn=adapt_reason,
+        vocabolario=VOCABOLARIO,
     )
 
 
@@ -187,7 +189,9 @@ def test_finestra_eventi_non_dipende_da_giorno_settimana() -> None:
 
     def _con(signal: Signal) -> list[str]:
         ctx = VisitorContext(person_id="p", profile=_profilo(), signal=signal)
-        return _ids(compose_itinerary(ctx, c, compose_reason, eventi_promossi=[evento]))
+        return _ids(compose_itinerary(
+            ctx, c, compose_reason, eventi_promossi=[evento], vocabolario=VOCABOLARIO,
+        ))
 
     derivato = _con(_signal(data=MARTEDI))
     esplicito = _con(_signal(data=MARTEDI, giorno_settimana=1))

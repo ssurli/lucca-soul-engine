@@ -38,8 +38,11 @@ Uso tipico (il BFF cablerà questo passaggio)::
     repo = InMemoryBehaviorEventRepository()
     # ... repo.record(evento) per ogni BehaviorEvent osservato ...
 
-    score_fn = costruisci_score_fn(repo, candidati_correnti=candidates)
-    itinerario = compose_itinerary(ctx, candidates, compose_reason, score_fn)
+    score_fn = costruisci_score_fn(repo, candidati_correnti=candidates, vocabolario=vocabolario)
+    # `vocabolario`: dataset della citta' scelto da CITY_SEED (lo passa il BFF)
+    itinerario = compose_itinerary(
+        ctx, candidates, compose_reason, score_fn, vocabolario=vocabolario
+    )
 
 Persistenza reale (Neon in cloud o Postgres locale — mai `if local/cloud`,
 solo `DATABASE_URL`). Una tantum, applica la migrazione idempotente

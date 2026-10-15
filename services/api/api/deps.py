@@ -25,6 +25,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import marketplace
 import recommender
+from graph.dataset import DatasetCitta
 from graph.registro import carica_dataset
 from graph.source import CandidateSource, Neo4jCandidateSource, SeedCandidateSource
 from urban_memory import (
@@ -54,6 +55,7 @@ from urban_memory.frizione_pattern import Neo4jFrizioneClient
 from api.settings import get_settings
 
 __all__ = [
+    "get_dataset",
     "get_candidate_source",
     "get_memory_repository",
     "get_booking_repository",
@@ -63,6 +65,12 @@ __all__ = [
     "get_place_link_writer",
     "get_evento_reader",
 ]
+
+
+@lru_cache
+def get_dataset() -> DatasetCitta:
+    """Dataset della città scelto da `CITY_SEED`, caricato una volta sola."""
+    return carica_dataset(get_settings().city_seed)
 
 
 @lru_cache
@@ -76,7 +84,7 @@ def get_candidate_source() -> CandidateSource:
     settings = get_settings()
     # Validato SEMPRE (anche con Neo4j): un CITY_SEED invalido fallisce
     # all'avvio in ogni profilo. Il risultato serve al solo fallback.
-    dataset = carica_dataset(settings.city_seed)
+    dataset = get_dataset()
     if settings.neo4j_uri and settings.neo4j_username and settings.neo4j_password:
         return Neo4jCandidateSource.from_credentials(
             uri=settings.neo4j_uri,

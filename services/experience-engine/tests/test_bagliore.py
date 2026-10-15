@@ -22,6 +22,7 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine import compose_itinerary, rules
+from graph.seed_lucca import VOCABOLARIO
 
 ADESSO = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
 FRASE_ARTE = "È un luogo che torna spesso a vivere di arte."
@@ -259,12 +260,17 @@ def test_score_e_ordine_bit_identici_con_e_senza_tracce() -> None:
         visti: list[tuple[str, float]] = []
 
         def score_fn(cand, profile, signal):
-            s = rules.calcola_score(cand, profile, signal)
+            s = rules.calcola_score(cand, profile, signal, vocabolario=VOCABOLARIO)
             visti.append((cand.experience.id, s))
             return s
 
         it = compose_itinerary(
-            _ctx(), _candidati(), _Spia(), score_fn=score_fn, tracce_per_luogo=tracce
+            _ctx(),
+            _candidati(),
+            _Spia(),
+            score_fn=score_fn,
+            tracce_per_luogo=tracce,
+            vocabolario=VOCABOLARIO,
         )
         return visti, it
 
@@ -277,8 +283,10 @@ def test_score_e_ordine_bit_identici_con_e_senza_tracce() -> None:
 
 def test_tappe_identiche_unica_differenza_il_reason() -> None:
     tracce = {"luogo-a": _tracce_recenti("arte"), "luogo-b": _tracce_recenti("storia")}
-    senza = compose_itinerary(_ctx(), _candidati(), _Spia())
-    con = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce)
+    senza = compose_itinerary(_ctx(), _candidati(), _Spia(), vocabolario=VOCABOLARIO)
+    con = compose_itinerary(
+        _ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, vocabolario=VOCABOLARIO,
+    )
     assert len(senza.stops) == len(con.stops) >= 2
     for a, b in zip(senza.stops, con.stops, strict=True):
         assert a.model_dump(exclude={"reason"}) == b.model_dump(exclude={"reason"})
@@ -288,8 +296,10 @@ def test_tappe_identiche_unica_differenza_il_reason() -> None:
 def test_frase_esatta_dopo_reason_fn_e_reason_fn_non_la_vede() -> None:
     tracce = {"luogo-a": _tracce_recenti("arte")}
     spia_senza, spia_con = _Spia(), _Spia()
-    senza = compose_itinerary(_ctx(), _candidati(), spia_senza)
-    con = compose_itinerary(_ctx(), _candidati(), spia_con, tracce_per_luogo=tracce)
+    senza = compose_itinerary(_ctx(), _candidati(), spia_senza, vocabolario=VOCABOLARIO)
+    con = compose_itinerary(
+        _ctx(), _candidati(), spia_con, tracce_per_luogo=tracce, vocabolario=VOCABOLARIO,
+    )
 
     assert spia_senza.chiamate == spia_con.chiamate  # stessi argomenti, mai la frase
     assert FRASE_ARTE not in repr(spia_con.chiamate)
@@ -305,8 +315,10 @@ def test_frase_esatta_dopo_reason_fn_e_reason_fn_non_la_vede() -> None:
 
 def test_sotto_soglia_nel_motore_reason_invariato() -> None:
     tracce = {"luogo-a": [(datetime.now(UTC) - timedelta(days=1), ("arte",))]}
-    senza = compose_itinerary(_ctx(), _candidati(), _Spia())
-    con = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce)
+    senza = compose_itinerary(_ctx(), _candidati(), _Spia(), vocabolario=VOCABOLARIO)
+    con = compose_itinerary(
+        _ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, vocabolario=VOCABOLARIO,
+    )
     assert [s.reason for s in senza.stops] == [s.reason for s in con.stops]
 
 
@@ -319,7 +331,11 @@ def test_disclosure_partner_resta_ultima_frase(includi_nel_reason_fn: bool) -> N
     ]
     spia = _Spia(includi=attr if includi_nel_reason_fn else "")
     it = compose_itinerary(
-        _ctx(), cands, spia, tracce_per_luogo={"luogo-p": _tracce_recenti("arte")}
+        _ctx(),
+        cands,
+        spia,
+        tracce_per_luogo={"luogo-p": _tracce_recenti("arte")},
+        vocabolario=VOCABOLARIO,
     )
     reason = next(s.reason for s in it.stops if s.experience_id == "exp-p")
     assert reason.endswith(attr)
@@ -332,15 +348,21 @@ def test_disclosure_partner_resta_ultima_frase(includi_nel_reason_fn: bool) -> N
 
 @pytest.mark.parametrize("tracce", [None, {}])
 def test_tracce_none_o_vuote_reason_identico_a_oggi(tracce) -> None:
-    base = compose_itinerary(_ctx(), _candidati(), _Spia())
-    con = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce)
+    base = compose_itinerary(_ctx(), _candidati(), _Spia(), vocabolario=VOCABOLARIO)
+    con = compose_itinerary(
+        _ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, vocabolario=VOCABOLARIO,
+    )
     assert base.model_dump(exclude={"generated_at"}) == con.model_dump(exclude={"generated_at"})
 
 
 def test_tracce_di_luoghi_non_candidati_ignorate() -> None:
-    base = compose_itinerary(_ctx(), _candidati(), _Spia())
+    base = compose_itinerary(_ctx(), _candidati(), _Spia(), vocabolario=VOCABOLARIO)
     con = compose_itinerary(
-        _ctx(), _candidati(), _Spia(), tracce_per_luogo={"altrove": _tracce_recenti("arte")}
+        _ctx(),
+        _candidati(),
+        _Spia(),
+        tracce_per_luogo={"altrove": _tracce_recenti("arte")},
+        vocabolario=VOCABOLARIO,
     )
     assert base.model_dump(exclude={"generated_at"}) == con.model_dump(exclude={"generated_at"})
 
@@ -359,13 +381,18 @@ def test_tappe_fluttuanti_ed_eventi_promossi_senza_frase() -> None:
     it = compose_itinerary(
         _ctx([flutt], data), _candidati(), _Spia(), eventi_promossi=[evento],
         tracce_per_luogo=tracce,
+        vocabolario=VOCABOLARIO,
     )
     ids = [s.experience_id for s in it.stops]
     assert "fluttuante-violinista-1" in ids and "evento-luogo-a-musica" in ids
     frase = "È un luogo che torna spesso a vivere di musica."
     assert any(s.experience_id == "exp-a" and s.reason.endswith(frase) for s in it.stops)
     base = compose_itinerary(
-        _ctx([flutt], data), _candidati(), _Spia(), eventi_promossi=[evento]
+        _ctx([flutt], data),
+        _candidati(),
+        _Spia(),
+        eventi_promossi=[evento],
+        vocabolario=VOCABOLARIO,
     )
     for s in it.stops:
         if s.experience_id in ("fluttuante-violinista-1", "evento-luogo-a-musica"):
@@ -430,7 +457,9 @@ def test_due_tappe_stesso_luogo_frase_una_sola_volta_sulla_prima() -> None:
         _cand("exp-b", "luogo-b", ["arte"], 200.0),
     ]
     tracce = {"luogo-a": _tracce_fisse("arte"), "luogo-b": _tracce_fisse("arte")}
-    it = compose_itinerary(_ctx(), cands, _Spia(), tracce_per_luogo=tracce, adesso=ADESSO)
+    it = compose_itinerary(
+        _ctx(), cands, _Spia(), tracce_per_luogo=tracce, adesso=ADESSO, vocabolario=VOCABOLARIO,
+    )
     del_luogo_a = [s for s in it.stops if s.experience_id in ("exp-a1", "exp-a2")]
     assert len(del_luogo_a) == 2  # il caso e' davvero esercitato
     assert [FRASE_ARTE in s.reason for s in del_luogo_a] == [True, False]
@@ -442,18 +471,39 @@ def test_due_tappe_stesso_luogo_frase_una_sola_volta_sulla_prima() -> None:
 def test_adesso_e_keyword_only() -> None:
     with pytest.raises(TypeError):
         compose_itinerary(  # type: ignore[misc]
-            _ctx(), _candidati(), _Spia(), None, None, None, ADESSO
+            _ctx(), _candidati(), _Spia(), None, None, None, ADESSO, vocabolario=VOCABOLARIO
         )
 
 
 def test_adesso_esplicito_deterministico_e_governa_il_decadimento() -> None:
     tracce = {"luogo-a": _tracce_fisse("arte")}
-    r1 = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, adesso=ADESSO)
-    r2 = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, adesso=ADESSO)
+    r1 = compose_itinerary(
+        _ctx(),
+        _candidati(),
+        _Spia(),
+        tracce_per_luogo=tracce,
+        adesso=ADESSO,
+        vocabolario=VOCABOLARIO,
+    )
+    r2 = compose_itinerary(
+        _ctx(),
+        _candidati(),
+        _Spia(),
+        tracce_per_luogo=tracce,
+        adesso=ADESSO,
+        vocabolario=VOCABOLARIO,
+    )
     assert [s.reason for s in r1.stops] == [s.reason for s in r2.stops]
     assert any(FRASE_ARTE in s.reason for s in r1.stops)
     tardi = ADESSO + timedelta(days=3 * 365)
-    r3 = compose_itinerary(_ctx(), _candidati(), _Spia(), tracce_per_luogo=tracce, adesso=tardi)
+    r3 = compose_itinerary(
+        _ctx(),
+        _candidati(),
+        _Spia(),
+        tracce_per_luogo=tracce,
+        adesso=tardi,
+        vocabolario=VOCABOLARIO,
+    )
     assert all(FRASE_ARTE not in s.reason for s in r3.stops)
 
 

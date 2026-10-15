@@ -25,6 +25,7 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine import compose_itinerary, rules
+from graph.seed_lucca import VOCABOLARIO
 from pydantic import ValidationError
 from rag.reasons import compose_reason
 
@@ -78,7 +79,9 @@ def _candidato() -> GraphCandidate:
 def _compose(eventi: list[EventoPromosso], data: date | None) -> Itinerary:
     signal = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0), data=data)
     ctx = VisitorContext(person_id="p", profile=_profilo(), signal=signal)
-    return compose_itinerary(ctx, [_candidato()], compose_reason, eventi_promossi=eventi)
+    return compose_itinerary(
+        ctx, [_candidato()], compose_reason, eventi_promossi=eventi, vocabolario=VOCABOLARIO,
+    )
 
 
 # (cadenza, ultima_occorrenza, data_visita) — tutti con proiezione NON
@@ -122,7 +125,9 @@ def test_difesa_del_motore_con_cadenza_infinita_resta_fail_closed() -> None:
 def test_fuori_finestra_e_nessun_evento(cadenza: float, ultima: date, visita: date) -> None:
     evento = _evento(cadenza, ultima)
     assert rules.evento_in_finestra(ultima, cadenza, visita) is False
-    assert rules.eventi_promossi_pertinenti([evento], _profilo(), visita) == []
+    assert rules.eventi_promossi_pertinenti(
+        [evento], _profilo(), visita, vocabolario=VOCABOLARIO,
+    ) == []
 
 
 @pytest.mark.parametrize(("cadenza", "ultima", "visita"), CASI_COSTRUIBILI)

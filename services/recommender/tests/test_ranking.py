@@ -31,9 +31,11 @@ import ast
 import inspect
 import textwrap
 from datetime import UTC, datetime, time
+from typing import Any
 
 from contracts import BehaviorEvent, EmotionalProfile, ExperienceNode, GraphCandidate, Signal
 from experience_engine import rules
+from graph.seed_lucca import VOCABOLARIO
 from recommender import InMemoryBehaviorEventRepository, costruisci_score_fn
 from recommender.ranking import (
     ALPHA_LAPLACE,
@@ -125,13 +127,16 @@ def _eventi_stop(experience_id: str, n: int) -> list[BehaviorEvent]:
 def test_cold_start_repo_vuoto_e_bit_identico_a_calcola_score() -> None:
     repo = InMemoryBehaviorEventRepository()
     candidati = [_candidato(experience_id="exp-1", place_id="luogo-1")]
-    score_fn = costruisci_score_fn(repo, candidati)
+    score_fn = costruisci_score_fn(repo, candidati, vocabolario=VOCABOLARIO)
 
     profilo = _profilo()
     segnale = _segnale()
     for cand in candidati:
         # `==` su float voluto: bit-identico, non prossimità.
-        assert score_fn(cand, profilo, segnale) == rules.calcola_score(cand, profilo, segnale)
+        assert score_fn(cand, profilo, segnale) == rules.calcola_score(
+            cand, profilo, segnale,
+            vocabolario=VOCABOLARIO,
+        )
 
 
 def test_cold_start_sotto_soglia_e_bit_identico_a_calcola_score() -> None:
@@ -144,10 +149,13 @@ def test_cold_start_sotto_soglia_e_bit_identico_a_calcola_score() -> None:
         repo.record(evento)
     assert sum(repo.conteggio_per_esperienza().values()) < SOGLIA_MINIMA_EVENTI_MAPPABILI
 
-    score_fn = costruisci_score_fn(repo, [candidato])
+    score_fn = costruisci_score_fn(repo, [candidato], vocabolario=VOCABOLARIO)
     profilo = _profilo()
     segnale = _segnale()
-    assert score_fn(candidato, profilo, segnale) == rules.calcola_score(candidato, profilo, segnale)
+    assert score_fn(candidato, profilo, segnale) == rules.calcola_score(
+        candidato, profilo, segnale,
+        vocabolario=VOCABOLARIO,
+    )
 
 
 def test_cold_start_evento_non_mappabile_non_esce_dal_cold_start() -> None:
@@ -159,10 +167,13 @@ def test_cold_start_evento_non_mappabile_non_esce_dal_cold_start() -> None:
     for evento in _eventi_stop("esperienza-scomparsa-dal-grafo", 30):
         repo.record(evento)
     candidato = _candidato(experience_id="exp-1", place_id="luogo-1")
-    score_fn = costruisci_score_fn(repo, [candidato])
+    score_fn = costruisci_score_fn(repo, [candidato], vocabolario=VOCABOLARIO)
     profilo = _profilo()
     segnale = _segnale()
-    assert score_fn(candidato, profilo, segnale) == rules.calcola_score(candidato, profilo, segnale)
+    assert score_fn(candidato, profilo, segnale) == rules.calcola_score(
+        candidato, profilo, segnale,
+        vocabolario=VOCABOLARIO,
+    )
 
 
 def test_cold_start_spegne_anche_il_termine_strutturale() -> None:
@@ -180,17 +191,26 @@ def test_cold_start_spegne_anche_il_termine_strutturale() -> None:
 
     # Preso da solo, il termine strutturale premia (in negativo, ai fini
     # della quota) nettamente il luogo dominante.
-    quota_strutturale_isolata = _quota_strutturale_per_place([dominante, generico])
+    quota_strutturale_isolata = _quota_strutturale_per_place(
+        [dominante, generico],
+        vocabolario=VOCABOLARIO,
+    )
     assert quota_strutturale_isolata["luogo-dominante"] > 0.0
 
     # Ma con repo VUOTO (cold start), `costruisci_score_fn` non applica
     # nessuna correzione: bit-identico a `calcola_score`.
     repo = InMemoryBehaviorEventRepository()
-    score_fn = costruisci_score_fn(repo, [dominante, generico])
+    score_fn = costruisci_score_fn(repo, [dominante, generico], vocabolario=VOCABOLARIO)
     profilo = _profilo()
     segnale = _segnale()
-    assert score_fn(dominante, profilo, segnale) == rules.calcola_score(dominante, profilo, segnale)
-    assert score_fn(generico, profilo, segnale) == rules.calcola_score(generico, profilo, segnale)
+    assert score_fn(dominante, profilo, segnale) == rules.calcola_score(
+        dominante, profilo, segnale,
+        vocabolario=VOCABOLARIO,
+    )
+    assert score_fn(generico, profilo, segnale) == rules.calcola_score(
+        generico, profilo, segnale,
+        vocabolario=VOCABOLARIO,
+    )
 
 
 # --- b) PARTE 1: smoothing additivo (Laplace) sulla quota storica ----------
@@ -236,15 +256,15 @@ def test_penalita_storica_cresce_con_la_quota_del_luogo() -> None:
 
     profilo = _profilo()
     segnale = _segnale()
-    base_a = rules.calcola_score(molto_visitato, profilo, segnale)
-    base_b = rules.calcola_score(poco_visitato, profilo, segnale)
+    base_a = rules.calcola_score(molto_visitato, profilo, segnale, vocabolario=VOCABOLARIO)
+    base_b = rules.calcola_score(poco_visitato, profilo, segnale, vocabolario=VOCABOLARIO)
     assert base_a == base_b  # stessa pertinenza di base: unica variabile è lo storico
 
     repo = InMemoryBehaviorEventRepository()
     for evento in _eventi_stop("exp-a", 30):  # ben sopra SOGLIA_MINIMA_EVENTI_MAPPABILI
         repo.record(evento)
 
-    score_fn = costruisci_score_fn(repo, [molto_visitato, poco_visitato])
+    score_fn = costruisci_score_fn(repo, [molto_visitato, poco_visitato], vocabolario=VOCABOLARIO)
     punteggio_a = score_fn(molto_visitato, profilo, segnale)
     punteggio_b = score_fn(poco_visitato, profilo, segnale)
 
@@ -266,7 +286,7 @@ def test_quota_aggrega_per_place_non_per_singola_esperienza() -> None:
     for evento in _eventi_stop("exp-2", 15):
         repo.record(evento)
 
-    score_fn = costruisci_score_fn(repo, [esperienza_1, esperienza_2])
+    score_fn = costruisci_score_fn(repo, [esperienza_1, esperienza_2], vocabolario=VOCABOLARIO)
     profilo = _profilo()
     segnale = _segnale()
     # Stesso place_id => stesse quote => stessa penalità (base identica per costruzione).
@@ -300,7 +320,7 @@ def test_quota_strutturale_individua_il_luogo_dominante_per_contenuto() -> None:
     )
     generico = _candidato(experience_id="exp-generico", place_id="luogo-generico", temi=["mercato"])
 
-    quota = _quota_strutturale_per_place([dominante, generico])
+    quota = _quota_strutturale_per_place([dominante, generico], vocabolario=VOCABOLARIO)
     assert quota["luogo-dominante"] == 1.0
     assert quota["luogo-generico"] == 0.0
 
@@ -324,11 +344,11 @@ def test_quota_strutturale_penalizza_un_luogo_a_zero_eventi_storici_propri() -> 
     for evento in _eventi_stop("exp-concentrato", 30):  # zero eventi su "exp-dominante"
         repo.record(evento)
 
-    score_fn = costruisci_score_fn(repo, [dominante, concentrato_altrove])
+    score_fn = costruisci_score_fn(repo, [dominante, concentrato_altrove], vocabolario=VOCABOLARIO)
     profilo = _profilo()
     segnale = _segnale()
 
-    base_dominante = rules.calcola_score(dominante, profilo, segnale)
+    base_dominante = rules.calcola_score(dominante, profilo, segnale, vocabolario=VOCABOLARIO)
     punteggio_dominante = score_fn(dominante, profilo, segnale)
 
     assert punteggio_dominante < base_dominante, (
@@ -368,8 +388,14 @@ def test_penalita_combinata_massima_non_ribalta_un_vantaggio_di_pertinenza_enorm
 
     profilo = _profilo(arte=1.0, curiosita=1.0, contemplazione=1.0, con_bambini=True)
     segnale = _segnale()
-    base_popolare = rules.calcola_score(molto_pertinente_ma_popolare, profilo, segnale)
-    base_libero = rules.calcola_score(poco_pertinente_ma_libero, profilo, segnale)
+    base_popolare = rules.calcola_score(
+        molto_pertinente_ma_popolare, profilo, segnale,
+        vocabolario=VOCABOLARIO,
+    )
+    base_libero = rules.calcola_score(
+        poco_pertinente_ma_libero, profilo, segnale,
+        vocabolario=VOCABOLARIO,
+    )
     assert base_popolare - base_libero > LIMITE_PESO_COMBINATO_MAX
 
     repo = InMemoryBehaviorEventRepository()
@@ -377,7 +403,7 @@ def test_penalita_combinata_massima_non_ribalta_un_vantaggio_di_pertinenza_enorm
         repo.record(evento)
 
     score_fn = costruisci_score_fn(
-        repo, [molto_pertinente_ma_popolare, poco_pertinente_ma_libero]
+        repo, [molto_pertinente_ma_popolare, poco_pertinente_ma_libero], vocabolario=VOCABOLARIO
     )
     punteggio_popolare = score_fn(molto_pertinente_ma_popolare, profilo, segnale)
     punteggio_libero = score_fn(poco_pertinente_ma_libero, profilo, segnale)
@@ -385,6 +411,16 @@ def test_penalita_combinata_massima_non_ribalta_un_vantaggio_di_pertinenza_enorm
     # Il vantaggio di pertinenza scelto sopra supera il limite massimo di
     # penalità combinata, quindi l'ordine NON si ribalta.
     assert punteggio_popolare > punteggio_libero
+
+
+def test_costruisci_score_fn_senza_vocabolario_solleva_typeerror() -> None:
+    repo = InMemoryBehaviorEventRepository()
+    senza_vocabolario: Any = costruisci_score_fn
+    try:
+        senza_vocabolario(repo, [_candidato()])
+    except TypeError:
+        return
+    raise AssertionError("vocabolario deve essere obbligatorio")
 
 
 def test_pesi_di_default_rispettano_il_limite_combinato() -> None:
@@ -398,6 +434,7 @@ def test_costruisci_score_fn_rifiuta_pesi_oltre_il_limite_combinato() -> None:
         costruisci_score_fn(
             repo,
             candidati,
+            vocabolario=VOCABOLARIO,
             peso_storico=LIMITE_PESO_COMBINATO_MAX,
             peso_struttura=LIMITE_PESO_COMBINATO_MAX,
         )
@@ -450,7 +487,7 @@ def test_ranking_non_usa_campi_commerciali_ne_attribuzione() -> None:
     all'attribuzione (che è disclosure per il `reason`, non un input di
     scoring). Si ispeziona il CODICE della funzione (docstring esclusa)."""
     repo = InMemoryBehaviorEventRepository()
-    score_fn = costruisci_score_fn(repo, [_candidato()])
+    score_fn = costruisci_score_fn(repo, [_candidato()], vocabolario=VOCABOLARIO)
 
     codice = _codice_senza_docstring(score_fn)
     for vietato in NOMI_COMMERCIALI_VIETATI_NEL_RANKING:
@@ -512,7 +549,7 @@ def test_ranking_bit_identico_al_variare_dei_campi_commerciali() -> None:
             repo.record(evento)
 
         candidati_correnti = [riferimento, *varianti]
-        score_fn = costruisci_score_fn(repo, candidati_correnti)
+        score_fn = costruisci_score_fn(repo, candidati_correnti, vocabolario=VOCABOLARIO)
 
         punteggio_riferimento = score_fn(riferimento, profilo, segnale)
         for variante in varianti:

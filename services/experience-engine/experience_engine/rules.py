@@ -24,6 +24,7 @@ from contracts import (
     GraphCandidate,
     SegnaleFluttuante,
     Signal,
+    VocabolarioTemi,
     rientra_in_orario,
     segnale_fluttuante_ammissibile,
 )
@@ -199,7 +200,13 @@ def passa_filtri_duri(
     return True
 
 
-def calcola_score(candidate: GraphCandidate, profile: EmotionalProfile, signal: Signal) -> float:
+def calcola_score(
+    candidate: GraphCandidate,
+    profile: EmotionalProfile,
+    signal: Signal,
+    *,
+    vocabolario: VocabolarioTemi,
+) -> float:
     """Affinità profilo <-> esperienza in [0, 1], deterministica.
 
     VISIBILITÀ NON ACQUISTABILE: questa funzione NON legge mai
@@ -214,6 +221,9 @@ def calcola_score(candidate: GraphCandidate, profile: EmotionalProfile, signal: 
     compare solo se coerente col profilo e col luogo; non esiste prezzo che
     alteri lo score. Il vincolo è verificato da un test-guard (AST) e da un
     test comportamentale (score invariante a partner/prezzo/attribuzione).
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio.
     """
     esperienza = candidate.experience
     temi = esperienza.temi
@@ -253,13 +263,18 @@ def calcola_score(candidate: GraphCandidate, profile: EmotionalProfile, signal: 
     return max(0.0, min(1.0, score))
 
 
-def segnali_rilevanti(candidate: GraphCandidate, signal: Signal) -> list[str]:
+def segnali_rilevanti(
+    candidate: GraphCandidate, signal: Signal, *, vocabolario: VocabolarioTemi
+) -> list[str]:
     """Chiavi di segnale (in italiano) pertinenti a QUESTA tappa, ordinate per
     rilevanza, da passare alla funzione di `reason`.
 
     Sono le stesse chiavi che il servizio RAG sa tradurre in frase
     ("pioggia", "caldo", "affollamento", "stanchezza"): la spiegabilità dice
     alla persona PERCHÉ quella tappa è stata scelta anche alla luce del mondo.
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio.
     """
     esperienza = candidate.experience
     segnali: list[str] = []
@@ -286,13 +301,18 @@ def segnali_rilevanti(candidate: GraphCandidate, signal: Signal) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _coerente_col_profilo(temi: list[str], profile: EmotionalProfile) -> bool:
+def _coerente_col_profilo(
+    temi: list[str], profile: EmotionalProfile, *, vocabolario: VocabolarioTemi
+) -> bool:
     """Un tema del segnale fluttuante appartiene a un gruppo la cui
     dimensione di profilo corrispondente è > 0 — STESSO ragionamento per
     connessioni già usato da `calcola_score` per le esperienze permanenti
     (`affinita_temi` contro `TEMI_CONTEMPLATIVI`/`TEMI_ARTE`/`TEMI_INSOLITI`/
     `TEMA_BAMBINI`), non un secondo criterio inventato per l'occasione: "il
-    segnale evoca un tema, il tema raggiunge chi è affine"."""
+    segnale evoca un tema, il tema raggiunge chi è affine".
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio."""
     if profile.contemplazione > 0 and affinita_temi(temi, TEMI_CONTEMPLATIVI) > 0:
         return True
     if profile.arte > 0 and affinita_temi(temi, TEMI_ARTE) > 0:
@@ -305,7 +325,10 @@ def _coerente_col_profilo(temi: list[str], profile: EmotionalProfile) -> bool:
 
 
 def segnali_fluttuanti_pertinenti(
-    eventi_attivi: list[SegnaleFluttuante], profile: EmotionalProfile
+    eventi_attivi: list[SegnaleFluttuante],
+    profile: EmotionalProfile,
+    *,
+    vocabolario: VocabolarioTemi,
 ) -> list[SegnaleFluttuante]:
     """Segnali fluttuanti pertinenti per QUESTO profilo, nell'ordine in cui
     sono arrivati (determinismo: nessun riordino inventato qui).
@@ -322,11 +345,15 @@ def segnali_fluttuanti_pertinenti(
     NON legge né tocca `calcola_score`: nessuna esperienza permanente vede
     il proprio punteggio cambiare in base a `eventi_attivi` — questa
     funzione produce solo la lista di CANDIDATI fluttuanti da aggiungere,
-    mai un input allo scoring delle esperienze del grafo."""
+    mai un input allo scoring delle esperienze del grafo.
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio."""
     return [
         segnale
         for segnale in eventi_attivi
-        if segnale_fluttuante_ammissibile(segnale) and _coerente_col_profilo(segnale.temi, profile)
+        if segnale_fluttuante_ammissibile(segnale)
+        and _coerente_col_profilo(segnale.temi, profile, vocabolario=vocabolario)
     ]
 
 
@@ -429,7 +456,11 @@ def evento_in_finestra(ultima_occorrenza: date, cadenza_giorni: float, data_visi
 
 
 def eventi_promossi_pertinenti(
-    eventi: list[EventoPromosso], profile: EmotionalProfile, data_visita: date | None
+    eventi: list[EventoPromosso],
+    profile: EmotionalProfile,
+    data_visita: date | None,
+    *,
+    vocabolario: VocabolarioTemi,
 ) -> list[EventoPromosso]:
     """Eventi promossi pertinenti per QUESTO profilo e QUESTA data di visita,
     nell'ordine in cui sono arrivati (determinismo: nessun riordino inventato
@@ -472,13 +503,16 @@ def eventi_promossi_pertinenti(
     proprio punteggio cambiare per la presenza di un evento promosso — questa
     funzione produce solo la lista di eventi da aggiungere in coda, mai un
     input allo scoring delle esperienze del grafo.
+
+    `vocabolario`: vocabolario dei temi della città, dato del dataset; il
+    motore non ne ha uno proprio.
     """
     if data_visita is None:
         return []
     return [
         evento
         for evento in eventi
-        if _coerente_col_profilo(evento.temi, profile)
+        if _coerente_col_profilo(evento.temi, profile, vocabolario=vocabolario)
         and evento_in_finestra(evento.ultima_occorrenza, evento.cadenza_giorni, data_visita)
     ]
 

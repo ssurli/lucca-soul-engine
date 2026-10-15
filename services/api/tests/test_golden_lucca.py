@@ -39,6 +39,7 @@ api_main = pytest.importorskip("api.main", reason="`api` non installabile")
 contracts = pytest.importorskip("contracts", reason="`contracts` non installabile")
 from experience_engine import rules  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
+from graph.seed_lucca import VOCABOLARIO  # noqa: E402
 from graph.source import SeedCandidateSource  # noqa: E402
 from recommender import (  # noqa: E402
     BehaviorEventRepository,
@@ -85,11 +86,11 @@ def _h_candidati_lucca() -> list[Any]:
 
 
 def _h_calcola_score(candidato: Any, profilo: Any, segnale: Any) -> float:
-    return float(rules.calcola_score(candidato, profilo, segnale))
+    return float(rules.calcola_score(candidato, profilo, segnale, vocabolario=VOCABOLARIO))
 
 
 def _h_score_fn(repo: BehaviorEventRepository, candidati: list[Any]) -> Any:
-    return costruisci_score_fn(repo, candidati)
+    return costruisci_score_fn(repo, candidati, vocabolario=VOCABOLARIO)
 
 
 # ---------------------------------------------------------------------------

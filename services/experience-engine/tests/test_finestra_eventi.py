@@ -25,6 +25,7 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine import compose_itinerary, rules
+from graph.seed_lucca import VOCABOLARIO
 from rag.reasons import compose_reason
 
 ULTIMA = date(2026, 3, 2)  # lunedi
@@ -65,7 +66,11 @@ def _signal(data: date | None) -> Signal:
 def _compose(eventi, data: date | None, tempo: int = 200, candidati=None):
     ctx = VisitorContext(person_id="p", profile=_profilo(tempo), signal=_signal(data))
     return compose_itinerary(
-        ctx, candidati or [_candidato()], compose_reason, eventi_promossi=eventi
+        ctx,
+        candidati or [_candidato()],
+        compose_reason,
+        eventi_promossi=eventi,
+        vocabolario=VOCABOLARIO,
     )
 
 
@@ -88,7 +93,9 @@ def test_c_data_assente_nessun_evento_fail_closed() -> None:
     assert len(_compose([_evento(7.0)], _giorni(7)).stops) == 2
     it = _compose([_evento(7.0)], None)
     assert [s.experience_id for s in it.stops] == ["exp-fisso"]
-    assert rules.eventi_promossi_pertinenti([_evento(7.0)], _profilo(), None) == []
+    assert rules.eventi_promossi_pertinenti(
+        [_evento(7.0)], _profilo(), None, vocabolario=VOCABOLARIO,
+    ) == []
 
 
 # --- (d) la finestra scala con la cadenza -----------------------------------
@@ -102,8 +109,12 @@ def test_d_stesso_scarto_dentro_per_mensile_fuori_per_settimanale() -> None:
     assert rules.evento_in_finestra(ULTIMA, 7.0, _giorni(10)) is False
 
     profilo = _profilo()
-    mensile = rules.eventi_promossi_pertinenti([_evento(30.0)], profilo, _giorni(27))
-    settimanale = rules.eventi_promossi_pertinenti([_evento(7.0)], profilo, _giorni(4))
+    mensile = rules.eventi_promossi_pertinenti(
+        [_evento(30.0)], profilo, _giorni(27), vocabolario=VOCABOLARIO,
+    )
+    settimanale = rules.eventi_promossi_pertinenti(
+        [_evento(7.0)], profilo, _giorni(4), vocabolario=VOCABOLARIO,
+    )
     assert len(mensile) == 1 and settimanale == []
 
 
@@ -181,10 +192,12 @@ def test_j_in_coda_mai_sostituzione_budget_e_score_invariato() -> None:
         _evento(7.0, id_="evento-b", temi=["musica", "liuteria"]),
     ]
 
-    score_prima = rules.calcola_score(cand, profilo, ctx.signal)
-    con = compose_itinerary(ctx, [cand], compose_reason, eventi_promossi=eventi)
-    senza = compose_itinerary(ctx, [cand], compose_reason)
-    score_dopo = rules.calcola_score(cand, profilo, ctx.signal)
+    score_prima = rules.calcola_score(cand, profilo, ctx.signal, vocabolario=VOCABOLARIO)
+    con = compose_itinerary(
+        ctx, [cand], compose_reason, eventi_promossi=eventi, vocabolario=VOCABOLARIO,
+    )
+    senza = compose_itinerary(ctx, [cand], compose_reason, vocabolario=VOCABOLARIO)
+    score_dopo = rules.calcola_score(cand, profilo, ctx.signal, vocabolario=VOCABOLARIO)
 
     assert score_prima == score_dopo  # bit-identico, `==` voluto
 
@@ -208,6 +221,6 @@ def test_j_score_invariato_con_e_senza_eventi_in_finestra() -> None:
     cand = _candidato()
     profilo = _profilo()
     sig = _signal(_giorni(7))
-    prima = rules.calcola_score(cand, profilo, sig)
+    prima = rules.calcola_score(cand, profilo, sig, vocabolario=VOCABOLARIO)
     _compose([_evento(7.0)], _giorni(7))
-    assert rules.calcola_score(cand, profilo, sig) == prima
+    assert rules.calcola_score(cand, profilo, sig, vocabolario=VOCABOLARIO) == prima

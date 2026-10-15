@@ -269,6 +269,36 @@ class EventoPromosso(BaseModel):
     temi: list[str]  # stessa forma di SegnaleFluttuante.temi/ExperienceNode.temi (min 1 elemento)
 ```
 
+### VocabolarioTemi — le categorie tematiche dichiarate dalla città
+
+```python
+class VocabolarioTemi(ContractModel):   # frozen=True, extra="forbid"
+    contemplativi: frozenset[str]   # id di Tema (gruppo; può essere vuoto)
+    arte: frozenset[str]            # id di Tema (gruppo; può essere vuoto)
+    insoliti: frozenset[str]        # id di Tema (gruppo; può essere vuoto)
+    verde: frozenset[str]           # id di Tema (gruppo; può essere vuoto)
+    bambini: str                    # UN id di Tema (match per appartenenza `in temi`), es. "con-bambini"
+```
+
+- **Semantica:** dato della città, non del motore. Il motore lo riceve e non lo
+  inventa (nessun default cablato). Serve solo all'affinità tematica (profilo
+  contemplazione/arte/curiosità/con_bambini, meteo caldo -> verde, coerenza
+  dei segnali fluttuanti/eventi promossi), con gli stessi vincoli etici di
+  `calcola_score`: non influenza la presenza dei partner, nessun campo
+  commerciale, nessun nome di città.
+- **Validazione:** ogni id è uno slug minuscolo non vuoto
+  (`^[a-z0-9]+(-[a-z0-9]+)*$`); gli insiemi vuoti sono ammessi; `bambini` è
+  obbligatorio. JSON: gli insiemi sono liste (ordine non garantito).
+- **Produce:** il dataset della città selezionato da `CITY_SEED`
+  (`DatasetCitta`, services/graph). **Consuma:** Experience Engine e
+  recommender, via BFF (graph -> api -> experience-engine -> recommender).
+- **Invariante (non nel contratto):** ogni id deve essere un `Tema` del
+  dataset; lo verifica il dataset in graph, il contratto non conosce i temi.
+- **Origine:** sostituisce le costanti `TEMI_CONTEMPLATIVI`, `TEMI_ARTE`,
+  `TEMI_INSOLITI`, `TEMI_VERDE`, `TEMA_BAMBINI` di
+  `experience_engine/rules.py` (-> `contemplativi`, `arte`, `insoliti`,
+  `verde`, `bambini`).
+
 ## 3. AI Experience Engine — uscita
 
 ```python

@@ -49,7 +49,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from datetime import time
 
-from contracts import EmotionalProfile, GraphCandidate, Signal
+from contracts import EmotionalProfile, GraphCandidate, Signal, VocabolarioTemi
 from experience_engine.rules import calcola_score
 
 from .repository import BehaviorEventRepository
@@ -299,6 +299,8 @@ def _quota_storica_per_place(
 
 def _quota_strutturale_per_place(
     candidati_correnti: list[GraphCandidate],
+    *,
+    vocabolario: VocabolarioTemi,
 ) -> dict[str, float]:
     """Quota strutturale di dominio per `place_id`, in [0, 1] — misura
     quanto un luogo domina per PERTINENZA DI CONTENUTO attraverso profili
@@ -326,7 +328,9 @@ def _quota_strutturale_per_place(
     for archetipo in ARCHETIPI_STRUTTURALI:
         punteggio_migliore_per_place: dict[str, float] = {}
         for candidato in candidati_correnti:
-            punteggio = calcola_score(candidato, archetipo, SEGNALE_NEUTRO_STRUTTURALE)
+            punteggio = calcola_score(
+                candidato, archetipo, SEGNALE_NEUTRO_STRUTTURALE, vocabolario=vocabolario
+            )
             place_id = candidato.experience.place_id
             attuale = punteggio_migliore_per_place.get(place_id)
             if attuale is None or punteggio > attuale:
@@ -350,6 +354,7 @@ def costruisci_score_fn(
     repo: BehaviorEventRepository,
     candidati_correnti: list[GraphCandidate],
     *,
+    vocabolario: VocabolarioTemi,
     peso_storico: float = PESO_STORICO_DEFAULT,
     peso_struttura: float = PESO_STRUTTURA_DEFAULT,
     soglia_minima_eventi: int = SOGLIA_MINIMA_EVENTI_MAPPABILI,
@@ -409,10 +414,12 @@ def costruisci_score_fn(
         quota_storica = _quota_storica_per_place(
             conteggio_grezzo, candidati_correnti, alpha_smoothing
         )
-        quota_strutturale = _quota_strutturale_per_place(candidati_correnti)
+        quota_strutturale = _quota_strutturale_per_place(
+            candidati_correnti, vocabolario=vocabolario
+        )
 
     def _score(candidate: GraphCandidate, profile: EmotionalProfile, signal: Signal) -> float:
-        base = calcola_score(candidate, profile, signal)
+        base = calcola_score(candidate, profile, signal, vocabolario=vocabolario)
         place_id = candidate.experience.place_id
         quota_s = quota_storica.get(place_id, 0.0)
         quota_st = quota_strutturale.get(place_id, 0.0)

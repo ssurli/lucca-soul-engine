@@ -263,7 +263,9 @@ repo.record(BehaviorEvent(
 ))
 
 # candidati_correnti: normalmente arrivano dal grafo per QUESTA richiesta.
-# score_fn = costruisci_score_fn(repo, candidati_correnti)
+# vocabolario: VocabolarioTemi del dataset della città scelto da CITY_SEED,
+# passato dal BFF (il recommender non lo sceglie né ha un default).
+# score_fn = costruisci_score_fn(repo, candidati_correnti, vocabolario=vocabolario)
 # itinerario = compose_itinerary(ctx, candidati_correnti, reason_fn, score_fn)
 print(repo.conteggio_per_esperienza())
 "
