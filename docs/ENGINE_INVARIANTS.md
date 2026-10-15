@@ -91,7 +91,8 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 
 | Funzione | Definita in | Chiamata da |
 |---|---|---|
-| `contracts.rientra_in_orario` | `packages/contracts/contracts/models.py:242` | `rules.passa_filtri_duri` (composizione) · `engine._migliore_alternativa` (adattamento) · `marketplace.service.request_booking` (prenotazione) |
+| `contracts.rientra_in_orario` | `packages/contracts/contracts/models.py:242` | `rules.passa_filtri_duri` (composizione e, tramite essa, adattamento) · `marketplace.service.request_booking` (prenotazione) |
+| `rules.passa_filtri_duri` | `rules.py` | `compose_itinerary` (composizione) · `engine._migliore_alternativa` (adattamento, con `luoghi_gia_visti=[]`) |
 | `contracts.segnale_fluttuante_ammissibile` | `packages/contracts/contracts/models.py:117` | `rules.segnali_fluttuanti_pertinenti` |
 | `rules.segnali_fluttuanti_pertinenti` | `rules.py:270` | `engine._aggiungi_tappe_fluttuanti` — **solo** in `compose_itinerary`, mai in `adapt_itinerary` (vedi §6) |
 | `rules.affinita_temi` | `rules.py:109` | `calcola_score` (3 volte) · `_coerente_col_profilo` |
@@ -99,7 +100,8 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 | `rules.eventi_promossi_pertinenti` | `rules.py` | `engine._aggiungi_tappe_eventi_promossi` — **solo** in `compose_itinerary`, mai in `adapt_itinerary` |
 | `rules.calcola_score` | `rules.py:165` | `compose_itinerary` (via `score_fn` default) · `_migliore_alternativa` (per ordinare le alternative in adapt) |
 
-Tre chiamanti diversi per "cosa significa aperto" (`rientra_in_orario`), un solo modello.
+Tre usi di "cosa significa aperto" (composizione, adattamento, prenotazione), un solo
+modello (`rientra_in_orario`).
 
 ## 5. Determinismo
 
@@ -115,15 +117,15 @@ Tre chiamanti diversi per "cosa significa aperto" (`rientra_in_orario`), un solo
 `adapt_itinerary` (`engine.py:423`) non richiama `compose_itinerary`: ha una propria logica
 di riscrittura mirata, con conseguenze concrete:
 
-- `_migliore_alternativa` (`engine.py:375`) **reimplementa a mano** un sottoinsieme dei
-  filtri duri — accessibilità, `al_chiuso`, affollamento, **e ora anche orari di apertura**
-  (fix di questa sessione: prima mancava, trovato da un giro dedicato di ethics-guardian,
-  non da autovalutazione) — ma **non chiama `passa_filtri_duri`**: sono due
-  implementazioni parallele della "stessa" idea di filtro, non un'unica funzione condivisa.
-- **Non verifica `partner_abbonamento_attivo`** — gap pre-esistente, non chiuso da questa
-  sessione, documentato in `docs/LIMITI.md`: un partner con abbonamento non attivo può oggi
-  essere reintrodotto come alternativa in adattamento, mentre `passa_filtri_duri` lo esclude
-  sempre in composizione iniziale.
+- `_migliore_alternativa` **chiama `rules.passa_filtri_duri`** (con `luoghi_gia_visti=[]`:
+  l'`AdaptRequest` non li trasporta) e aggiunge SOLO i vincoli propri dell'adattamento:
+  esperienze già nell'itinerario, accessibilità conservativa per tappa quando il profilo è
+  assente, `al_chiuso` su pioggia, affollamento `> 0.7` (più stretto della soglia critica
+  `>= 0.8` del filtro duro, che quindi resta assorbita). Storia: fino al 2026-10-15 i filtri
+  erano reimplementati a mano — prima mancavano gli orari (trovato da ethics-guardian), poi
+  restava fuori `partner_abbonamento_attivo`, per cui un partner con abbonamento non attivo
+  poteva essere reintrodotto in adattamento. Chiuso applicando il filtro duro in un solo
+  punto (vedi `docs/LIMITI.md`).
 - **Non chiama mai `segnali_fluttuanti_pertinenti`**: un segnale fluttuante comparso *dopo*
   la composizione iniziale non entra mai via `adapt_itinerary` — solo `compose_itinerary`
   ne tiene conto.

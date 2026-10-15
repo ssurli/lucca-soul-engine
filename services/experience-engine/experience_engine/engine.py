@@ -32,7 +32,6 @@ from contracts import (
     Signal,
     VisitorContext,
     VocabolarioTemi,
-    rientra_in_orario,
 )
 
 from .rules import (
@@ -723,28 +722,31 @@ def _migliore_alternativa(
 ) -> GraphCandidate | None:
     """Migliore candidato non già usato che rispetta i vincoli del segnale.
 
-    Deterministico: tie-break per `experience_id`. Mantiene i vincoli duri
-    (accessibilità mai degradata; luogo scorrevole per l'affollamento;
-    orari di apertura — Wave 3a+, `ExperienceNode.orari_apertura` — perché
-    una sostituzione in adattamento non deve MAI reintrodurre un'esperienza
-    chiusa nel giorno/ora del segnale: trovato da una verifica etica
-    dedicata, prima non coperto qui pur essendo già coperto in
-    `rules.passa_filtri_duri` per la composizione iniziale — stessa
-    informazione, `contracts.rientra_in_orario`, ora applicata anche qui).
+    Deterministico: tie-break per `experience_id`.
 
-    NOTA (limite pre-esistente, non chiuso da questa correzione): questa
-    funzione NON verifica `partner_abbonamento_attivo` — un partner con
-    abbonamento non attivo può quindi, oggi, essere reintrodotto come
-    alternativa in adattamento, mentre `passa_filtri_duri` lo esclude
-    sempre in composizione iniziale. Non è un problema introdotto da questo
-    fix (preesisteva anche prima degli orari di apertura): documentato in
-    `docs/LIMITI.md`, non corretto qui perché fuori dallo scope di questa
-    verifica (che riguardava gli orari, non l'abbonamento).
+    I vincoli DURI vengono da un solo punto, `rules.passa_filtri_duri`
+    (accessibilità richiesta dal profilo, affollamento critico, partner con
+    abbonamento NON attivo, orari di apertura): la stessa funzione usata in
+    composizione iniziale, così una sostituzione in adattamento non può MAI
+    reintrodurre ciò che la composizione esclude. L'adattamento non ha luoghi
+    già visti da passare (lista vuota).
+
+    A questi si aggiungono SOLO i vincoli specifici dell'adattamento:
+    - `esclusi`: esperienze già presenti nell'itinerario;
+    - `richiede_accessibile`: regola CONSERVATIVA per tappa quando il
+      profilo è assente (una tappa accessibile si sostituisce solo con una
+      accessibile) — l'accessibilità non viene mai degradata;
+    - `solo_al_chiuso`: con la pioggia, solo esperienze al chiuso;
+    - affollamento > `max_affollamento`: luogo scorrevole. La soglia di
+      adattamento (0.7) è più severa di quella critica di
+      `passa_filtri_duri` (0.8) e la include.
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
     ammessi: list[GraphCandidate] = []
     for c in candidates:
+        if not passa_filtri_duri(c, profile, signal, []):
+            continue
         e = c.experience
         if e.id in esclusi:
             continue
@@ -753,8 +755,6 @@ def _migliore_alternativa(
         if solo_al_chiuso and not e.al_chiuso:
             continue
         if signal.affollamento.get(e.place_id, 0.0) > max_affollamento:
-            continue
-        if not rientra_in_orario(e.orari_apertura, signal.giorno_settimana, signal.ora):
             continue
         ammessi.append(c)
     if not ammessi:

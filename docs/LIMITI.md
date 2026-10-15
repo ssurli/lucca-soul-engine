@@ -486,6 +486,13 @@ stesso ruolo che il gate ha già avuto in Wave 1 (attribuzione mescolata nello s
    orari (esisteva già da quando è stato aggiunto il filtro sull'abbonamento in Wave 3a, mai
    esteso ad `adapt`): segnalato qui perché "va tracciato, non lasciato implicito", non
    corretto perché la richiesta di questa verifica riguardava gli orari, non l'abbonamento.
+   **CHIUSO (2026-10-15)** in un intervento successivo: `_migliore_alternativa` ora chiama
+   `rules.passa_filtri_duri` (un solo punto per i vincoli duri, abbonamento compreso) e
+   aggiunge solo i vincoli propri dell'adattamento. Test di regressione:
+   `test_partner_non_attivo_mai_presente_anche_in_adattamento` e
+   `test_bff_adapt_non_reintroduce_partner_non_attivo` (`services/api/tests/test_borgo_esempio.py`),
+   ora test normali senza `xfail`. Unico effetto sul golden di Lucca: il caso
+   `adapt|onnivoro|pioggia` non reintroduce più `exp-torchio-stamperia`.
 3. **LIMITE DI PROGETTAZIONE, non un bug isolato**: `passa_filtri_duri` (e quindi anche il
    controllo sugli orari) valuta OGNI candidato contro un SINGOLO istante — `signal.ora`/
    `signal.giorno_settimana` al momento in cui la composizione INIZIA — non contro l'orario
@@ -538,6 +545,8 @@ stesso ruolo che il gate ha già avuto in Wave 1 (attribuzione mescolata nello s
    orari (appena corretti in questa verifica), non è stato fatto qui perché fuori scope
    della richiesta — ma è la correzione più economica di questa lista: stesso pattern già
    scritto, un'unica riga in più.
+   **CHIUSO (2026-10-15):** non con una seconda copia del controllo, ma chiamando
+   `passa_filtri_duri` da `_migliore_alternativa` (vedi punto 2 sopra).
 6. **Filtro consapevole dell'orario di visita effettivo** (trovato al punto 3 sopra):
    richiede di invertire l'ordine attuale "filtra poi schedula" in qualcosa che sappia, PRIMA
    di escludere un candidato, a che ora verrebbe effettivamente visitato — un cambio di
@@ -553,7 +562,8 @@ quali turni notturni?) sarebbe fabbricare una scelta di modellazione arbitraria 
 principio già applicato in questo file a `tasso_ritorno`/`nuovi_percorsi`. Il quinto e il sesto,
 perché fuori dallo scope della verifica che li ha trovati (rispettivamente: l'abbonamento
 partner, non gli orari; un cambio di architettura, non un fix locale) — non perché siano meno
-reali dei primi quattro. Questo limite va riletto quando il
+reali dei primi quattro. (Aggiornamento 2026-10-15: il quinto è CHIUSO, vedi punto 2 della
+sezione precedente; restano aperti i primi quattro e il sesto.) Questo limite va riletto quando il
 Living Lab onboarda la prima bottega reale che dichiara uno di questi bisogni (per i primi
 quattro punti) o prima di estendere ulteriormente `adapt_itinerary`/la pipeline di composizione
 (per il quinto e il sesto) — a quel punto la richiesta reale guida quale delle sei proposte (o
@@ -1526,14 +1536,16 @@ orari di apertura (più sopra in questo file), che vanno letti ora come attivi p
   popola gli orari — l'unico incentivo a mentire è "sempre aperto".
 - **`_migliore_alternativa` non verifica `partner_abbonamento_attivo`** (gap pre-esistente,
   punto 2 della stessa voce): non chiuso né peggiorato da questo cambio; il percorso di
-  adattamento è ora raggiunto con il filtro orari attivo.
+  adattamento è ora raggiunto con il filtro orari attivo. **CHIUSO (2026-10-15):**
+  `_migliore_alternativa` ora applica `passa_filtri_duri` (vedi punto 2 della voce sugli orari).
 
 ### Condizione di riesame (vincolante prima del primo orario reale)
 
 Prima di popolare il primo `orari_apertura` reale nel grafo: (1) risolvere il fuso — il BFF
 ricalcola `ora`/`data`/giorno in `CITY_TZ` dall'istante della richiesta, oppure l'app invia un
 istante UTC e il BFF converte; (2) chiudere il gap `partner_abbonamento_attivo` in
-`_migliore_alternativa`.
+`_migliore_alternativa` — **(2) CHIUSO (2026-10-15)**: `passa_filtri_duri` applicato in
+`_migliore_alternativa`; resta aperta la (1).
 
 ### Decisione
 
@@ -1910,3 +1922,44 @@ Collegato: il borgo fittizio dei test riproduce da città nuova il limite già n
 `_migliore_alternativa` (partner con abbonamento non attivo reintrodotto in adattamento, vedi
 sopra): `services/api/tests/test_borgo_esempio.py` lo marca `xfail(strict=True)`, così il test
 diventa rosso il giorno in cui il motore viene corretto.
+**CHIUSO (2026-10-15):** il motore è stato corretto (`passa_filtri_duri` applicato in
+`_migliore_alternativa`); i due `xfail` sono stati rimossi e i due test del borgo sono ora
+test di regressione normali.
+
+## Adattamento senza alternativa: silenzio verso il visitatore (APERTO)
+
+**Trovato:** 2026-10-15, dal gate `ethics-guardian` sulla correzione di `_migliore_alternativa`
+(partner con abbonamento non attivo non più reintrodotto in adattamento). **Verdetto:** difetto
+di spiegabilità, non una violazione di un vincolo duro; non bloccante. **Non corretto** in quel
+giro, per scelta: qui è solo registrato.
+
+### Cosa succede oggi
+
+Quando `adapt_itinerary` (`services/experience-engine/experience_engine/engine.py`, ramo
+`alt is None`) non trova alcuna alternativa ammissibile per una tappa toccata dal segnale
+(pioggia su tappa all'aperto, nessuna esperienza al chiuso che superi `rules.passa_filtri_duri`
+più i vincoli dell'adattamento), la tappa resta con il `reason` originale. Se nient'altro cambia,
+l'itinerario torna invariato con `adattato_da_segnale=False`.
+
+Nessun `reason` e nessun campo dell'`Itinerary` dice al visitatore che il segnale è stato
+valutato e che la tappa è mantenuta perché non esiste un'alternativa ammissibile.
+`adattato_da_segnale=False` è ambiguo: vale sia "niente da fare" sia "non ho potuto".
+
+Caso concreto nel golden: `adapt|onnivoro|pioggia`
+(`services/api/tests/golden/lucca_itinerari.json`). L'unica alternativa al chiuso era
+`exp-torchio-stamperia` (partner con abbonamento non attivo), ora correttamente esclusa: la
+Salita alla Torre Guinigi, all'aperto, resta sotto la pioggia senza spiegazione. Il difetto
+esisteva già prima, nascosto dalla sostituzione illecita; la correzione lo ha reso visibile.
+
+### Perché conta
+
+La spiegabilità serve a rendere auditabile il vincolo etico: un fallimento silenzioso è
+indistinguibile da "nessun problema". E il visitatore non ha l'informazione per decidere da sé
+di ripianificare.
+
+### Direzione possibile (non decisa)
+
+Far emergere nel contratto l'esito "segnale valutato, nessuna alternativa ammissibile": per
+esempio un `reason` di tappa dedicato, o un campo di esito dell'adattamento distinto da
+`adattato_da_segnale`. Passa prima da `contract-keeper`; il caso golden sopra andrà aggiornato
+di conseguenza.

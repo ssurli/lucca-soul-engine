@@ -1568,7 +1568,7 @@
     },
     "adapt|onnivoro|pioggia": {
       "atteso": {
-        "adattato_da_segnale": true,
+        "adattato_da_segnale": false,
         "person_id": "golden-onnivoro",
         "stops": [
           {
@@ -1639,60 +1639,60 @@
           },
           {
             "arrivo": "20:25:00",
-            "durata_min": 35,
-            "experience_id": "exp-torchio-stamperia",
-            "reason": "Sostituita per la pioggia. Evoca il tema \"Artigianato\". Offerta da Antica Stamperia Lucchese, bottega di stampa."
+            "durata_min": 40,
+            "experience_id": "exp-salita-torre-guinigi",
+            "reason": "Evoca il tema \"Panorama\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "21:10:00",
+            "arrivo": "21:15:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
           },
           {
-            "arrivo": "21:40:00",
+            "arrivo": "21:45:00",
             "durata_min": 30,
             "experience_id": "exp-tramonto-baluardo",
             "reason": "Evoca il tema \"Panorama\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "22:20:00",
+            "arrivo": "22:25:00",
             "durata_min": 45,
             "experience_id": "exp-orto-botanico-silenzio",
             "reason": "Evoca il tema \"Verde e giardini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "23:15:00",
+            "arrivo": "23:20:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
             "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
           },
           {
-            "arrivo": "00:05:00",
+            "arrivo": "00:10:00",
             "durata_min": 55,
             "experience_id": "exp-collezione-villa-guinigi",
             "reason": "Evoca il tema \"Arte\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "01:10:00",
+            "arrivo": "01:15:00",
             "durata_min": 35,
             "experience_id": "exp-meccanismo-torre-ore",
             "reason": "Evoca il tema \"Storia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "01:55:00",
+            "arrivo": "02:00:00",
             "durata_min": 30,
             "experience_id": "exp-mercato-anfiteatro",
             "reason": "Evoca il tema \"Medievale\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "02:35:00",
+            "arrivo": "02:40:00",
             "durata_min": 20,
             "experience_id": "exp-piazza-napoleone",
             "reason": "Evoca il tema \"Storia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "03:05:00",
+            "arrivo": "03:10:00",
             "durata_min": 40,
             "experience_id": "exp-struscio-fillungo",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."

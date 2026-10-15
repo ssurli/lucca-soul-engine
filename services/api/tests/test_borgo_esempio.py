@@ -27,6 +27,7 @@ from api.settings import get_settings  # noqa: E402
 from contracts import (  # noqa: E402
     AdaptRequest,
     EmotionalProfile,
+    ExperienceNode,
     Itinerary,
     Signal,
     VisitorContext,
@@ -254,20 +255,59 @@ def test_motore_adatta_su_segnale(borgo: DatasetCitta, nome: str, segnale: Signa
     _controlla_itinerario(adattato, borgo, PROFILI[nome].tempo_disponibile_min)
     _senza_lucca(adattato)
     if segnale.meteo == "pioggia":
-        al_chiuso = {e.id for e in borgo.esperienze if e.al_chiuso}
-        ids_base = {x.experience_id for x in base.stops}
-        ids_nuovi = {x.experience_id for x in adattato.stops}
-        aperte_base = ids_base - al_chiuso
+        per_id = {e.id: e for e in borgo.esperienze}
+        ids_base = [x.experience_id for x in base.stops]
+        ids_nuovi = [x.experience_id for x in adattato.stops]
+
+        def alternative_ammissibili(tappa: str, gia_usate: list[str]) -> set[str]:
+            """Alternative al chiuso per `tappa`, calcolate dal DATASET (non da
+            `passa_filtri_duri`, che sarebbe un oracolo tautologico): al chiuso,
+            non gia' nell'itinerario, partner (se c'e') con abbonamento attivo,
+            e accessibili se la tappa sostituita lo e' (adapt senza profilo:
+            l'accessibilita' non si degrada). Orari di apertura e affollamento
+            NON entrano: verificato che nel borgo nessuna esperienza dichiara
+            `orari_apertura` e il segnale di pioggia non ha affollamento ne'
+            `giorno_settimana` (asserito sotto)."""
+            sostituita = per_id[tappa]
+            return {
+                e.id
+                for e in borgo.esperienze
+                if e.al_chiuso
+                and e.id not in gia_usate
+                and not (e.partner_id is not None and not _partner_attivo(borgo, e))
+                and (e.accessibile or not sostituita.accessibile)
+            }
+
+        assert all(not e.orari_apertura for e in borgo.esperienze)
+        assert not segnale.affollamento and segnale.giorno_settimana is None
+        aperte_base = [i for i in ids_base if not per_id[i].al_chiuso]
         if not aperte_base:
             # Niente all'aperto da riscrivere: itinerario invariato.
             assert adattato.adattato_da_segnale is False
             assert ids_nuovi == ids_base
         else:
-            if al_chiuso - ids_base:
+            if any(alternative_ammissibili(i, ids_base) for i in aperte_base):
                 assert adattato.adattato_da_segnale is True
-            # All'aperto resta solo se NON c'e' alcuna alternativa al chiuso libera.
-            if ids_nuovi - al_chiuso:
-                assert not (al_chiuso - ids_nuovi)
+            # All'aperto resta solo se NON c'e' alcuna alternativa ammissibile libera.
+            for i in ids_nuovi:
+                if not per_id[i].al_chiuso:
+                    assert not alternative_ammissibili(i, ids_nuovi), (
+                        f"{i} resta all'aperto pur con alternative ammissibili"
+                    )
+        assert "be-exp-stampa-sospesa" not in ids_nuovi
+        if nome == "tanto-tempo":
+            # Caso esplicito: l'unica alternativa al chiuso libera e' di un partner
+            # sospeso, quindi l'itinerario resta invariato (valori attesi cablati).
+            assert ids_nuovi == ids_base
+            assert adattato.adattato_da_segnale is False
+            assert "be-exp-stampa-sospesa" not in ids_nuovi
+
+
+def _partner_attivo(borgo: DatasetCitta, e: ExperienceNode) -> bool:
+    """Stato dell'abbonamento letto dal DATASET (Partner via relazione bottega)."""
+    bottega = e.partner_id
+    partner_ids = {r.partner_id for r in borgo.ha_abbonamento if r.bottega_id == bottega}
+    return any(p.abbonamento_attivo for p in borgo.partners if p.id in partner_ids)
 
 
 # ---------------------------------------------------------------------------
@@ -328,17 +368,6 @@ def test_partner_non_attivo_mai_presente_in_composizione(borgo: DatasetCitta) ->
     assert "be-exp-lab-ceramica" in visti
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "BUG NOTO (documentato in `_migliore_alternativa`, docs/LIMITI.md): "
-        "`adapt_itinerary` puo' reintrodurre come alternativa un'esperienza di un "
-        "partner con abbonamento NON attivo, che la composizione esclude sempre. "
-        "Da correggere in experience-engine; quando lo e', questo xfail strict "
-        "diventa XPASS (=fallimento) e va rimosso il marcatore."
-    ),
-)
 def test_partner_non_attivo_mai_presente_anche_in_adattamento(borgo: DatasetCitta) -> None:
     visti: set[str] = set()
     for it in _tutti_gli_itinerari(borgo):
@@ -443,14 +472,6 @@ def test_bff_filtri_etici_sul_borgo(client: TestClient, borgo: DatasetCitta) -> 
     assert "be-exp-lab-ceramica" in visti
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "BUG NOTO: stesso difetto di `adapt_itinerary` (alternativa con partner "
-        "non attivo), visto attraverso `POST /itinerary/adapt`."
-    ),
-)
 def test_bff_adapt_non_reintroduce_partner_non_attivo(
     client: TestClient, borgo: DatasetCitta
 ) -> None:

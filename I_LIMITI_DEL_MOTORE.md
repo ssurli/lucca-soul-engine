@@ -116,8 +116,9 @@ allineata** — è l'unica cosa che espone davvero in una presentazione.
 - L'adattamento dell'itinerario (`_migliore_alternativa`, usato su pioggia e affollamento) aveva
   una logica di filtro scritta a mano che **non chiamava** il controllo orari: la sostituzione
   poteva reintrodurre un'esperienza chiusa. **Corretto**, con test di regressione permanente.
-  Lo stesso metodo non verifica nemmeno `partner_abbonamento_attivo` — un gap pre-esistente mai
-  esteso all'adattamento, ancora aperto.
+  Lo stesso metodo non verificava nemmeno `partner_abbonamento_attivo` — un gap pre-esistente
+  mai esteso all'adattamento. **Chiuso** (2026-10-15): l'adattamento ora applica lo stesso
+  filtro duro della composizione, in un solo punto.
 - Tutti i filtri duri valutano ogni candidato contro **un singolo istante** di `Signal`, non
   contro l'ora in cui la tappa verrà davvero visitata più avanti nell'itinerario. Se il giro
   parte alle 10 e la terza tappa cade alle 15, il controllo avviene alle 10. Per l'affollamento

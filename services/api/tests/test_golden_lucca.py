@@ -8,6 +8,9 @@ automaticamente: se un file manca il test FALLISCE.
 
 UN TEST CHE FALLISCE QUI E' UNA REGRESSIONE SU LUCCA, non un motivo per
 rigenerare il golden. Si corregge il codice, non il JSON.
+UNICA modifica autorizzata: il caso `adapt|onnivoro|pioggia` e' stato aggiornato
+quando `_migliore_alternativa` ha iniziato ad applicare `passa_filtri_duri`
+(exp-torchio-stamperia, partner con abbonamento non attivo, non e' piu' reintrodotta).
 
 Due livelli, entrambi "replay" dei JSON (richiesta/specifica + atteso):
   a) ITINERARI via HTTP del BFF (`POST /itinerary`, `POST /itinerary/adapt`):

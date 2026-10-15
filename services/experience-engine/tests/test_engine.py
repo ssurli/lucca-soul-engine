@@ -1361,3 +1361,51 @@ def test_vocabolario_obbligatorio_senza_default() -> None:
     # Nemmeno posizionale: il parametro è keyword-only.
     with pytest.raises(TypeError):
         punteggio(cand, profile, signal, VOCABOLARIO)
+
+
+def test_adapt_pioggia_non_reintroduce_partner_non_attivo_ma_sostituisce_se_attivo() -> None:
+    """Regressione: `_migliore_alternativa` applica `rules.passa_filtri_duri`,
+    quindi l'unica alternativa al chiuso di un partner con abbonamento NON
+    attivo non sostituisce mai la tappa all'aperto. Anti-vacuita': la STESSA
+    alternativa con abbonamento attivo la sostituisce (differisce solo il flag)."""
+
+    def esegui(attivo: bool) -> tuple[list[str], bool]:
+        originale = ExperienceNode(
+            id="exp-originale", titolo="Passeggiata", place_id="luogo-a", temi=[],
+            durata_min=30, al_chiuso=False, accessibile=True,
+        )
+        alternativa = ExperienceNode(
+            id="exp-alternativa", titolo="Laboratorio", place_id="luogo-b", temi=[],
+            durata_min=30, al_chiuso=True, accessibile=True,
+            partner_id="bottega-1", partner_abbonamento_attivo=attivo,
+        )
+        candidati = [
+            GraphCandidate(experience=originale, place_nome="A", connessioni=[]),
+            GraphCandidate(
+                experience=alternativa, place_nome="B", connessioni=["Unica alternativa"]
+            ),
+        ]
+        itinerario = Itinerary(
+            person_id="p",
+            stops=[ItineraryStop(experience_id="exp-originale", arrivo=time(10, 0),
+                                  durata_min=30, reason="motivo iniziale")],
+            generated_at=datetime.now(),
+        )
+        profile = EmotionalProfile(
+            curiosita=0.5, contemplazione=0.5, arte=0.5, con_bambini=False,
+            tempo_disponibile_min=120,
+        )
+        pioggia = Signal(meteo="pioggia", affollamento={}, stanchezza=0.0, ora=time(10, 0))
+        r = adapt_itinerary(
+            itinerario, pioggia, candidati, profile,
+            reason_fn=compose_reason, adapt_reason_fn=adapt_reason, vocabolario=VOCABOLARIO,
+        )
+        return [s.experience_id for s in r.stops], r.adattato_da_segnale
+
+    stops, adattato = esegui(attivo=False)
+    assert stops == ["exp-originale"]
+    assert adattato is False
+
+    stops, adattato = esegui(attivo=True)
+    assert stops == ["exp-alternativa"]
+    assert adattato is True
