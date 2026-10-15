@@ -976,7 +976,7 @@ def _signal_evento(data: date | None = _DATA_IN_FINESTRA) -> Signal:
 
 def _evento_musica() -> EventoPromosso:
     """Un `:Evento` promosso sul luogo di `_candidato_arte`, con un tema che
-    parla al profilo "arte" (`musica` ∈ `TEMI_ARTE`) e uno slug a più parole
+    parla al profilo "arte" (`musica` ∈ `VOCABOLARIO.arte`) e uno slug a più parole
     (`musica-di-strada`) per verificare la resa leggibile nel `reason`."""
     return EventoPromosso(
         id=_ID_EVENTO_MUSICA,

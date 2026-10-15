@@ -538,7 +538,7 @@ def _aggiungi_tappe_eventi_promossi(
     `data_visita` (`ctx.signal.data`) è keyword-only e SENZA default: decide
     la finestra temporale (`rules.eventi_promossi_pertinenti`, fail-closed se
     `None` — nessuna tappa-evento) e il giorno atteso raccontato nel
-    `reason`. Nessun chiamante può dimenticarla in silenzio.
+    `reason`. Nessun chiamante può ometterla senza accorgersene.
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""

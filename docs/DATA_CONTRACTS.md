@@ -298,6 +298,19 @@ class VocabolarioTemi(ContractModel):   # frozen=True, extra="forbid"
   `TEMI_INSOLITI`, `TEMI_VERDE`, `TEMA_BAMBINI` di
   `experience_engine/rules.py` (-> `contemplativi`, `arte`, `insoliti`,
   `verde`, `bambini`).
+- **REGOLA DI CURATELA (per chi cura il dataset di una città):**
+  - il vocabolario si definisce per SIGNIFICATO del tema rispetto alla
+    dimensione del profilo (contemplazione, arte, curiosità, verde,
+    bambini), MAI in funzione di chi offre le esperienze che lo evocano;
+  - un gruppo non si costruisce a partire dai temi di un partner; un tema
+    evocato solo da esperienze con partner non dovrebbe entrare in un gruppo
+    senza una motivazione di significato documentata nel modulo dataset;
+  - coerente con "nessuno spazio è acquistabile": nessun prezzo modifica il
+    vocabolario, perché darebbe affinità sistematica a un partner per via di
+    dato anziché di codice;
+  - **limite aperto:** la regola NON è verificata automaticamente (sarà
+    registrato in `docs/LIMITI.md`). Il codice garantisce solo che i filtri
+    duri e lo score non leggono campi commerciali.
 
 ## 3. AI Experience Engine — uscita
 

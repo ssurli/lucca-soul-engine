@@ -574,6 +574,16 @@ class VocabolarioTemi(ContractModel):
       insiemi vuoti AMMESSI (una città può non avere temi "insoliti").
     - `bambini`: UN solo id di Tema (match per appartenenza `in temi`).
 
+    REGOLA DI CURATELA: il vocabolario si definisce per SIGNIFICATO del tema
+    rispetto alla dimensione del profilo, mai in funzione di chi offre le
+    esperienze che lo evocano. Un gruppo non si costruisce a partire dai temi
+    di un partner; un tema evocato solo da esperienze con partner non
+    dovrebbe entrare in un gruppo senza una motivazione di significato
+    documentata nel modulo dataset. Nessun prezzo modifica il vocabolario
+    ("nessuno spazio è acquistabile"). Limite aperto: la regola NON è
+    verificata automaticamente (docs/LIMITI.md); il codice garantisce solo
+    che filtri duri e score non leggono campi commerciali.
+
     Immutabile (`frozen`) e hashable. Gli insiemi si serializzano in JSON
     come liste (ordine non garantito: non fare affidamento sull'ordine).
     Invariante NON verificata qui: ogni id deve essere un `Tema` del dataset;

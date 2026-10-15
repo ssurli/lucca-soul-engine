@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from collections.abc import Set as AbstractSet
 from datetime import UTC, date, datetime, timedelta
 from typing import Final
 
@@ -110,27 +111,6 @@ W_METEO = 0.15
 W_STANCHEZZA = 0.15
 PENALITA_AFFOLLAMENTO = 0.40
 
-# ---------------------------------------------------------------------------
-# Vocabolario dei temi (allineato al seed di Lucca)
-# ---------------------------------------------------------------------------
-
-#: Temi che parlano a chi cerca silenzio e raccoglimento.
-TEMI_CONTEMPLATIVI = {"silenzio", "verde", "panorama", "romanico"}
-
-#: Temi della bellezza e delle storie d'arte e musica.
-TEMI_ARTE = {"arte", "puccini", "musica", "romanico", "liuteria"}
-
-#: Temi "insoliti" che premiano chi ha voglia di perdersi: la sorpresa nasce
-#: dalle connessioni del grafo, non da una categoria da vetrina.
-TEMI_INSOLITI = {"artigianato", "liuteria", "romanico", "medievale"}
-
-#: Temi freschi/verdi, apprezzati col caldo.
-TEMI_VERDE = {"verde", "panorama"}
-
-#: Tema esplicito per chi viaggia con bambini.
-TEMA_BAMBINI = "con-bambini"
-
-
 def stima_trasferimento_min(distanza_m: int | None) -> int:
     """Minuti di trasferimento tra due tappe.
 
@@ -144,8 +124,11 @@ def stima_trasferimento_min(distanza_m: int | None) -> int:
     return max(1, math.ceil(distanza_m / VELOCITA_CAMMINO_M_MIN))
 
 
-def affinita_temi(temi: list[str], gruppo: set[str]) -> float:
+def affinita_temi(temi: list[str], gruppo: AbstractSet[str]) -> float:
     """Quanto i temi di un'esperienza appartengono a un gruppo (0, 0.5 o 1).
+
+    `gruppo` è un gruppo del vocabolario della città (`VocabolarioTemi`,
+    frozenset) o un qualunque insieme di id di Tema.
 
     Conta le sovrapposizioni, satura a 2: due temi coerenti bastano a dire che
     l'esperienza "parla" a quel tratto; oltre non aggiunge informazione."""
@@ -230,23 +213,27 @@ def calcola_score(
 
     score = 0.0
     # Affinità di profilo: temi contemplativi, d'arte, e la sorpresa (curiosità).
-    score += W_CONTEMPLAZIONE * profile.contemplazione * affinita_temi(temi, TEMI_CONTEMPLATIVI)
-    score += W_ARTE * profile.arte * affinita_temi(temi, TEMI_ARTE)
+    score += (
+        W_CONTEMPLAZIONE * profile.contemplazione * affinita_temi(temi, vocabolario.contemplativi)
+    )
+    score += W_ARTE * profile.arte * affinita_temi(temi, vocabolario.arte)
 
     # Curiosità: premia le connessioni del grafo (più connessioni = più
     # sorpresa possibile) e i temi insoliti. La sorpresa nasce dal grafo.
     sorpresa = 0.5 * min(len(candidate.connessioni), 4) / 4.0
-    sorpresa += 0.5 * affinita_temi(temi, TEMI_INSOLITI)
+    sorpresa += 0.5 * affinita_temi(temi, vocabolario.insoliti)
     score += W_CURIOSITA * profile.curiosita * sorpresa
 
     # Con bambini: il tema è SEMPRE considerato e premiato quando pertinente.
-    if profile.con_bambini and TEMA_BAMBINI in temi:
+    if profile.con_bambini and vocabolario.bambini in temi:
         score += W_BAMBINI
 
     # Segnale meteo: pioggia -> al chiuso; caldo -> chiuso o verde/fresco.
     if signal.meteo == "pioggia" and esperienza.al_chiuso:
         score += W_METEO
-    elif signal.meteo == "caldo" and (esperienza.al_chiuso or affinita_temi(temi, TEMI_VERDE) > 0):
+    elif signal.meteo == "caldo" and (
+        esperienza.al_chiuso or affinita_temi(temi, vocabolario.verde) > 0
+    ):
         score += W_METEO
 
     # Stanchezza alta: preferisci tappe brevi (bonus proporzionale alla brevità).
@@ -281,7 +268,7 @@ def segnali_rilevanti(
     if signal.meteo == "pioggia" and esperienza.al_chiuso:
         segnali.append("pioggia")
     elif signal.meteo == "caldo" and (
-        esperienza.al_chiuso or affinita_temi(esperienza.temi, TEMI_VERDE) > 0
+        esperienza.al_chiuso or affinita_temi(esperienza.temi, vocabolario.verde) > 0
     ):
         segnali.append("caldo")
 
@@ -307,19 +294,20 @@ def _coerente_col_profilo(
     """Un tema del segnale fluttuante appartiene a un gruppo la cui
     dimensione di profilo corrispondente è > 0 — STESSO ragionamento per
     connessioni già usato da `calcola_score` per le esperienze permanenti
-    (`affinita_temi` contro `TEMI_CONTEMPLATIVI`/`TEMI_ARTE`/`TEMI_INSOLITI`/
-    `TEMA_BAMBINI`), non un secondo criterio inventato per l'occasione: "il
-    segnale evoca un tema, il tema raggiunge chi è affine".
+    (`affinita_temi` contro i gruppi del vocabolario della città:
+    `contemplativi`/`arte`/`insoliti`, più il tema `bambini`), non un secondo
+    criterio inventato per l'occasione: "il segnale evoca un tema, il tema
+    raggiunge chi è affine".
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
-    if profile.contemplazione > 0 and affinita_temi(temi, TEMI_CONTEMPLATIVI) > 0:
+    if profile.contemplazione > 0 and affinita_temi(temi, vocabolario.contemplativi) > 0:
         return True
-    if profile.arte > 0 and affinita_temi(temi, TEMI_ARTE) > 0:
+    if profile.arte > 0 and affinita_temi(temi, vocabolario.arte) > 0:
         return True
-    if profile.curiosita > 0 and affinita_temi(temi, TEMI_INSOLITI) > 0:
+    if profile.curiosita > 0 and affinita_temi(temi, vocabolario.insoliti) > 0:
         return True
-    if profile.con_bambini and TEMA_BAMBINI in temi:
+    if profile.con_bambini and vocabolario.bambini in temi:
         return True
     return False
 
@@ -575,7 +563,7 @@ ETA_MASSIMA_ULTIMA_TRACCIA_GIORNI: Final = 2 * EMIVITA_BAGLIORE_GIORNI
 
 def temi_leggibili(temi: Sequence[str]) -> str:
     """Rende leggibile una lista di temi GREZZI (id/slug del grafo, es.
-    "musica-di-strada") per un `reason`.
+    "tema-a-piu-parole") per un `reason`.
 
     `EventoPromosso.temi`, `SegnaleFluttuante.temi`, `ExperienceNode.temi` e
     i temi delle tracce portano id, non nomi umani (i nomi leggibili dei
