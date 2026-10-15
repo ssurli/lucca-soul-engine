@@ -21,6 +21,7 @@ __all__ = [
     "Neo4jConfig",
     "read_dotenv",
     "database_url_from_env",
+    "city_seed_from_env",
     "neo4j_config_from_env",
 ]
 
@@ -65,6 +66,13 @@ def database_url_from_env(dotenv_path: Path | None = None) -> str:
     if not dsn:
         raise ValueError("DATABASE_URL mancante nel .env o nell'ambiente")
     return dsn
+
+
+def city_seed_from_env(dotenv_path: Path | None = None) -> str | None:
+    """Legge `CITY_SEED` (slug del dataset di città) con la stessa precedenza
+    delle altre variabili: ambiente di processo > `.env`. `None` se assente o
+    vuota (il chiamante risolve il predefinito)."""
+    return _merged_env(dotenv_path).get("CITY_SEED") or None
 
 
 @dataclass(frozen=True)

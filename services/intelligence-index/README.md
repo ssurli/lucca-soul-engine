@@ -294,7 +294,9 @@ da altri indicatori solo per riempire il campo.
     ranking). `recommender.repository.BehaviorEventRepository.conteggio_per_esperienza()` resta
     l'unica fonte per il ranking; non è sufficiente per l'Index (nessun filtro per periodo, nessun
     `person_id` a grana fine).
-- `intelligence_index/deps.py` — selezione Seed/Neo4j e In-Memory/Postgres in base al `.env`,
+- `intelligence_index/deps.py` — selezione Seed/Neo4j e In-Memory/Postgres in base al `.env`
+  (il fallback Seed usa il dataset scelto da `CITY_SEED`, letto dallo stesso `merged_env()`;
+  valore invalido -> `ValueError`),
   STESSO pattern di `services/api/api/deps.py` (nessun `if local/cloud`, solo presenza delle
   variabili d'ambiente), duplicato localmente qui — come già fanno `recommender._env`/
   `urban_memory._env` — per comodità di chi cablerà l'endpoint dashboard (`api-engineer`, fuori
@@ -386,7 +388,7 @@ from intelligence_index import calcola_index
 from intelligence_index.catalogo import esperienze_per_id
 from intelligence_index.periodo import intervallo_periodo
 
-fonte_candidati = SeedCandidateSource()
+fonte_candidati = SeedCandidateSource()   # dataset da CITY_SEED (predefinito se assente)
 fonte_metriche = SeedMetricsSource()
 catalogo = esperienze_per_id(fonte_candidati)
 grado = fonte_metriche.grado_semantico()

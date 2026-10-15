@@ -8,9 +8,12 @@ Ogni altra via di alimentazione del grafo nasce da questo modulo:
   (`cypher/00_schema.cypher`, `cypher/01_seed_lucca.cypher`), committato e
   rieseguibile da zero con `python -m graph.loader`.
 
-Replicare il motore su un'altra città (Siena, Ferrara...) significa scrivere
-un nuovo modulo con questa stessa forma: la tecnologia (schema, query,
-loader) non cambia, cambia solo il contenuto.
+Questo è il modulo dataset di Lucca, selezionato dal registro
+(`graph.registro`) quando `CITY_SEED` è "lucca" (il predefinito). Replicare il
+motore su un'altra città significa scrivere un nuovo
+modulo `seed_<città>.py` che espone un `DATASET: DatasetCitta` (tipi in
+`graph.dataset`): la tecnologia (schema, query, loader) non cambia, cambia
+solo il contenuto.
 
 Nodi: `Luogo`, `Artista`, `Bottega`, `Tema`, `Esperienza` (`ExperienceNode`,
 importato da `contracts`: non è ridefinito qui). `Evento` e `Memoria` sono
@@ -57,10 +60,34 @@ Marketplace (Wave 3a — `docs/DATA_CONTRACTS.md` §5):
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, datetime
-
 from contracts import ExperienceNode, Partner
+
+from graph.dataset import VICINO_EPOCA_PREDEFINITA as _EPOCA
+from graph.dataset import (
+    Artista,
+    Bottega,
+    DatasetCitta,
+    Luogo,
+    RelazioneBottegaEvoca,
+    RelazioneHaAbbonamento,
+    RelazioneIspirataDa,
+    RelazioneLegatoA,
+    RelazioneVicino,
+    Tema,
+)
+
+__all__ = [
+    "Artista",
+    "Bottega",
+    "DATASET",
+    "Luogo",
+    "RelazioneBottegaEvoca",
+    "RelazioneHaAbbonamento",
+    "RelazioneIspirataDa",
+    "RelazioneLegatoA",
+    "RelazioneVicino",
+    "Tema",
+]
 
 # `VICINO` non porta uno storico reale: il seed non ha mai registrato QUANDO
 # un arco di prossimità fisica è stato scritto. Wave 4 (Urban Intelligence
@@ -76,107 +103,11 @@ from contracts import ExperienceNode, Partner
 # in poi la data ha un significato storico reale, ed è quello che rende
 # possibile distinguere "già connesso all'inizio del periodo" da "connesso
 # DA POCO" — la definizione stessa di "nuovo percorso".
-VICINO_EPOCA: datetime = datetime(2026, 1, 1, tzinfo=UTC)
+VICINO_EPOCA = _EPOCA
 
-# ---------------------------------------------------------------------------
-# Nodi: tipi minimi, locali a questo servizio (non sono contratti
-# cross-servizio: `docs/DATA_CONTRACTS.md` §2 definisce solo `ExperienceNode`
-# e `GraphCandidate` come tipi condivisi; Luogo/Artista/Bottega/Tema sono
-# dettaglio implementativo del grafo).
-# ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class Luogo:
-    id: str
-    nome: str
-    categoria: str  # "mura","piazza","chiesa","museo","giardino","torre","via","teatro"
-
-
-@dataclass(frozen=True)
-class Artista:
-    id: str
-    nome: str
-
-
-@dataclass(frozen=True)
-class Bottega:
-    id: str
-    nome: str
-    mestiere: str  # "liuteria","ceramica","stampa","pasticceria","tessitura"
-    place_id: str  # luogo dove si trova fisicamente la bottega
-
-
-@dataclass(frozen=True)
-class Tema:
-    id: str
-    nome: str  # etichetta leggibile, es. "Giacomo Puccini e la musica"
-
-
-@dataclass(frozen=True)
-class RelazioneVicino:
-    """`(:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)`. Non direzionale nel
-    dominio (la distanza vale nei due sensi): una riga sola per coppia, le
-    API di lettura (`graph.source`, `cypher/10_candidates.cypher`) la
-    trattano come non orientata.
-
-    `creato_il`: default `VICINO_EPOCA` per tutti gli archi del seed
-    iniziale ("sempre esistiti", non una data vera — vedi commento su
-    `VICINO_EPOCA`). Un arco scritto dopo il seed dovrebbe passare
-    `datetime.now(UTC)` esplicitamente: è ciò che rende possibile
-    `graph.topology.non_connected_place_pairs` congelare uno snapshot di
-    connettività a un istante T per l'indicatore `nuovi_percorsi`."""
-
-    da_id: str
-    a_id: str
-    metri: int
-    creato_il: datetime = VICINO_EPOCA
-
-
-@dataclass(frozen=True)
-class RelazioneLegatoA:
-    """`(:Artista)-[:LEGATO_A]->(:Luogo)`."""
-
-    artista_id: str
-    luogo_id: str
-
-
-@dataclass(frozen=True)
-class RelazioneBottegaEvoca:
-    """`(:Bottega)-[:EVOCA]->(:Tema)`. Stesso tipo di relazione delle
-    Esperienze (`Esperienza-[:EVOCA]->Tema`): la bottega evoca i temi del suo
-    mestiere. Fatto SEMANTICO, non di prossimità: alimenta `connessioni` solo
-    per i temi che l'esperienza specifica non evoca già (niente doppioni)."""
-
-    bottega_id: str
-    tema_id: str
-
-
-@dataclass(frozen=True)
-class RelazioneIspirataDa:
-    """`(:Bottega)-[:ISPIRATA_DA]->(:Artista)`. Relazione SEMANTICA nuova
-    (non di prossimità fisica, non `LEGATO_A` che è riservato ad
-    Artista->Luogo): lega una bottega al lavoro di un artista che ne ispira
-    il mestiere. `racconto` è la frase italiana che la rende esplicita in
-    `GraphCandidate.connessioni` — è ciò che rende percorribile, per sole
-    connessioni semantiche, "Puccini -> ... -> liutaio -> violino"."""
-
-    bottega_id: str
-    artista_id: str
-    racconto: str
-
-
-@dataclass(frozen=True)
-class RelazioneHaAbbonamento:
-    """`(:Bottega)-[:HA_ABBONAMENTO]->(:Partner)`. Relazione COMMERCIALE
-    (Wave 3a, marketplace): collega la Bottega del dominio culturale
-    all'entità di ricavo `Partner` (`docs/DATA_CONTRACTS.md` §5). Una
-    Bottega senza questa relazione è considerata sempre visibile (nessun
-    partner = nessuna leva commerciale attiva su di essa)."""
-
-    bottega_id: str
-    partner_id: str
-
+# I tipi dei nodi e delle relazioni (`Luogo`, `Artista`, `Bottega`, `Tema`,
+# `Relazione*`) vivono in `graph.dataset` (neutri, condivisi da ogni città) e
+# sono ri-esportati qui per compatibilità.
 
 # ---------------------------------------------------------------------------
 # Luoghi — 15 luoghi reali di Lucca
@@ -719,6 +650,24 @@ def _validate() -> None:
 
 
 _validate()
+
+DATASET = DatasetCitta(
+    nome="lucca",
+    luoghi=LUOGHI,
+    artisti=ARTISTI,
+    legato_a=LEGATO_A,
+    botteghe=BOTTEGHE,
+    temi=TEMI,
+    bottega_evoca=BOTTEGA_EVOCA,
+    bottega_ispirata_da=BOTTEGA_ISPIRATA_DA,
+    partners=PARTNERS,
+    ha_abbonamento=HA_ABBONAMENTO,
+    esperienze=ESPERIENZE,
+    vicino=VICINO,
+    vicino_epoca=VICINO_EPOCA,
+    # Bottega reale del seed: bersaglio della memoria di prova di Urban Memory.
+    id_esempio_memoria="liuteria-lucchese",
+)
 
 
 # ---------------------------------------------------------------------------

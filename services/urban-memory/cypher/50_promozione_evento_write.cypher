@@ -4,7 +4,7 @@
 //
 // Ancoraggio: SOLO (:Evento)-[:SI_SVOLGE_A]->(:Luogo) — la relazione
 // "accade qui" già in uso per (:Esperienza)-[:SI_SVOLGE_A]->(:Luogo)
-// (services/graph/cypher/01_seed_lucca.cypher), MAI una relazione nuova
+// (il file di seed della città in services/graph/cypher/), MAI una relazione nuova
 // (NON `LEGATO_A`: riservata semanticamente ad Artista->Luogo).
 //
 // MATCH sul :Luogo, MAI un MERGE: questa query non crea MAI un :Luogo. Se

@@ -88,6 +88,13 @@ docs/
 > inattività**. Per questo il seed del grafo è versionato e rieseguibile in un comando: il grafo
 > è un artefatto ricostruibile, non un archivio. È anche la disciplina che serve per la Wave 5.
 
+## Quale città serve questa installazione: `CITY_SEED`
+
+Il dataset del Knowledge Graph si sceglie con `CITY_SEED` nel `.env` (default
+`lucca`): seleziona `services/graph/graph/seed_<valore>.py` e
+`services/graph/cypher/01_seed_<valore>.cypher`. Un'installazione serve UNA
+città (nessun multi-tenant). Per aggiungerne una, vedi `services/graph/README.md`.
+
 ## Regole non negoziabili
 
 Un solo schema · decide solo l'Experience Engine · privacy by design · **mai** ottimizzare

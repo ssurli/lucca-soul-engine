@@ -4,8 +4,8 @@ Esegue, in ordine, gli script versionati in `cypher/`:
 
 1. `00_schema.cypher` — vincoli e indici (`CREATE ... IF NOT EXISTS`:
    idempotente);
-2. `01_seed_lucca.cypher` — nodi e relazioni del seed Lucca (`MERGE`:
-   idempotente).
+2. `01_seed_<città>.cypher` — nodi e relazioni del dataset della città scelta
+   da `CITY_SEED` (`graph.registro`; `MERGE`: idempotente).
 
 Aura Free cancella l'istanza dopo 30 giorni di inattività: il grafo è un
 ARTEFATTO RICOSTRUIBILE, non un archivio. Questo comando è l'unico modo
@@ -27,10 +27,9 @@ from pathlib import Path
 from neo4j import GraphDatabase
 
 from graph.env import Neo4jConfig, load_neo4j_config
+from graph.registro import CYPHER_DIR, dataset_attivo, file_seed_cypher
 
-CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
 SCHEMA_FILE = CYPHER_DIR / "00_schema.cypher"
-SEED_FILE = CYPHER_DIR / "01_seed_lucca.cypher"
 
 
 def _statements(path: Path) -> list[str]:
@@ -53,14 +52,17 @@ def _statements(path: Path) -> list[str]:
     return statements
 
 
-def run(config: Neo4jConfig) -> int:
-    """Esegue schema + seed su Neo4j. Ritorna il numero di istruzioni eseguite."""
+def run(config: Neo4jConfig, seed_file: Path | None = None) -> int:
+    """Esegue schema + seed su Neo4j. Ritorna il numero di istruzioni eseguite.
+
+    `seed_file=None` -> il seed della città attiva (`CITY_SEED`)."""
+    seed = seed_file if seed_file is not None else file_seed_cypher(dataset_attivo())
     driver = GraphDatabase.driver(config.uri, auth=(config.username, config.password))
     eseguite = 0
     try:
         driver.verify_connectivity()
         with driver.session(database=config.database) as session:
-            for path in (SCHEMA_FILE, SEED_FILE):
+            for path in (SCHEMA_FILE, seed):
                 for statement in _statements(path):
                     session.run(statement)
                     eseguite += 1
@@ -76,10 +78,11 @@ def main() -> None:
         print(f"Configurazione Neo4j mancante: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
-    eseguite = run(config)
+    seed_file = file_seed_cypher(dataset_attivo())
+    eseguite = run(config, seed_file)
     print(
         f"OK: {eseguite} istruzioni Cypher eseguite su database={config.database!r} "
-        f"({SCHEMA_FILE.name} + {SEED_FILE.name})."
+        f"({SCHEMA_FILE.name} + {seed_file.name})."
     )
 
 

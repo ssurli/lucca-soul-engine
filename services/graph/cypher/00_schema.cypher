@@ -1,5 +1,6 @@
 // File GENERATO da `python -m graph.export_cypher`.
-// Non modificare a mano: la fonte di verità è `graph/seed_lucca.py`.
+// Non modificare a mano: la fonte di verità è il modulo dataset `graph/seed_<città>.py`
+// selezionato da CITY_SEED.
 
 
 // Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li
@@ -7,7 +8,7 @@
 //   (:Artista)-[:LEGATO_A]->(:Luogo)
 //   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;
 //     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale
-//     ('sempre esistiti', non una data vera — vedi graph/seed_lucca.py), un vero
+//     ('sempre esistiti', non una data vera — vedi il modulo dataset), un vero
 //     datetime.now(UTC) per ogni arco scritto dopo il seed. Serve a congelare uno
 //     snapshot di connettività a un istante T (graph/topology.py,
 //     cypher/12_non_connected_pairs.cypher) per l'indicatore nuovi_percorsi.

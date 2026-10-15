@@ -352,10 +352,12 @@ persistenza): è esattamente la distinzione che il fatto osservato in
 produzione (riga presente su Neon, ma 0 nodi `:Memoria` su Aura) ha reso
 necessaria.
 
-`urban_memory.verify`/`urban_memory.link` usano
-`PLACE_ID_ESEMPIO = "liuteria-lucchese"` — un id REALE del seed del grafo
-(`services/graph/graph/seed_lucca.py`; le altre botteghe: `ceramica-lucca`,
-`stamperia-lucca`, `pasticceria-storica`, `tessitura-lucca`). Se il seed non
+`urban_memory.verify` usa come id d'esempio `id_esempio_memoria` del dataset
+scelto da `CITY_SEED` (`graph.registro.carica_dataset`; assente = dataset
+predefinito, per Lucca `liuteria-lucchese`) — un id REALE del seed del grafo,
+mai inventato. Un `CITY_SEED` non valido fa uscire la CLI con codice 1 e un
+messaggio leggibile. Richiede `lucca-graph` installato
+(`pip install -e services/graph`). Se il seed non
 è ancora stato applicato ad Aura, applicalo prima con `python -m
 graph.loader` (`services/graph`) — altrimenti il comando 3 solleva
 `MemoryLinkError` per design (nessun nodo `:Memoria` orfano), anche con

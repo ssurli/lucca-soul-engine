@@ -21,6 +21,14 @@ dependencies = [
 #
 #   pip install -e packages/contracts -e services/urban-memory
 #
+# NOTA — pacchetto graph (services/graph, `lucca-graph`):
+# `urban_memory.verify` (SOLO la CLI di verifica) importa `graph.registro`
+# per leggere `id_esempio_memoria` del dataset scelto da `CITY_SEED`. Come
+# `lucca-contracts`, non è pubblicato su un indice: va installato a parte,
+# in editable mode (nessun altro servizio lo dichiara in `dependencies`):
+#
+#   pip install -e services/graph -e services/urban-memory
+#
 # NOTA — persistenza reale:
 # `urban_memory.repository.PostgresMemoryRepository` persiste DAVVERO via
 # `psycopg[binary]` (driver Postgres 3): il DSN arriva dal costruttore,

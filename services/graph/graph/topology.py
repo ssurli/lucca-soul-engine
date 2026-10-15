@@ -1,4 +1,4 @@
-"""Ricerca su grafo in-memory sul dataset canonico — offline, senza Neo4j.
+"""Ricerca su grafo in-memory sul dataset canonico della città — offline, senza Neo4j.
 
 Serve a due scopi, entrambi verificati in `tests/test_topology.py`:
 
@@ -38,15 +38,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from itertools import combinations
 
-from graph.seed_lucca import (
-    BOTTEGA_EVOCA,
-    BOTTEGA_ISPIRATA_DA,
-    BOTTEGHE,
-    ESPERIENZE,
-    LEGATO_A,
-    LUOGHI,
-    VICINO,
-)
+from graph.dataset import DatasetCitta
+from graph.registro import dataset_attivo
 
 # Tutti i tipi di relazione tranne VICINO: quelle "semantiche" (artisti, temi,
 # botteghe, esperienze) che devono, da sole, rendere raggiungibile un
@@ -58,6 +51,11 @@ SEMANTIC_RELATION_TYPES: frozenset[str] = frozenset(
 ALL_RELATION_TYPES: frozenset[str] = SEMANTIC_RELATION_TYPES | {"VICINO"}
 
 
+def _ds(dataset: DatasetCitta | None) -> DatasetCitta:
+    """`None` -> dataset attivo (`CITY_SEED`)."""
+    return dataset if dataset is not None else dataset_attivo()
+
+
 @dataclass(frozen=True)
 class Edge:
     da: str
@@ -65,29 +63,29 @@ class Edge:
     a: str
 
 
-def _all_edges() -> list[Edge]:
+def _all_edges(dataset: DatasetCitta) -> list[Edge]:
     """Tutte le relazioni del seed come archi (nodo, tipo, nodo), ricostruite
     dagli stessi campi che alimentano `graph.export_cypher` — nessuna
     seconda fonte di verità."""
     edges: list[Edge] = []
 
-    for vicino in VICINO:
+    for vicino in dataset.vicino:
         edges.append(Edge(vicino.da_id, "VICINO", vicino.a_id))
 
-    for legato in LEGATO_A:
+    for legato in dataset.legato_a:
         edges.append(Edge(legato.artista_id, "LEGATO_A", legato.luogo_id))
 
-    for esperienza in ESPERIENZE:
+    for esperienza in dataset.esperienze:
         edges.append(Edge(esperienza.id, "SI_SVOLGE_A", esperienza.place_id))
         for tema_id in esperienza.temi:
             edges.append(Edge(esperienza.id, "EVOCA", tema_id))
         if esperienza.partner_id is not None:
             edges.append(Edge(esperienza.partner_id, "OFFRE", esperienza.id))
 
-    for evoca in BOTTEGA_EVOCA:
+    for evoca in dataset.bottega_evoca:
         edges.append(Edge(evoca.bottega_id, "EVOCA", evoca.tema_id))
 
-    for ispirata in BOTTEGA_ISPIRATA_DA:
+    for ispirata in dataset.bottega_ispirata_da:
         edges.append(Edge(ispirata.bottega_id, "ISPIRATA_DA", ispirata.artista_id))
 
     return edges
@@ -95,6 +93,7 @@ def _all_edges() -> list[Edge]:
 
 def build_adjacency(
     relation_types: frozenset[str] | None = None,
+    dataset: DatasetCitta | None = None,
 ) -> dict[str, list[tuple[str, str]]]:
     """Adiacenza NON orientata: nodo -> [(vicino, tipo_relazione), ...].
 
@@ -103,7 +102,7 @@ def build_adjacency(
     dimostrare la raggiungibilità puramente semantica.
     """
     adiacenza: dict[str, list[tuple[str, str]]] = {}
-    for edge in _all_edges():
+    for edge in _all_edges(_ds(dataset)):
         if relation_types is not None and edge.tipo not in relation_types:
             continue
         adiacenza.setdefault(edge.da, []).append((edge.a, edge.tipo))
@@ -115,6 +114,7 @@ def shortest_path(
     origine: str,
     destinazione: str,
     relation_types: frozenset[str] | None = None,
+    dataset: DatasetCitta | None = None,
 ) -> list[tuple[str, str, str]] | None:
     """BFS non orientata sul grafo canonico. Ritorna il cammino più corto
     come lista di `(nodo_da, tipo_relazione, nodo_a)`, oppure `None` se
@@ -122,7 +122,7 @@ def shortest_path(
     if origine == destinazione:
         return []
 
-    adiacenza = build_adjacency(relation_types)
+    adiacenza = build_adjacency(relation_types, dataset)
     visitati = {origine}
     coda: deque[tuple[str, list[tuple[str, str, str]]]] = deque([(origine, [])])
 
@@ -140,13 +140,14 @@ def shortest_path(
     return None
 
 
-def vicino_degree() -> dict[str, int]:
+def vicino_degree(dataset: DatasetCitta | None = None) -> dict[str, int]:
     """Grado di ogni Luogo nella sola rete `VICINO` (non orientata)."""
-    adiacenza = build_adjacency(frozenset({"VICINO"}))
-    return {luogo.id: len(adiacenza.get(luogo.id, [])) for luogo in LUOGHI}
+    ds = _ds(dataset)
+    adiacenza = build_adjacency(frozenset({"VICINO"}), ds)
+    return {luogo.id: len(adiacenza.get(luogo.id, [])) for luogo in ds.luoghi}
 
 
-def grado_semantico() -> dict[str, int]:
+def grado_semantico(dataset: DatasetCitta | None = None) -> dict[str, int]:
     """Grado semantico di ogni Luogo: quante relazioni CULTURALI
     (`SEMANTIC_RELATION_TYPES` — tutto tranne `VICINO`) lo toccano, INCLUSE
     quelle delle Botteghe che ospita (`Bottega.place_id`).
@@ -165,11 +166,12 @@ def grado_semantico() -> dict[str, int]:
     "Luogo minore" (soglia, tipicamente la mediana) NON è compito di questa
     funzione: chi applica la soglia la riceve come parametro esplicito, mai
     hardcoded qui (vedi `services/intelligence-index`)."""
-    adiacenza = build_adjacency(SEMANTIC_RELATION_TYPES)
+    ds = _ds(dataset)
+    adiacenza = build_adjacency(SEMANTIC_RELATION_TYPES, ds)
     gradi: dict[str, int] = {}
-    for luogo in LUOGHI:
+    for luogo in ds.luoghi:
         grado = len(adiacenza.get(luogo.id, []))
-        for bottega in BOTTEGHE:
+        for bottega in ds.botteghe:
             if bottega.place_id == luogo.id:
                 grado += len(adiacenza.get(bottega.id, []))
         gradi[luogo.id] = grado
@@ -178,6 +180,7 @@ def grado_semantico() -> dict[str, int]:
 
 def non_connected_place_pairs(
     at: datetime | None = None,
+    dataset: DatasetCitta | None = None,
 ) -> tuple[set[frozenset[str]], int]:
     """Coppie di `place_id` NON collegate direttamente da `VICINO` (mai per
     cammini semantici) in uno snapshot del grafo congelato all'istante `at`.
@@ -194,7 +197,7 @@ def non_connected_place_pairs(
     `at=None` (default) = snapshot "adesso": TUTTI gli archi `VICINO`
     correnti, senza filtro temporale. `at` timezone-aware (`datetime.now(
     UTC)` tipicamente) = solo gli archi con `creato_il <= at` — coerente con
-    `RelazioneVicino.creato_il` (vedi `graph.seed_lucca.VICINO_EPOCA`: gli
+    `RelazioneVicino.creato_il` (vedi `DatasetCitta.vicino_epoca`: gli
     archi del seed iniziale sono "sempre esistiti", quindi entrano in
     qualunque snapshot, anche il più antico).
 
@@ -204,9 +207,10 @@ def non_connected_place_pairs(
     §7). Ogni coppia è un `frozenset({place_id_a, place_id_b})`: `VICINO` è
     non orientata nel dominio, la stessa ragione per cui `build_adjacency`
     la tratta come tale."""
+    ds = _ds(dataset)
     archi_nello_snapshot = {
-        frozenset({rel.da_id, rel.a_id}) for rel in VICINO if at is None or rel.creato_il <= at
+        frozenset({rel.da_id, rel.a_id}) for rel in ds.vicino if at is None or rel.creato_il <= at
     }
-    tutte_le_coppie = {frozenset({a.id, b.id}) for a, b in combinations(LUOGHI, 2)}
+    tutte_le_coppie = {frozenset({a.id, b.id}) for a, b in combinations(ds.luoghi, 2)}
     non_connesse = tutte_le_coppie - archi_nello_snapshot
     return non_connesse, len(non_connesse)

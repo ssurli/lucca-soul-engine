@@ -32,8 +32,9 @@ legge per decidere presenza/assenza di un candidato (`passa_filtri_duri` in
 `services/experience-engine/experience_engine/rules.py`, non toccato qui).
 
 Due implementazioni della stessa interfaccia (`CandidateSource`):
-- `SeedCandidateSource` — in-memory sul dataset canonico (`graph.seed_lucca`).
-  È il percorso usato nei test e finché `NEO4J_URI` non è configurato.
+- `SeedCandidateSource` — in-memory sul dataset canonico della città (`graph.dataset.
+  DatasetCitta`, scelto da `CITY_SEED` via `graph.registro`). È il percorso
+  usato nei test e finché `NEO4J_URI` non è configurato.
 - `Neo4jCandidateSource` — stessa interfaccia via driver Neo4j ufficiale,
   contro Aura (`neo4j+s://`) o Neo4j Community locale (`bolt://`): lo schema
   dell'URI vive solo nel `.env`, mai nel codice.
@@ -47,24 +48,9 @@ from typing import Protocol
 from contracts import ExperienceNode, GraphCandidate, Partner, VisitorContext
 from neo4j import Driver, GraphDatabase, Record
 
+from graph.dataset import Artista, Bottega, DatasetCitta, Luogo, Tema
 from graph.errors import translate_driver_errors
-from graph.seed_lucca import (
-    ARTISTI,
-    BOTTEGA_EVOCA,
-    BOTTEGA_ISPIRATA_DA,
-    BOTTEGHE,
-    ESPERIENZE,
-    HA_ABBONAMENTO,
-    LEGATO_A,
-    LUOGHI,
-    PARTNERS,
-    TEMI,
-    VICINO,
-    Artista,
-    Bottega,
-    Luogo,
-    Tema,
-)
+from graph.registro import dataset_attivo
 
 _CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
 CANDIDATES_QUERY_PATH = _CYPHER_DIR / "10_candidates.cypher"
@@ -83,7 +69,10 @@ class CandidateSource(Protocol):
 
 
 class SeedCandidateSource:
-    """Implementazione in-memory sul dataset canonico `graph.seed_lucca`.
+    """Implementazione in-memory sul dataset canonico della città.
+
+    `dataset=None` -> dataset attivo (`graph.registro.dataset_attivo`, da
+    `CITY_SEED`). Legge SOLO dal dataset ricevuto.
 
     Restituisce SEMPRE tutte le esperienze del seed (anche quelle nei luoghi
     già visti in `ctx.luoghi_gia_visti`: filtrarle qui sarebbe una decisione,
@@ -92,18 +81,20 @@ class SeedCandidateSource:
     recente del visitatore.
     """
 
-    def __init__(self) -> None:
-        self._luoghi: dict[str, Luogo] = {luogo.id: luogo for luogo in LUOGHI}
-        self._artisti: dict[str, Artista] = {a.id: a for a in ARTISTI}
-        self._botteghe: dict[str, Bottega] = {b.id: b for b in BOTTEGHE}
-        self._temi: dict[str, Tema] = {t.id: t for t in TEMI}
+    def __init__(self, dataset: DatasetCitta | None = None) -> None:
+        ds = dataset if dataset is not None else dataset_attivo()
+        self._esperienze = ds.esperienze
+        self._luoghi: dict[str, Luogo] = {luogo.id: luogo for luogo in ds.luoghi}
+        self._artisti: dict[str, Artista] = {a.id: a for a in ds.artisti}
+        self._botteghe: dict[str, Bottega] = {b.id: b for b in ds.botteghe}
+        self._temi: dict[str, Tema] = {t.id: t for t in ds.temi}
 
         self._artisti_per_luogo: dict[str, list[str]] = {}
-        for legato in LEGATO_A:
+        for legato in ds.legato_a:
             self._artisti_per_luogo.setdefault(legato.luogo_id, []).append(legato.artista_id)
 
         self._vicini: dict[str, list[tuple[str, int]]] = {}
-        for vicino in VICINO:
+        for vicino in ds.vicino:
             self._vicini.setdefault(vicino.da_id, []).append((vicino.a_id, vicino.metri))
             self._vicini.setdefault(vicino.a_id, []).append((vicino.da_id, vicino.metri))
 
@@ -111,11 +102,11 @@ class SeedCandidateSource:
         # evoca oltre a quelli della singola esperienza, e artisti il cui
         # lavoro la ispira (con il racconto già in italiano).
         self._bottega_evoca: dict[str, list[str]] = {}
-        for evoca in BOTTEGA_EVOCA:
+        for evoca in ds.bottega_evoca:
             self._bottega_evoca.setdefault(evoca.bottega_id, []).append(evoca.tema_id)
 
         self._bottega_ispirata_da: dict[str, list[tuple[str, str]]] = {}
-        for ispirata in BOTTEGA_ISPIRATA_DA:
+        for ispirata in ds.bottega_ispirata_da:
             self._bottega_ispirata_da.setdefault(ispirata.bottega_id, []).append(
                 (ispirata.artista_id, ispirata.racconto)
             )
@@ -123,22 +114,22 @@ class SeedCandidateSource:
         # Marketplace (Wave 3a): stato dell'abbonamento del Partner collegato
         # alla Bottega via `HA_ABBONAMENTO`. Fatto puro del grafo (JOIN),
         # nessuna logica di scoring qui.
-        self._partners: dict[str, Partner] = {p.id: p for p in PARTNERS}
+        self._partners: dict[str, Partner] = {p.id: p for p in ds.partners}
         self._ha_abbonamento: dict[str, str] = {
-            rel.bottega_id: rel.partner_id for rel in HA_ABBONAMENTO
+            rel.bottega_id: rel.partner_id for rel in ds.ha_abbonamento
         }
 
     def candidates(self, ctx: VisitorContext) -> list[GraphCandidate]:
         riferimento = ctx.luoghi_gia_visti[-1] if ctx.luoghi_gia_visti else None
         risultato: list[GraphCandidate] = []
-        for esperienza in ESPERIENZE:
+        for esperienza in self._esperienze:
             luogo = self._luoghi.get(esperienza.place_id)
             if luogo is None:
-                # Non dovrebbe accadere: `graph.seed_lucca._validate()` lo
+                # Non dovrebbe accadere: la validazione del dataset lo
                 # garantisce a import-time. Difensivo, non silenzioso.
                 continue
             # Booleano denormalizzato (Wave 3a): un JOIN sul grafo, non uno
-            # score. `model_copy` non muta l'istanza condivisa in `ESPERIENZE`.
+            # score. `model_copy` non muta l'istanza condivisa nel dataset.
             esperienza_effettiva = esperienza.model_copy(
                 update={
                     "partner_abbonamento_attivo": self._abbonamento_attivo(esperienza.partner_id)

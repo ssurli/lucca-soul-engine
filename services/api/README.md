@@ -60,9 +60,18 @@ pip install -e packages/contracts -e services/graph -e services/rag `
 `.env` (mai un `if local/cloud` nel codice): se `NEO4J_URI` (+ username e
 password) sono configurati usa `Neo4jCandidateSource` (Aura `neo4j+s://` o
 Neo4j Community `bolt://` locale — lo schema dell'URI vive solo nel `.env`);
-altrimenti ricade su `SeedCandidateSource`, lo stesso dataset canonico
-versionato in `services/graph/graph/seed_lucca.py`. L'istanza è creata una
-sola volta (`lru_cache`), non ad ogni richiesta.
+altrimenti ricade su `SeedCandidateSource` sul dataset scelto da `CITY_SEED`
+(letto da `api.settings.Settings`, risolto da `graph.registro.carica_dataset`;
+assente = dataset predefinito del registro, slug sconosciuto = `ValueError`
+leggibile, mai un degrado silenzioso a un'altra città). L'istanza è creata una
+sola volta (`lru_cache`), non ad ogni richiesta: **dopo un cambio di
+`CITY_SEED` (o del `.env`) uccidere e riavviare uvicorn**, `--reload` non basta.
+`CITY_SEED` è validato in ogni profilo (anche con Neo4j configurato): uno slug
+invalido fa fallire l'avvio. `Settings` legge il `.env` con path **relativo
+alla cwd**: avviare il BFF dalla radice del repo (`.venv\Scripts\python.exe -m
+uvicorn api.main:app --app-dir services\api --port 8000`), altrimenti
+`CITY_SEED` e le credenziali possono divergere da graph/urban-memory, che
+leggono il `.env` di radice.
 
 ## Knowledge Graph non raggiungibile
 

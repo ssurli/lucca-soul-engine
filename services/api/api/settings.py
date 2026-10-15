@@ -48,6 +48,12 @@ class Settings(BaseSettings):
     # (`EventoPromosso.ultima_occorrenza`). Assente/non valido => fail-closed.
     city_tz: str | None = Field(default=None, alias="CITY_TZ")
 
+    # Slug del dataset della citta' (slug minuscolo): selezione tramite il
+    # registro di `graph.registro`. Assente => dataset predefinito del
+    # registro; slug invalido => ValueError leggibile (nessun degrado
+    # silenzioso verso un'altra citta').
+    city_seed: str | None = Field(default=None, alias="CITY_SEED")
+
 
 @lru_cache
 def get_settings() -> Settings:

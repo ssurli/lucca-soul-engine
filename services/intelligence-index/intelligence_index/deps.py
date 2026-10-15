@@ -23,6 +23,7 @@ from __future__ import annotations
 from functools import lru_cache
 
 from graph.metrics import GraphMetricsSource, Neo4jMetricsSource, SeedMetricsSource
+from graph.registro import carica_dataset
 from graph.source import CandidateSource, Neo4jCandidateSource, SeedCandidateSource
 from urban_memory import (
     InMemoryMemoryRepository,
@@ -63,10 +64,15 @@ def _credenziali_neo4j(env: dict[str, str]) -> tuple[str, str, str, str] | None:
 def get_candidate_source() -> CandidateSource:
     """Sceglie la fonte del catalogo di esperienze (usata da
     `intelligence_index.catalogo.esperienze_per_id`) in base al `.env`, una
-    volta sola."""
-    credenziali = _credenziali_neo4j(merged_env())
+    volta sola. Senza credenziali Neo4j ricade sul seed del dataset scelto da
+    `CITY_SEED` (letto dallo stesso `merged_env()`); `CITY_SEED` invalido ->
+    `ValueError` leggibile, mai un degrado silenzioso."""
+    env = merged_env()
+    # Validato PRIMA del ramo: un CITY_SEED invalido fallisce in ogni profilo.
+    dataset = carica_dataset(env.get("CITY_SEED"))
+    credenziali = _credenziali_neo4j(env)
     if credenziali is None:
-        return SeedCandidateSource()
+        return SeedCandidateSource(dataset)
     uri, username, password, database = credenziali
     return Neo4jCandidateSource.from_credentials(
         uri=uri, username=username, password=password, database=database
@@ -76,11 +82,14 @@ def get_candidate_source() -> CandidateSource:
 @lru_cache
 def get_metrics_source() -> GraphMetricsSource:
     """Sceglie la fonte di `grado_semantico`/`non_connected_place_pairs` in
-    base al `.env`, una volta sola — stesso criterio di presenza di
-    `get_candidate_source` sopra."""
-    credenziali = _credenziali_neo4j(merged_env())
+    base al `.env`, una volta sola — stesso criterio di presenza (e stessa
+    risoluzione di `CITY_SEED`) di `get_candidate_source` sopra."""
+    env = merged_env()
+    # Validato PRIMA del ramo: un CITY_SEED invalido fallisce in ogni profilo.
+    dataset = carica_dataset(env.get("CITY_SEED"))
+    credenziali = _credenziali_neo4j(env)
     if credenziali is None:
-        return SeedMetricsSource()
+        return SeedMetricsSource(dataset)
     uri, username, password, database = credenziali
     return Neo4jMetricsSource.from_credentials(
         uri=uri, username=username, password=password, database=database

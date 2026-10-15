@@ -31,6 +31,41 @@ un nuovo `graph/seed_<città>.py` con la stessa forma e rilanciare
 `export_cypher`: la tecnologia (schema, query, loader) non cambia, cambia
 solo il contenuto.
 
+## Scegliere la città: `CITY_SEED`
+
+I tipi sono neutri (`graph/dataset.py`: `Luogo`, `Bottega`..., `DatasetCitta`).
+Ogni città è un modulo `graph/seed_<slug>.py` che espone `DATASET:
+DatasetCitta`; il registro (`graph/registro.py`) lo risolve da `CITY_SEED`
+(ambiente di processo > `.env` di radice; default `lucca`):
+
+- `carica_dataset(nome)` / `dataset_attivo()` — il dataset della città;
+- `file_seed_cypher(dataset_o_nome)` — `cypher/01_seed_<slug>.cypher`.
+
+`SeedCandidateSource`, `SeedMetricsSource` e le funzioni di `graph.topology`
+accettano un `dataset` esplicito; senza, usano il dataset attivo.
+
+Aggiungere una città (esempio: `siena`), dalla radice del repo in PowerShell:
+
+1. Scrivi `services\graph\graph\seed_siena.py` con la stessa forma di
+   `seed_lucca.py` e un `DATASET = DatasetCitta(nome="siena", ...)`
+   (`id_esempio_memoria` deve essere l'id di una Bottega o di un Luogo reale
+   del dataset).
+2. Imposta `CITY_SEED=siena` nel `.env`.
+3. Genera il Cypher e popola il grafo:
+
+   ```powershell
+   .venv\Scripts\python.exe -m graph.export_cypher
+   if ($LASTEXITCODE -ne 0) { throw "export_cypher fallito" }
+   .venv\Scripts\python.exe -m graph.loader
+   if ($LASTEXITCODE -ne 0) { throw "loader fallito" }
+   ```
+
+   Per rigenerare il Cypher di una città senza toccare il `.env`:
+   `.venv\Scripts\python.exe -m graph.export_cypher --city siena`.
+
+Dopo aver cambiato `CITY_SEED` riavvia i processi (BFF compreso): il dataset
+viene risolto una volta sola.
+
 ## Schema
 
 Nodi: `Luogo`, `Artista`, `Bottega`, `Tema`, `Esperienza` (= `ExperienceNode`

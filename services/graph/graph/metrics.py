@@ -38,7 +38,9 @@ from typing import Protocol
 from neo4j import Driver, GraphDatabase
 
 from graph import topology
+from graph.dataset import DatasetCitta
 from graph.errors import translate_driver_errors
+from graph.registro import dataset_attivo
 
 _CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
 GRADO_SEMANTICO_QUERY_PATH = _CYPHER_DIR / "11_grado_semantico.cypher"
@@ -65,15 +67,20 @@ class GraphMetricsSource(Protocol):
 class SeedMetricsSource:
     """Implementazione in-memory: delega direttamente a `graph.topology`,
     nessuna seconda fonte di verità. Percorso usato nei test e finché
-    `NEO4J_URI` non è configurato (vedi docstring di modulo)."""
+    `NEO4J_URI` non è configurato (vedi docstring di modulo).
+
+    `dataset=None` -> dataset attivo (`graph.registro.dataset_attivo`)."""
+
+    def __init__(self, dataset: DatasetCitta | None = None) -> None:
+        self._dataset = dataset if dataset is not None else dataset_attivo()
 
     def grado_semantico(self) -> dict[str, int]:
-        return topology.grado_semantico()
+        return topology.grado_semantico(self._dataset)
 
     def non_connected_place_pairs(
         self, at: datetime | None = None
     ) -> tuple[set[frozenset[str]], int]:
-        return topology.non_connected_place_pairs(at)
+        return topology.non_connected_place_pairs(at, self._dataset)
 
 
 # ---------------------------------------------------------------------------

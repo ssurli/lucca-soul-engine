@@ -4,8 +4,10 @@ repository di Urban Memory.
 Il codice non sa MAI se `NEO4J_URI` punta ad Aura (`neo4j+s://`) o a Neo4j
 Community locale (`bolt://`): legge solo se le credenziali sono presenti nel
 `.env`. Se configurate, usa `Neo4jCandidateSource`; altrimenti ricade sul
-seed versionato (`SeedCandidateSource`) — lo stesso dataset canonico, mai un
-dataset diverso a seconda del profilo (cloud/locale).
+dataset versionato (`SeedCandidateSource`) scelto da `CITY_SEED` tramite
+`api.settings.Settings` e `graph.registro.carica_dataset` (assente =>
+dataset predefinito; invalido => `ValueError`, mai un altro dataset in
+silenzio) — mai un dataset diverso a seconda del profilo (cloud/locale).
 
 L'istanza è creata una sola volta (`lru_cache`): aprire un driver Neo4j a
 ogni richiesta sarebbe costoso e inutile. Stesso pattern per
@@ -23,6 +25,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import marketplace
 import recommender
+from graph.registro import carica_dataset
 from graph.source import CandidateSource, Neo4jCandidateSource, SeedCandidateSource
 from urban_memory import (
     InMemoryMemoryRepository,
@@ -71,6 +74,9 @@ def get_candidate_source() -> CandidateSource:
     (evita di rompere l'avvio quando la configurazione è parziale).
     """
     settings = get_settings()
+    # Validato SEMPRE (anche con Neo4j): un CITY_SEED invalido fallisce
+    # all'avvio in ogni profilo. Il risultato serve al solo fallback.
+    dataset = carica_dataset(settings.city_seed)
     if settings.neo4j_uri and settings.neo4j_username and settings.neo4j_password:
         return Neo4jCandidateSource.from_credentials(
             uri=settings.neo4j_uri,
@@ -78,7 +84,7 @@ def get_candidate_source() -> CandidateSource:
             password=settings.neo4j_password,
             database=settings.neo4j_database or "neo4j",
         )
-    return SeedCandidateSource()
+    return SeedCandidateSource(dataset)
 
 
 @lru_cache

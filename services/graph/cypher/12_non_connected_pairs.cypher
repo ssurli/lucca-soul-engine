@@ -23,7 +23,7 @@
 //         Altrimenti: un arco entra nello snapshot se non ha `creato_il`
 //         (grafo scritto prima dell'introduzione di questa proprietà —
 //         trattato come "sempre esistito", stessa regola degli archi del
-//         seed iniziale, vedi graph/seed_lucca.py VICINO_EPOCA) OPPURE se
+//         seed iniziale, vedi `DatasetCitta.vicino_epoca`) OPPURE se
 //         creato_il <= $at.
 //
 // Ritorna una riga sola: `coppie_non_connesse`, lista di [place_id_a,

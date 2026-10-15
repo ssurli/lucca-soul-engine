@@ -85,7 +85,7 @@ from datetime import UTC, datetime
 import psycopg
 from contracts import MemoryContribution, MemoryKind, MemoryLinkState, PersonKind
 
-from ._env import database_url_from_env, neo4j_config_from_env
+from ._env import city_seed_from_env, database_url_from_env, neo4j_config_from_env
 from .graph_link import Neo4jMemoryLinker
 from .migrate import mask_dsn, migrate
 from .repository import MemoryStorageError, PostgresMemoryRepository
@@ -98,20 +98,32 @@ from .service import (
 )
 
 CONTRIBUTO_ID = "mem-verify-persistenza"
-# ATTENZIONE: deve essere un id REALE del seed del grafo (services/graph/
-# graph/seed_lucca.py), non inventato — un id inesistente qui riproduce
-# esattamente il bug corretto in `urban_memory.graph_link` (nodo :Memoria
-# orfano). Le botteghe del seed: liuteria-lucchese, ceramica-lucca,
-# stamperia-lucca, pasticceria-storica, tessitura-lucca.
-PLACE_ID_ESEMPIO = "liuteria-lucchese"
 
 
-def _contributo_esempio() -> MemoryContribution:
+def place_id_esempio() -> str:
+    """Id d'esempio per `riguarda`: `id_esempio_memoria` del dataset scelto
+    da `CITY_SEED` (ambiente > `.env`; assente -> dataset predefinito).
+
+    Deve essere un id REALE del seed del grafo, mai inventato — un id
+    inesistente qui riproduce il bug corretto in `urban_memory.graph_link`
+    (nodo :Memoria orfano). Per questo viene dal dataset (validato
+    all'import), non da una costante.
+
+    `graph` è importato QUI, localmente: dipendenza della sola CLI di
+    verifica, non del resto del pacchetto. `ValueError` leggibile se
+    `CITY_SEED` non risolve in un dataset.
+    """
+    from graph.registro import carica_dataset
+
+    return carica_dataset(city_seed_from_env()).id_esempio_memoria
+
+
+def _contributo_esempio(place_id: str) -> MemoryContribution:
     return MemoryContribution(
         id=CONTRIBUTO_ID,
         kind=MemoryKind.RACCONTO,
         testo="Il racconto di una bottega di liuteria, tramandato in famiglia.",
-        riguarda=[PLACE_ID_ESEMPIO],
+        riguarda=[place_id],
         contributor_id="voce-di-verifica",
         contributor_kind=PersonKind.CITTADINO,
         consenso=True,
@@ -130,6 +142,7 @@ def _stato_aggancio_label(contributo: MemoryContribution) -> str:
 
 def _verifica_postgres(
     dsn: str,
+    place_id: str,
     *,
     target_checker: Callable[[list[str]], list[str]] | None,
     linker: Callable[[MemoryContribution], None] | None,
@@ -158,7 +171,7 @@ def _verifica_postgres(
         print("   Già presente da una corsa precedente (OK: è la prova di persistenza).")
     else:
         try:
-            contributo = submit_contribution(repo, _contributo_esempio())
+            contributo = submit_contribution(repo, _contributo_esempio(place_id))
         except MemoryStorageError as exc:
             print(f"   FALLITO: storage non disponibile/errore — {exc}")
             raise SystemExit(1) from exc
@@ -280,7 +293,7 @@ def _verifica_aggancio_idempotente(
         print(
             f"   ERRORE: aggancio ancora NON riuscito dopo il retry "
             f"(stato_aggancio={_stato_aggancio_label(aggiornato)}) — grafo "
-            "irraggiungibile, o PLACE_ID_ESEMPIO non esiste ancora nel grafo "
+            "irraggiungibile, o l'id d'esempio non esiste ancora nel grafo "
             "di destinazione (applica il seed con `python -m graph.loader`)."
         )
         raise SystemExit(1)
@@ -297,6 +310,11 @@ def _grafo_non_configurato() -> None:
 def main() -> None:
     print("=== Verifica di persistenza — Urban Memory ===\n")
     dsn = database_url_from_env()
+    try:
+        place_id = place_id_esempio()
+    except ValueError as exc:
+        print(f"FALLITO: CITY_SEED non risolvibile — {exc}")
+        raise SystemExit(1) from exc
 
     try:
         neo4j_config_from_env()
@@ -311,12 +329,12 @@ def main() -> None:
             # e il retry di verifica (passo 5) condividono lo stesso
             # Neo4jMemoryLinker — un solo round-trip di apertura.
             contributo = _verifica_postgres(
-                dsn, target_checker=linker.targets_mancanti, linker=linker.link
+                dsn, place_id, target_checker=linker.targets_mancanti, linker=linker.link
             )
             print()
             _verifica_aggancio_idempotente(dsn, contributo.id, linker=linker)
     else:
-        _verifica_postgres(dsn, target_checker=None, linker=None)
+        _verifica_postgres(dsn, place_id, target_checker=None, linker=None)
         print()
         _grafo_non_configurato()
 

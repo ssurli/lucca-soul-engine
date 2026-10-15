@@ -1,5 +1,6 @@
 // File GENERATO da `python -m graph.export_cypher`.
-// Non modificare a mano: la fonte di verità è `graph/seed_lucca.py`.
+// Non modificare a mano: la fonte di verità è il modulo dataset `graph/seed_<città>.py`
+// selezionato da CITY_SEED.
 
 
 // --- Nodi: Luogo -------------------------------------------------------

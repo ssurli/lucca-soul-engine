@@ -1,50 +1,40 @@
-"""`python -m graph.export_cypher` — rigenera il Cypher versionato dal seed.
+"""`python -m graph.export_cypher` — rigenera il Cypher versionato dal dataset.
 
-`graph.seed_lucca` è l'UNICA fonte di verità del dataset. Questo modulo la
+Il modulo dataset della città (`graph/seed_<città>.py`, selezionato da
+`CITY_SEED` via `graph.registro`) è l'UNICA fonte di verità. Questo modulo lo
 traduce in due file committati in `cypher/`:
 
 - `00_schema.cypher` — vincoli di unicità sugli `id` di ogni nodo (idempotente:
   `CREATE CONSTRAINT ... IF NOT EXISTS`);
-- `01_seed_lucca.cypher` — `MERGE` di nodi e relazioni (idempotente: rieseguibile
-  da zero senza duplicare nulla).
+- `01_seed_<città>.cypher` — `MERGE` di nodi e relazioni (idempotente:
+  rieseguibile da zero senza duplicare nulla).
 
-Perché generarlo invece di scriverlo a mano: replicare il motore su un'altra
-città (Siena, Ferrara...) significa scrivere un nuovo `seed_<città>.py` e
+Perché generarlo invece di scriverlo a mano: replicare il motore su
+un'altra città significa scrivere un nuovo `seed_<città>.py` e
 rilanciare questo comando — la struttura del Cypher non cambia mai a mano.
 
 Uso (dalla radice del repo, dopo `pip install -e services/graph`):
 
-    python -m graph.export_cypher
+    python -m graph.export_cypher            # città di CITY_SEED
+    python -m graph.export_cypher --city <slug>
 """
 
 from __future__ import annotations
 
+import argparse
 from datetime import datetime
-from pathlib import Path
 
 from contracts import ExperienceNode, Partner
 
-from graph.seed_lucca import (
-    ARTISTI,
-    BOTTEGA_EVOCA,
-    BOTTEGA_ISPIRATA_DA,
-    BOTTEGHE,
-    ESPERIENZE,
-    HA_ABBONAMENTO,
-    LEGATO_A,
-    LUOGHI,
-    PARTNERS,
-    TEMI,
-    VICINO,
-)
+from graph.dataset import DatasetCitta
+from graph.registro import CYPHER_DIR, carica_dataset, dataset_attivo, file_seed_cypher
 
-CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
 SCHEMA_FILE = CYPHER_DIR / "00_schema.cypher"
-SEED_FILE = CYPHER_DIR / "01_seed_lucca.cypher"
 
 _HEADER = (
     "// File GENERATO da `python -m graph.export_cypher`.\n"
-    "// Non modificare a mano: la fonte di verità è `graph/seed_lucca.py`.\n"
+    "// Non modificare a mano: la fonte di verità è il modulo dataset `graph/seed_<città>.py`\n"
+    "// selezionato da CITY_SEED.\n"
 )
 
 # Nodi previsti dallo schema (docs/DATA_CONTRACTS.md §2): `Evento` e `Memoria`
@@ -88,7 +78,7 @@ def _cypher_datetime(value: datetime) -> str:
     """`datetime('...')` — tipo temporale nativo di Neo4j (non una stringa),
     così `cypher/12_non_connected_pairs.cypher` può confrontarlo con
     `datetime($at)` senza cast. `value` deve essere timezone-aware
-    (`RelazioneVicino._validate()` in `graph.seed_lucca` lo garantisce)."""
+    (il dataset lo garantisce: vedi `graph.dataset.RelazioneVicino`)."""
     return f"datetime({_cypher_str(value.isoformat())})"
 
 
@@ -102,7 +92,7 @@ _RELATION_TYPES_COMMENT = (
     "//   (:Artista)-[:LEGATO_A]->(:Luogo)\n"
     "//   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;\n"
     "//     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale\n"
-    "//     ('sempre esistiti', non una data vera — vedi graph/seed_lucca.py), un vero\n"
+    "//     ('sempre esistiti', non una data vera — vedi il modulo dataset), un vero\n"
     "//     datetime.now(UTC) per ogni arco scritto dopo il seed. Serve a congelare uno\n"
     "//     snapshot di connettività a un istante T (graph/topology.py,\n"
     "//     cypher/12_non_connected_pairs.cypher) per l'indicatore nuovi_percorsi.\n"
@@ -249,52 +239,53 @@ def _ha_abbonamento_statement(rel) -> str:
     )
 
 
-def build_seed() -> str:
+def build_seed(dataset: DatasetCitta | None = None) -> str:
+    ds = dataset if dataset is not None else dataset_attivo()
     parts: list[str] = [_HEADER]
 
     parts.append("\n// --- Nodi: Luogo -------------------------------------------------------")
-    for luogo in LUOGHI:
+    for luogo in ds.luoghi:
         parts.append(_luogo_statement(luogo))
 
     parts.append("\n// --- Nodi: Artista ------------------------------------------------------")
-    for artista in ARTISTI:
+    for artista in ds.artisti:
         parts.append(_artista_statement(artista))
 
     parts.append("\n// --- Nodi: Bottega -------------------------------------------------------")
-    for bottega in BOTTEGHE:
+    for bottega in ds.botteghe:
         parts.append(_bottega_statement(bottega))
 
     parts.append("\n// --- Nodi: Tema -----------------------------------------------------------")
-    for tema in TEMI:
+    for tema in ds.temi:
         parts.append(_tema_statement(tema))
 
     parts.append("\n// --- Nodi: Esperienza ---------------------------------------------------")
-    for esperienza in ESPERIENZE:
+    for esperienza in ds.esperienze:
         parts.append(_esperienza_statement(esperienza))
 
     parts.append("\n// --- Nodi: Partner (Wave 3a, marketplace) -------------------------------")
-    for partner in PARTNERS:
+    for partner in ds.partners:
         parts.append(_partner_statement(partner))
 
     parts.append("\n// --- Relazioni: VICINO (Luogo -> Luogo) --------------------------------")
-    for vicino in VICINO:
+    for vicino in ds.vicino:
         parts.append(_vicino_statement(vicino))
 
     parts.append("\n// --- Relazioni: LEGATO_A (Artista -> Luogo) ----------------------------")
-    for legato in LEGATO_A:
+    for legato in ds.legato_a:
         parts.append(_legato_a_statement(legato))
 
     parts.append("\n// --- Relazioni: SI_SVOLGE_A (Esperienza -> Luogo), da place_id --------")
-    for esperienza in ESPERIENZE:
+    for esperienza in ds.esperienze:
         parts.append(_si_svolge_a_statement(esperienza))
 
     parts.append("\n// --- Relazioni: EVOCA (Esperienza -> Tema), da temi --------------------")
-    for esperienza in ESPERIENZE:
+    for esperienza in ds.esperienze:
         for tema_id in esperienza.temi:
             parts.append(_evoca_statement(esperienza, tema_id))
 
     parts.append("\n// --- Relazioni: OFFRE (Bottega -> Esperienza), da partner_id -----------")
-    for esperienza in ESPERIENZE:
+    for esperienza in ds.esperienze:
         if esperienza.partner_id is not None:
             parts.append(_offre_statement(esperienza, esperienza.partner_id))
 
@@ -303,7 +294,7 @@ def build_seed() -> str:
         "// Non di prossimità: la bottega evoca i temi del suo mestiere anche a\n"
         "// prescindere dall'esperienza specifica che offre."
     )
-    for evoca in BOTTEGA_EVOCA:
+    for evoca in ds.bottega_evoca:
         parts.append(_bottega_evoca_statement(evoca))
 
     parts.append(
@@ -314,7 +305,7 @@ def build_seed() -> str:
         "// È ciò che rende percorribile, per sole connessioni semantiche,\n"
         "// \"Puccini -> ... -> liutaio -> violino\" (vedi graph/topology.py)."
     )
-    for ispirata in BOTTEGA_ISPIRATA_DA:
+    for ispirata in ds.bottega_ispirata_da:
         parts.append(_ispirata_da_statement(ispirata))
 
     parts.append(
@@ -323,18 +314,30 @@ def build_seed() -> str:
         "// decide presenza/assenza di un'esperienza tra i candidati, mai il ranking.\n"
         "// Una Bottega senza questa relazione è sempre visibile (default True)."
     )
-    for abbonamento in HA_ABBONAMENTO:
+    for abbonamento in ds.ha_abbonamento:
         parts.append(_ha_abbonamento_statement(abbonamento))
 
     return "\n".join(parts) + "\n"
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Rigenera schema + seed Cypher dal dataset della città."
+    )
+    parser.add_argument(
+        "--city",
+        default=None,
+        help="slug della città (default: CITY_SEED dall'ambiente o dal .env)",
+    )
+    args = parser.parse_args(argv)
+    dataset = carica_dataset(args.city) if args.city else dataset_attivo()
+    seed_file = file_seed_cypher(dataset)
+
     CYPHER_DIR.mkdir(parents=True, exist_ok=True)
     SCHEMA_FILE.write_text(build_schema(), encoding="utf-8")
-    SEED_FILE.write_text(build_seed(), encoding="utf-8")
+    seed_file.write_text(build_seed(dataset), encoding="utf-8")
     print(f"Scritto: {SCHEMA_FILE}")
-    print(f"Scritto: {SEED_FILE}")
+    print(f"Scritto: {seed_file}")
 
 
 if __name__ == "__main__":

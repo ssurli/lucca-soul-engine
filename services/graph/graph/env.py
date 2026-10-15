@@ -72,3 +72,15 @@ def load_neo4j_config(dotenv_path: Path | None = None) -> Neo4jConfig:
         password=env["NEO4J_PASSWORD"],
         database=env.get("NEO4J_DATABASE") or "neo4j",
     )
+
+
+def city_seed_da_env(dotenv_path: Path | None = None) -> str | None:
+    """Legge `CITY_SEED` (slug del dataset di città) con la STESSA precedenza
+    di `load_neo4j_config`: ambiente di processo > `.env` di radice.
+
+    Ritorna `None` se non è impostata o è vuota: sarà il registro
+    (`graph.registro`) a applicare il predefinito. Nessuna validazione qui."""
+    env = _read_dotenv(dotenv_path or (_repo_root() / ".env"))
+    env.update(os.environ)
+    valore = env.get("CITY_SEED", "").strip()
+    return valore or None
