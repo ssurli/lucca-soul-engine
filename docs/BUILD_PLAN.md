@@ -378,6 +378,19 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
 - ✅ **Accettazione:** cambiando **solo il dataset**, il motore genera itinerari per la nuova città.
   È la prova di scalabilità su cui poggia l'intero investment case.
 
+## Candidati per la prossima wave  *(registrati, NON pianificati né implementati)*
+Due voci aperte in `docs/LIMITI.md`, entrambe sul motore di composizione/adattamento. Nessuna è
+assegnata: prima serve la decisione di prodotto, poi `contract-keeper` (contratto) →
+`experience-engine` → `test-engineer` → `ethics-guardian`.
+- **Spiegabilità dell'adattamento** — voce "Adattamento senza alternativa: silenzio verso il
+  visitatore". Quando non esiste un'alternativa ammissibile la tappa resta muta e
+  `adattato_da_segnale=False` è ambiguo ("niente da fare" vs "non ho potuto"). Caso golden:
+  `adapt|onnivoro|pioggia`.
+- **Orari all'arrivo e orario di fine itinerario** — voce "Orari di apertura verificati solo
+  all'ora del segnale; nessun orario di fine itinerario". Domanda di prodotto aperta: l'itinerario
+  è sempre una sessione nella stessa giornata, e chi dichiara l'orario di fine?
+  `tempo_disponibile_min` non ha tetto e oltre mezzanotte gli orari si riavvolgono.
+
 ---
 
 ## KICKOFF — Modo A (guidato, consigliato)

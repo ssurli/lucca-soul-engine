@@ -1963,3 +1963,60 @@ Far emergere nel contratto l'esito "segnale valutato, nessuna alternativa ammiss
 esempio un `reason` di tappa dedicato, o un campo di esito dell'adattamento distinto da
 `adattato_da_segnale`. Passa prima da `contract-keeper`; il caso golden sopra andrà aggiornato
 di conseguenza.
+
+## Orari di apertura verificati solo all'ora del segnale; nessun orario di fine itinerario (APERTO)
+
+**Trovato:** 2026-10-15, verifica §0 in sola lettura (nessun codice modificato). **Non corretto:**
+qui è solo registrato, con la domanda di prodotto che va decisa prima di qualunque correzione.
+Estende il punto 3 della voce sugli orari di apertura (filtro a istante singolo, più sopra in
+questo file) con ciò che quel punto non diceva: l'itinerario non ha un orario di fine né un tetto
+di durata.
+
+### Cosa è stato verificato (eseguito, non dedotto)
+
+- `rules.passa_filtri_duri` chiama `rientra_in_orario(esperienza.orari_apertura,
+  signal.giorno_settimana, signal.ora)`: l'unico istante valutato è quello del `Signal`. Lo usano
+  sia la composizione (`compose_itinerary`, filtro sui candidati PRIMA di `_seleziona_tappe`) sia
+  l'adattamento (`_migliore_alternativa`, con il `Signal` dell'adattamento). L'orario d'arrivo di
+  ciascuna tappa (`ItineraryStop.arrivo`) è calcolato DOPO, da `_costruisci_stops` /
+  `_ricalcola_orari` a partire da `signal.ora`, e nessun filtro lo rilegge.
+- Nessuna delle 22 esperienze di `services/graph/graph/seed_lucca.py` dichiara `orari_apertura`
+  (contate da `ESPERIENZE`: 0 con orari); grep vuoto anche su `services/graph/cypher/`. Effetto
+  reale oggi sul dataset di Lucca: nullo.
+- `EmotionalProfile(tempo_disponibile_min=3000)` è accettato: il contratto è `Field(ge=0)`, senza
+  limite superiore (`packages/contracts/contracts/models.py`).
+- `engine._somma_minuti(time(22,0), 180)` restituisce `01:00` e
+  `engine._minuti_trascorsi(time(22,0), time(1,0))` restituisce `-1260`: l'aritmetica degli orari
+  è "giornata singola, senza data" e si riavvolge a mezzanotte.
+
+### Cosa NON è garantito
+
+- **Una tappa può essere raggiunta a negozio chiuso**, o un'esperienza esclusa a torto perché
+  chiusa all'ora del segnale ma aperta all'arrivo. Il limite cresce con il budget: con
+  `tempo_disponibile_min` alto l'itinerario si estende per ore oltre l'istante verificato.
+- **Nessun orario di fine.** Il motore non conosce "fino a che ora" la persona vuole restare né
+  un orario di chiusura della giornata: il solo vincolo è il budget in minuti, senza tetto.
+- **Oltre mezzanotte gli orari si riavvolgono.** `ItineraryStop.arrivo` è un `time` senza data,
+  quindi una tappa dopo mezzanotte appare "alle 01:00" senza il giorno. Inoltre il budget residuo
+  delle tappe fluttuanti e degli eventi promossi è ricalcolato con `_minuti_trascorsi`, che oltre
+  mezzanotte diventa negativo: il conteggio sottostima il tempo usato e può ammettere tappe in
+  coda oltre il budget dichiarato. Non riprodotto con un itinerario completo (solo le due funzioni
+  in isolamento): da confermare con un test prima di correggere.
+- **Non verificato:** il comportamento dell'app e del BFF con un itinerario di più giorni; il
+  massimo realistico di `tempo_disponibile_min` prodotto dall'onboarding (`rag.onboarding`,
+  default 120) rispetto a un client che lo invia direttamente.
+
+### Domanda di prodotto (da decidere prima di correggere)
+
+**Un itinerario è sempre "una sessione di visita nella stessa giornata"?** Se sì: serve un tetto
+(per esempio fino all'orario di fine dichiarato o alla mezzanotte della città) e il budget va
+troncato lì. Se no (itinerari di più giorni): serve una data per tappa e la verifica degli orari
+all'arrivo di ciascuna. E in entrambi i casi: **chi dichiara l'orario di fine** — il visitatore
+nell'onboarding ("fino a che ora sei in giro?"), un valore della città nel dataset, o nessuno?
+
+### Direzione possibile (non decisa)
+
+Verificare gli orari sull'arrivo stimato di ogni tappa richiede di schedulare e filtrare in un
+unico passo (punto 3 della voce sugli orari): cambio della pipeline di composizione, non un
+aggiustamento locale. Un tetto di durata o un orario di fine tocca `EmotionalProfile` o `Signal`:
+passa prima da `contract-keeper`, poi `ethics-guardian` (composizione e adattamento).
