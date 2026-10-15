@@ -1813,6 +1813,14 @@ sotto e nel commento di `SOGLIA_BAGLIORE`.
   da segnali reali. Con la soglia 1.5 producono la frase fino a circa 10 giorni dopo (≈
   2026-10-23); il ledger è immortale e NON vengono cancellate: restano nel ledger, e dopo
   quella data contano solo in `bagliore()` (che non decide nulla).
+  **Chiuso il 2026-10-15, decisione dell'utente: NON si puliscono.** L'inventario in sola
+  lettura dello stesso giorno ha trovato su Neon solo queste 2 righe in `traccia_luogo`
+  (`segnale_id` `test-mono-A-150330` e `test-mono-B-150330`, i soli 2 segnali di
+  `segnale_fluttuante`, entrambi `expired`). Su Aura `:Luogo.ultima_traccia_il` è valorizzata
+  solo su `piazza-anfiteatro`, con `2026-10-13T13:10:06.069029+00:00`, il massimo delle due:
+  il grafo e Neon coincidono. Né le tracce né la proprietà coincidono con valori delle fixture
+  pytest. Le si lascia scadere da sole: la frase si spegne verso il 2026-10-23, la proprietà
+  resta finché una traccia reale più recente non la supera.
 - **`adesso`** è letto UNA volta per richiesta dall'orologio del server (`api.deps.get_adesso`)
   e passato al motore (`compose_itinerary(..., *, adesso=...)`, keyword-only); mai dal body.
 - **Una sola frase per luogo per itinerario**: se due tappe permanenti condividono il
