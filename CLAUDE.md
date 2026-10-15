@@ -112,6 +112,13 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
 - **Decide un solo componente.** Il grafo propone, il recommender ordina, l'LLM racconta:
   nessuno di essi sceglie. Sceglie l'Experience Engine — perché un vincolo applicato in un solo
   punto è verificabile, distribuito no.
+- **Nessuna città cablata nel codice: il contenuto locale vive nel dataset, selezionato da
+  `CITY_SEED`.** Luoghi, botteghe, temi e il `VocabolarioTemi` stanno in
+  `services/graph/graph/seed_<città>.py`; il motore li riceve, non li conosce. Nessun
+  `if city == ...`. La guardia `tests/test_guardia_citta.py` fallisce se "lucc" compare nel
+  codice di produzione fuori dall'allowlist (moduli dataset, `CITY_SEED_PREDEFINITO`, i file
+  dell'app elencati in `docs/LIMITI.md`); il nome prodotto "Lucca Soul" è ammesso.
+  Un'installazione = una città: multi-tenant non implementato (`docs/LIMITI.md`).
 - **Privacy by design.** `visitor_id` è uno pseudonimo. Nessun PII in log, eventi, dashboard.
 - **Obiettivo etico.** Si ottimizzano *distribuzione dei flussi, valorizzazione locale,
   inclusione, accessibilità, sostenibilità, spiegabilità* — MAI click / pubblicità / vendite.

@@ -3,7 +3,7 @@
 Prenotazioni (`Booking`) su esperienze prenotabili e la commissione che ne
 deriva (`CommissionRecord`) — un dato CONTABILE, registrato SOLO dopo che la
 prenotazione è stata confermata. Import name del pacchetto: `marketplace`
-(nome distribuzione: `lucca-marketplace`).
+(nome distribuzione: vedi `pyproject.toml`).
 
 Vincolo non negoziabile (prescrizione ethics-guardian,
 `docs/DATA_CONTRACTS.md` §5), applicato in un solo punto verificabile

@@ -2,7 +2,7 @@
 
 Gli indicatori — misura la salute CULTURALE della città, non solo quella
 economica o infrastrutturale (CLAUDE.md). Import name del pacchetto:
-`intelligence_index` (nome distribuzione: `lucca-intelligence-index`).
+`intelligence_index` (nome distribuzione: vedi `pyproject.toml`).
 
 Calcola `contracts.UrbanIntelligenceIndex` per un periodo (`"YYYY-MM"`), a
 partire SOLO da: `BehaviorEvent` (già persistiti da `recommender`), il

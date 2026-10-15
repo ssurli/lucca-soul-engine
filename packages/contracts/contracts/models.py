@@ -158,8 +158,11 @@ class SegnaleFluttuante(ContractModel):
     # stesso principio di `MemoryContribution.consenso`.
     non_commerciale: bool
     # Scadenza ASSOLUTA, timezone-aware UTC — stesso obbligo di ogni
-    # timestamp persistito in questo repo (vedi l'assert su `tzinfo` in
-    # `graph.seed_lucca` per `RelazioneVicino.creato_il`, stesso pattern
+    # timestamp persistito in questo repo (vedi l'assert su `tzinfo` nel
+    # modulo dataset della città, `graph/seed_<città>.py` selezionato da
+    # CITY_SEED, per `RelazioneVicino.creato_il`; epoca in
+    # `graph.dataset.DatasetCitta.vicino_epoca`, default
+    # `graph.dataset.VICINO_EPOCA_PREDEFINITA`, stesso pattern
     # imitato dal `field_validator` sotto: nessun contratto in
     # `packages/contracts` aveva finora bisogno di imporlo a livello
     # Pydantic, questo è il primo). OBBLIGATORIO, nessun default: un
@@ -178,7 +181,8 @@ class SegnaleFluttuante(ContractModel):
     @classmethod
     def _valido_fino_tz_aware(cls, v: datetime) -> datetime:
         # Stesso vincolo, stesso messaggio d'errore concettuale dell'assert
-        # su `RelazioneVicino.creato_il` in `graph.seed_lucca`: un timestamp
+        # su `RelazioneVicino.creato_il` nel modulo dataset della città
+        # (`graph/seed_<città>.py`, vedi `graph.dataset`): un timestamp
         # naive non è confrontabile in modo affidabile con
         # `datetime.now(UTC)` (il confronto sotto, e ogni sweep futuro che
         # legga questo campo dal repository).
@@ -186,7 +190,7 @@ class SegnaleFluttuante(ContractModel):
             raise ValueError(
                 "SegnaleFluttuante.valido_fino deve essere timezone-aware "
                 "(UTC) — stesso vincolo di ogni timestamp persistito in "
-                "questo repo (vedi graph.seed_lucca)"
+                "questo repo (vedi graph.dataset, modulo dataset della città)"
             )
         return v
 

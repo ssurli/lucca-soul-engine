@@ -1836,3 +1836,77 @@ Accettato per il pilota. La via futura — somma pesata calcolata in SQL — ogg
 la funzione pura `experience_engine.rules.bagliore` in un secondo punto (e un vincolo
 applicato in due punti non è più auditabile): non si fa. Da riconsiderare quando il volume
 del ledger lo renderà necessario, con un solo punto di verità.
+
+---
+
+## Multi-città: non è multi-tenant — un'installazione per città
+
+**Introdotto:** lavoro "multi-città senza costruirla" (ottobre 2026). **Componenti:**
+`services/graph` (`graph.registro`, `graph.dataset`), BFF, `intelligence-index`, `urban-memory`.
+
+### Cosa c'è oggi
+
+Il contenuto locale vive nel **dataset della città** (`services/graph/graph/seed_<città>.py`,
+attributo `DATASET: DatasetCitta`), selezionato da `CITY_SEED` nel `.env` (predefinito: il
+dataset di riferimento). Il dataset dichiara anche il `VocabolarioTemi` con cui il motore legge
+i temi. Il codice di produzione non nomina città fuori dai moduli dataset: lo impone
+`tests/test_guardia_citta.py`. Una seconda città richiede un nuovo modulo dataset, il suo
+`cypher/01_seed_<città>.cypher` generato da `python -m graph.export_cypher` e un'installazione
+separata (Neo4j, Postgres, `.env` propri).
+
+### Cosa NON c'è
+
+- **Nessun multi-tenant.** Nessun `city_id` su nodi, tabelle, eventi o contratti: un'istanza
+  Aura/Neon serve UNA città. Due città nello stesso database si mescolerebbero (grafo, ledger,
+  memoria, indicatori). Introdurlo richiede `city_id` nei contratti (contract-keeper), negli
+  indici e in ogni query: non è un cambio di configurazione.
+- **Nessuna seconda città reale.** L'unico dataset non predefinito è il borgo fittizio dei test
+  (`services/api/tests/fixtures/borgo_esempio.py`), mai caricato su Aura.
+- **Non verificato:** il caricamento su Aura con un `CITY_SEED` diverso dal predefinito
+  (`python -m graph.loader`) non è mai stato eseguito.
+- `CITY_SEED` è letto da DUE meccanismi: `Settings` del BFF legge il `.env` relativo alla cwd,
+  `graph.env`/`urban_memory._env`/`intelligence_index._env` il `.env` della radice del repo. Il
+  BFF va avviato dalla radice (comando in `CLAUDE.md`), altrimenti i valori possono divergere.
+
+---
+
+## App Flutter cablata su Lucca
+
+**Componente:** `apps/lucca_soul_app`. Il motore è indipendente dalla città, l'app no:
+
+- `lib/util/known_places.dart` — elenco cablato dei luoghi del seed di Lucca;
+- `lib/util/signal_presets.dart` — id di luoghi lucchesi (`mura-urbane`, `piazza-anfiteatro`)
+  nel segnale di affollamento simulato;
+- `lib/util/app_strings.dart` — "La tua giornata a Lucca" / "Your day in Lucca";
+- `lib/main.dart` — "Sono cittadino/a di Lucca".
+
+Questi quattro file sono in allowlist esplicita in `tests/test_guardia_citta.py`, che rimanda
+qui. Rimuovere il limite richiede un endpoint del BFF che esponga luoghi e nome della città dal
+dataset attivo (l'app parla solo col BFF): fuori scope finché si lavora solo su Lucca.
+
+---
+
+## La regola di curatela del `VocabolarioTemi` non è verificata automaticamente
+
+**Componenti:** `contracts.VocabolarioTemi`, dataset della città.
+
+Il vocabolario dei temi dà affinità tematica: chi cura un dataset potrebbe costruire un gruppo
+(`arte`, `contemplativi`, `insoliti`, `verde`, `bambini`) a partire dai temi evocati solo da
+esperienze di partner, dando loro un vantaggio sistematico per via di DATO, non di codice. La
+regola di curatela (docstring del contratto e `docs/DATA_CONTRACTS.md`) lo vieta: il
+vocabolario si definisce per significato del tema, mai per chi offre le esperienze.
+
+Cosa è garantito dal codice: i filtri duri non dipendono dal vocabolario; `calcola_score` non
+legge campi commerciali e, anche con un vocabolario costruito sui temi di un partner, il
+punteggio è identico con o senza partner, prezzo, abbonamento e attribuzione
+(`services/experience-engine/tests/test_vocabolario_ostile.py`).
+
+Cosa NON è garantito: nessun controllo automatico che un tema di gruppo sia evocato anche da
+esperienze senza partner. Da aggiungere (validazione in `DatasetCitta` o test sul dataset)
+prima di accettare il dataset di una seconda città; non introdotta ora perché richiederebbe di
+rivedere le botteghe del seed di Lucca (task separato).
+
+Collegato: il borgo fittizio dei test riproduce da città nuova il limite già noto di
+`_migliore_alternativa` (partner con abbonamento non attivo reintrodotto in adattamento, vedi
+sopra): `services/api/tests/test_borgo_esempio.py` lo marca `xfail(strict=True)`, così il test
+diventa rosso il giorno in cui il motore viene corretto.

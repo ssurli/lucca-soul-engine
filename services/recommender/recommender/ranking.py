@@ -17,7 +17,7 @@ sul LUOGO (`place_id`, non la singola esperienza):
 
 Il secondo termine esiste per una falla diagnosticata: un luogo con ZERO
 eventi tracciati ma altissima pertinenza di contenuto attraverso profili
-diversi (nel seed di Lucca, `san-michele-in-foro`) può assorbire il flusso
+diversi (nel dataset della città di riferimento, una chiesa romanica) può assorbire il flusso
 liberato dalla penalizzazione di un luogo storicamente concentrato, perché
 `_seleziona_tappe` (in `experience_engine.engine`, NON toccato da questo
 modulo) riempie ogni slot di budget liberato con il MIGLIOR candidato per
@@ -173,7 +173,7 @@ SEGNALE_NEUTRO_STRUTTURALE = Signal(
 #:   contemplazione: rivela il luogo dominante per chi la evita per indole,
 #:   non solo perché lo storico lo suggerisce.
 #: - AMANTE_ARTE_PURO: isola l'asse bellezza/storia/musica — l'asse su cui il
-#:   seed di Lucca (Puccini, romanico, liuteria) concentra più contenuto: è
+#:   dataset della città di riferimento concentra più contenuto: è
 #:   l'archetipo più a rischio di produrre un vincitore strutturale netto,
 #:   motivo per cui va incluso esplicitamente e non solo implicito in
 #:   "misto equilibrato".

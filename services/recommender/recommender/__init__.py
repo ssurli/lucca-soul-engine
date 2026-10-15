@@ -3,7 +3,7 @@
 Impara l'ALGORITMO dai comportamenti storici (`BehaviorEvent`:
 view/stop/photo/booking/review/skip/memory_contrib), non il modello
 linguistico. Import name del pacchetto: `recommender` (nome distribuzione:
-`lucca-recommender`).
+vedi `pyproject.toml`).
 
 Vincolo non negoziabile di questa wave (prescrizione ethics-guardian):
 la funzione obiettivo non è la pertinenza misurata sui dati storici (che

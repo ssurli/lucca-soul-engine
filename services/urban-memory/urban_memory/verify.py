@@ -33,7 +33,7 @@ errore di storage per un successo). Ogni corsa, in ordine, stampa:
    (comportamento precedente) ma stampa un AVVISO esplicito: la curatela
    senza grafo configurato non protegge da riferimenti invalidi. `KeyError`
    (con o senza `target_checker`) significa che il passo 2 non ha davvero
-   persistito nulla: FALLITO, exit 1 — mai una spallucciata.
+   persistito nulla: FALLITO, exit 1 — mai un silenzio.
 
    Da questa wave (Fase 3, invariante "curato tira aggancio",
    `docs/ENGINE_INVARIANTS.md` §11-B): se `NEO4J_URI` È configurata, la
