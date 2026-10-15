@@ -1,0 +1,2 @@
+# Golden di Lucca: valori attesi CONGELATI, byte-identici su ogni sistema.
+services/api/tests/golden/*.json text eol=lf
