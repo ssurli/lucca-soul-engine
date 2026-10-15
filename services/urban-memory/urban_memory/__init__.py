@@ -47,12 +47,18 @@ eseguono davvero contro Neo4j (Aura o locale), ATOMICAMENTE: se un id in
 `riguarda` non esiste nel grafo, `MemoryLinkError` lo nomina e NESSUN nodo
 `:Memoria` orfano viene creato.
 
+CLI e strumenti operativi NON sono riesposti dalla radice (così `python -m
+urban_memory.<modulo>` parte senza warning): importali dal sottomodulo —
+`urban_memory.migrate` (`migrate`, `SCHEMA_PATH`, `SCHEMA_PATHS`),
+`urban_memory.audit` (`audit`), `urban_memory.link` (`link_memory`,
+`controprova`).
+
 `MemoryRepository.get(memory_id)` rilegge un contributo per id (`None` se
 assente); `list_curated()` rilegge TUTTI i contributi `curato=True`, su
-qualunque place. `link_memory` (`python -m urban_memory.link`) usa `get` per
+qualunque place. `urban_memory.link.link_memory` (`python -m urban_memory.link`) usa `get` per
 riagganciare al grafo IL DATO REALMENTE PERSISTITO, mai un oggetto
 ricostruito in memoria — è lo strumento dedicato a verificare (e
-rieseguire) SOLO l'aggancio, a valle di `urban_memory.verify`. `controprova`
+rieseguire) SOLO l'aggancio, a valle di `urban_memory.verify`. `urban_memory.link.controprova`
 dimostra che il linker rifiuta DAVVERO un target inesistente, senza toccare
 Postgres.
 
@@ -80,7 +86,6 @@ tardi, quando il grafo torna raggiungibile.
 
 from __future__ import annotations
 
-from .audit import audit
 from .canale_fluttuante import (
     DURATA_MASSIMA_SEGNALE_MIN,
     PlaceLinkWriter,
@@ -112,7 +117,6 @@ from .graph_link import (
     riguarda_to_cypher,
     target_checker_from_env,
 )
-from .link import controprova, link_memory
 from .luogo_traccia_link import (
     LUOGO_TRACCIA_WRITE_QUERY_PATH,
     LuogoTracciaLinkError,
@@ -120,7 +124,6 @@ from .luogo_traccia_link import (
     scrivi_ultima_traccia,
     ultima_traccia_cypher,
 )
-from .migrate import SCHEMA_PATH, SCHEMA_PATHS, migrate
 from .promozione_evento import (
     PROMOZIONE_EVENTO_WRITE_QUERY_PATH,
     Neo4jPromozioneWriter,
@@ -193,12 +196,6 @@ __all__ = [
     "link_to_graph",
     "Neo4jMemoryLinker",
     "target_checker_from_env",
-    "link_memory",
-    "controprova",
-    "audit",
-    "migrate",
-    "SCHEMA_PATH",
-    "SCHEMA_PATHS",
     # Canale fluttuante persistente (Fase 3, docs/PROMOZIONE_TRACCIA.md)
     "SegnaleFluttuanteRepository",
     "InMemorySegnaleFluttuanteRepository",

@@ -55,10 +55,10 @@ from datetime import UTC, datetime
 
 from contracts import MemoryContribution, MemoryKind, PersonKind
 
+from ._costanti import CONTRIBUTO_ID
 from ._env import database_url_from_env
 from .graph_link import MemoryLinkError, Neo4jMemoryLinker
 from .repository import MemoryStorageError, PostgresMemoryRepository
-from .verify import CONTRIBUTO_ID
 
 __all__ = ["link_memory", "controprova", "main"]
 

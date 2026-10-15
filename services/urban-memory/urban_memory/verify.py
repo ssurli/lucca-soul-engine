@@ -85,6 +85,7 @@ from datetime import UTC, datetime
 import psycopg
 from contracts import MemoryContribution, MemoryKind, MemoryLinkState, PersonKind
 
+from ._costanti import CONTRIBUTO_ID
 from ._env import city_seed_from_env, database_url_from_env, neo4j_config_from_env
 from .graph_link import Neo4jMemoryLinker
 from .migrate import mask_dsn, migrate
@@ -96,8 +97,6 @@ from .service import (
     retry_link_contribution,
     submit_contribution,
 )
-
-CONTRIBUTO_ID = "mem-verify-persistenza"
 
 
 def place_id_esempio() -> str:
