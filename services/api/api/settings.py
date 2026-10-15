@@ -1,11 +1,12 @@
 """Configurazione del BFF, letta da variabili d'ambiente / `.env`.
 
-Il codice non deve MAI sapere se gira in profilo cloud (Aura + Neon) o
-locale (Neo4j Community + Postgres via `docker-compose.yml`): l'unica
-differenza tra i due profili è il CONTENUTO del `.env` (vedi
-`.env.example` per il profilo cloud e `.env.local.example` per quello
-locale alla radice del repo). Nessun host è hardcoded qui, nessun
-`if local/cloud` nel codice.
+Il codice non deve MAI sapere dove gira: l'unica differenza tra ambienti è
+il CONTENUTO del `.env` (vedi `.env.example` alla radice del repo). Nessun
+host è hardcoded qui, nessun `if local/cloud` nel codice.
+
+Il `.env` è ancorato alla RADICE DEL REPO (`ENV_FILE`), non al cwd: avviare
+uvicorn da un'altra cartella dà la stessa configurazione. Le variabili
+d'ambiente di processo hanno comunque la precedenza sul file.
 
 In Wave 0 tutte le variabili sono opzionali (default `None`): `/health`
 deve rispondere 200 anche senza alcun database attivo. Le connessioni
@@ -16,9 +17,15 @@ transazionale nelle wave successive.
 from __future__ import annotations
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Radice del repo (services/api/api/settings.py -> parents[3]); i pacchetti sono
+# installati in editable, quindi `__file__` punta al sorgente nel repo.
+RADICE_REPO = Path(__file__).resolve().parents[3]
+ENV_FILE = RADICE_REPO / ".env"
 
 
 class Settings(BaseSettings):
@@ -28,7 +35,6 @@ class Settings(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -57,5 +63,9 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Cache delle Settings per evitare di ri-leggere il `.env` a ogni richiesta."""
-    return Settings()
+    """Cache delle Settings per evitare di ri-leggere il `.env` a ogni richiesta.
+
+    Legge `ENV_FILE` (radice del repo) al momento della chiamata: i test
+    possono puntarlo altrove con `monkeypatch.setattr(api.settings, "ENV_FILE", ...)`.
+    """
+    return Settings(_env_file=ENV_FILE)

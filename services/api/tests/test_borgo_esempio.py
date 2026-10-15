@@ -23,6 +23,7 @@ import pytest
 pytest.importorskip("fastapi.testclient", reason="fastapi non installato")
 api_main = pytest.importorskip("api.main", reason="`api` non installabile")
 from api import deps  # noqa: E402
+from api import settings as api_settings  # noqa: E402
 from api.settings import get_settings  # noqa: E402
 from contracts import (  # noqa: E402
     AdaptRequest,
@@ -390,10 +391,10 @@ def _pulisci_cache() -> None:
 def client(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, borgo: DatasetCitta
 ) -> Iterator[TestClient]:
-    """BFF reale sul borgo: `.env` del repo neutralizzato (cwd vuoto, nessuna
+    """BFF reale sul borgo: `.env` del repo neutralizzato (ENV_FILE inesistente, nessuna
     credenziale), selezione del dataset VERA (`CITY_SEED` -> `get_dataset`),
     repository in-memory, orologio fisso."""
-    monkeypatch.chdir(tmp_path)  # nessun .env nel cwd
+    monkeypatch.setattr(api_settings, "ENV_FILE", tmp_path / ".env")  # inesistente
     for var in (
         "NEO4J_URI", "NEO4J_USERNAME", "NEO4J_PASSWORD", "NEO4J_DATABASE", "DATABASE_URL",
     ):

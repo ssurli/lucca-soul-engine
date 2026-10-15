@@ -1,10 +1,10 @@
 """`get_candidate_source` sceglie il dataset della città da `CITY_SEED` tramite
 `api.settings.Settings` (nessuna seconda lettura del `.env`).
 
-Isolamento: `Settings` legge `.env` con path RELATIVO al cwd, quindi i test
-fanno chdir in una directory vuota (il `.env` reale del repo non viene mai
-letto) e rimuovono dall'ambiente le variabili NEO4J_* / CITY_SEED per forzare
-il ramo di fallback sul dataset.
+Isolamento: `Settings` legge il `.env` ancorato alla radice del repo
+(`api.settings.ENV_FILE`), quindi i test lo puntano a un file inesistente in
+tmp_path (il `.env` reale non viene mai letto) e rimuovono dall'ambiente le variabili
+NEO4J_* / CITY_SEED per forzare il ramo di fallback sul dataset.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pytest
 from api import deps
+from api import settings as api_settings
 from api.settings import get_settings
 from graph.dataset import DatasetCitta
 from graph.registro import carica_dataset
@@ -22,7 +23,7 @@ from graph.source import SeedCandidateSource
 
 @pytest.fixture(autouse=True)
 def ambiente_isolato(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
-    monkeypatch.chdir(tmp_path)  # nessun .env nel cwd
+    monkeypatch.setattr(api_settings, "ENV_FILE", tmp_path / ".env")  # inesistente
     for var in (
         "NEO4J_URI",
         "NEO4J_USERNAME",
