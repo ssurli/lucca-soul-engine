@@ -385,7 +385,11 @@ assegnata: prima serve la decisione di prodotto, poi `contract-keeper` (contratt
 - **Spiegabilità dell'adattamento** — voce "Adattamento senza alternativa: silenzio verso il
   visitatore". Quando non esiste un'alternativa ammissibile la tappa resta muta e
   `adattato_da_segnale=False` è ambiguo ("niente da fare" vs "non ho potuto"). Caso golden:
-  `adapt|onnivoro|pioggia`.
+  `adapt|onnivoro|pioggia`. Nello stesso candidato la voce "Adattamento senza budget": oggi
+  `AdaptRequest` non porta profilo né budget, l'adattamento usa `_profilo_neutro()`
+  (`tempo_disponibile_min=10_000`) e una sostituzione può sforare il budget del visitatore.
+  Entrambe toccano lo stesso contratto (`AdaptRequest` / esito dell'adattamento): un solo
+  passaggio da `contract-keeper`.
 - **Orari all'arrivo e orario di fine itinerario** — voce "Orari di apertura verificati solo
   all'ora del segnale; nessun orario di fine itinerario". Domanda di prodotto aperta: l'itinerario
   è sempre una sessione nella stessa giornata, e chi dichiara l'orario di fine?

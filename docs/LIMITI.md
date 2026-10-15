@@ -2026,3 +2026,39 @@ Verificare gli orari sull'arrivo stimato di ogni tappa richiede di schedulare e 
 unico passo (punto 3 della voce sugli orari): cambio della pipeline di composizione, non un
 aggiustamento locale. Un tetto di durata o un orario di fine tocca `EmotionalProfile` o `Signal`:
 passa prima da `contract-keeper`, poi `ethics-guardian` (composizione e adattamento).
+
+## Adattamento senza budget: le tappe possono sforare `tempo_disponibile_min` (APERTO)
+
+**Trovato:** 2026-10-15, dal gate `test-engineer` sul fix del budget oltre mezzanotte; fatti
+verificati in sola lettura dall'orchestratore. **Non corretto, non riprodotto con un test:** qui è
+solo registrato.
+
+### Cosa è stato verificato (lettura del codice, non esecuzione)
+
+- `adapt_itinerary` (`services/experience-engine/experience_engine/engine.py`) non legge
+  `tempo_disponibile_min` in nessun punto, né direttamente né nei suoi helper
+  (`_migliore_alternativa`, `_taglia_per_stanchezza`, `_ricostruisci_stops`): grep sul file, le
+  sole occorrenze sono nella composizione (`_seleziona_tappe`, le due code) e in `_profilo_neutro`.
+- Senza profilo usa `_profilo_neutro()`, che ha `tempo_disponibile_min=10_000`.
+- **Via HTTP il profilo non c'è mai:** `AdaptRequest` (`packages/contracts/contracts/models.py`)
+  contiene solo `itinerary` e `signal`, e il BFF chiama sempre
+  `adapt_itinerary(..., profile=None)` (`services/api/api/main.py`, `POST /itinerary/adapt`).
+  L'adattamento quindi non conosce il budget del visitatore.
+- Le tappe fluttuanti e degli eventi promossi, che non sono tra i candidati, sono conservate come
+  stub (`_stub_da_stop`) con durata e `reason` originali.
+
+### Cosa NON è garantito
+
+- Una sostituzione con un'esperienza più lunga, o un trasferimento più lungo, può portare il totale
+  di durate e trasferimenti oltre il `tempo_disponibile_min` con cui l'itinerario era stato
+  composto: nessun controllo lo impedisce.
+- Non verificato: quanto spesso succede sul dataset reale (nessun test, golden non esaminato da
+  questo punto di vista); se anche il taglio per stanchezza può sforare (riduce le tappe, ma i
+  trasferimenti tra le tappe rimaste sono ricalcolati).
+
+### Direzione possibile (non decisa)
+
+Far arrivare il budget all'adattamento: per esempio un profilo o un `tempo_disponibile_min`
+nell'`AdaptRequest`, oppure il budget registrato nell'`Itinerary` composto. Tocca lo stesso
+contratto della voce "Adattamento senza alternativa: silenzio verso il visitatore": un solo
+passaggio da `contract-keeper` per entrambe (candidato in `docs/BUILD_PLAN.md`).
