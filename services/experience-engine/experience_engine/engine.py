@@ -323,12 +323,20 @@ def _costruisci_stops(
 _PREFISSO_TAPPA_FLUTTUANTE = "fluttuante-"
 
 
-def _minuti_trascorsi(inizio: time, fine: time) -> int:
-    """Minuti tra due orari nella stessa giornata (mai negativo per come è
-    usata qui: `fine` è sempre `>= inizio`, costruita avanzando `inizio`)."""
-    base_inizio = datetime(2000, 1, 1, inizio.hour, inizio.minute, inizio.second)
-    base_fine = datetime(2000, 1, 1, fine.hour, fine.minute, fine.second)
-    return int((base_fine - base_inizio).total_seconds() // 60)
+def _minuti_usati_permanenti(selezionati: list[GraphCandidate]) -> int:
+    """Budget consumato dalle tappe permanenti scelte: SOMMA delle durate più
+    il trasferimento stimato (`stima_trasferimento_min`) per ogni tappa dopo
+    la prima — lo stesso identico conteggio di `_seleziona_tappe`.
+
+    È una somma, mai una differenza di orari: gli `arrivo` sono `time` senza
+    data e oltre la mezzanotte ripartono da 00:00, quindi una differenza
+    diventerebbe negativa e le tappe in coda sforerebbero il budget."""
+    totale = 0
+    for i, cand in enumerate(selezionati):
+        if i > 0:
+            totale += stima_trasferimento_min(cand.distanza_m)
+        totale += cand.experience.durata_min
+    return totale
 
 
 def _reason_fluttuante(segnale: SegnaleFluttuante, place_nome: str) -> str:
@@ -344,9 +352,10 @@ def _aggiungi_tappe_fluttuanti(
     candidates: list[GraphCandidate],
     profile: EmotionalProfile,
     signal: Signal,
+    minuti_usati: int,
     *,
     vocabolario: VocabolarioTemi,
-) -> list[ItineraryStop]:
+) -> tuple[list[ItineraryStop], int]:
     """Aggiunge, IN CODA, le tappe fluttuanti pertinenti — mai una
     sostituzione (le tappe 1-4 restano esattamente come composte). Rispetta
     il budget di tempo residuo: se non c'è spazio, la tappa fluttuante NON
@@ -357,21 +366,26 @@ def _aggiungi_tappe_fluttuanti(
     altrove per una distanza sconosciuta) + `DURATA_TAPPA_FLUTTUANTE_MIN`
     (una tappa "breve" per definizione).
 
+    `minuti_usati` è il budget già consumato da `stops`, come SOMMA di
+    durate e trasferimenti (`_minuti_usati_permanenti`), mai ricavato dagli
+    orari: oltre la mezzanotte una differenza di `time` sarebbe negativa.
+    Restituisce le tappe e il budget aggiornato, che il chiamante passa a
+    `_aggiungi_tappe_eventi_promossi` (budget condiviso). `orario_corrente`
+    riparte invece da `stops[-1]`: serve solo a dare l'`arrivo`.
+
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
     pertinenti = segnali_fluttuanti_pertinenti(
         signal.eventi_attivi, profile, vocabolario=vocabolario
     )
     if not pertinenti:
-        return stops
+        return stops, minuti_usati
 
     place_nomi = {c.experience.place_id: c.place_nome for c in candidates}
 
     if stops:
-        minuti_usati = _minuti_trascorsi(signal.ora, stops[-1].arrivo) + stops[-1].durata_min
         orario_corrente = _somma_minuti(stops[-1].arrivo, stops[-1].durata_min)
     else:
-        minuti_usati = 0
         orario_corrente = signal.ora
 
     nuove_tappe = list(stops)
@@ -392,7 +406,7 @@ def _aggiungi_tappe_fluttuanti(
         orario_corrente = _somma_minuti(orario_corrente, DURATA_TAPPA_FLUTTUANTE_MIN)
         minuti_usati += costo
 
-    return nuove_tappe
+    return nuove_tappe, minuti_usati
 
 
 # ---------------------------------------------------------------------------
@@ -508,6 +522,7 @@ def _aggiungi_tappe_eventi_promossi(
     eventi_promossi: list[EventoPromosso],
     ora_inizio: time | None = None,
     *,
+    minuti_usati: int,
     data_visita: date | None,
     vocabolario: VocabolarioTemi,
 ) -> list[ItineraryStop]:
@@ -521,10 +536,14 @@ def _aggiungi_tappe_eventi_promossi(
     `distanza_m` nota per un `:Evento`, stessa stima prudente già usata
     altrove per una distanza sconosciuta) + `DURATA_TAPPA_EVENTO_MIN`.
 
-    `minuti_usati`/`orario_corrente` sono RICALCOLATI da `stops[-1]`, non
-    portati da un accumulatore esterno: così questa funzione può essere
-    chiamata DOPO `_aggiungi_tappe_fluttuanti` e continuare correttamente il
-    budget condiviso, qualunque coda le due sezioni abbiano già prodotto.
+    `minuti_usati` (keyword-only, obbligatorio) è il budget già consumato da
+    `stops` — tappe permanenti più eventuali tappe fluttuanti — come SOMMA
+    di durate e trasferimenti, quello restituito da
+    `_aggiungi_tappe_fluttuanti`: così il budget condiviso continua
+    correttamente qualunque coda sia già stata prodotta. Non è mai ricavato
+    dagli orari: gli `arrivo` sono `time` senza data e oltre la mezzanotte
+    una differenza sarebbe negativa. `orario_corrente` riparte invece da
+    `stops[-1]`: serve solo a dare l'`arrivo` alla tappa.
 
     `ora_inizio` (`ctx.signal.ora` quando chiamata da `compose_itinerary`) è
     l'origine dell'orologio, e serve SOLO nel caso limite in cui `stops` è
@@ -550,16 +569,8 @@ def _aggiungi_tappe_eventi_promossi(
     place_nomi = {c.experience.place_id: c.place_nome for c in candidates}
 
     if stops:
-        # Origine del conteggio: `ora_inizio` se nota, altrimenti l'arrivo
-        # della prima tappa — che per costruzione parte proprio da
-        # `signal.ora` (vedi `_costruisci_stops`), quindi il risultato è lo
-        # stesso; il fallback esiste per non dipendere da un parametro
-        # facoltativo quando l'informazione è già dentro `stops`.
-        origine = ora_inizio if ora_inizio is not None else stops[0].arrivo
-        minuti_usati = _minuti_trascorsi(origine, stops[-1].arrivo) + stops[-1].durata_min
         orario_corrente = _somma_minuti(stops[-1].arrivo, stops[-1].durata_min)
     elif ora_inizio is not None:
-        minuti_usati = 0
         orario_corrente = ora_inizio
     else:
         return stops
@@ -688,8 +699,12 @@ def compose_itinerary(
         adesso,
         vocabolario=vocabolario,
     )
-    stops = _aggiungi_tappe_fluttuanti(
-        stops, candidates, profile, ctx.signal, vocabolario=vocabolario
+    # Budget già consumato: SOMMA di durate e trasferimenti (stesso conteggio
+    # di `_seleziona_tappe`), portata attraverso le due code — mai ricavata
+    # dagli orari, che oltre la mezzanotte ripartono da 00:00.
+    minuti_usati = _minuti_usati_permanenti(selezionati)
+    stops, minuti_usati = _aggiungi_tappe_fluttuanti(
+        stops, candidates, profile, ctx.signal, minuti_usati, vocabolario=vocabolario
     )
     stops = _aggiungi_tappe_eventi_promossi(
         stops,
@@ -697,6 +712,7 @@ def compose_itinerary(
         profile,
         eventi_promossi or [],
         ctx.signal.ora,
+        minuti_usati=minuti_usati,
         data_visita=ctx.signal.data,
         vocabolario=vocabolario,
     )

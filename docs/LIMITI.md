@@ -1985,9 +1985,10 @@ di durata.
   reale oggi sul dataset di Lucca: nullo.
 - `EmotionalProfile(tempo_disponibile_min=3000)` è accettato: il contratto è `Field(ge=0)`, senza
   limite superiore (`packages/contracts/contracts/models.py`).
-- `engine._somma_minuti(time(22,0), 180)` restituisce `01:00` e
-  `engine._minuti_trascorsi(time(22,0), time(1,0))` restituisce `-1260`: l'aritmetica degli orari
-  è "giornata singola, senza data" e si riavvolge a mezzanotte.
+- `engine._somma_minuti(time(22,0), 180)` restituisce `01:00`: l'aritmetica degli orari è
+  "giornata singola, senza data" e si riavvolge a mezzanotte. (Al momento della verifica anche
+  `engine._minuti_trascorsi(time(22,0), time(1,0))` restituiva `-1260`; la funzione è stata poi
+  eliminata, vedi sotto.)
 
 ### Cosa NON è garantito
 
@@ -1997,11 +1998,16 @@ di durata.
 - **Nessun orario di fine.** Il motore non conosce "fino a che ora" la persona vuole restare né
   un orario di chiusura della giornata: il solo vincolo è il budget in minuti, senza tetto.
 - **Oltre mezzanotte gli orari si riavvolgono.** `ItineraryStop.arrivo` è un `time` senza data,
-  quindi una tappa dopo mezzanotte appare "alle 01:00" senza il giorno. Inoltre il budget residuo
-  delle tappe fluttuanti e degli eventi promossi è ricalcolato con `_minuti_trascorsi`, che oltre
-  mezzanotte diventa negativo: il conteggio sottostima il tempo usato e può ammettere tappe in
-  coda oltre il budget dichiarato. Non riprodotto con un itinerario completo (solo le due funzioni
-  in isolamento): da confermare con un test prima di correggere.
+  quindi una tappa dopo mezzanotte appare "alle 01:00" senza il giorno. Resta aperto: dipende
+  dalla domanda di prodotto qui sotto.
+  **Budget in coda oltre mezzanotte — CHIUSO (2026-10-15).** Il budget residuo delle tappe
+  fluttuanti e degli eventi promossi era ricalcolato come differenza di orari
+  (`_minuti_trascorsi`), negativa oltre mezzanotte: con `signal.ora=20:00` e budget 300 l'itinerario
+  arrivava a 325 minuti. Ora `minuti_usati` è la somma di durate e trasferimenti
+  (`engine._minuti_usati_permanenti`, stesso conteggio di `_seleziona_tappe`), portata da
+  `_aggiungi_tappe_fluttuanti` a `_aggiungi_tappe_eventi_promossi`; `_minuti_trascorsi` è
+  eliminata. Test: `services/experience-engine/tests/test_budget_mezzanotte.py`. Golden di Lucca
+  invariato. Non decide nulla su sessione di un giorno né su un orario di fine.
 - **Non verificato:** il comportamento dell'app e del BFF con un itinerario di più giorni; il
   massimo realistico di `tempo_disponibile_min` prodotto dall'onboarding (`rag.onboarding`,
   default 120) rispetto a un client che lo invia direttamente.
