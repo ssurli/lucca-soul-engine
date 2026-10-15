@@ -22,6 +22,9 @@ Uso::
 
 from __future__ import annotations
 
+import argparse
+import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 import psycopg
@@ -78,7 +81,22 @@ def mask_dsn(dsn: str) -> str:
     return f"{schema}://{userinfo}@{hostpart}"
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(
+        prog="python -m urban_memory.migrate",
+        description=(
+            "Applica in modo idempotente gli schemi SQL della Urban Memory "
+            "(sql/*_schema.sql, in ordine). ATTENZIONE: SI CONNETTE e SCRIVE sul "
+            "database di DATABASE_URL (.env o ambiente): per Neon usa la stringa "
+            "diretta, senza -pooler."
+        ),
+    )
+
+
+def main(argv: Sequence[str] = ()) -> None:
+    # Parsing PRIMA di ogni lettura d'ambiente o connessione: --help esce con 0.
+    # Default `()` (non `None`): senza argomenti non si legge il sys.argv del processo.
+    _build_parser().parse_args(list(argv))
     dsn = database_url_from_env()
     migrate(dsn)
     print(f"Schema Urban Memory applicato (idempotente) su {mask_dsn(dsn)}.")
@@ -87,4 +105,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])

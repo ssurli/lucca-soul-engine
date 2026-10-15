@@ -145,6 +145,9 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
 - "Verificato" significa **eseguito** contro il codice o l'infrastruttura reale, non dedotto.
   Dichiara sempre cosa NON hai potuto verificare.
 - Test esistenti modificati: elencali con il motivo. Mai modificarne uno solo per farlo passare.
+- Nessun subagent esegue comandi contro Neon o Aura reali (verify, migrate, loader, link, audit o
+  script ad hoc) senza autorizzazione esplicita nel brief. Le prove si fanno sui test o con DSN
+  non raggiungibili.
 
 ### B. Trappole Windows/PowerShell (ambiente reale dell'utente)
 - Comandi per l'utente: PowerShell **completi**, mai segnaposto tipo `<...>` (in PS `<` è un

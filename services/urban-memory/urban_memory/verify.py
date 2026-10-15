@@ -79,7 +79,9 @@ dare — il fossato del progetto non può vivere solo in RAM.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import argparse
+import sys
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 
 import psycopg
@@ -306,7 +308,25 @@ def _grafo_non_configurato() -> None:
     )
 
 
-def main() -> None:
+def _build_parser() -> argparse.ArgumentParser:
+    return argparse.ArgumentParser(
+        prog="python -m urban_memory.verify",
+        description=(
+            "Verifica che la Urban Memory PERSISTA davvero: applica lo schema, "
+            "crea o rilegge un contributo d'esempio, lo cura e lo rilegge da un "
+            "repository nuovo. ATTENZIONE: SI CONNETTE e SCRIVE sul database di "
+            "DATABASE_URL (Postgres/Neon) e, se NEO4J_URI/NEO4J_USERNAME/"
+            "NEO4J_PASSWORD sono configurate, anche sul Knowledge Graph "
+            "(Neo4j/Aura). Rieseguibile: ogni passo legge prima lo stato reale."
+        ),
+    )
+
+
+def main(argv: Sequence[str] = ()) -> None:
+    # Parsing PRIMA di ogni lettura d'ambiente o connessione: --help esce con 0.
+    # Default `()` (non `None`): senza argomenti non si legge il sys.argv del processo.
+    _build_parser().parse_args(list(argv))
+
     print("=== Verifica di persistenza — Urban Memory ===\n")
     dsn = database_url_from_env()
     try:
@@ -341,4 +361,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1:])
