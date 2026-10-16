@@ -1328,13 +1328,17 @@ def _entro_la_giornata(
     return tenuti
 
 
-def _escludi(cand: _CandidatoConReason, esito: EsitoAdattamento) -> TappaEsclusa:
+def _esclusa_canonica(experience_id: str, esito: EsitoAdattamento) -> TappaEsclusa:
+    """`TappaEsclusa` col `reason` del motore, ricavato SOLO dall'esito
+    (`_frase_esito`): nessun testo libero arrivato dal client sopravvive."""
     frase = _frase_esito(esito)
     if frase is None:
         raise ValueError(f"esito {esito.value!r} non è un esito di taglio")
-    return TappaEsclusa(
-        experience_id=cand.id_originale or cand.experience.id, esito=esito, reason=frase
-    )
+    return TappaEsclusa(experience_id=experience_id, esito=esito, reason=frase)
+
+
+def _escludi(cand: _CandidatoConReason, esito: EsitoAdattamento) -> TappaEsclusa:
+    return _esclusa_canonica(cand.id_originale or cand.experience.id, esito)
 
 
 def _unisci_escluse(
@@ -1344,11 +1348,15 @@ def _unisci_escluse(
 ) -> list[TappaEsclusa]:
     """Accumula le tappe escluse tra adattamenti: una sola voce per
     `experience_id`, vince la più recente (che va in fondo). Nessun tetto di
-    lunghezza. Un'esperienza tornata tra le tappe non è più esclusa."""
+    lunghezza. Un'esperienza tornata tra le tappe non è più esclusa.
+
+    Il `reason` di OGNI voce è rigenerato dall'esito (`_esclusa_canonica`):
+    le esclusioni ricevute dal client portano un testo libero, e il testo
+    restituito dev'essere sempre quello del motore."""
     unite: dict[str, TappaEsclusa] = {}
     for tappa in [*precedenti, *nuove]:
         unite.pop(tappa.experience_id, None)
-        unite[tappa.experience_id] = tappa
+        unite[tappa.experience_id] = _esclusa_canonica(tappa.experience_id, tappa.esito)
     presenti = {s.experience_id for s in stops}
     return [t for t in unite.values() if t.experience_id not in presenti]
 
