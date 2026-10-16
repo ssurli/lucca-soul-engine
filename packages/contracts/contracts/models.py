@@ -33,7 +33,9 @@ __all__ = [
     "EventoPromosso",
     "VocabolarioTemi",
     "ExperienceCandidate",
+    "EsitoAdattamento",
     "ItineraryStop",
+    "TappaEsclusa",
     "Itinerary",
     "MemoryKind",
     "MemoryLinkState",
@@ -627,18 +629,104 @@ class ExperienceCandidate(ContractModel):
     reason: str = Field(min_length=1)  # SPIEGABILITÀ OBBLIGATORIA, in italiano
 
 
+class EsitoAdattamento(str, Enum):
+    """Esito dell'ultimo adattamento su una tappa.
+
+    - `NON_TOCCATA`: il segnale non ha richiesto modifiche.
+    - `SOSTITUITA`: la tappa è stata sostituita da un'alternativa.
+    - `MANTENUTA_SENZA_ALTERNATIVA`: il segnale la penalizzava ma non esisteva
+      un'alternativa; resta in itinerario (NON accende `adattato_da_segnale`).
+    - `TAGLIATA_STANCHEZZA` / `TAGLIATA_TETTO_GIORNATA`: la tappa è stata tolta;
+      compare solo in `Itinerary.tappe_escluse`, mai tra le `stops`.
+    """
+
+    NON_TOCCATA = "non_toccata"
+    SOSTITUITA = "sostituita"
+    MANTENUTA_SENZA_ALTERNATIVA = "mantenuta_senza_alternativa"
+    TAGLIATA_STANCHEZZA = "tagliata_stanchezza"
+    TAGLIATA_TETTO_GIORNATA = "tagliata_tetto_giornata"
+
+
+_ESITI_TAGLIO = frozenset(
+    {EsitoAdattamento.TAGLIATA_STANCHEZZA, EsitoAdattamento.TAGLIATA_TETTO_GIORNATA}
+)
+
+
 class ItineraryStop(ContractModel):
     experience_id: str
     arrivo: time
     durata_min: int = Field(ge=0)
     reason: str = Field(min_length=1)  # SPIEGABILITÀ OBBLIGATORIA, in italiano
+    # None = itinerario mai adattato. Descrive SOLO l'ultimo segnale valutato.
+    esito_adattamento: EsitoAdattamento | None = None
+
+    @field_validator("esito_adattamento")
+    @classmethod
+    def _no_esito_di_taglio_su_tappa_presente(
+        cls, v: EsitoAdattamento | None
+    ) -> EsitoAdattamento | None:
+        if v in _ESITI_TAGLIO:
+            raise ValueError(
+                "esito_adattamento di taglio non ammesso su una tappa presente: "
+                "le tappe tagliate vivono in Itinerary.tappe_escluse"
+            )
+        return v
+
+
+class TappaEsclusa(ContractModel):
+    """Tappa tolta da un adattamento (stanchezza o tetto della giornata)."""
+
+    experience_id: str
+    esito: EsitoAdattamento
+    reason: str = Field(min_length=1)  # SPIEGABILITÀ OBBLIGATORIA, in italiano
+
+    @field_validator("esito")
+    @classmethod
+    def _solo_esiti_di_taglio(cls, v: EsitoAdattamento) -> EsitoAdattamento:
+        if v not in _ESITI_TAGLIO:
+            raise ValueError(
+                "esito di TappaEsclusa ammesso solo: tagliata_stanchezza, "
+                "tagliata_tetto_giornata"
+            )
+        return v
 
 
 class Itinerary(ContractModel):
+    """Itinerario composto (e, eventualmente, adattato a un segnale).
+
+    `adattato_da_segnale` è True se e solo se l'ultimo adattamento ha almeno
+    una tappa SOSTITUITA o una tappa TAGLIATA (stanchezza o tetto). Una tappa
+    mantenuta senza alternativa NON lo accende (l'app lo mostra come badge
+    "Riscritta"): quel caso è portato da `esito_adattamento` e da una frase
+    nel `reason`.
+    """
+
     person_id: str
     stops: list[ItineraryStop]
     generated_at: datetime
-    adattato_da_segnale: bool = False  # true quando riscritto (pioggia, affollamento, stanchezza)
+    adattato_da_segnale: bool = False
+    # Budget dichiarato alla composizione (stesso significato di
+    # EmotionalProfile.tempo_disponibile_min). Lo scrive solo la composizione;
+    # l'adattamento lo ricopia. None = itinerario senza budget.
+    tempo_disponibile_min: int | None = Field(default=None, gt=0)
+    # Budget dopo il tetto della giornata:
+    # min(dichiarato, minuti da signal.ora alle 24:00).
+    tempo_effettivo_min: int | None = Field(default=None, gt=0)
+    # Tappe tolte da un adattamento; si accumulano tra adattamenti successivi.
+    tappe_escluse: list[TappaEsclusa] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _budget_coerente(self) -> Itinerary:
+        dichiarato = self.tempo_disponibile_min
+        effettivo = self.tempo_effettivo_min
+        if (dichiarato is None) != (effettivo is None):
+            raise ValueError(
+                "tempo_disponibile_min e tempo_effettivo_min devono essere "
+                "entrambi None o entrambi valorizzati"
+            )
+        if dichiarato is not None and effettivo is not None and effettivo > dichiarato:
+            raise ValueError("tempo_effettivo_min non può superare tempo_disponibile_min")
+        return self
 
 
 # ---------------------------------------------------------------------------

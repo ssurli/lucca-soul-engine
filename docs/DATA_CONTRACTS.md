@@ -321,18 +321,52 @@ class ExperienceCandidate(BaseModel):
     score: float                      # 0..1
     reason: str                       # SPIEGABILITÀ OBBLIGATORIA, in italiano (min 1 carattere)
 
+class EsitoAdattamento(str, Enum):
+    NON_TOCCATA = "non_toccata"
+    SOSTITUITA = "sostituita"
+    MANTENUTA_SENZA_ALTERNATIVA = "mantenuta_senza_alternativa"
+    TAGLIATA_STANCHEZZA = "tagliata_stanchezza"
+    TAGLIATA_TETTO_GIORNATA = "tagliata_tetto_giornata"
+
 class ItineraryStop(BaseModel):
     experience_id: str
     arrivo: time
     durata_min: int
     reason: str                       # SPIEGABILITÀ OBBLIGATORIA, in italiano (min 1 carattere)
+    esito_adattamento: EsitoAdattamento | None = None
+                                      # None = itinerario mai adattato; descrive SOLO l'ULTIMO
+                                      # segnale valutato. TAGLIATA_* NON ammessi su una tappa
+                                      # presente (validatore)
+
+class TappaEsclusa(BaseModel):        # tappa tolta da un adattamento
+    experience_id: str
+    esito: EsitoAdattamento           # solo TAGLIATA_STANCHEZZA o TAGLIATA_TETTO_GIORNATA (validatore)
+    reason: str                       # in italiano, min 1 carattere (spiegabilità obbligatoria)
 
 class Itinerary(BaseModel):
     person_id: str
     stops: list[ItineraryStop]
     generated_at: datetime
-    adattato_da_segnale: bool = False # true quando riscritto (pioggia, affollamento, stanchezza)
+    adattato_da_segnale: bool = False # True se e solo se l'ULTIMO adattamento ha almeno una tappa
+                                      # SOSTITUITA o TAGLIATA (stanchezza o tetto). Una tappa
+                                      # MANTENUTA_SENZA_ALTERNATIVA NON lo accende (l'app lo mostra
+                                      # come badge "Riscritta"): quel caso è portato da
+                                      # esito_adattamento e da una frase nel reason.
+    tempo_disponibile_min: int | None = None  # gt=0. Budget dichiarato alla composizione, stesso
+                                      # significato di EmotionalProfile.tempo_disponibile_min.
+                                      # Lo scrive solo la composizione; l'adattamento lo ricopia.
+                                      # None = itinerario senza budget (precedente al campo):
+                                      # l'adattamento usa profilo neutro, nessun vincolo di budget.
+    tempo_effettivo_min: int | None = None    # gt=0. Budget dopo il tetto della giornata:
+                                      # min(dichiarato, minuti da signal.ora alle 24:00).
+                                      # Entrambi None o entrambi valorizzati; effettivo <= dichiarato
+                                      # (model_validator)
+    tappe_escluse: list[TappaEsclusa] = []    # tappe tolte da un adattamento (stanchezza o tetto
+                                      # della giornata); si accumulano tra adattamenti successivi
 ```
+
+Tutti i campi aggiunti il 2026-10-16 hanno un default: i JSON esistenti (incluso
+`services/api/tests/golden/lucca_itinerari.json`) continuano a validare.
 
 ## 4. Urban Memory — la memoria collettiva
 
@@ -554,8 +588,8 @@ class OnboardingRequest(BaseModel):        # input di POST /session/onboarding
     lingua: str = "it"
 
 class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
-    itinerary: Itinerary
-    signal: Signal
+    itinerary: Itinerary                   # il budget di tempo viaggia QUI
+    signal: Signal                         # (Itinerary.tempo_disponibile_min), non nella richiesta
 ```
 
 > OpenAPI generato da FastAPI è la versione autoritativa dell'API; questo blocco è il riassunto.
@@ -644,3 +678,21 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   accountability di promozione (`promosso_da`/`promosso_il`) e nessun testo narrativo vivono
   in questo contratto — sono task futuri o informazioni non pertinenti al consumo in un
   itinerario (vedi il docstring del modello in `packages/contracts`).
+- Adattamento e tetto della giornata (`Itinerary`, wave "adattamento"): in un itinerario con
+  budget, ogni `arrivo + durata_min` deve stare entro le 24:00 della stessa giornata e la somma
+  di durate e trasferimenti deve essere `<= tempo_effettivo_min`. Queste due verifiche sono
+  dell'Experience Engine (non esprimibili nel contratto Pydantic). Una tappa tagliata esiste
+  SOLO in `tappe_escluse` (mai tra le `stops`, vincolo di contratto sui validatori di
+  `ItineraryStop.esito_adattamento` e `TappaEsclusa.esito`). L'esito è portato sia dal campo
+  (`esito_adattamento` / `TappaEsclusa.esito`) sia da una frase nel `reason`, derivata in un
+  UNICO punto a partire dall'esito, così campo e testo non possono divergere.
+
+## Changelog
+
+- **2026-10-16 — wave "adattamento".** Aggiunti: `EsitoAdattamento` (enum),
+  `ItineraryStop.esito_adattamento`, `TappaEsclusa`, `Itinerary.tempo_disponibile_min`,
+  `Itinerary.tempo_effettivo_min`, `Itinerary.tappe_escluse`. Cambiata la semantica di
+  `Itinerary.adattato_da_segnale` (vedi §3). Nessun campo rinominato o rimosso; tutti i campi
+  nuovi hanno default. `AdaptRequest` invariato: il budget viaggia nell'itinerary. Consumatori:
+  `services/experience-engine` (composizione/adattamento), `services/api` (`/itinerary`,
+  `/itinerary/adapt`, golden), `apps/lucca_soul_app` (badge "Riscritta", tappe escluse).
