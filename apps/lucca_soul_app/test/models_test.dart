@@ -152,6 +152,58 @@ void main() {
       expect(itinerary.stops.first.arrivo.label, '09:00');
       expect(itinerary.adattatoDaSegnale, false);
     });
+
+    Map<String, dynamic> base({String? esito, bool nuovi = false}) => {
+          'person_id': 'visitor_abc',
+          'stops': [
+            {
+              'experience_id': 'passeggiata-mura',
+              'arrivo': '09:00:00',
+              'durata_min': 60,
+              'reason': 'Le mura sono libere',
+              if (esito != null) 'esito_adattamento': esito,
+            },
+          ],
+          'generated_at': '2026-07-13T08:00:00.000Z',
+          'adattato_da_segnale': true,
+          if (nuovi) 'tempo_disponibile_min': 240,
+          if (nuovi) 'tempo_effettivo_min': 180,
+          if (nuovi)
+            'tappe_escluse': [
+              {
+                'experience_id': 'torre-guinigi',
+                'esito': 'tagliata_tetto_giornata',
+                'reason': 'Non entrava nel tempo della giornata',
+              },
+            ],
+        };
+
+    test("andata e ritorno esatta con i campi dell'adattamento", () {
+      final j = base(esito: 'sostituita', nuovi: true);
+      final it = Itinerary.fromJson(j);
+      expect(it.tempoDisponibileMin, 240);
+      expect(it.tempoEffettivoMin, 180);
+      expect(it.tappeEscluse.single.esito, 'tagliata_tetto_giornata');
+      expect(it.stops.first.esitoAdattamento, 'sostituita');
+      expect(it.toJson(), j);
+    });
+
+    test('forma attuale senza campi nuovi: nessuna chiave null, campi vecchi intatti', () {
+      final j = base();
+      final out = Itinerary.fromJson(j).toJson();
+      expect(out, j);
+      expect(out.containsKey('tempo_disponibile_min'), false);
+      expect(out.containsKey('tempo_effettivo_min'), false);
+      expect(out.containsKey('tappe_escluse'), false);
+      expect((out['stops'] as List).first.containsKey('esito_adattamento'), false);
+      expect(out.values.contains(null), false);
+    });
+
+    test("un esito sconosciuto sopravvive all'andata e ritorno", () {
+      final j = base(esito: 'esito_futuro', nuovi: true);
+      (j['tappe_escluse'] as List).first['esito'] = 'esito_futuro';
+      expect(Itinerary.fromJson(j).toJson(), j);
+    });
   });
 
   group('OnboardingRequest', () {

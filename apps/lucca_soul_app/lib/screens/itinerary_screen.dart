@@ -167,6 +167,36 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
               strings: _strings,
               onLasciaRicordo: () => _lasciaRicordo(itinerario.stops[i]),
             ),
+          if (itinerario.tappeEscluse.isNotEmpty)
+            _TappeEscluseNote(escluse: itinerario.tappeEscluse, strings: _strings),
+        ],
+      ),
+    );
+  }
+}
+
+/// Note in fondo alla lista: le tappe tagliate dal motore, con il loro reason.
+class _TappeEscluseNote extends StatelessWidget {
+  final List<TappaEsclusa> escluse;
+  final AppStrings strings;
+
+  const _TappeEscluseNote({required this.escluse, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(strings.excludedStopsTitle, style: textTheme.titleSmall),
+          const SizedBox(height: 4),
+          for (final t in escluse)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(t.reason, style: textTheme.bodySmall),
+            ),
         ],
       ),
     );

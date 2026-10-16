@@ -36,6 +36,7 @@ class AppStrings {
   String get adaptSuccess => _isEn ? 'Itinerary rewritten' : 'Itinerario riscritto';
   String get adaptError => _isEn ? 'Could not adapt the itinerary.' : 'Non riesco ad adattare l\'itinerario.';
   String get emptyStops => _isEn ? 'No stops yet.' : 'Ancora nessuna tappa.';
+  String get excludedStopsTitle => _isEn ? 'Left out of today' : 'Rimaste fuori oggi';
   String get changedStop => _isEn ? 'Changed by the signal' : 'Cambiata dal segnale';
 
   // --- Urban Memory (Wave 2): conferimento contestuale --------------------

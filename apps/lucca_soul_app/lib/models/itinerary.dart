@@ -1,5 +1,10 @@
 import 'time_hms.dart';
 
+// ATTENZIONE: ogni campo nuovo del contratto (`packages/contracts`) va
+// aggiunto a fromJson E a toJson. L'app rimanda l'itinerario a
+// `/itinerary/adapt` con `toJson()`: un campo letto ma non riemesso si perde
+// nell'andata e ritorno. Le chiavi con valore null non vengono emesse.
+
 /// Rispecchia `ItineraryStop` in `docs/DATA_CONTRACTS.md` §3.
 /// `reason` è la spiegabilità obbligatoria: il prodotto, non una nota.
 class ItineraryStop {
@@ -8,11 +13,17 @@ class ItineraryStop {
   final int durataMin;
   final String reason;
 
+  /// Stringa grezza (non enum): un valore futuro del contratto sopravvive
+  /// all'andata e ritorno. Sulla tappa: non_toccata, sostituita,
+  /// mantenuta_senza_alternativa.
+  final String? esitoAdattamento;
+
   const ItineraryStop({
     required this.experienceId,
     required this.arrivo,
     required this.durataMin,
     required this.reason,
+    this.esitoAdattamento,
   });
 
   factory ItineraryStop.fromJson(Map<String, dynamic> json) {
@@ -21,6 +32,7 @@ class ItineraryStop {
       arrivo: TimeHms.parse(json['arrivo'] as String),
       durataMin: json['durata_min'] as int,
       reason: json['reason'] as String,
+      esitoAdattamento: json['esito_adattamento'] as String?,
     );
   }
 
@@ -28,6 +40,35 @@ class ItineraryStop {
         'experience_id': experienceId,
         'arrivo': arrivo.toJson(),
         'durata_min': durataMin,
+        'reason': reason,
+        if (esitoAdattamento != null) 'esito_adattamento': esitoAdattamento,
+      };
+}
+
+/// Rispecchia `TappaEsclusa` in `docs/DATA_CONTRACTS.md` §3: una tappa
+/// tagliata dal motore, con il motivo leggibile. `esito` resta stringa grezza.
+class TappaEsclusa {
+  final String experienceId;
+  final String esito;
+  final String reason;
+
+  const TappaEsclusa({
+    required this.experienceId,
+    required this.esito,
+    required this.reason,
+  });
+
+  factory TappaEsclusa.fromJson(Map<String, dynamic> json) {
+    return TappaEsclusa(
+      experienceId: json['experience_id'] as String,
+      esito: json['esito'] as String,
+      reason: json['reason'] as String,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'experience_id': experienceId,
+        'esito': esito,
         'reason': reason,
       };
 }
@@ -39,12 +80,18 @@ class Itinerary {
   final List<ItineraryStop> stops;
   final DateTime generatedAt;
   final bool adattatoDaSegnale;
+  final int? tempoDisponibileMin;
+  final int? tempoEffettivoMin;
+  final List<TappaEsclusa> tappeEscluse;
 
   const Itinerary({
     required this.personId,
     required this.stops,
     required this.generatedAt,
     this.adattatoDaSegnale = false,
+    this.tempoDisponibileMin,
+    this.tempoEffettivoMin,
+    this.tappeEscluse = const [],
   });
 
   factory Itinerary.fromJson(Map<String, dynamic> json) {
@@ -55,6 +102,11 @@ class Itinerary {
           .toList(),
       generatedAt: DateTime.parse(json['generated_at'] as String),
       adattatoDaSegnale: json['adattato_da_segnale'] as bool? ?? false,
+      tempoDisponibileMin: json['tempo_disponibile_min'] as int?,
+      tempoEffettivoMin: json['tempo_effettivo_min'] as int?,
+      tappeEscluse: (json['tappe_escluse'] as List<dynamic>? ?? const [])
+          .map((e) => TappaEsclusa.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -63,5 +115,10 @@ class Itinerary {
         'stops': stops.map((s) => s.toJson()).toList(),
         'generated_at': generatedAt.toIso8601String(),
         'adattato_da_segnale': adattatoDaSegnale,
+        if (tempoDisponibileMin != null) 'tempo_disponibile_min': tempoDisponibileMin,
+        if (tempoEffettivoMin != null) 'tempo_effettivo_min': tempoEffettivoMin,
+        // Omessa se vuota: il BFF ha default [] e l'itinerario nella forma
+        // attuale resta identico all'andata e ritorno.
+        if (tappeEscluse.isNotEmpty) 'tappe_escluse': tappeEscluse.map((t) => t.toJson()).toList(),
       };
 }
