@@ -2071,6 +2071,45 @@ nell'`AdaptRequest`, oppure il budget registrato nell'`Itinerary` composto. Tocc
 contratto della voce "Adattamento senza alternativa: silenzio verso il visitatore": un solo
 passaggio da `contract-keeper` per entrambe (candidato in `docs/BUILD_PLAN.md`).
 
+## Itinerario senza budget: l'adattamento non vincola le sostituzioni (APERTO)
+
+**Trovato:** 2026-10-16, wave "adattamento" (passo `experience-engine`). **Scelta esplicita**, non
+un effetto collaterale: è un ramo commentato di `adapt_itinerary`
+(`services/experience-engine/experience_engine/engine.py`, `limite_budget = None`) ed è coperto da
+`test_senza_budget_comportamento_precedente_sostituisce_anche_se_lunga`
+(`services/experience-engine/tests/test_esito_adattamento.py`).
+
+### Cosa succede
+
+Dalla wave "adattamento" la composizione registra il budget nell'`Itinerary`
+(`tempo_disponibile_min` dichiarato, `tempo_effettivo_min` troncato alla mezzanotte) e
+l'adattamento accetta una sostituzione solo se l'itinerario resta entro
+min(`tempo_effettivo_min`, minuti da `signal.ora` alle 24:00). Se l'itinerario ricevuto da
+`/itinerary/adapt` ha `tempo_effettivo_min = None`, l'adattamento si comporta come prima della
+wave: profilo neutro (`_profilo_neutro()`, usato solo per ordinare le alternative) e **nessun
+vincolo di budget sulle sostituzioni**. Il tetto della giornata vale comunque: dopo le sostituzioni
+le tappe che finirebbero oltre le 24:00 vanno in `tappe_escluse` (`tagliata_tetto_giornata`).
+
+Lo stesso vale per un profilo con `tempo_disponibile_min = 0`: il contratto dell'`Itinerary` vuole
+un budget > 0, quindi la composizione registra l'itinerario senza budget (entrambi i campi `None`).
+
+### Perché
+
+I JSON di itinerari composti prima del campo (salvati dall'app, il golden
+`services/api/tests/golden/lucca_itinerari.json`, client esterni) non portano il budget, e
+`AdaptRequest` non trasporta il profilo: non esiste un budget da applicare, e inventarne uno
+(per esempio il default dell'onboarding) imporrebbe al visitatore un vincolo che non ha dichiarato.
+
+### Cosa NON è garantito
+
+- Per un itinerario senza budget, una sostituzione con un'esperienza più lunga, o con un
+  trasferimento più lungo, può portare il totale di durate e trasferimenti oltre il tempo con cui
+  l'itinerario era stato composto. Nessun controllo lo impedisce; l'unico limite è la mezzanotte,
+  applicato DOPO come taglio della coda (le tappe in fondo escono, invece di non far entrare la
+  sostituta).
+- Non verificato: quanti itinerari senza budget circolano ancora (app installate, JSON salvati).
+  Il ramo resta finché esisteranno.
+
 ## Configurazione: sei lettori del `.env` invece di uno, e config letta all'import del BFF (APERTO)
 
 **Trovato:** 2026-10-15, nel §0 sull'isolamento dei test da Neon/Aura (verificato con una sonda

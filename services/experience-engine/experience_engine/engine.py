@@ -18,18 +18,22 @@ resta sostituibile città per città senza toccare grafo o RAG.
 from __future__ import annotations
 
 import math
-from collections.abc import Callable
+import re
+from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime, time, timedelta
 from functools import partial
+from typing import Literal
 
 from contracts import (
     EmotionalProfile,
+    EsitoAdattamento,
     EventoPromosso,
     GraphCandidate,
     Itinerary,
     ItineraryStop,
     SegnaleFluttuante,
     Signal,
+    TappaEsclusa,
     VisitorContext,
     VocabolarioTemi,
 )
@@ -117,9 +121,29 @@ def _fallback_adapt_reason(motivo: str, segnale: str) -> str:
 
 
 def _somma_minuti(orario: time, minuti: int) -> time:
-    """Avanza un orario di N minuti (giornata singola, senza data)."""
+    """Avanza un orario di N minuti (giornata singola, senza data).
+
+    Riavvolge a mezzanotte: per questo nessun itinerario deve mai arrivarci
+    oltre. Il tetto è `_minuti_alla_mezzanotte`, applicato in composizione e
+    in adattamento."""
     base = datetime(2000, 1, 1, orario.hour, orario.minute, orario.second)
     return (base + timedelta(minutes=minuti)).time()
+
+
+#: Minuti di una giornata: un itinerario è sempre una sessione nella stessa
+#: giornata e finisce al più alle 24:00 (decisione di prodotto, wave
+#: "adattamento", `docs/BUILD_PLAN.md`).
+MINUTI_GIORNATA = 24 * 60
+
+
+def _minuti_alla_mezzanotte(ora: time) -> int:
+    """Tetto della giornata: minuti da `ora` alle 24:00 (`1440 - (h*60 + m)`).
+
+    UNICA funzione del tetto, usata dalla composizione (budget effettivo =
+    min(budget dichiarato, questo valore)) e dall'adattamento (taglio delle
+    tappe oltre mezzanotte, limite delle sostituzioni). Sempre >= 1: i
+    secondi di `ora` non contano (un `Signal.ora` è un orario al minuto)."""
+    return MINUTI_GIORNATA - (ora.hour * 60 + ora.minute)
 
 
 def _tema_primario(candidate: GraphCandidate) -> str:
@@ -159,7 +183,11 @@ def _con_bagliore(reason: str, candidate: GraphCandidate, frase: str | None) -> 
     - `reason_fn` HA GIÀ incluso l'attribuzione: `_con_disclosure` non la
       riappende (idempotente), quindi la frase va inserita PRIMA
       dell'ultima occorrenza dell'attribuzione, non in coda.
-    `frase=None` -> `reason` restituito identico (bit per bit)."""
+    `frase=None` -> `reason` restituito identico (bit per bit).
+
+    Stessa regola per la frase dell'esito di adattamento
+    (`_frase_esito`): una sola funzione colloca le frasi del motore prima
+    della disclosure."""
     if not frase:
         return reason
     attribuzione = (getattr(candidate, "attribuzione", None) or "").strip()
@@ -198,7 +226,9 @@ def _seleziona_tappe(
 ) -> list[GraphCandidate]:
     """Riempie il budget di tempo diversificando luoghi e temi.
 
-    - budget: somma durate + trasferimenti stimati <= tempo disponibile;
+    - budget: somma durate + trasferimenti stimati <= tempo disponibile
+      (`compose_itinerary` passa il budget EFFETTIVO, già troncato alla
+      mezzanotte da `_minuti_alla_mezzanotte`);
     - max 2 esperienze per stesso place_id;
     - preferisce, a parità (quasi) di score, un tema diverso dalla tappa
       precedente: la varietà è parte dell'esperienza, non un vezzo.
@@ -323,10 +353,11 @@ def _costruisci_stops(
 _PREFISSO_TAPPA_FLUTTUANTE = "fluttuante-"
 
 
-def _minuti_usati_permanenti(selezionati: list[GraphCandidate]) -> int:
+def _minuti_usati_permanenti(selezionati: Sequence[GraphCandidate]) -> int:
     """Budget consumato dalle tappe permanenti scelte: SOMMA delle durate più
     il trasferimento stimato (`stima_trasferimento_min`) per ogni tappa dopo
-    la prima — lo stesso identico conteggio di `_seleziona_tappe`.
+    la prima — lo stesso identico conteggio di `_seleziona_tappe`. È anche il
+    costo con cui l'adattamento verifica una sostituzione contro il budget.
 
     È una somma, mai una differenza di orari: gli `arrivo` sono `time` senza
     data e oltre la mezzanotte ripartono da 00:00, quindi una differenza
@@ -354,12 +385,15 @@ def _aggiungi_tappe_fluttuanti(
     signal: Signal,
     minuti_usati: int,
     *,
+    tempo_disponibile_min: int,
     vocabolario: VocabolarioTemi,
 ) -> tuple[list[ItineraryStop], int]:
     """Aggiunge, IN CODA, le tappe fluttuanti pertinenti — mai una
     sostituzione (le tappe 1-4 restano esattamente come composte). Rispetta
     il budget di tempo residuo: se non c'è spazio, la tappa fluttuante NON
-    si aggiunge — mai forzata oltre `profile.tempo_disponibile_min`.
+    si aggiunge — mai forzata oltre `tempo_disponibile_min`, il budget
+    EFFETTIVO (dichiarato troncato alla mezzanotte) che passa
+    `compose_itinerary`: così nessuna tappa in coda finisce oltre le 24:00.
 
     Ogni tappa fluttuante costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessuna
     `distanza_m` nota per un segnale, stessa stima prudente già usata
@@ -391,7 +425,7 @@ def _aggiungi_tappe_fluttuanti(
     nuove_tappe = list(stops)
     for segnale in pertinenti:
         costo = TEMPO_TRASFERIMENTO_DEFAULT_MIN + DURATA_TAPPA_FLUTTUANTE_MIN
-        if minuti_usati + costo > profile.tempo_disponibile_min:
+        if minuti_usati + costo > tempo_disponibile_min:
             continue  # niente budget: non si forza, si passa al prossimo segnale
         orario_corrente = _somma_minuti(orario_corrente, TEMPO_TRASFERIMENTO_DEFAULT_MIN)
         place_nome = place_nomi.get(segnale.place_id, segnale.place_id)
@@ -523,6 +557,7 @@ def _aggiungi_tappe_eventi_promossi(
     ora_inizio: time | None = None,
     *,
     minuti_usati: int,
+    tempo_disponibile_min: int,
     data_visita: date | None,
     vocabolario: VocabolarioTemi,
 ) -> list[ItineraryStop]:
@@ -530,7 +565,8 @@ def _aggiungi_tappe_eventi_promossi(
     sostituzione (le tappe 1-4 e le eventuali tappe fluttuanti restano
     esattamente come composte). Rispetta il budget di tempo residuo: se non
     c'è spazio, la tappa NON si aggiunge — mai forzata oltre
-    `profile.tempo_disponibile_min`.
+    `tempo_disponibile_min`, il budget EFFETTIVO (dichiarato troncato alla
+    mezzanotte) che passa `compose_itinerary`.
 
     Ogni tappa-evento costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessuna
     `distanza_m` nota per un `:Evento`, stessa stima prudente già usata
@@ -578,7 +614,7 @@ def _aggiungi_tappe_eventi_promossi(
     nuove_tappe = list(stops)
     for evento in pertinenti:
         costo = TEMPO_TRASFERIMENTO_DEFAULT_MIN + DURATA_TAPPA_EVENTO_MIN
-        if minuti_usati + costo > profile.tempo_disponibile_min:
+        if minuti_usati + costo > tempo_disponibile_min:
             continue  # niente budget: non si forza, si passa al prossimo evento
         orario_corrente = _somma_minuti(orario_corrente, TEMPO_TRASFERIMENTO_DEFAULT_MIN)
         place_nome = place_nomi.get(evento.place_id, evento.place_id)
@@ -687,7 +723,15 @@ def compose_itinerary(
         if passa_filtri_duri(c, profile, ctx.signal, ctx.luoghi_gia_visti)
     ]
     valutati = _ordina_per_score(ammessi, profile, ctx.signal, score)
-    selezionati = _seleziona_tappe(valutati, profile.tempo_disponibile_min)
+    # Tetto della giornata: l'itinerario è una sessione nella stessa giornata.
+    # Il budget EFFETTIVO è il dichiarato troncato alla mezzanotte e vale per
+    # la selezione e per entrambe le code. Poiché gli arrivi partono da
+    # `signal.ora` e avanzano esattamente della somma conteggiata nel budget,
+    # nessuna tappa può finire oltre le 24:00. Le tappe che non entrano per
+    # il tetto non vanno in `tappe_escluse`: non sono mai state proposte.
+    budget_dichiarato = profile.tempo_disponibile_min
+    budget_effettivo = min(budget_dichiarato, _minuti_alla_mezzanotte(ctx.signal.ora))
+    selezionati = _seleziona_tappe(valutati, budget_effettivo)
     if adesso is None and tracce_per_luogo:
         adesso = datetime.now(UTC)
     stops = _costruisci_stops(
@@ -704,7 +748,13 @@ def compose_itinerary(
     # dagli orari, che oltre la mezzanotte ripartono da 00:00.
     minuti_usati = _minuti_usati_permanenti(selezionati)
     stops, minuti_usati = _aggiungi_tappe_fluttuanti(
-        stops, candidates, profile, ctx.signal, minuti_usati, vocabolario=vocabolario
+        stops,
+        candidates,
+        profile,
+        ctx.signal,
+        minuti_usati,
+        tempo_disponibile_min=budget_effettivo,
+        vocabolario=vocabolario,
     )
     stops = _aggiungi_tappe_eventi_promossi(
         stops,
@@ -713,15 +763,31 @@ def compose_itinerary(
         eventi_promossi or [],
         ctx.signal.ora,
         minuti_usati=minuti_usati,
+        tempo_disponibile_min=budget_effettivo,
         data_visita=ctx.signal.data,
         vocabolario=vocabolario,
     )
+
+    # Budget registrato nell'itinerario, per l'adattamento. Il contratto lo
+    # vuole > 0 (`Itinerary.tempo_disponibile_min`), mentre il profilo
+    # ammette 0 (`EmotionalProfile.tempo_disponibile_min`, ge=0): un budget
+    # dichiarato di 0 minuti non è rappresentabile e l'itinerario resta
+    # SENZA budget (entrambi None, come impone il validatore). Con 0 minuti
+    # la composizione non sceglie tappe di durata > 0.
+    if budget_dichiarato > 0:
+        tempo_disponibile: int | None = budget_dichiarato
+        tempo_effettivo: int | None = budget_effettivo
+    else:
+        tempo_disponibile = None
+        tempo_effettivo = None
 
     return Itinerary(
         person_id=ctx.person_id,
         stops=stops,
         generated_at=datetime.now(),
         adattato_da_segnale=False,
+        tempo_disponibile_min=tempo_disponibile,
+        tempo_effettivo_min=tempo_effettivo,
     )
 
 
@@ -734,6 +800,7 @@ def _migliore_alternativa(
     solo_al_chiuso: bool,
     max_affollamento: float,
     *,
+    entra_nel_budget: Callable[[GraphCandidate], bool] | None = None,
     vocabolario: VocabolarioTemi,
 ) -> GraphCandidate | None:
     """Migliore candidato non già usato che rispetta i vincoli del segnale.
@@ -755,7 +822,13 @@ def _migliore_alternativa(
     - `solo_al_chiuso`: con la pioggia, solo esperienze al chiuso;
     - affollamento > `max_affollamento`: luogo scorrevole. La soglia di
       adattamento (0.7) è più severa di quella critica di
-      `passa_filtri_duri` (0.8) e la include.
+      `passa_filtri_duri` (0.8) e la include;
+    - `entra_nel_budget`: predicato sul TEMPO (durata e trasferimento
+      dell'alternativa, nient'altro) costruito da `adapt_itinerary`; un
+      candidato che sforerebbe il budget non è ammesso, e vince il migliore
+      tra quelli che stanno nel budget. `None` = nessun vincolo di budget
+      (itinerario senza budget). Il predicato non legge partner né prezzo:
+      il vincolo di tempo vale identico per ogni candidato.
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
@@ -771,6 +844,8 @@ def _migliore_alternativa(
         if solo_al_chiuso and not e.al_chiuso:
             continue
         if signal.affollamento.get(e.place_id, 0.0) > max_affollamento:
+            continue
+        if entra_nel_budget is not None and not entra_nel_budget(c):
             continue
         ammessi.append(c)
     if not ammessi:
@@ -796,16 +871,43 @@ def adapt_itinerary(
 ) -> Itinerary:
     """Riscrive SOLO ciò che il nuovo segnale tocca.
 
-    - pioggia: le tappe `al_chiuso=False` sono sostituite dalla migliore
-      alternativa `al_chiuso=True` non già presente;
-    - affollamento > soglia sul luogo di una tappa: sostituzione con
-      alternativa in luogo scorrevole (distribuzione dei flussi);
-    - stanchezza > soglia: taglia le tappe in coda oltre ~2/3 del tempo
-      originale (il benessere conta più del numero di tappe).
+    In ordine:
+    1. pioggia: le tappe `al_chiuso=False` sono sostituite dalla migliore
+       alternativa `al_chiuso=True` non già presente; affollamento > soglia
+       sul luogo di una tappa: sostituzione con alternativa in luogo
+       scorrevole (distribuzione dei flussi). Un'alternativa entra solo se
+       l'itinerario con la sostituzione resta nel budget (vedi sotto). Senza
+       alternativa ammissibile la tappa resta, con esito
+       `MANTENUTA_SENZA_ALTERNATIVA` e una frase in coda al `reason`.
+    2. stanchezza > soglia: taglia le tappe in coda oltre ~2/3 del tempo
+       originale (il benessere conta più del numero di tappe); le tappe
+       tolte vanno in `tappe_escluse` (`TAGLIATA_STANCHEZZA`).
+    3. tetto della giornata: con gli arrivi ricalcolati da `signal.ora`, le
+       tappe che finirebbero oltre le 24:00 escono e vanno in
+       `tappe_escluse` (`TAGLIATA_TETTO_GIORNATA`). Vale sempre, anche per
+       un itinerario senza budget.
 
-    Le tappe non toccate restano IDENTICHE, `reason` compreso. Se nulla va
-    riscritto, l'itinerario originale è restituito invariato
-    (`adattato_da_segnale` resta False).
+    Budget: `itinerary.tempo_disponibile_min` / `tempo_effettivo_min` sono
+    ricopiati invariati. Limite delle sostituzioni = min(tempo_effettivo_min,
+    minuti alla mezzanotte da `signal.ora`); costo = somma di durate e
+    trasferimenti (`_minuti_usati_permanenti`), mai differenze di orari.
+    Itinerario SENZA budget (`tempo_effettivo_min is None`, JSON precedenti
+    al campo): nessun vincolo di budget sulle sostituzioni, comportamento
+    precedente alla wave "adattamento" (`docs/LIMITI.md`, "Itinerario senza
+    budget: l'adattamento non vincola le sostituzioni").
+
+    Esito: ogni tappa presente ha `esito_adattamento` valorizzato
+    (`NON_TOCCATA`, `SOSTITUITA`, `MANTENUTA_SENZA_ALTERNATIVA`), riferito
+    SOLO a questo segnale. `adattato_da_segnale` è True se e solo se almeno
+    una tappa è sostituita o tagliata. Se nessuna lo è, gli arrivi restano
+    quelli ricevuti e cambiano solo `reason` ed esito; altrimenti gli arrivi
+    sono ricalcolati da `signal.ora`. Le tappe non toccate conservano il
+    `reason` ricevuto (tolta soltanto un'eventuale frase di esito di un
+    adattamento precedente, che descriveva un altro segnale).
+
+    `tappe_escluse` si accumula: parte da `itinerary.tappe_escluse` e
+    aggiunge le nuove, una sola voce per `experience_id` (vince l'esito più
+    recente). Un'esperienza tornata tra le tappe non è più esclusa.
 
     `vocabolario` (keyword-only, obbligatorio): vocabolario dei temi della
     città, dato del dataset; il motore non ne ha uno proprio.
@@ -818,17 +920,42 @@ def adapt_itinerary(
     # una tappa accessibile può essere sostituita SOLO da una accessibile.
     base_accessibile = profile.accessibilita_richiesta if profile is not None else False
     profilo_effettivo = profile or _profilo_neutro()
+    minuti_mezzanotte = _minuti_alla_mezzanotte(signal.ora)
 
-    usati = {s.experience_id for s in itinerary.stops}
-    nuovi_candidati: list[GraphCandidate] = []
-    cambiato = False
+    # Limite di budget per le sostituzioni.
+    limite_budget: int | None
+    if itinerary.tempo_effettivo_min is None:
+        # Itinerario SENZA budget (precedente al campo): nessun vincolo di
+        # budget sulle sostituzioni, scelta ESPLICITA e documentata in
+        # docs/LIMITI.md. Il tetto della giornata (passo 3) vale comunque.
+        limite_budget = None
+    else:
+        limite_budget = min(itinerary.tempo_effettivo_min, minuti_mezzanotte)
 
+    # Stato corrente: un candidato per tappa ricevuta, con reason ed esito
+    # decisi. Di partenza ogni tappa è NON_TOCCATA, col reason ricevuto
+    # ripulito dalla frase di un esito precedente.
+    correnti: list[_CandidatoConReason] = []
     for stop in itinerary.stops:
+        reason_base = _senza_frase_esito(stop.reason)
         cand = per_id.get(stop.experience_id)
         if cand is None:
-            # Non conosciamo questa esperienza tra i candidati: la lasciamo
-            # intatta (reason compreso) invece di riscrivere al buio.
-            nuovi_candidati.append(_stub_da_stop(stop))
+            # Non conosciamo questa esperienza tra i candidati (tappa
+            # fluttuante, evento promosso, esperienza sparita): la lasciamo
+            # intatta invece di riscrivere al buio.
+            correnti.append(_stub_da_stop(stop, reason_base))
+        else:
+            correnti.append(
+                _marca_reason(cand, reason_base, EsitoAdattamento.NON_TOCCATA, stop.experience_id)
+            )
+
+    usati = {s.experience_id for s in itinerary.stops}
+    sostituite = False
+
+    # 1. Sostituzioni (pioggia / affollamento).
+    for i, stop in enumerate(itinerary.stops):
+        cand = per_id.get(stop.experience_id)
+        if cand is None:
             continue
 
         e = cand.experience
@@ -838,9 +965,15 @@ def adapt_itinerary(
         piove_e_aperto = signal.meteo == "pioggia" and not e.al_chiuso
 
         if not (piove_e_aperto or place_affollato):
-            # Tappa non toccata dal segnale: resta IDENTICA, reason compreso.
-            nuovi_candidati.append(_marca_reason(cand, stop.reason))
-            continue
+            continue  # tappa non toccata dal segnale
+
+        entra_nel_budget: Callable[[GraphCandidate], bool] | None
+        if limite_budget is None:
+            entra_nel_budget = None  # itinerario senza budget: vedi sopra
+        else:
+            entra_nel_budget = partial(
+                _sostituzione_nel_budget, correnti=correnti, indice=i, limite=limite_budget
+            )
 
         richiede_accessibile = base_accessibile or (profile is None and e.accessibile)
         alt = _migliore_alternativa(
@@ -851,10 +984,23 @@ def adapt_itinerary(
             richiede_accessibile=richiede_accessibile,
             solo_al_chiuso=piove_e_aperto,
             max_affollamento=SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
+            entra_nel_budget=entra_nel_budget,
             vocabolario=vocabolario,
         )
         if alt is None:
-            nuovi_candidati.append(_marca_reason(cand, stop.reason))
+            # Nessuna alternativa ammissibile (vincoli duri, segnale, budget):
+            # la tappa resta e lo dice, prima della disclosure partner.
+            frase = _frase_esito(
+                EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA,
+                motivo="pioggia" if piove_e_aperto else "affollamento",
+                luogo=cand.place_nome,
+            )
+            correnti[i] = _marca_reason(
+                cand,
+                _con_bagliore(correnti[i].reason_deciso or stop.reason, cand, frase),
+                EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA,
+                stop.experience_id,
+            )
             continue
 
         usati.discard(e.id)
@@ -862,27 +1008,55 @@ def adapt_itinerary(
         motivo = alt.connessioni[0] if alt.connessioni else alt.experience.titolo
         segnale = "la pioggia" if piove_e_aperto else f"l'affollamento a {cand.place_nome}"
         alt_reason = adapt_fn(motivo, segnale)
-        nuovi_candidati.append(_marca_reason(alt, alt_reason))
-        cambiato = True
+        correnti[i] = _marca_reason(
+            alt, alt_reason, EsitoAdattamento.SOSTITUITA, stop.experience_id
+        )
+        sostituite = True
 
-    # Stanchezza alta: taglia la coda oltre ~2/3 del tempo originale.
+    nuove_escluse: list[TappaEsclusa] = []
+
+    # 2. Stanchezza alta: taglia la coda oltre ~2/3 del tempo originale.
     if signal.stanchezza > SOGLIA_STANCHEZZA_ALTA:
-        tagliati = _taglia_per_stanchezza(itinerary, nuovi_candidati)
-        if len(tagliati) < len(nuovi_candidati):
-            nuovi_candidati = tagliati
-            cambiato = True
+        tenuti = _taglia_per_stanchezza(itinerary, correnti)
+        nuove_escluse.extend(
+            _escludi(c, EsitoAdattamento.TAGLIATA_STANCHEZZA) for c in correnti[len(tenuti):]
+        )
+        correnti = tenuti
 
-    if not cambiato:
-        return itinerary
-
-    stops = _ricostruisci_stops(
-        nuovi_candidati, profilo_effettivo, signal, fn, vocabolario=vocabolario
+    # 3. Tetto della giornata, sugli arrivi ricalcolati da `signal.ora`.
+    entro = _entro_la_giornata(correnti, minuti_mezzanotte)
+    nuove_escluse.extend(
+        _escludi(c, EsitoAdattamento.TAGLIATA_TETTO_GIORNATA) for c in correnti[len(entro):]
     )
+    correnti = entro
+
+    cambiato = sostituite or bool(nuove_escluse)
+
+    if cambiato:
+        stops = _ricostruisci_stops(
+            correnti, profilo_effettivo, signal, fn, vocabolario=vocabolario
+        )
+    else:
+        # Nessuna tappa sostituita o tagliata: arrivi INVARIATI, cambiano
+        # solo reason ed esito (stessa lunghezza e stesso ordine).
+        stops = [
+            stop.model_copy(
+                update={
+                    "reason": _con_disclosure(c.reason_deciso or stop.reason, c),
+                    "esito_adattamento": c.esito_deciso,
+                }
+            )
+            for stop, c in zip(itinerary.stops, correnti, strict=True)
+        ]
+
     return Itinerary(
         person_id=itinerary.person_id,
         stops=stops,
-        generated_at=datetime.now(),
-        adattato_da_segnale=True,
+        generated_at=datetime.now() if cambiato else itinerary.generated_at,
+        adattato_da_segnale=cambiato,
+        tempo_disponibile_min=itinerary.tempo_disponibile_min,
+        tempo_effettivo_min=itinerary.tempo_effettivo_min,
+        tappe_escluse=_unisci_escluse(itinerary.tappe_escluse, nuove_escluse, stops),
     )
 
 
@@ -890,14 +1064,12 @@ def adapt_itinerary(
 # Supporto all'adattamento
 # ---------------------------------------------------------------------------
 
-#: Marcatore per trasportare, in adapt, un `reason` già deciso (tappa
-#: sostituita) o quello originale (tappa intatta) accanto al candidato.
-_REASON_ATTR = "_reason_deciso"
-
 
 def _profilo_neutro() -> EmotionalProfile:
     """Profilo neutro usato quando l'`AdaptRequest` non trasporta il profilo:
-    serve solo a ordinare le alternative, non reintroduce preferenze."""
+    serve solo a ordinare le alternative, non reintroduce preferenze. Il suo
+    `tempo_disponibile_min` NON è mai usato come budget: il budget
+    dell'adattamento viene dall'itinerario (`Itinerary.tempo_effettivo_min`)."""
     return EmotionalProfile(
         curiosita=0.5,
         contemplazione=0.5,
@@ -907,17 +1079,105 @@ def _profilo_neutro() -> EmotionalProfile:
     )
 
 
+# --- Esito dell'adattamento: UNICO punto da cui nasce la frase --------------
+
+_FRASE_MANTENUTA_PIOGGIA = (
+    "Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso "
+    "e con il tempo a disposizione: la tappa resta in programma."
+)
+_PREFISSO_MANTENUTA_AFFOLLAMENTO = "C'è molta gente a "
+_SUFFISSO_MANTENUTA_AFFOLLAMENTO = (
+    ", ma non c'è un'alternativa più tranquilla compatibile con questo percorso "
+    "e con il tempo a disposizione: la tappa resta in programma."
+)
+_FRASE_TAGLIATA_STANCHEZZA = "Tolta per la stanchezza: meglio una giornata più leggera."
+_FRASE_TAGLIATA_TETTO = (
+    "Non c'è più tempo oggi per questa tappa: la giornata finisce a mezzanotte."
+)
+
+#: Riconosce la frase di affollamento qualunque sia il luogo. Il luogo è
+#: "temperato": non può contenere di nuovo il prefisso, così la corrispondenza
+#: parte dall'ultima occorrenza utile e non inghiotte testo del reason.
+_RE_MANTENUTA_AFFOLLAMENTO = re.compile(
+    " ?"
+    + re.escape(_PREFISSO_MANTENUTA_AFFOLLAMENTO)
+    + "(?:(?!"
+    + re.escape(_PREFISSO_MANTENUTA_AFFOLLAMENTO)
+    + ").)*?"
+    + re.escape(_SUFFISSO_MANTENUTA_AFFOLLAMENTO),
+    re.DOTALL,
+)
+
+
+def _frase_esito(
+    esito: EsitoAdattamento,
+    *,
+    motivo: Literal["pioggia", "affollamento"] | None = None,
+    luogo: str = "",
+) -> str | None:
+    """Frase in italiano che racconta l'esito dell'adattamento di una tappa.
+
+    UNICA funzione da cui nascono le frasi di esito, così campo e testo non
+    possono divergere:
+    - `MANTENUTA_SENZA_ALTERNATIVA`: frase della pioggia (anche se il luogo è
+      pure affollato) o dell'affollamento a `luogo`; va in coda al `reason`,
+      prima della disclosure partner;
+    - `TAGLIATA_STANCHEZZA` / `TAGLIATA_TETTO_GIORNATA`: `reason` della
+      `TappaEsclusa`;
+    - `NON_TOCCATA` / `SOSTITUITA`: nessuna frase (`None`); la sostituita ha
+      il proprio `reason` di sostituzione."""
+    if esito is EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA:
+        if motivo == "pioggia":
+            return _FRASE_MANTENUTA_PIOGGIA
+        return f"{_PREFISSO_MANTENUTA_AFFOLLAMENTO}{luogo}{_SUFFISSO_MANTENUTA_AFFOLLAMENTO}"
+    if esito is EsitoAdattamento.TAGLIATA_STANCHEZZA:
+        return _FRASE_TAGLIATA_STANCHEZZA
+    if esito is EsitoAdattamento.TAGLIATA_TETTO_GIORNATA:
+        return _FRASE_TAGLIATA_TETTO
+    return None
+
+
+def _senza_frase_esito(reason: str) -> str:
+    """Toglie da un `reason` la frase di un esito precedente (mantenuta senza
+    alternativa): l'esito descrive SOLO l'ultimo segnale, e un secondo
+    adattamento non deve duplicarla né lasciarla su una tappa non più
+    toccata. Se non c'è nessuna frase, il `reason` torna identico."""
+    pulito = reason.replace(" " + _FRASE_MANTENUTA_PIOGGIA, "").replace(
+        _FRASE_MANTENUTA_PIOGGIA, ""
+    )
+    pulito = _RE_MANTENUTA_AFFOLLAMENTO.sub("", pulito)
+    if pulito == reason:
+        return reason
+    return pulito.strip() or reason
+
+
+# --- Candidati con reason/esito decisi --------------------------------------
+
+
 class _CandidatoConReason(GraphCandidate):
-    """Candidato con un `reason` già deciso allegato (interno all'adapt)."""
+    """Candidato con `reason` ed esito già decisi (interno all'adapt).
+
+    `id_originale` è l'`experience_id` della tappa ricevuta che questo
+    candidato occupa: se la tappa viene tagliata, in `tappe_escluse` finisce
+    la tappa che il visitatore aveva, non la sua eventuale sostituta."""
 
     reason_deciso: str | None = None
+    esito_deciso: EsitoAdattamento | None = None
+    id_originale: str = ""
 
 
-def _marca_reason(cand: GraphCandidate, reason: str) -> _CandidatoConReason:
-    return _CandidatoConReason(**cand.model_dump(), reason_deciso=reason)
+def _marca_reason(
+    cand: GraphCandidate, reason: str, esito: EsitoAdattamento, id_originale: str
+) -> _CandidatoConReason:
+    dati = cand.model_dump()
+    for campo in ("reason_deciso", "esito_deciso", "id_originale"):
+        dati.pop(campo, None)
+    return _CandidatoConReason(
+        **dati, reason_deciso=reason, esito_deciso=esito, id_originale=id_originale
+    )
 
 
-def _stub_da_stop(stop: ItineraryStop) -> _CandidatoConReason:
+def _stub_da_stop(stop: ItineraryStop, reason: str) -> _CandidatoConReason:
     """Ricostruisce un candidato "fantasma" da una tappa sconosciuta, così da
     conservarla identica (reason compreso) quando non è tra i candidati."""
     from contracts import ExperienceNode
@@ -935,20 +1195,38 @@ def _stub_da_stop(stop: ItineraryStop) -> _CandidatoConReason:
         experience=esperienza,
         place_nome=stop.experience_id,
         connessioni=[],
-        reason_deciso=stop.reason,
+        reason_deciso=reason,
+        esito_deciso=EsitoAdattamento.NON_TOCCATA,
+        id_originale=stop.experience_id,
     )
 
 
+def _sostituzione_nel_budget(
+    alternativa: GraphCandidate,
+    *,
+    correnti: Sequence[GraphCandidate],
+    indice: int,
+    limite: int,
+) -> bool:
+    """Vero se l'itinerario con `alternativa` al posto della tappa `indice`
+    resta entro `limite` minuti. Costo = somma di durate e trasferimenti
+    (`_minuti_usati_permanenti`, lo stesso conteggio della composizione),
+    mai differenze di orari. Legge solo durata e distanza: nessun partner,
+    nessun prezzo."""
+    ipotesi = [*correnti[:indice], alternativa, *correnti[indice + 1 :]]
+    return _minuti_usati_permanenti(ipotesi) <= limite
+
+
 def _taglia_per_stanchezza(
-    itinerary: Itinerary, correnti: list[GraphCandidate]
-) -> list[GraphCandidate]:
-    """Mantiene le tappe di testa entro ~2/3 del tempo originale.
+    itinerary: Itinerary, correnti: list[_CandidatoConReason]
+) -> list[_CandidatoConReason]:
+    """Mantiene le tappe di testa entro ~2/3 del tempo originale (prefisso).
 
     Le tappe di coda sono le meno affini (l'itinerario è ordinato per score in
     composizione): tagliarle riduce lo sforzo senza sacrificare il meglio."""
     durata_originale = sum(s.durata_min for s in itinerary.stops)
     limite = int(durata_originale * 2 / 3)
-    tenuti: list[GraphCandidate] = []
+    tenuti: list[_CandidatoConReason] = []
     tempo = 0
     for cand in correnti:
         prossimo = tempo + cand.experience.durata_min
@@ -959,16 +1237,56 @@ def _taglia_per_stanchezza(
     return tenuti or correnti[:1]
 
 
+def _entro_la_giornata(
+    correnti: list[_CandidatoConReason], minuti_alla_mezzanotte: int
+) -> list[_CandidatoConReason]:
+    """Prefisso delle tappe che, con gli arrivi ricalcolati da `signal.ora`
+    (stessa progressione di `_ricostruisci_stops`), finiscono entro le 24:00.
+    La fine di ogni tappa avanza in modo monotono, quindi le tappe fuori dal
+    tetto sono sempre una coda."""
+    tenuti: list[_CandidatoConReason] = []
+    for cand in correnti:
+        if _minuti_usati_permanenti([*tenuti, cand]) > minuti_alla_mezzanotte:
+            break
+        tenuti.append(cand)
+    return tenuti
+
+
+def _escludi(cand: _CandidatoConReason, esito: EsitoAdattamento) -> TappaEsclusa:
+    frase = _frase_esito(esito)
+    if frase is None:
+        raise ValueError(f"esito {esito.value!r} non è un esito di taglio")
+    return TappaEsclusa(
+        experience_id=cand.id_originale or cand.experience.id, esito=esito, reason=frase
+    )
+
+
+def _unisci_escluse(
+    precedenti: list[TappaEsclusa],
+    nuove: list[TappaEsclusa],
+    stops: list[ItineraryStop],
+) -> list[TappaEsclusa]:
+    """Accumula le tappe escluse tra adattamenti: una sola voce per
+    `experience_id`, vince la più recente (che va in fondo). Nessun tetto di
+    lunghezza. Un'esperienza tornata tra le tappe non è più esclusa."""
+    unite: dict[str, TappaEsclusa] = {}
+    for tappa in [*precedenti, *nuove]:
+        unite.pop(tappa.experience_id, None)
+        unite[tappa.experience_id] = tappa
+    presenti = {s.experience_id for s in stops}
+    return [t for t in unite.values() if t.experience_id not in presenti]
+
+
 def _ricostruisci_stops(
-    correnti: list[GraphCandidate],
+    correnti: list[_CandidatoConReason],
     profile: EmotionalProfile,
     signal: Signal,
     reason_fn: ReasonFn,
     *,
     vocabolario: VocabolarioTemi,
 ) -> list[ItineraryStop]:
-    """Ricalcola orari progressivi conservando i `reason` già decisi (tappe
-    intatte o sostituite) e componendo quelli mancanti via `reason_fn`.
+    """Ricalcola orari progressivi da `signal.ora` conservando `reason` ed
+    esito già decisi, e componendo via `reason_fn` un `reason` mancante.
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
@@ -977,7 +1295,7 @@ def _ricostruisci_stops(
     for i, cand in enumerate(correnti):
         if i > 0:
             orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
-        reason = getattr(cand, "reason_deciso", None)
+        reason = cand.reason_deciso
         if not reason:
             segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
             reason = reason_fn(cand, profile, segnali)
@@ -990,6 +1308,7 @@ def _ricostruisci_stops(
                 arrivo=orario,
                 durata_min=cand.experience.durata_min,
                 reason=reason,
+                esito_adattamento=cand.esito_deciso or EsitoAdattamento.NON_TOCCATA,
             )
         )
         orario = _somma_minuti(orario, cand.experience.durata_min)

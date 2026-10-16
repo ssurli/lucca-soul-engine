@@ -1,9 +1,16 @@
-"""Budget di tempo oltre la mezzanotte (regressione).
+"""Budget di tempo e mezzanotte (regressione + tetto della giornata).
 
-Le tappe in coda (segnali fluttuanti, eventi promossi) ricalcolano il budget
-usato da `stops[-1].arrivo`. Se l'ultima tappa permanente arriva DOPO le 00:00
-il calcolo sul solo `time` (senza data) diventa negativo e le tappe in coda
-vengono aggiunte oltre `profile.tempo_disponibile_min`.
+Storia: le tappe in coda (segnali fluttuanti, eventi promossi) ricalcolavano il
+budget usato da `stops[-1].arrivo`; oltre le 00:00 il calcolo sul solo `time`
+diventava negativo e le code sforavano `profile.tempo_disponibile_min`
+(corretto il 2026-10-15: budget come somma di durate e trasferimenti).
+
+Wave "adattamento" (2026-10-16): un itinerario e' una sessione nella stessa
+giornata. La composizione tronca il budget alla mezzanotte
+(`engine._minuti_alla_mezzanotte`), quindi nessuna tappa attraversa piu' le
+24:00: gli scenari "oltre mezzanotte" di questo file sono diventati scenari in
+cui il TETTO della giornata e' il vincolo stringente. Le verifiche sui confini
+(una coda, entrambe, nessuna) restano identiche, col tetto al posto del budget.
 
 Il totale (durate + trasferimenti) e' ricostruito qui con `datetime` e rollover
 di giorno, indipendentemente dall'aritmetica del motore.
@@ -25,7 +32,6 @@ from contracts import (
 )
 from experience_engine import compose_itinerary
 from experience_engine.rules import (
-    DURATA_TAPPA_EVENTO_MIN,
     DURATA_TAPPA_FLUTTUANTE_MIN,
     TEMPO_TRASFERIMENTO_DEFAULT_MIN,
 )
@@ -106,52 +112,56 @@ def _minuti_totali_indipendenti(it: Itinerary, ora_inizio: time) -> int:
     return totale
 
 
-def _verifica_scenario_attraversa_mezzanotte(it: Itinerary, n_in_coda: int) -> None:
-    permanenti = [s for s in it.stops if s.experience_id in _DURATE]
-    assert [s.experience_id for s in permanenti] == ["exp-a", "exp-b", "exp-c"]
-    # Sanita': l'ultima tappa permanente arriva dopo la mezzanotte (orario < ora_inizio).
-    assert permanenti[-1].arrivo < ORA_INIZIO
-    assert permanenti[-1].arrivo == time(0, 20)
-    # Sanita': il budget residuo e' minore del costo di una tappa in coda.
-    usati = _minuti_totali_indipendenti(Itinerary(
-        person_id="p", stops=permanenti, generated_at=it.generated_at,
-        adattato_da_segnale=False,
-    ), ORA_INIZIO)
-    residuo = TEMPO_DISPONIBILE - usati
-    assert residuo < TEMPO_TRASFERIMENTO_DEFAULT_MIN + min(
-        DURATA_TAPPA_FLUTTUANTE_MIN, DURATA_TAPPA_EVENTO_MIN
+def _minuti_alla_mezzanotte(ora: time) -> int:
+    return 24 * 60 - (ora.hour * 60 + ora.minute)
+
+
+def _verifica_entro_la_giornata(it: Itinerary, ora_inizio: time) -> int:
+    """Nessuna tappa finisce oltre le 24:00; restituisce il totale."""
+    totale = _minuti_totali_indipendenti(it, ora_inizio)
+    assert totale <= _minuti_alla_mezzanotte(ora_inizio), (
+        f"oltre mezzanotte: {totale} min da {ora_inizio} "
+        f"({[(s.experience_id, s.arrivo, s.durata_min) for s in it.stops]})"
     )
-    assert len(it.stops) - len(permanenti) == n_in_coda
+    return totale
 
 
-def test_fluttuante_non_sfora_il_budget_oltre_mezzanotte() -> None:
+def test_fluttuante_rispetta_il_tetto_della_giornata() -> None:
+    # 20:00 con budget 300: il tetto (240) vince. exp-b (10+120) non entra
+    # piu' dopo exp-a; entrano exp-c e il fluttuante. Prima della wave
+    # "adattamento" l'itinerario arrivava alle 00:20 e oltre.
     it = _compose(fluttuanti=[_fluttuante()], eventi=[])
-    _verifica_scenario_attraversa_mezzanotte(it, n_in_coda=len(it.stops) - 3)
-    totale = _minuti_totali_indipendenti(it, ORA_INIZIO)
-    assert totale <= TEMPO_DISPONIBILE, (
-        f"budget sforato: {totale} min > {TEMPO_DISPONIBILE} "
-        f"({[(s.experience_id, s.arrivo, s.durata_min) for s in it.stops]})"
-    )
+    assert [s.experience_id for s in it.stops] == [
+        "exp-a", "exp-c", "fluttuante-violinista-1",
+    ]
+    assert it.tempo_disponibile_min == TEMPO_DISPONIBILE
+    assert it.tempo_effettivo_min == _minuti_alla_mezzanotte(ORA_INIZIO) == 240
+    assert _verifica_entro_la_giornata(it, ORA_INIZIO) <= 240
 
 
-def test_evento_promosso_non_sfora_il_budget_oltre_mezzanotte() -> None:
+def test_evento_promosso_rispetta_il_tetto_della_giornata() -> None:
     it = _compose(fluttuanti=[], eventi=[_evento()])
-    _verifica_scenario_attraversa_mezzanotte(it, n_in_coda=len(it.stops) - 3)
-    totale = _minuti_totali_indipendenti(it, ORA_INIZIO)
-    assert totale <= TEMPO_DISPONIBILE, (
-        f"budget sforato: {totale} min > {TEMPO_DISPONIBILE} "
-        f"({[(s.experience_id, s.arrivo, s.durata_min) for s in it.stops]})"
-    )
+    assert [s.experience_id for s in it.stops] == ["exp-a", "exp-c", _evento().id]
+    assert it.tempo_effettivo_min == 240
+    assert _verifica_entro_la_giornata(it, ORA_INIZIO) <= 240
 
 
 # ---------------------------------------------------------------------------
-# Budget CONDIVISO tra le due code (fluttuante poi evento) e equivalenza
-# senza mezzanotte. Costo di ogni tappa in coda = trasferimento (10) + 15 = 25.
-# Permanenti = 300 min esatti.
+# Budget CONDIVISO tra le due code (fluttuante poi evento) con il TETTO della
+# giornata come vincolo stringente (budget dichiarato ampio) e equivalenza
+# con il budget dichiarato. Costo di ogni tappa in coda = trasferimento (10)
+# + 15 = 25. Permanenti = 300 min esatti.
 # ---------------------------------------------------------------------------
 
 _COSTO_CODA = TEMPO_TRASFERIMENTO_DEFAULT_MIN + DURATA_TAPPA_FLUTTUANTE_MIN
 _PERMANENTI_MIN = sum(_DURATE.values()) + 2 * TEMPO_TRASFERIMENTO_DEFAULT_MIN  # 300
+_BUDGET_AMPIO = 1000
+
+
+def _ora_con_tetto(minuti: int) -> time:
+    """L'ora da cui mancano esattamente `minuti` alla mezzanotte."""
+    resto = 24 * 60 - minuti
+    return time(resto // 60, resto % 60)
 
 
 def _compose_con(ora: time, tempo: int, *, con_fluttuante: bool, con_evento: bool) -> Itinerary:
@@ -174,29 +184,32 @@ def _ids_coda(it: Itinerary) -> list[str]:
     return [s.experience_id for s in it.stops if s.experience_id not in _DURATE]
 
 
-def test_budget_condiviso_dopo_mezzanotte_una_sola_coda_entra() -> None:
-    # Residuo 49 dopo le permanenti: entra il fluttuante (25), l'evento no (50 > 49).
-    tempo = _PERMANENTI_MIN + 2 * _COSTO_CODA - 1
-    it = _compose_con(ORA_INIZIO, tempo, con_fluttuante=True, con_evento=True)
+def test_tetto_condiviso_una_sola_coda_entra() -> None:
+    # Tetto 349: dopo le permanenti (300) residuo 49: entra il fluttuante (25),
+    # l'evento no (50 > 49).
+    ora = _ora_con_tetto(_PERMANENTI_MIN + 2 * _COSTO_CODA - 1)
+    it = _compose_con(ora, _BUDGET_AMPIO, con_fluttuante=True, con_evento=True)
     assert [s.experience_id for s in it.stops if s.experience_id in _DURATE] == list(_DURATE)
-    assert [s for s in it.stops if s.experience_id in _DURATE][-1].arrivo == time(0, 20)
     assert _ids_coda(it) == ["fluttuante-violinista-1"]
-    assert _minuti_totali_indipendenti(it, ORA_INIZIO) <= tempo
+    assert it.tempo_effettivo_min == _PERMANENTI_MIN + 2 * _COSTO_CODA - 1
+    _verifica_entro_la_giornata(it, ora)
 
 
-def test_budget_condiviso_dopo_mezzanotte_entrambe_le_code_al_limite() -> None:
-    # Residuo esatto 50: entrano entrambe, fluttuante prima dell'evento.
-    tempo = _PERMANENTI_MIN + 2 * _COSTO_CODA
-    it = _compose_con(ORA_INIZIO, tempo, con_fluttuante=True, con_evento=True)
+def test_tetto_condiviso_entrambe_le_code_al_limite_finisce_a_mezzanotte() -> None:
+    # Tetto esatto 350: entrano entrambe, l'ultima tappa finisce alle 24:00
+    # esatte (ammesso: "oltre" le 24:00 e' vietato, alle 24:00 no).
+    tetto = _PERMANENTI_MIN + 2 * _COSTO_CODA
+    ora = _ora_con_tetto(tetto)
+    it = _compose_con(ora, _BUDGET_AMPIO, con_fluttuante=True, con_evento=True)
     assert _ids_coda(it) == ["fluttuante-violinista-1", _evento().id]
-    assert _minuti_totali_indipendenti(it, ORA_INIZIO) == tempo
+    assert _verifica_entro_la_giornata(it, ora) == tetto
 
 
-def test_budget_condiviso_dopo_mezzanotte_nessuna_coda_sotto_il_costo() -> None:
-    tempo = _PERMANENTI_MIN + _COSTO_CODA - 1
-    it = _compose_con(ORA_INIZIO, tempo, con_fluttuante=True, con_evento=True)
+def test_tetto_condiviso_nessuna_coda_sotto_il_costo() -> None:
+    ora = _ora_con_tetto(_PERMANENTI_MIN + _COSTO_CODA - 1)
+    it = _compose_con(ora, _BUDGET_AMPIO, con_fluttuante=True, con_evento=True)
     assert _ids_coda(it) == []
-    assert _minuti_totali_indipendenti(it, ORA_INIZIO) <= tempo
+    _verifica_entro_la_giornata(it, ora)
 
 
 def test_senza_mezzanotte_equivalenza_stesse_code_a_budget_giusto_e_limite() -> None:
@@ -246,10 +259,13 @@ def test_scenario_fluttuante_ed_evento_sono_pertinenti() -> None:
     ) != []
 
 
-def test_controllo_budget_ampio_dopo_mezzanotte_le_code_compaiono() -> None:
-    tempo = _PERMANENTI_MIN + 2 * _COSTO_CODA + 50  # 350
-    it = _compose_con(ORA_INIZIO, tempo, con_fluttuante=True, con_evento=True)
-    permanenti = [s for s in it.stops if s.experience_id in _DURATE]
-    assert permanenti[-1].arrivo == time(0, 20)
+def test_controllo_tetto_ampio_le_code_compaiono() -> None:
+    # Budget 400, tetto 360 (18:00): il tetto e' stringente ma lascia spazio
+    # a entrambe le code (300 + 25 + 25 = 350 <= 360).
+    tempo = _PERMANENTI_MIN + 2 * _COSTO_CODA + 50  # 400
+    ora = time(18, 0)
+    it = _compose_con(ora, tempo, con_fluttuante=True, con_evento=True)
     assert _ids_coda(it) == ["fluttuante-violinista-1", _evento().id]
-    assert _minuti_totali_indipendenti(it, ORA_INIZIO) <= tempo
+    assert it.tempo_disponibile_min == 400
+    assert it.tempo_effettivo_min == 360
+    assert _verifica_entro_la_giornata(it, ora) == 350

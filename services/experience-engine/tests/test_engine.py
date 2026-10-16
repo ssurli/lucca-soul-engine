@@ -23,6 +23,7 @@ from functools import partial
 import pytest
 from contracts import (
     EmotionalProfile,
+    EsitoAdattamento,
     EventoPromosso,
     ExperienceNode,
     FasciaApertura,
@@ -112,7 +113,14 @@ def test_adapt_pioggia_sostituisce_le_tappe_allaperto(source: SeedCandidateSourc
     )
 
     assert adattato.adattato_da_segnale is True
-    assert all(al_chiuso[s.experience_id] for s in adattato.stops)
+    # Wave "adattamento": una sostituzione entra solo se resta nel budget
+    # dell'itinerario. Ogni tappa all'aperto rimasta lo DICHIARA (esito e
+    # frase); nessuna resta all'aperto in silenzio.
+    assert any(s.esito_adattamento is EsitoAdattamento.SOSTITUITA for s in adattato.stops)
+    for s in adattato.stops:
+        if not al_chiuso[s.experience_id]:
+            assert s.esito_adattamento is EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA
+            assert "Con la pioggia non c'è un'alternativa al coperto" in s.reason
 
 
 # --- c) adapt su affollamento ----------------------------------------------
@@ -158,8 +166,17 @@ def test_adapt_senza_segnale_rilevante_restituisce_invariato(
     invariato = adapt_itinerary(
         base, _sereno(), cands, profile, compose_reason, adapt_reason, vocabolario=VOCABOLARIO,
     )
-    assert invariato is base
+    # Wave "adattamento": dopo un adattamento ogni tappa porta l'esito
+    # (`NON_TOCCATA`), quindi l'oggetto non è più lo stesso; tutto il resto è
+    # identico (tappe, arrivi, durate, reason, budget).
     assert invariato.adattato_da_segnale is False
+    assert [s.model_copy(update={"esito_adattamento": None}) for s in invariato.stops] == (
+        base.stops
+    )
+    assert all(s.esito_adattamento is EsitoAdattamento.NON_TOCCATA for s in invariato.stops)
+    assert invariato.tempo_disponibile_min == base.tempo_disponibile_min
+    assert invariato.tempo_effettivo_min == base.tempo_effettivo_min
+    assert invariato.tappe_escluse == []
 
 
 def test_adapt_stanchezza_accorcia_litinerario(source: SeedCandidateSource) -> None:

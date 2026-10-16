@@ -215,14 +215,15 @@ def test_adapt_su_pioggia_riscrive_le_tappe_allaperto(client: Any) -> None:
     adattato = adapt_resp.json()
 
     assert adattato["adattato_da_segnale"] is True
+    assert any(stop["esito_adattamento"] == "sostituita" for stop in adattato["stops"])
 
-    al_chiuso_dopo = [
-        ESPERIENZE_BY_ID[stop["experience_id"]].al_chiuso for stop in adattato["stops"]
-    ]
-    assert all(al_chiuso_dopo), (
-        "con la pioggia nessuna tappa all'aperto deve restare nell'itinerario "
-        f"adattato: {[stop['experience_id'] for stop in adattato['stops']]}"
-    )
+    # Wave "adattamento": una sostituzione entra solo se l'itinerario resta nel
+    # budget registrato in composizione. Una tappa all'aperto può restare, ma
+    # mai in silenzio: esito `mantenuta_senza_alternativa` e frase nel reason.
+    for stop in adattato["stops"]:
+        if not ESPERIENZE_BY_ID[stop["experience_id"]].al_chiuso:
+            assert stop["esito_adattamento"] == "mantenuta_senza_alternativa", stop
+            assert "Con la pioggia non c'è un'alternativa al coperto" in stop["reason"], stop
 
 
 # ---------------------------------------------------------------------------
