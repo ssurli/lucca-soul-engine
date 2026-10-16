@@ -152,6 +152,8 @@ from contracts import (
 )
 from experience_engine.engine import adapt_itinerary, compose_itinerary
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
+from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, Response
 from graph import GraphUnavailableError
 from intelligence_index import IndexStorageError
@@ -162,6 +164,7 @@ from intelligence_index.periodo import intervallo_periodo
 from pydantic import BaseModel
 from rag.onboarding import profile_from_answers
 from rag.reasons import adapt_reason, compose_reason
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from urban_memory import (
     MemoryRepository,
     MemoryStorageError,
@@ -187,7 +190,40 @@ from api.deps import (
 )
 from api.settings import get_settings
 
-app = FastAPI(title="Lucca Soul — BFF")
+
+class Utf8JSONResponse(JSONResponse):
+    """JSON con charset dichiarato: i client che senza charset assumono
+    Latin-1 (PowerShell 5.1 `Invoke-RestMethod`) decodificano correttamente
+    l'italiano accentato. Il corpo è identico a quello di `JSONResponse`."""
+
+    media_type = "application/json; charset=utf-8"
+
+
+app = FastAPI(title="Lucca Soul — BFF", default_response_class=Utf8JSONResponse)
+
+
+def _con_charset(response: Response) -> Response:
+    """Dichiara il charset sulle risposte JSON dei gestori di default di
+    FastAPI (HTTPException, 422 di validazione), che costruiscono una
+    `JSONResponse` propria. Il corpo non cambia; le risposte senza corpo
+    (204/304) restano come sono."""
+    if response.headers.get("content-type", "").startswith("application/json"):
+        response.headers["content-type"] = Utf8JSONResponse.media_type
+    return response
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_utf8_handler(
+    request: Request, exc: StarletteHTTPException
+) -> Response:
+    return _con_charset(await http_exception_handler(request, exc))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_utf8_handler(
+    request: Request, exc: RequestValidationError
+) -> Response:
+    return _con_charset(await request_validation_exception_handler(request, exc))
 
 
 # MODIFICA DI POSTURA DI SICUREZZA (non un dettaglio estetico — vedi
@@ -273,7 +309,7 @@ _log = logging.getLogger(__name__)
 
 
 @app.exception_handler(UrbanMemoryError)
-def urban_memory_error_handler(request: Request, exc: UrbanMemoryError) -> JSONResponse:
+def urban_memory_error_handler(request: Request, exc: UrbanMemoryError) -> Utf8JSONResponse:
     """Mappa i vincoli non negoziabili della Urban Memory (consenso,
     licenza, pseudonimo — sollevati da `urban_memory.service`, un solo
     punto verificabile) a un 422 esplicativo in italiano, MAI un 500: chi
@@ -284,14 +320,14 @@ def urban_memory_error_handler(request: Request, exc: UrbanMemoryError) -> JSONR
     violato, mai il contenuto del contributo (`testo`, `media_uri`,
     `contributor_id`): niente PII finisce in una risposta HTTP né in un log.
     """
-    return JSONResponse(
+    return Utf8JSONResponse(
         status_code=422,
         content={"detail": f"conferimento rifiutato: {exc}"},
     )
 
 
 @app.exception_handler(MemoryStorageError)
-def memory_storage_error_handler(request: Request, exc: MemoryStorageError) -> JSONResponse:
+def memory_storage_error_handler(request: Request, exc: MemoryStorageError) -> Utf8JSONResponse:
     """Mappa un fallimento INFRASTRUTTURALE di storage della Urban Memory
     (`urban_memory.MemoryStorageError` — connessione a Postgres/Neon
     irraggiungibile, migrazione non applicata, query fallita) a un **503
@@ -304,19 +340,21 @@ def memory_storage_error_handler(request: Request, exc: MemoryStorageError) -> J
     stack del driver). Per lo stesso motivo l'eccezione non viene loggata qui
     con il suo messaggio: nessun log applicativo di questo BFF espone
     dettagli infrastrutturali o PII."""
-    return JSONResponse(
+    return Utf8JSONResponse(
         status_code=503,
         content={"detail": "memoria temporaneamente non disponibile: riprova più tardi"},
     )
 
 
 @app.exception_handler(marketplace.MarketplaceError)
-def marketplace_error_handler(request: Request, exc: marketplace.MarketplaceError) -> JSONResponse:
+def marketplace_error_handler(
+    request: Request, exc: marketplace.MarketplaceError
+) -> Utf8JSONResponse:
     """Mappa i vincoli non negoziabili del Marketplace (`ExperienceNotBookableError`,
     `BookingNotFoundError`, `InvalidBookingStateError` — sollevati da
     `marketplace.service`, un solo punto verificabile) a un 422 esplicativo in
     italiano, MAI un 500: stesso stile di `urban_memory_error_handler`."""
-    return JSONResponse(
+    return Utf8JSONResponse(
         status_code=422,
         content={"detail": f"prenotazione rifiutata: {exc}"},
     )
@@ -325,7 +363,7 @@ def marketplace_error_handler(request: Request, exc: marketplace.MarketplaceErro
 @app.exception_handler(marketplace.MarketplaceStorageError)
 def marketplace_storage_error_handler(
     request: Request, exc: marketplace.MarketplaceStorageError
-) -> JSONResponse:
+) -> Utf8JSONResponse:
     """Mappa un fallimento INFRASTRUTTURALE di storage del Marketplace
     (`marketplace.MarketplaceStorageError` — connessione a Postgres/Neon
     irraggiungibile, migrazione non applicata, query fallita) a un **503
@@ -333,7 +371,7 @@ def marketplace_storage_error_handler(
     `memory_storage_error_handler`. Il corpo è un messaggio italiano generico
     e fisso: NON include mai `str(exc)` né altro dettaglio interno (DSN,
     host, credenziali, stack del driver)."""
-    return JSONResponse(
+    return Utf8JSONResponse(
         status_code=503,
         content={"detail": "prenotazioni temporaneamente non disponibili: riprova più tardi"},
     )
@@ -342,7 +380,7 @@ def marketplace_storage_error_handler(
 @app.exception_handler(recommender.RecommenderStorageError)
 def event_storage_error_handler(
     request: Request, exc: recommender.RecommenderStorageError
-) -> JSONResponse:
+) -> Utf8JSONResponse:
     """Mappa un fallimento INFRASTRUTTURALE di storage del Recommender
     (`recommender.RecommenderStorageError` — connessione a Postgres/Neon
     irraggiungibile, migrazione non applicata, query fallita) a un **503
@@ -356,14 +394,14 @@ def event_storage_error_handler(
     una strategia diversa). Il corpo è un messaggio italiano generico e
     fisso: NON include mai `str(exc)` né altro dettaglio interno (DSN, host,
     credenziali, stack del driver)."""
-    return JSONResponse(
+    return Utf8JSONResponse(
         status_code=503,
         content={"detail": "eventi temporaneamente non disponibili: riprova più tardi"},
     )
 
 
 @app.exception_handler(IndexStorageError)
-def index_storage_error_handler(request: Request, exc: IndexStorageError) -> JSONResponse:
+def index_storage_error_handler(request: Request, exc: IndexStorageError) -> Utf8JSONResponse:
     """Mappa un fallimento INFRASTRUTTURALE di lettura dell'Urban Intelligence
     Index (`intelligence_index.IndexStorageError` — lettura di `behavior_event`
     da Postgres/Neon irraggiungibile o query fallita, sollevata da
@@ -382,14 +420,16 @@ def index_storage_error_handler(request: Request, exc: IndexStorageError) -> JSO
     qui). Il corpo della risposta è un messaggio italiano generico e fisso:
     NON include mai `str(exc)` né altro dettaglio interno (DSN, host,
     credenziali, stack del driver)."""
-    return JSONResponse(
+    return Utf8JSONResponse(
         status_code=503,
         content={"detail": "indicatori temporaneamente non disponibili: riprova più tardi"},
     )
 
 
 @app.exception_handler(GraphUnavailableError)
-def graph_unavailable_error_handler(request: Request, exc: GraphUnavailableError) -> JSONResponse:
+def graph_unavailable_error_handler(
+    request: Request, exc: GraphUnavailableError
+) -> Utf8JSONResponse:
     """Mappa un Urban Knowledge Graph irraggiungibile (`graph.GraphUnavailableError`
     — Aura in pausa, rete/DNS, credenziali, failover; scenario NORMALE, vedi
     CLAUDE.md) a un **503 Service Unavailable**, MAI a un 500 opaco: stesso
@@ -405,7 +445,7 @@ def graph_unavailable_error_handler(request: Request, exc: GraphUnavailableError
         "knowledge graph non disponibile (causa: %s)",
         type(cause).__name__ if cause is not None else "n/d",
     )
-    return JSONResponse(
+    return Utf8JSONResponse(
         status_code=503,
         content={
             "detail": "conoscenza della città temporaneamente non disponibile: riprova più tardi"
