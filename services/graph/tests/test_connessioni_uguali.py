@@ -182,3 +182,20 @@ def test_seed_giglio_catalani_prima_di_puccini() -> None:
         if c.experience.id == "exp-concerto-giglio"
     )
     assert giglio.connessioni[0] == "Alfredo Catalani è legato a Teatro del Giglio."
+
+
+def test_attribuzione_neo4j_sceglie_la_bottega_dal_nome_minore() -> None:
+    """Piu' botteghe nel `collect` (ordine non garantito): vince sempre il
+    nome minore (casefold, poi nome), qualunque sia l'ordine di arrivo."""
+    esp = next(e for e in ESPERIENZE if e.partner_id)
+    botteghe = [
+        {"nome": "zeta Liuteria", "mestiere": "liutaio", "fittizio": True},
+        {"nome": "Alfa Liuteria", "mestiere": "liutaio", "fittizio": False},
+        {"nome": "beta Liuteria", "mestiere": "liutaio", "fittizio": True},
+    ]
+    atteso = "Offerta da Alfa Liuteria, bottega di liutaio."
+    rng = random.Random(7)
+    for _ in range(12):
+        record = _record(esp.id, None, rng)
+        record["botteghe"] = _mescola(botteghe, rng)
+        assert Neo4jCandidateSource._to_candidate(record, None).attribuzione == atteso  # type: ignore[arg-type]

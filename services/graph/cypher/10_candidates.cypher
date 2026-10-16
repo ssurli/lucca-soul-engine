@@ -86,7 +86,7 @@ WITH e, l,
      collect(DISTINCT {artista_id: ispart.id, racconto: isp.racconto}) AS racconti_ispirazione,
      collect(DISTINCT {id: temab.id, nome: temab.nome}) AS temi_bottega,
      min(vic.metri) AS distanza_m,
-     head(collect(DISTINCT rif.nome)) AS riferimento_nome,
+     min(rif.nome) AS riferimento_nome,
      collect(DISTINCT partner.abbonamento_attivo) AS abbonamenti_partner
 RETURN
   e.id AS id,

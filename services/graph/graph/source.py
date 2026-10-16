@@ -332,7 +332,12 @@ class Neo4jCandidateSource:
         # Le entry hanno `nome` nullo quando l'OPTIONAL MATCH non trova
         # bottega: si scartano qui. `fittizio` assente su un grafo non
         # ricaricato e' gia' `true` (coalesce nella query).
-        botteghe = [b for b in (record["botteghe"] or []) if b and b.get("nome")]
+        # Piu' botteghe possibili: il `collect` non e' ordinato, quindi si sceglie
+        # in modo deterministico (nome casefold, poi nome) PRIMA di attribuire.
+        botteghe = sorted(
+            (b for b in (record["botteghe"] or []) if b and b.get("nome")),
+            key=lambda b: (b["nome"].casefold(), b["nome"]),
+        )
         attribuzione = (
             testo_attribuzione(
                 botteghe[0]["nome"],
