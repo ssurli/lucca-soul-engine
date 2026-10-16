@@ -15,12 +15,32 @@ SECONDA modifica autorizzata (2026-10-16), solo in `lucca_itinerari.json` e solo
 stringhe di attribuzione: le botteghe del seed sono dimostrative, rinominate col solo
 mestiere e con attribuzione "(esempio dimostrativo)"; cambiano solo le stringhe
 "Offerta da ..." (47 casi su 58); punteggi invariati (`lucca_punteggi.json` intatto).
+TERZA modifica autorizzata (2026-10-16, wave "adattamento"), solo in
+`lucca_itinerari.json`: i valori ATTESI dei 58 casi esistenti sono stati rigenerati
+UNA volta, per le decisioni di prodotto 1 (tetto della giornata alle 24:00),
+3 (campi nuovi: `tempo_disponibile_min`, `tempo_effettivo_min`,
+`esito_adattamento`, `tappe_escluse`), 4 (esito e frase della tappa mantenuta
+senza alternativa), 5 (connessioni identiche tra seed e Neo4j) e per l'attribuzione
+senza ripetizioni (una sola disclosure "Offerta da ..."). Le RICHIESTE dei 58 casi
+sono invariate: i 16 `adapt|...` diventano casi di retrocompatibilita'
+(itinerario senza `tempo_disponibile_min`, quindi senza vincolo di budget, e `reason`
+con l'attribuzione del formato vecchio, che l'adattamento sostituisce). Ogni
+differenza e' stata attribuita a una decisione con uno script di confronto
+atteso-vecchio/atteso-nuovo (zero differenze non attribuite).
+In piu' sono stati AGGIUNTI 16 casi `adapt-budget|<profilo>|<segnale>` (stessi
+profili e segnali dei 16 `adapt|...`) le cui richieste nascono dagli itinerari
+composti dal codice NUOVO (con `tempo_disponibile_min`). Motivo: mettere alla
+prova il vincolo di budget dell'adattamento, che i casi esistenti (senza budget)
+non esercitano. Per questi casi, e per ogni caso con `tempo_effettivo_min`, il
+test asserisce che i minuti dopo l'adattamento non lo superino.
 
 Due livelli, entrambi "replay" dei JSON (richiesta/specifica + atteso):
   a) ITINERARI via HTTP del BFF (`POST /itinerary`, `POST /itinerary/adapt`):
-     uguaglianza ESATTA di `person_id`, `adattato_da_segnale` e, per ogni tappa,
-     `experience_id`, `arrivo`, `durata_min`, `reason` (ordine incluso).
-     `generated_at` escluso. Ambiente isolato: seed di Lucca, repository
+     uguaglianza ESATTA di `person_id`, `adattato_da_segnale`,
+     `tempo_disponibile_min`, `tempo_effettivo_min`, per ogni tappa
+     `experience_id`, `arrivo`, `durata_min`, `reason`, `esito_adattamento`
+     (ordine incluso) e di `tappe_escluse` (`experience_id`, `esito`, `reason`,
+     in ordine). `generated_at` escluso. Ambiente isolato: seed di Lucca, repository
      in-memory (recommender a freddo), nessuna credenziale, `adesso` fisso.
   b) PUNTEGGI: `rules.calcola_score` e la `score_fn` di
      `recommender.costruisci_score_fn` (repository vuoto = freddo; repository
@@ -152,11 +172,41 @@ def _riduci(itinerario: dict[str, Any]) -> dict[str, Any]:
     return {
         "person_id": itinerario["person_id"],
         "adattato_da_segnale": itinerario["adattato_da_segnale"],
+        "tempo_disponibile_min": itinerario["tempo_disponibile_min"],
+        "tempo_effettivo_min": itinerario["tempo_effettivo_min"],
         "stops": [
-            {k: s[k] for k in ("experience_id", "arrivo", "durata_min", "reason")}
+            {
+                k: s[k]
+                for k in ("experience_id", "arrivo", "durata_min", "reason", "esito_adattamento")
+            }
             for s in itinerario["stops"]
         ],
+        "tappe_escluse": [
+            {k: t[k] for k in ("experience_id", "esito", "reason")}
+            for t in itinerario["tappe_escluse"]
+        ],
     }
+
+
+def _minuti_del_giorno(orario: str) -> int:
+    ore, minuti, _secondi = orario.split(":")
+    return int(ore) * 60 + int(minuti)
+
+
+def _minuti_itinerario(stops: list[dict[str, Any]]) -> int:
+    """Minuti dell'itinerario = somma di durate e trasferimenti, calcolata
+    dagli orari SENZA riavvolgimento: ultimo arrivo + ultima durata - primo
+    arrivo, con gli orari come minuti dall'inizio della giornata. Poiche' gli
+    arrivi avanzano esattamente della somma di durate e trasferimenti, e'
+    lo stesso numero che il motore conteggia contro il budget. L'asserzione
+    `ultimo >= primo` fallisce se un orario si e' riavvolto oltre la
+    mezzanotte (il tetto della giornata lo vieta). Nessuna tappa: 0."""
+    if not stops:
+        return 0
+    primo = _minuti_del_giorno(stops[0]["arrivo"])
+    ultimo = _minuti_del_giorno(stops[-1]["arrivo"])
+    assert ultimo >= primo, "orari riavvolti oltre la mezzanotte"
+    return ultimo - primo + int(stops[-1]["durata_min"])
 
 
 def test_golden_itinerari_presente_e_non_vuoto() -> None:
@@ -165,6 +215,21 @@ def test_golden_itinerari_presente_e_non_vuoto() -> None:
     assert tipi == {"compose", "adapt"}
     assert sum(1 for c in casi.values() if c["tipo"] == "compose") >= 40
     assert sum(1 for c in casi.values() if c["tipo"] == "adapt") >= 12
+    # Wave "adattamento": 16 casi di retrocompatibilita' (itinerario SENZA
+    # budget) + 16 casi che esercitano il budget (itinerario COL budget).
+    retro = {k: c for k, c in casi.items() if k.startswith("adapt|")}
+    budget = {k: c for k, c in casi.items() if k.startswith("adapt-budget|")}
+    assert len(retro) == 16
+    assert len(budget) == 16
+    assert {k.split("|", 1)[1] for k in retro} == {k.split("|", 1)[1] for k in budget}
+    assert all(c["tipo"] == "adapt" for c in [*retro.values(), *budget.values()])
+    assert all(
+        c["richiesta"]["itinerary"].get("tempo_disponibile_min") is None for c in retro.values()
+    )
+    assert all(
+        c["richiesta"]["itinerary"].get("tempo_effettivo_min") is not None
+        for c in budget.values()
+    )
 
 
 @pytest.mark.parametrize("chiave", _id_casi())
@@ -173,7 +238,19 @@ def test_golden_itinerario(client: TestClient, chiave: str) -> None:
     percorso = "/itinerary" if caso["tipo"] == "compose" else "/itinerary/adapt"
     resp = client.post(percorso, json=caso["richiesta"])
     assert resp.status_code == 200, resp.text
-    assert _riduci(resp.json()) == caso["atteso"], f"REGRESSIONE su Lucca: {chiave}"
+    risposta = resp.json()
+    assert _riduci(risposta) == caso["atteso"], f"REGRESSIONE su Lucca: {chiave}"
+    # Tetto della giornata: nessun itinerario finisce oltre le 24:00 (anche senza budget).
+    if risposta["stops"]:
+        ultima = risposta["stops"][-1]
+        assert _minuti_del_giorno(ultima["arrivo"]) + ultima["durata_min"] <= 24 * 60, chiave
+    # Il budget effettivo non si supera mai (composizione e adattamento).
+    if risposta["tempo_effettivo_min"] is not None:
+        minuti = _minuti_itinerario(risposta["stops"])
+        assert minuti <= risposta["tempo_effettivo_min"], (
+            f"{chiave}: {minuti} minuti oltre tempo_effettivo_min="
+            f"{risposta['tempo_effettivo_min']}"
+        )
 
 
 # ---------------------------------------------------------------------------
