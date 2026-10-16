@@ -48,6 +48,7 @@ from typing import Protocol
 from contracts import ExperienceNode, GraphCandidate, Partner, VisitorContext
 from neo4j import Driver, GraphDatabase, Record
 
+from graph.attribuzione import testo_attribuzione
 from graph.dataset import Artista, Bottega, DatasetCitta, Luogo, Tema
 from graph.errors import translate_driver_errors
 from graph.registro import dataset_attivo
@@ -219,7 +220,7 @@ class SeedCandidateSource:
         bottega = self._botteghe.get(esperienza.partner_id)
         if bottega is None:
             return None
-        return f"Offerta da {bottega.nome}, bottega di {bottega.mestiere}."
+        return testo_attribuzione(bottega.nome, bottega.mestiere, bottega.fittizio)
 
     def _distanza(self, place_id: str, riferimento: str | None) -> int | None:
         if riferimento is None:
@@ -327,11 +328,22 @@ class Neo4jCandidateSource:
             tema_nome = entry.get("nome") if entry else None
             if tema_id and tema_nome and tema_id not in temi_esperienza:
                 connessioni.append(f'La bottega evoca anche il tema "{tema_nome}".')
-        # `botteghe_nomi` NON entra in `connessioni` (contate nello score del
+        # `botteghe` NON entra in `connessioni` (contate nello score del
         # motore): alimenta solo `attribuzione`, fatto commerciale separato e
         # non conteggiato — "nessuno spazio è acquistabile".
-        botteghe_nomi = [nome for nome in (record["botteghe_nomi"] or []) if nome]
-        attribuzione = f"Offerta da {botteghe_nomi[0]}." if botteghe_nomi else None
+        # Le entry hanno `nome` nullo quando l'OPTIONAL MATCH non trova
+        # bottega: si scartano qui. `fittizio` assente su un grafo non
+        # ricaricato e' gia' `true` (coalesce nella query).
+        botteghe = [b for b in (record["botteghe"] or []) if b and b.get("nome")]
+        attribuzione = (
+            testo_attribuzione(
+                botteghe[0]["nome"],
+                botteghe[0].get("mestiere") or "",
+                bool(botteghe[0].get("fittizio", True)),
+            )
+            if botteghe
+            else None
+        )
         return GraphCandidate(
             experience=esperienza,
             place_nome=record["place_nome"],

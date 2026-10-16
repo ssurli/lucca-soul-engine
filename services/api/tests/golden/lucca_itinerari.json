@@ -27,7 +27,7 @@
             "arrivo": "11:55:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           }
         ]
       },
@@ -59,7 +59,7 @@
               "arrivo": "11:50:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             }
           ]
         },
@@ -136,7 +136,7 @@
               "arrivo": "11:50:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             }
           ]
         },
@@ -180,7 +180,7 @@
             "arrivo": "12:20:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           }
         ]
       },
@@ -212,7 +212,7 @@
               "arrivo": "11:50:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             }
           ]
         },
@@ -280,7 +280,7 @@
               "arrivo": "11:50:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             }
           ]
         },
@@ -316,13 +316,13 @@
             "arrivo": "11:30:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "12:25:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "12:55:00",
@@ -354,13 +354,13 @@
               "arrivo": "12:05:00",
               "durata_min": 45,
               "experience_id": "exp-decorazione-ceramica",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
             },
             {
               "arrivo": "13:00:00",
               "durata_min": 20,
               "experience_id": "exp-buccellato-pasticceria",
-              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
             },
             {
               "arrivo": "13:30:00",
@@ -405,13 +405,13 @@
             "arrivo": "11:45:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "12:40:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "13:10:00",
@@ -443,13 +443,13 @@
               "arrivo": "12:05:00",
               "durata_min": 45,
               "experience_id": "exp-decorazione-ceramica",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
             },
             {
               "arrivo": "13:00:00",
               "durata_min": 20,
               "experience_id": "exp-buccellato-pasticceria",
-              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
             },
             {
               "arrivo": "13:30:00",
@@ -487,19 +487,19 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Sostituita per la pioggia. Giacomo Puccini è legato a Chiesa di San Michele in Foro. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Sostituita per la pioggia. Giacomo Puccini è legato a Chiesa di San Michele in Foro. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "12:30:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "13:00:00",
@@ -531,13 +531,13 @@
               "arrivo": "12:05:00",
               "durata_min": 45,
               "experience_id": "exp-decorazione-ceramica",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
             },
             {
               "arrivo": "13:00:00",
               "durata_min": 20,
               "experience_id": "exp-buccellato-pasticceria",
-              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
             },
             {
               "arrivo": "13:30:00",
@@ -599,13 +599,13 @@
               "arrivo": "12:05:00",
               "durata_min": 45,
               "experience_id": "exp-decorazione-ceramica",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
             },
             {
               "arrivo": "13:00:00",
               "durata_min": 20,
               "experience_id": "exp-buccellato-pasticceria",
-              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
             },
             {
               "arrivo": "13:30:00",
@@ -641,7 +641,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -685,7 +685,7 @@
               "arrivo": "10:35:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             },
             {
               "arrivo": "11:35:00",
@@ -786,7 +786,7 @@
               "arrivo": "10:35:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             },
             {
               "arrivo": "11:35:00",
@@ -842,7 +842,7 @@
             "arrivo": "11:00:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "12:00:00",
@@ -866,7 +866,7 @@
             "arrivo": "15:00:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Sostituita per la pioggia. Evoca il tema \"Artigianato\". Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Sostituita per la pioggia. Evoca il tema \"Artigianato\". Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           }
         ]
       },
@@ -886,7 +886,7 @@
               "arrivo": "10:35:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             },
             {
               "arrivo": "11:35:00",
@@ -940,7 +940,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -966,7 +966,7 @@
               "arrivo": "10:35:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             },
             {
               "arrivo": "11:35:00",
@@ -1044,7 +1044,7 @@
             "arrivo": "13:55:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "14:55:00",
@@ -1056,7 +1056,7 @@
             "arrivo": "15:40:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "16:35:00",
@@ -1086,7 +1086,7 @@
             "arrivo": "21:15:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "21:45:00",
@@ -1104,7 +1104,7 @@
             "arrivo": "23:20:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "00:10:00",
@@ -1178,7 +1178,7 @@
               "arrivo": "13:55:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             },
             {
               "arrivo": "14:55:00",
@@ -1190,7 +1190,7 @@
               "arrivo": "15:40:00",
               "durata_min": 45,
               "experience_id": "exp-decorazione-ceramica",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
             },
             {
               "arrivo": "16:35:00",
@@ -1220,7 +1220,7 @@
               "arrivo": "21:15:00",
               "durata_min": 20,
               "experience_id": "exp-buccellato-pasticceria",
-              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
             },
             {
               "arrivo": "21:45:00",
@@ -1238,7 +1238,7 @@
               "arrivo": "23:20:00",
               "durata_min": 40,
               "experience_id": "exp-telaio-tessitura",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
             },
             {
               "arrivo": "00:10:00",
@@ -1325,7 +1325,7 @@
             "arrivo": "13:55:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "14:55:00",
@@ -1337,7 +1337,7 @@
             "arrivo": "15:40:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "16:35:00",
@@ -1367,7 +1367,7 @@
             "arrivo": "21:15:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "21:45:00",
@@ -1385,7 +1385,7 @@
             "arrivo": "23:20:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "00:10:00",
@@ -1459,7 +1459,7 @@
               "arrivo": "13:55:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             },
             {
               "arrivo": "14:55:00",
@@ -1471,7 +1471,7 @@
               "arrivo": "15:40:00",
               "durata_min": 45,
               "experience_id": "exp-decorazione-ceramica",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
             },
             {
               "arrivo": "16:35:00",
@@ -1501,7 +1501,7 @@
               "arrivo": "21:15:00",
               "durata_min": 20,
               "experience_id": "exp-buccellato-pasticceria",
-              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
             },
             {
               "arrivo": "21:45:00",
@@ -1519,7 +1519,7 @@
               "arrivo": "23:20:00",
               "durata_min": 40,
               "experience_id": "exp-telaio-tessitura",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
             },
             {
               "arrivo": "00:10:00",
@@ -1605,7 +1605,7 @@
             "arrivo": "13:55:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "14:55:00",
@@ -1617,7 +1617,7 @@
             "arrivo": "15:40:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "16:35:00",
@@ -1647,7 +1647,7 @@
             "arrivo": "21:15:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "21:45:00",
@@ -1665,7 +1665,7 @@
             "arrivo": "23:20:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "00:10:00",
@@ -1739,7 +1739,7 @@
               "arrivo": "13:55:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             },
             {
               "arrivo": "14:55:00",
@@ -1751,7 +1751,7 @@
               "arrivo": "15:40:00",
               "durata_min": 45,
               "experience_id": "exp-decorazione-ceramica",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
             },
             {
               "arrivo": "16:35:00",
@@ -1781,7 +1781,7 @@
               "arrivo": "21:15:00",
               "durata_min": 20,
               "experience_id": "exp-buccellato-pasticceria",
-              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
             },
             {
               "arrivo": "21:45:00",
@@ -1799,7 +1799,7 @@
               "arrivo": "23:20:00",
               "durata_min": 40,
               "experience_id": "exp-telaio-tessitura",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
             },
             {
               "arrivo": "00:10:00",
@@ -1883,7 +1883,7 @@
             "arrivo": "13:55:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "14:55:00",
@@ -1895,7 +1895,7 @@
             "arrivo": "15:40:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "16:35:00",
@@ -1925,7 +1925,7 @@
             "arrivo": "21:15:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           }
         ]
       },
@@ -1969,7 +1969,7 @@
               "arrivo": "13:55:00",
               "durata_min": 50,
               "experience_id": "exp-laboratorio-liuteria",
-              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
             },
             {
               "arrivo": "14:55:00",
@@ -1981,7 +1981,7 @@
               "arrivo": "15:40:00",
               "durata_min": 45,
               "experience_id": "exp-decorazione-ceramica",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
             },
             {
               "arrivo": "16:35:00",
@@ -2011,7 +2011,7 @@
               "arrivo": "21:15:00",
               "durata_min": 20,
               "experience_id": "exp-buccellato-pasticceria",
-              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
             },
             {
               "arrivo": "21:45:00",
@@ -2029,7 +2029,7 @@
               "arrivo": "23:20:00",
               "durata_min": 40,
               "experience_id": "exp-telaio-tessitura",
-              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+              "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
             },
             {
               "arrivo": "00:10:00",
@@ -2101,7 +2101,7 @@
             "arrivo": "11:50:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           }
         ]
       },
@@ -2152,7 +2152,7 @@
             "arrivo": "11:15:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "12:15:00",
@@ -2199,7 +2199,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -2211,7 +2211,7 @@
             "arrivo": "12:20:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", e rispetta il bisogno di un percorso accessibile; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", e rispetta il bisogno di un percorso accessibile; inoltre, con la pioggia si sta al chiuso. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           }
         ]
       },
@@ -2264,7 +2264,7 @@
             "arrivo": "11:50:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           }
         ]
       },
@@ -2317,7 +2317,7 @@
             "arrivo": "11:50:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           }
         ]
       },
@@ -2370,7 +2370,7 @@
             "arrivo": "11:39:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "12:39:00",
@@ -2419,7 +2419,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -2482,7 +2482,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -2541,7 +2541,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -2600,7 +2600,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -2659,7 +2659,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -2718,7 +2718,7 @@
             "arrivo": "10:30:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e ti lasci conquistare dalla bellezza; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:24:00",
@@ -2785,13 +2785,13 @@
             "arrivo": "11:10:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "12:05:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "12:35:00",
@@ -2854,13 +2854,13 @@
             "arrivo": "12:05:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "13:00:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "13:30:00",
@@ -2901,13 +2901,13 @@
             "arrivo": "10:00:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "10:55:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:25:00",
@@ -2925,7 +2925,7 @@
             "arrivo": "12:55:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           }
         ]
       },
@@ -2972,13 +2972,13 @@
             "arrivo": "12:05:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "13:00:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "13:30:00",
@@ -3031,13 +3031,13 @@
             "arrivo": "12:05:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "12:35:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "13:30:00",
@@ -3090,13 +3090,13 @@
             "arrivo": "11:57:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "12:52:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "13:17:00",
@@ -3285,7 +3285,7 @@
             "arrivo": "12:00:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", e cerchi silenzio e raccoglimento; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", e cerchi silenzio e raccoglimento; inoltre, con la pioggia si sta al chiuso. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "12:50:00",
@@ -3517,7 +3517,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -3580,7 +3580,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -3639,7 +3639,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -3698,7 +3698,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -3763,7 +3763,7 @@
             "arrivo": "10:35:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:35:00",
@@ -3828,7 +3828,7 @@
             "arrivo": "10:30:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "11:24:00",
@@ -3913,7 +3913,7 @@
             "arrivo": "13:00:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "14:00:00",
@@ -3925,7 +3925,7 @@
             "arrivo": "14:55:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "15:50:00",
@@ -3955,7 +3955,7 @@
             "arrivo": "20:00:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "20:30:00",
@@ -3967,7 +3967,7 @@
             "arrivo": "21:25:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "22:15:00",
@@ -4066,7 +4066,7 @@
             "arrivo": "13:20:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "14:20:00",
@@ -4078,7 +4078,7 @@
             "arrivo": "14:55:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "15:50:00",
@@ -4114,7 +4114,7 @@
             "arrivo": "21:15:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "21:45:00",
@@ -4132,7 +4132,7 @@
             "arrivo": "23:20:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con questo caldo un luogo fresco si apprezza di più. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "00:10:00",
@@ -4209,7 +4209,7 @@
             "arrivo": "11:30:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "12:30:00",
@@ -4221,7 +4221,7 @@
             "arrivo": "13:05:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "14:00:00",
@@ -4239,7 +4239,7 @@
             "arrivo": "15:45:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "16:15:00",
@@ -4263,7 +4263,7 @@
             "arrivo": "19:45:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, con la pioggia si sta al chiuso. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "20:35:00",
@@ -4382,7 +4382,7 @@
             "arrivo": "13:55:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "14:55:00",
@@ -4394,7 +4394,7 @@
             "arrivo": "15:40:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "16:35:00",
@@ -4424,7 +4424,7 @@
             "arrivo": "21:15:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "21:45:00",
@@ -4442,7 +4442,7 @@
             "arrivo": "23:20:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "00:10:00",
@@ -4531,7 +4531,7 @@
             "arrivo": "12:45:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "13:45:00",
@@ -4549,13 +4549,13 @@
             "arrivo": "15:40:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "16:35:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "17:05:00",
@@ -4597,7 +4597,7 @@
             "arrivo": "23:20:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "00:10:00",
@@ -4692,7 +4692,7 @@
             "arrivo": "13:39:00",
             "durata_min": 50,
             "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Liuteria Lucchese, bottega di liuteria."
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
           },
           {
             "arrivo": "14:39:00",
@@ -4704,7 +4704,7 @@
             "arrivo": "15:16:00",
             "durata_min": 45,
             "experience_id": "exp-decorazione-ceramica",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Ceramica Artistica, bottega di ceramica."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica, bottega di ceramica (esempio dimostrativo)."
           },
           {
             "arrivo": "16:11:00",
@@ -4740,7 +4740,7 @@
             "arrivo": "21:25:00",
             "durata_min": 20,
             "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria Storica del Buccellato, bottega di pasticceria."
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria, bottega di pasticceria (esempio dimostrativo)."
           },
           {
             "arrivo": "21:55:00",
@@ -4752,7 +4752,7 @@
             "arrivo": "22:44:00",
             "durata_min": 40,
             "experience_id": "exp-telaio-tessitura",
-            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Bottega di Tessitura a Mano, bottega di tessitura."
+            "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di tessitura, bottega di tessitura (esempio dimostrativo)."
           },
           {
             "arrivo": "23:31:00",

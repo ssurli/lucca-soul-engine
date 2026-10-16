@@ -156,19 +156,19 @@ LEGATO_A: list[RelazioneLegatoA] = [
 # Botteghe — 5 botteghe, ciascuna radicata in un luogo del seed
 # ---------------------------------------------------------------------------
 
+# Botteghe DIMOSTRATIVE: nessuna corrisponde a un esercizio reale (`fittizio=True`).
+# I nomi portano solo il mestiere, senza città né aggettivi d'insegna, così non
+# possono essere scambiati per attività esistenti.
 BOTTEGHE: list[Bottega] = [
     Bottega(
-        "liuteria-lucchese", "Bottega di Liuteria Lucchese", "liuteria", "san-michele-in-foro"
+        "liuteria-lucchese", "Bottega di liuteria", "liuteria", "san-michele-in-foro", fittizio=True
     ),
-    Bottega("ceramica-lucca", "Bottega di Ceramica Artistica", "ceramica", "via-fillungo"),
-    Bottega("stamperia-lucca", "Antica Stamperia Lucchese", "stampa", "piazza-anfiteatro"),
+    Bottega("ceramica-lucca", "Laboratorio di ceramica", "ceramica", "via-fillungo", fittizio=True),
+    Bottega("stamperia-lucca", "Stamperia a torchio", "stampa", "piazza-anfiteatro", fittizio=True),
+    Bottega("pasticceria-storica", "Pasticceria", "pasticceria", "piazza-napoleone", fittizio=True),
     Bottega(
-        "pasticceria-storica",
-        "Pasticceria Storica del Buccellato",
-        "pasticceria",
-        "piazza-napoleone",
+        "tessitura-lucca", "Laboratorio di tessitura", "tessitura", "san-frediano", fittizio=True
     ),
-    Bottega("tessitura-lucca", "Bottega di Tessitura a Mano", "tessitura", "san-frediano"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -216,13 +216,13 @@ BOTTEGA_ISPIRATA_DA: list[RelazioneIspirataDa] = [
     RelazioneIspirataDa(
         "liuteria-lucchese",
         "artista-puccini",
-        "Puccini compose opere; qui un liutaio costruisce i violini che le eseguono.",
+        "Puccini compose opere; in una bottega di liuteria nascono i violini che le eseguono.",
     ),
     RelazioneIspirataDa(
         "liuteria-lucchese",
         "artista-boccherini",
         "Boccherini fu virtuoso di violoncello: la stessa famiglia di strumenti "
-        "che nasce in questa bottega.",
+        "che nasce in una bottega di liuteria.",
     ),
 ]
 
@@ -245,17 +245,17 @@ BOTTEGA_ISPIRATA_DA: list[RelazioneIspirataDa] = [
 PARTNERS: list[Partner] = [
     Partner(
         id="partner-liuteria-lucchese",
-        nome="Bottega di Liuteria Lucchese — abbonamento presenza",
+        nome="Bottega di liuteria — abbonamento presenza",
         abbonamento_attivo=True,
     ),
     Partner(
         id="partner-ceramica-lucca",
-        nome="Bottega di Ceramica Artistica — abbonamento presenza",
+        nome="Laboratorio di ceramica — abbonamento presenza",
         abbonamento_attivo=True,
     ),
     Partner(
         id="partner-stamperia-lucca",
-        nome="Antica Stamperia Lucchese — abbonamento presenza",
+        nome="Stamperia a torchio — abbonamento presenza",
         abbonamento_attivo=False,
     ),
 ]
@@ -676,7 +676,8 @@ DATASET = DatasetCitta(
     esperienze=ESPERIENZE,
     vicino=VICINO,
     vicino_epoca=VICINO_EPOCA,
-    # Bottega reale del seed: bersaglio della memoria di prova di Urban Memory.
+    # Bottega esistente nel dataset (dimostrativa, `fittizio=True`): bersaglio
+    # della memoria di prova di Urban Memory.
     id_esempio_memoria="liuteria-lucchese",
     vocabolario=VOCABOLARIO,
 )

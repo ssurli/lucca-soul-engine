@@ -35,6 +35,7 @@ def _dataset_finto(nome: str = SLUG) -> DatasetCitta:
                 nome="Bottega dei Fantasmi",
                 mestiere="ceramica",
                 place_id="zz-piazza-inventata",
+                fittizio=True,
             )
         ],
         temi=[Tema(id="zz-tema", nome="Tema inventato")],

@@ -47,15 +47,15 @@ SET a.nome = 'Alfredo Catalani';
 
 // --- Nodi: Bottega -------------------------------------------------------
 MERGE (b:Bottega {id: 'liuteria-lucchese'})
-SET b.nome = 'Bottega di Liuteria Lucchese', b.mestiere = 'liuteria', b.place_id = 'san-michele-in-foro';
+SET b.nome = 'Bottega di liuteria', b.mestiere = 'liuteria', b.place_id = 'san-michele-in-foro', b.fittizio = true;
 MERGE (b:Bottega {id: 'ceramica-lucca'})
-SET b.nome = 'Bottega di Ceramica Artistica', b.mestiere = 'ceramica', b.place_id = 'via-fillungo';
+SET b.nome = 'Laboratorio di ceramica', b.mestiere = 'ceramica', b.place_id = 'via-fillungo', b.fittizio = true;
 MERGE (b:Bottega {id: 'stamperia-lucca'})
-SET b.nome = 'Antica Stamperia Lucchese', b.mestiere = 'stampa', b.place_id = 'piazza-anfiteatro';
+SET b.nome = 'Stamperia a torchio', b.mestiere = 'stampa', b.place_id = 'piazza-anfiteatro', b.fittizio = true;
 MERGE (b:Bottega {id: 'pasticceria-storica'})
-SET b.nome = 'Pasticceria Storica del Buccellato', b.mestiere = 'pasticceria', b.place_id = 'piazza-napoleone';
+SET b.nome = 'Pasticceria', b.mestiere = 'pasticceria', b.place_id = 'piazza-napoleone', b.fittizio = true;
 MERGE (b:Bottega {id: 'tessitura-lucca'})
-SET b.nome = 'Bottega di Tessitura a Mano', b.mestiere = 'tessitura', b.place_id = 'san-frediano';
+SET b.nome = 'Laboratorio di tessitura', b.mestiere = 'tessitura', b.place_id = 'san-frediano', b.fittizio = true;
 
 // --- Nodi: Tema -----------------------------------------------------------
 MERGE (t:Tema {id: 'verde'})
@@ -331,11 +331,11 @@ SET e.titolo = 'Il telaio a mano: tessitura lucchese',
 
 // --- Nodi: Partner (Wave 3a, marketplace) -------------------------------
 MERGE (p:Partner {id: 'partner-liuteria-lucchese'})
-SET p.nome = 'Bottega di Liuteria Lucchese — abbonamento presenza', p.abbonamento_attivo = true;
+SET p.nome = 'Bottega di liuteria — abbonamento presenza', p.abbonamento_attivo = true;
 MERGE (p:Partner {id: 'partner-ceramica-lucca'})
-SET p.nome = 'Bottega di Ceramica Artistica — abbonamento presenza', p.abbonamento_attivo = true;
+SET p.nome = 'Laboratorio di ceramica — abbonamento presenza', p.abbonamento_attivo = true;
 MERGE (p:Partner {id: 'partner-stamperia-lucca'})
-SET p.nome = 'Antica Stamperia Lucchese — abbonamento presenza', p.abbonamento_attivo = false;
+SET p.nome = 'Stamperia a torchio — abbonamento presenza', p.abbonamento_attivo = false;
 
 // --- Relazioni: VICINO (Luogo -> Luogo) --------------------------------
 MATCH (a:Luogo {id: 'mura-urbane'}), (b:Luogo {id: 'baluardo-san-paolino'})
@@ -671,10 +671,10 @@ MERGE (b)-[:EVOCA]->(t);
 // "Puccini -> ... -> liutaio -> violino" (vedi graph/topology.py).
 MATCH (b:Bottega {id: 'liuteria-lucchese'}), (a:Artista {id: 'artista-puccini'})
 MERGE (b)-[r:ISPIRATA_DA]->(a)
-SET r.racconto = 'Puccini compose opere; qui un liutaio costruisce i violini che le eseguono.';
+SET r.racconto = 'Puccini compose opere; in una bottega di liuteria nascono i violini che le eseguono.';
 MATCH (b:Bottega {id: 'liuteria-lucchese'}), (a:Artista {id: 'artista-boccherini'})
 MERGE (b)-[r:ISPIRATA_DA]->(a)
-SET r.racconto = 'Boccherini fu virtuoso di violoncello: la stessa famiglia di strumenti che nasce in questa bottega.';
+SET r.racconto = 'Boccherini fu virtuoso di violoncello: la stessa famiglia di strumenti che nasce in una bottega di liuteria.';
 
 // --- Relazioni COMMERCIALI: HA_ABBONAMENTO (Bottega -> Partner) ---------
 // Wave 3a (marketplace): Partner.abbonamento_attivo è l'UNICA leva che

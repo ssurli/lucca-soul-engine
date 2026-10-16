@@ -17,7 +17,7 @@
 //   (:Esperienza)-[:EVOCA]->(:Tema)
 //   (:Bottega)-[:EVOCA]->(:Tema)                      -- SEMANTICA, non di prossimità
 //   (:Bottega)-[:ISPIRATA_DA {racconto}]->(:Artista)  -- SEMANTICA, NUOVA: introdotta
-//     perché la Bottega di Liuteria fosse raggiungibile da Puccini per sole
+//     perché una bottega di liuteria fosse raggiungibile da Puccini per sole
 //     connessioni semantiche, senza passare per VICINO (vedi graph/topology.py).
 //   (:Bottega)-[:HA_ABBONAMENTO]->(:Partner)          -- COMMERCIALE, NUOVA
 //     (Wave 3a, marketplace): Partner.abbonamento_attivo è l'UNICA leva che

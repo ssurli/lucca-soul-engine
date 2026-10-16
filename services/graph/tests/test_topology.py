@@ -5,7 +5,7 @@ pertinenti a botteghe, indipendentemente dalla prossimità fisica (`VICINO`).
 
 Diagnosi originale: densità media 2,3 vicini/luogo; 4 vicoli ciechi con un
 solo vicino (`casa-puccini`, `orto-botanico`, `baluardo-san-paolino`,
-`museo-nazionale-guinigi`); la Bottega di Liuteria mai raggiunta dai
+`museo-nazionale-guinigi`); la Bottega di liuteria mai raggiunta dai
 percorsi che partono da Puccini.
 
 N canonico = 3 salti: è la lunghezza massima che riflette ancora la
@@ -100,7 +100,7 @@ def test_puccini_raggiunge_la_bottega_di_liuteria_per_connessioni_semantiche() -
         "artista-puccini", "liuteria-lucchese", relation_types=SEMANTIC_RELATION_TYPES
     )
     assert cammino is not None, (
-        "Puccini non raggiunge la Bottega di Liuteria per sole connessioni semantiche"
+        "Puccini non raggiunge la Bottega di liuteria per sole connessioni semantiche"
     )
     assert len(cammino) <= CANONICAL_MAX_HOPS, (
         f"cammino semantico troppo lungo ({len(cammino)} salti, max {CANONICAL_MAX_HOPS}): "
@@ -181,7 +181,7 @@ def test_grado_semantico_include_il_grado_delle_botteghe_ospitate() -> None:
         # verificato indirettamente controllando che il grado non cali mai
         # sotto quello di un luogo omologo senza botteghe ospitate.
         assert gradi[bottega.place_id] >= 0  # non degenere (vedi test sopra)
-    # Controprova diretta: san-michele-in-foro ospita la Bottega di Liuteria
+    # Controprova diretta: san-michele-in-foro ospita la Bottega di liuteria
     # (EVOCA x3 + ISPIRATA_DA x2 = 5 relazioni semantiche proprie, oltre a
     # quelle del Luogo stesso via LEGATO_A/SI_SVOLGE_A): il suo grado deve
     # essere strettamente maggiore di quello che avrebbe SENZA sommare la
@@ -191,7 +191,7 @@ def test_grado_semantico_include_il_grado_delle_botteghe_ospitate() -> None:
     adiacenza = build_adjacency(SEMANTIC_RELATION_TYPES)
     grado_solo_luogo = len(adiacenza.get("san-michele-in-foro", []))
     assert gradi["san-michele-in-foro"] > grado_solo_luogo, (
-        "il grado della Bottega di Liuteria non si somma a quello del Luogo che la ospita"
+        "il grado della Bottega di liuteria non si somma a quello del Luogo che la ospita"
     )
 
 

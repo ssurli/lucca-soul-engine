@@ -478,6 +478,7 @@ class GraphCandidate(ContractModel):
     # acquistabile". `attribuzione` è SOLO narrazione trasparente nel
     # `reason`, mai input di scoring.
     attribuzione: str | None = None  # es. "Offerta da <bottega>, bottega di <mestiere>."
+    # (+ " (esempio dimostrativo)" prima del punto finale se la bottega è fittizia)
 
 
 class EventoPromosso(ContractModel):

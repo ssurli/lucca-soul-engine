@@ -49,8 +49,20 @@ LEGATO_A = [
 ]
 
 BOTTEGHE = [
-    Bottega("be-bottega-ceramica", "Bottega Esempio di Prova", "ceramica", "be-via-lanterne"),
-    Bottega("be-bottega-stampa", "Stamperia Esempio Inattiva", "stampa", "be-piazza-pozzo"),
+    Bottega(
+        "be-bottega-ceramica",
+        "Bottega Esempio di Prova",
+        "ceramica",
+        "be-via-lanterne",
+        fittizio=True,
+    ),
+    Bottega(
+        "be-bottega-stampa",
+        "Stamperia Esempio Inattiva",
+        "stampa",
+        "be-piazza-pozzo",
+        fittizio=True,
+    ),
 ]
 
 TEMI = [

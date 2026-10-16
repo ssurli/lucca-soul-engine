@@ -2105,3 +2105,38 @@ che aggira entrambi i punti senza toccare il codice di produzione.
 Un solo lettore condiviso (per esempio in `packages/contracts` o un piccolo pacchetto di
 configurazione) con un unico punto di override, e lettura delle `Settings` alla prima richiesta
 invece che all'import di `api.main`.
+
+## Bottega fittizia prenotabile (APERTO)
+
+**Trovato:** 2026-10-16, nel §0 sulle botteghe inventate del seed di Lucca. **Non corretto:** qui è
+solo registrato, con una condizione vincolante.
+
+Le cinque botteghe del seed di Lucca sono dimostrative (`Bottega.fittizio=True`) e la tappa che ne
+propone una lo dichiara nel `reason` («… (esempio dimostrativo).»). Ma `exp-laboratorio-liuteria`
+(bottega `liuteria-lucchese`) resta `prenotabile=True` con `prezzo_eur=15.0`:
+
+- `POST /booking` su quell'esperienza crea un `Booking` e registra un `CommissionRecord` su Neon per
+  una bottega che non esiste;
+- la risposta di `/booking` non porta la disclosure: chi prenota non vede che la bottega è un
+  esempio dimostrativo (la disclosure vive solo nel `reason` dell'itinerario).
+
+Oggi l'esperienza resta prenotabile perché è l'unico caso del seed che copre la prenotazione
+(`services/api/tests/test_booking.py`, `services/graph/tests/test_source.py`); il borgo-esempio
+non ha esperienze prenotabili.
+
+### Condizione vincolante
+
+Prima del Living Lab o di qualunque utente reale, **nessuna esperienza di una bottega fittizia resta
+prenotabile**: `prenotabile=False` sulle esperienze delle botteghe con `fittizio=True` (o un
+vincolo nel dataset che lo impedisca), spostando la copertura della prenotazione su un dataset di
+test (per esempio il borgo-esempio esteso).
+
+### Limite collegato: `fittizio` non è verificato a runtime
+
+`Bottega.fittizio` è obbligatorio (manca → `TypeError`), ma una dataclass non controlla i tipi a
+runtime: un dataset futuro con `fittizio=None` o `0` passerebbe e ricadrebbe nel ramo "reale",
+senza disclosure né nell'attribuzione né nell'export Cypher. Oggi Lucca è coperta da
+`services/graph/tests/test_attribuzione_bottega.py` e mypy rifiuta un valore non bool nei moduli
+dataset tipizzati. Correzione minima indicata dal gate `ethics-guardian` (2026-10-16, non
+bloccante): in `DatasetCitta.__post_init__` rifiutare ogni bottega con `fittizio` non `bool`. Da
+fare prima di scrivere il dataset di una seconda città.

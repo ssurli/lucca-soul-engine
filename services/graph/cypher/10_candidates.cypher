@@ -7,7 +7,7 @@
 // ordina e non applica vincoli etici: quello spetta all'AI Experience
 // Engine, il solo componente che decide.
 //
-// `botteghe_nomi` (dalla relazione OFFRE, fatto COMMERCIALE) è nel
+// `botteghe` (nome, mestiere, fittizio; dalla relazione OFFRE, fatto COMMERCIALE) è nel
 // risultato ma alimenta SOLO `GraphCandidate.attribuzione` (narrazione
 // trasparente nel `reason`), MAI `connessioni`: `connessioni` conta nella
 // componente "sorpresa" dello score del motore, e la presenza di un
@@ -31,6 +31,14 @@
 // l'Experience Engine lo legge come filtro duro booleano in
 // `passa_filtri_duri` (`services/experience-engine`), mai come input di
 // `calcola_score`.
+//
+// `botteghe[].fittizio` (disclosure "esempio dimostrativo" nell'attribuzione)
+// può mancare su un grafo il cui seed non è ancora stato rieseguito dopo
+// l'introduzione della proprietà (Aura Free si cancella dopo 30 giorni di
+// inattività). Il default è `true`: una bottega senza il dato si DICHIARA
+// dimostrativa, mai reale per omissione — come `prenotabile` degrada al
+// default sicuro. Quando nessuna bottega offre l'esperienza, l'OPTIONAL MATCH
+// produce una entry con `nome` nullo: il consumer Python la scarta.
 //
 // Parametri (tutti opzionali: `null` o lista vuota = nessun filtro):
 //   $temi         list[string]   id di Tema da cercare tra quelli evocati
@@ -65,7 +73,8 @@ OPTIONAL MATCH (l)-[vic:VICINO]-(:Luogo {id: $vicino_a})
 OPTIONAL MATCH (bp:Bottega {id: e.partner_id})-[:HA_ABBONAMENTO]->(partner:Partner)
 WITH e, l,
      collect(DISTINCT art.nome) AS artisti_nomi,
-     collect(DISTINCT bot.nome) AS botteghe_nomi,
+     collect(DISTINCT {nome: bot.nome, mestiere: bot.mestiere,
+                       fittizio: coalesce(bot.fittizio, true)}) AS botteghe,
      collect(DISTINCT tema.nome) AS temi_nomi,
      collect(DISTINCT isp.racconto) AS racconti_ispirazione,
      collect(DISTINCT {id: temab.id, nome: temab.nome}) AS temi_bottega,
@@ -93,7 +102,7 @@ RETURN
   coalesce(e.prenotabile, false) AS prenotabile,
   l.nome AS place_nome,
   artisti_nomi,
-  botteghe_nomi,
+  botteghe,
   temi_nomi,
   racconti_ispirazione,
   temi_bottega,

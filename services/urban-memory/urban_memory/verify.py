@@ -105,7 +105,7 @@ def place_id_esempio() -> str:
     """Id d'esempio per `riguarda`: `id_esempio_memoria` del dataset scelto
     da `CITY_SEED` (ambiente > `.env`; assente -> dataset predefinito).
 
-    Deve essere un id REALE del seed del grafo, mai inventato — un id
+    Deve essere un id ESISTENTE nel seed/grafo, mai inventato — un id
     inesistente qui riproduce il bug corretto in `urban_memory.graph_link`
     (nodo :Memoria orfano). Per questo viene dal dataset (validato
     all'import), non da una costante.

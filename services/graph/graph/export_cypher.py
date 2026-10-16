@@ -101,7 +101,7 @@ _RELATION_TYPES_COMMENT = (
     "//   (:Esperienza)-[:EVOCA]->(:Tema)\n"
     "//   (:Bottega)-[:EVOCA]->(:Tema)                      -- SEMANTICA, non di prossimità\n"
     "//   (:Bottega)-[:ISPIRATA_DA {racconto}]->(:Artista)  -- SEMANTICA, NUOVA: introdotta\n"
-    "//     perché la Bottega di Liuteria fosse raggiungibile da Puccini per sole\n"
+    "//     perché una bottega di liuteria fosse raggiungibile da Puccini per sole\n"
     "//     connessioni semantiche, senza passare per VICINO (vedi graph/topology.py).\n"
     "//   (:Bottega)-[:HA_ABBONAMENTO]->(:Partner)          -- COMMERCIALE, NUOVA\n"
     "//     (Wave 3a, marketplace): Partner.abbonamento_attivo è l'UNICA leva che\n"
@@ -138,7 +138,8 @@ def _bottega_statement(bottega) -> str:
         f"MERGE (b:Bottega {{id: {_cypher_str(bottega.id)}}})\n"
         f"SET b.nome = {_cypher_str(bottega.nome)}, "
         f"b.mestiere = {_cypher_str(bottega.mestiere)}, "
-        f"b.place_id = {_cypher_str(bottega.place_id)};"
+        f"b.place_id = {_cypher_str(bottega.place_id)}, "
+        f"b.fittizio = {_cypher_bool(bottega.fittizio)};"
     )
 
 

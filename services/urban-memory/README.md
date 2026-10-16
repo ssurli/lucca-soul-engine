@@ -286,8 +286,8 @@ repo = PostgresMemoryRepository.from_env()   # legge DATABASE_URL dal .env
 `riguarda_check_cypher`/`riguarda_to_cypher` producono solo `(query,
 params)` (pure, non eseguono nulla). `link_to_graph`/`Neo4jMemoryLinker` le
 eseguono davvero contro Neo4j (Aura `neo4j+s://` o locale `bolt://`, dal
-`.env`), ATOMICAMENTE — usa un id REALE del seed (`liuteria-lucchese`, non
-un id inventato: un id inesistente fa sollevare `MemoryLinkError`, per
+`.env`), ATOMICAMENTE — usa un id ESISTENTE nel seed/grafo (`liuteria-lucchese`, bottega
+dimostrativa; non un id inventato: un id inesistente fa sollevare `MemoryLinkError`, per
 design, senza creare nulla):
 
 ```powershell
@@ -298,7 +298,7 @@ from urban_memory import riguarda_to_cypher, Neo4jMemoryLinker, MemoryLinkError
 
 contributo = MemoryContribution(
     id='mem-demo-1', kind=MemoryKind.MESTIERE,
-    riguarda=['liuteria-lucchese'],  # id REALE del seed (services/graph/graph/seed_lucca.py)
+    riguarda=['liuteria-lucchese'],  # id ESISTENTE nel seed/grafo (services/graph/graph/seed_lucca.py)
     contributor_id='voce-del-borgo', contributor_kind=PersonKind.CITTADINO,
     consenso=True, licenza='CC-BY-SA-4.0', creato_il=datetime.now(), curato=True,
 )
@@ -354,8 +354,8 @@ necessaria.
 
 `urban_memory.verify` usa come id d'esempio `id_esempio_memoria` del dataset
 scelto da `CITY_SEED` (`graph.registro.carica_dataset`; assente = dataset
-predefinito, per Lucca `liuteria-lucchese`) — un id REALE del seed del grafo,
-mai inventato. Un `CITY_SEED` non valido fa uscire la CLI con codice 1 e un
+predefinito, per Lucca `liuteria-lucchese`, bottega dimostrativa) — un id ESISTENTE nel seed del
+grafo, mai inventato. Un `CITY_SEED` non valido fa uscire la CLI con codice 1 e un
 messaggio leggibile. Richiede `lucca-graph` installato
 (`pip install -e services/graph`). Se il seed non
 è ancora stato applicato ad Aura, applicalo prima con `python -m

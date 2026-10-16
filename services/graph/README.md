@@ -48,8 +48,8 @@ Aggiungere una città (esempio: `siena`), dalla radice del repo in PowerShell:
 
 1. Scrivi `services\graph\graph\seed_siena.py` con la stessa forma di
    `seed_lucca.py` e un `DATASET = DatasetCitta(nome="siena", ...)`
-   (`id_esempio_memoria` deve essere l'id di una Bottega o di un Luogo reale
-   del dataset).
+   (`id_esempio_memoria` deve essere l'id di una Bottega o di un Luogo ESISTENTE
+   nel dataset).
 2. Imposta `CITY_SEED=siena` nel `.env`.
 3. Genera il Cypher e popola il grafo:
 

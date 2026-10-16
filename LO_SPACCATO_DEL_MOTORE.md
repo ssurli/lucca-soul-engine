@@ -105,7 +105,8 @@ si comincia dalla differenza, si passa ai fatti, si finisce con l'obiezione già
 
 Due pannelli affiancati. A sinistra il catalogo: Musica, Artigianato, Monumenti — scatole che non
 si parlano, e chi ama Puccini non arriverà mai al liutaio. A destra il grafo, col cammino reale
-del seed: *Puccini —ISPIRATA_DA— Bottega di Liuteria —OFFRE— Nasce un violino*. Un salto solo.
+del seed: *Puccini —ISPIRATA_DA— Bottega di liuteria —OFFRE— Un violino nasce*. Un salto solo.
+La bottega è un esempio dimostrativo del seed (`fittizio=True`), non un esercizio reale di Lucca.
 
 **Perché apre il capitolo:** la persona *vede* la differenza invece di sentirsela descrivere,
 e capisce da sola che serve una tecnologia diversa — senza che tu debba nominarla.

@@ -11,6 +11,10 @@ rigenerare il golden. Si corregge il codice, non il JSON.
 UNICA modifica autorizzata: il caso `adapt|onnivoro|pioggia` e' stato aggiornato
 quando `_migliore_alternativa` ha iniziato ad applicare `passa_filtri_duri`
 (exp-torchio-stamperia, partner con abbonamento non attivo, non e' piu' reintrodotta).
+SECONDA modifica autorizzata (2026-10-16), solo in `lucca_itinerari.json` e solo nelle
+stringhe di attribuzione: le botteghe del seed sono dimostrative, rinominate col solo
+mestiere e con attribuzione "(esempio dimostrativo)"; cambiano solo le stringhe
+"Offerta da ..." (47 casi su 58); punteggi invariati (`lucca_punteggi.json` intatto).
 
 Due livelli, entrambi "replay" dei JSON (richiesta/specifica + atteso):
   a) ITINERARI via HTTP del BFF (`POST /itinerary`, `POST /itinerary/adapt`):

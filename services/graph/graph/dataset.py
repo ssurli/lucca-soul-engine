@@ -51,6 +51,9 @@ class Bottega:
     nome: str
     mestiere: str  # "liuteria","ceramica","stampa","pasticceria","tessitura"
     place_id: str  # luogo dove si trova fisicamente la bottega
+    # True = bottega dimostrativa, non un esercizio reale: la disclosure
+    # ("esempio dimostrativo") ne dipende. Obbligatorio, nessun default.
+    fittizio: bool
 
 
 @dataclass(frozen=True)
@@ -129,8 +132,8 @@ class DatasetCitta:
     """Il contenuto completo di una città, nella forma che il motore legge.
 
     `nome` è lo slug (`^[a-z][a-z0-9_-]*$`) con cui il registro risolve il
-    modulo e il file Cypher. `id_esempio_memoria` è l'id REALE di una Bottega
-    o di un Luogo del dataset, usato dalla verifica di Urban Memory come
+    modulo e il file Cypher. `id_esempio_memoria` è l'id di una Bottega o
+    di un Luogo ESISTENTE nel dataset, usato dalla verifica di Urban Memory come
     bersaglio di una memoria di prova: la validazione ne garantisce
     l'esistenza (un id inesistente riprodurrebbe il bug delle memorie
     orfane).

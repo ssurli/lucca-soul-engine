@@ -194,9 +194,12 @@ dimenticato il giorno che il BFF finisce online.
 
 ## 11. Il seed è curato, non validato sul campo
 
-Il seed di Lucca contiene fatti largamente noti e plausibili, riconosciuti da chi conosce la
-città. Ma **nessun liutaio ha confermato di ispirarsi a Puccini**, e le distanze in metri fra i
-luoghi sono stime, non misurazioni.
+I luoghi, gli artisti e i temi del seed di Lucca sono fatti largamente noti, riconosciuti da chi
+conosce la città. **Le cinque botteghe no: sono esempi dimostrativi** (`fittizio=True` nel
+dataset), con nomi che dicono solo il mestiere, e non corrispondono a esercizi reali. Ogni tappa
+che ne propone una lo dichiara nel `reason` («esempio dimostrativo»). Nessuna bottega reale ha
+confermato di ispirarsi a Puccini, e le distanze in metri fra i luoghi sono stime, non
+misurazioni.
 
 Adeguato per un proof of concept. Insufficiente il giorno in cui una persona segue quell'itinerario
 e trova la bottega chiusa.
