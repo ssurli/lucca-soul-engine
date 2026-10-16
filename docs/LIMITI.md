@@ -1934,7 +1934,19 @@ diventa rosso il giorno in cui il motore viene corretto.
 `_migliore_alternativa`); i due `xfail` sono stati rimossi e i due test del borgo sono ora
 test di regressione normali.
 
-## Adattamento senza alternativa: silenzio verso il visitatore (APERTO)
+## Adattamento senza alternativa: silenzio verso il visitatore (CHIUSO 2026-10-16, residuo aperto)
+
+> **CHIUSO (2026-10-16, wave adattamento, `f84b97d` + `e68c704`).** Ogni tappa adattata porta
+> `ItineraryStop.esito_adattamento`; una tappa mantenuta perché nessuna alternativa ammissibile
+> entra (vincoli o budget) ha `mantenuta_senza_alternativa` e una frase nel `reason`, ricavata in
+> un solo punto (`engine._frase_esito`). `adattato_da_segnale` resta False con le sole tappe
+> mantenute (decisione dell'utente: il badge "Riscritta" vale solo per tappe sostituite o
+> tagliate). Golden: `adapt|onnivoro|pioggia` e i casi `adapt-budget|…`.
+> **Residuo aperto:** il resto del `reason` delle tappe mantenute o non toccate è testo rimandato
+> dal client (voce "Adattamento: il `reason` delle tappe mantenute o non toccate è testo del
+> client"); la frase cita "il tempo a disposizione" anche senza budget (voce "La frase della
+> tappa mantenuta cita il tempo anche senza budget"). Il testo sotto descrive lo stato prima
+> della correzione.
 
 **Trovato:** 2026-10-15, dal gate `ethics-guardian` sulla correzione di `_migliore_alternativa`
 (partner con abbonamento non attivo non più reintrodotto in adattamento). **Verdetto:** difetto
@@ -1972,7 +1984,19 @@ esempio un `reason` di tappa dedicato, o un campo di esito dell'adattamento dist
 `adattato_da_segnale`. Passa prima da `contract-keeper`; il caso golden sopra andrà aggiornato
 di conseguenza.
 
-## Orari di apertura verificati solo all'ora del segnale; nessun orario di fine itinerario (APERTO)
+## Orari di apertura verificati solo all'ora del segnale; nessun orario di fine itinerario (PARZIALMENTE CHIUSO 2026-10-16)
+
+> **Parte CHIUSA (2026-10-16, wave adattamento, `e68c704`).** Decisione di prodotto: un itinerario
+> è sempre una sessione nella stessa giornata e il suo orario di fine è la mezzanotte della città
+> (nessuno lo dichiara: né il visitatore né il dataset). Il budget è troncato lì
+> (`engine._minuti_alla_mezzanotte`), in composizione e in adattamento: nessuna tappa finisce dopo
+> le 24:00 e gli orari non si riavvolgono più. L'`Itinerary` porta `tempo_disponibile_min`
+> (dichiarato) e `tempo_effettivo_min` (dopo il tetto); in adattamento le tappe che non entrano
+> vanno in `tappe_escluse` con `tagliata_tetto_giornata`. Test: `test_tetto_giornata.py`; golden:
+> 9 casi `onnivoro`.
+> **Residuo aperto:** gli orari di apertura sono ancora verificati solo all'ora del segnale e non
+> all'arrivo di ciascuna tappa (decisione 2 del 2026-10-16: rimandato; oggi nessuna esperienza
+> del seed dichiara `orari_apertura`). Il testo sotto descrive lo stato prima della correzione.
 
 **Trovato:** 2026-10-15, verifica §0 in sola lettura (nessun codice modificato). **Non corretto:**
 qui è solo registrato, con la domanda di prodotto che va decisa prima di qualunque correzione.
@@ -2035,7 +2059,17 @@ unico passo (punto 3 della voce sugli orari): cambio della pipeline di composizi
 aggiustamento locale. Un tetto di durata o un orario di fine tocca `EmotionalProfile` o `Signal`:
 passa prima da `contract-keeper`, poi `ethics-guardian` (composizione e adattamento).
 
-## Adattamento senza budget: le tappe possono sforare `tempo_disponibile_min` (APERTO)
+## Adattamento senza budget: le tappe possono sforare `tempo_disponibile_min` (CHIUSO 2026-10-16, residuo aperto)
+
+> **CHIUSO (2026-10-16, wave adattamento, `f84b97d` + `e68c704`).** Il budget viaggia
+> nell'`Itinerary` composto (decisione 3) e l'adattamento lo ricopia; in `_migliore_alternativa`
+> un'alternativa entra solo se l'itinerario con la sostituzione resta entro
+> `min(tempo_effettivo_min, minuti alla mezzanotte)`. I 4 adattamenti che sforavano (190/180,
+> 260/240, 300/240, 340/240) nei casi golden `adapt-budget|…` restano entro il budget, e l'harness
+> lo asserisce su ogni caso con budget.
+> **Residuo aperto:** un itinerario senza `tempo_disponibile_min` (JSON precedente al campo) usa
+> ancora il profilo neutro, senza vincolo di budget sulle sostituzioni (voce "Itinerario senza
+> budget"). Il testo sotto descrive lo stato prima della correzione.
 
 **Trovato:** 2026-10-15, dal gate `test-engineer` sul fix del budget oltre mezzanotte; fatti
 verificati in sola lettura dall'orchestratore. **Non corretto, non riprodotto con un test:** qui è
@@ -2180,7 +2214,19 @@ dataset tipizzati. Correzione minima indicata dal gate `ethics-guardian` (2026-1
 bloccante): in `DatasetCitta.__post_init__` rifiutare ogni bottega con `fittizio` non `bool`. Da
 fare prima di scrivere il dataset di una seconda città.
 
-## Connessioni diverse tra seed in memoria e Neo4j: il `reason` dipende dalla sorgente (APERTO)
+## Connessioni diverse tra seed in memoria e Neo4j: il `reason` dipende dalla sorgente (CHIUSO 2026-10-16)
+
+> **CHIUSO (2026-10-16, wave adattamento, `b2269be`).** Un solo helper di frasi e ordine
+> (`services/graph/graph/connessioni.py`) per `SeedCandidateSource` e `Neo4jCandidateSource`:
+> artisti per nome, temi nell'ordine di `esperienza.temi`, racconti per artista, temi della bottega
+> per id, "già visitato" per ultimo (ora anche su Neo4j). Test di uguaglianza su un Record finto
+> con liste mescolate (`test_connessioni_uguali.py`); la scelta della bottega per l'attribuzione è
+> deterministica anche su Neo4j. `lucca_punteggi.json` invariato. Attribuzione senza ripetizioni
+> ("Offerta da Pasticceria (esempio dimostrativo).").
+> **Residuo:** la query non è ancora stata eseguita su Aura dopo il cambio di
+> `10_candidates.cypher` (nessun comando contro Aura nella wave); le tappe mantenute o non toccate
+> conservano il testo ricevuto dal client, quindi un `reason` vecchio può ancora mostrare la
+> connessione precedente. Il testo sotto descrive lo stato prima della correzione.
 
 **Trovato:** 2026-10-16, dalla prova end-to-end sul percorso Aura dopo il commit `f90f601`
 (botteghe dimostrative): `POST /itinerary` sul BFF collegato ad Aura, profilo del caso golden
@@ -2267,3 +2313,40 @@ lunghezza massima, e `AdaptRequest` trasporta l'itinerario intero. Un client pu�
 grandi: il motore le percorre tutte (e `_unisci_escluse` accumula `tappe_escluse` senza tetto), con
 costo di CPU e memoria proporzionale. Una correzione possibile è un `max_length` sui due campi nel
 contratto (passando da `contract-keeper`) o un limite sulla dimensione del corpo nel BFF.
+
+## La frase della tappa mantenuta cita il tempo anche senza budget (APERTO)
+
+**Trovato:** 2026-10-16, dal gate `ethics-guardian` sulla wave adattamento. **Non corretto**, per
+decisione dell'utente: qui è solo registrato.
+
+La frase di `mantenuta_senza_alternativa` (`engine._frase_esito`) dice sempre "compatibile con
+questo percorso e con il tempo a disposizione". Con un itinerario senza `tempo_disponibile_min`
+(ramo senza budget, voce "Itinerario senza budget") il tempo non è stato un vincolo: la frase non
+è falsa (nessuna alternativa soddisfa i vincoli), ma cita un vincolo che non ha pesato. Caso
+golden: `adapt|onnivoro|pioggia` (richiesta senza budget).
+
+Correzione minima: una variante della frase senza il riferimento al tempo quando l'adattamento non
+ha budget. Cambierebbe i casi golden di retrocompatibilità `adapt|…` con tappe mantenute.
+
+## Sostituzione rifiutata quando l'itinerario supera già il limite (APERTO)
+
+**Trovato:** 2026-10-16, dal gate `ethics-guardian` sulla wave adattamento (segnalato anche da
+`experience-engine`). **Non corretto**, per decisione dell'utente: primo candidato della prossima
+wave in `docs/BUILD_PLAN.md`.
+
+In `adapt_itinerary` un'alternativa entra solo se l'itinerario con la sostituzione resta entro
+`min(tempo_effettivo_min, minuti alla mezzanotte)` (`engine._sostituzione_nel_budget`). Se il
+costo dell'itinerario supera GIÀ il limite (tipicamente un segnale che arriva tardi), il predicato
+rifiuta anche un'alternativa più corta: la tappa resta `mantenuta_senza_alternativa` e poi il tetto
+della giornata taglia la coda. Una tappa in un luogo affollato può quindi restare in programma
+mentre un'alternativa più breve e più tranquilla avrebbe alleggerito il flusso.
+
+**Contraddice la tesi** "Pertinenza **vincolata** alla distribuzione dei flussi" di
+`docs/POSIZIONAMENTO_COMPETITIVO.md` (tabella del confronto, riga "Funzione obiettivo"): qui il
+vincolo di budget prevale sulla distribuzione dei flussi in un caso in cui non serviva. Il
+comportamento è dichiarato al visitatore dalla frase della tappa mantenuta, ma resta in contrasto
+con la tesi finché non è corretto.
+
+Correzione proposta: ammettere la sostituzione se il costo non peggiora, cioè
+`costo(ipotesi) <= max(limite, costo(itinerario corrente))`. Passa da `experience-engine`, poi
+`test-engineer` (golden) ed `ethics-guardian`.

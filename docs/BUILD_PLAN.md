@@ -379,24 +379,28 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   È la prova di scalabilità su cui poggia l'intero investment case.
 
 ## Candidati per la prossima wave  *(registrati, NON pianificati né implementati)*
-Due voci aperte in `docs/LIMITI.md`, entrambe sul motore di composizione/adattamento. Nessuna è
-assegnata: prima serve la decisione di prodotto, poi `contract-keeper` (contratto) →
-`experience-engine` → `test-engineer` → `ethics-guardian`.
-- **Spiegabilità dell'adattamento** — voce "Adattamento senza alternativa: silenzio verso il
-  visitatore". Quando non esiste un'alternativa ammissibile la tappa resta muta e
-  `adattato_da_segnale=False` è ambiguo ("niente da fare" vs "non ho potuto"). Caso golden:
-  `adapt|onnivoro|pioggia`. Nello stesso candidato la voce "Adattamento senza budget": oggi
-  `AdaptRequest` non porta profilo né budget, l'adattamento usa `_profilo_neutro()`
-  (`tempo_disponibile_min=10_000`) e una sostituzione può sforare il budget del visitatore.
-  Entrambe toccano lo stesso contratto (`AdaptRequest` / esito dell'adattamento): un solo
-  passaggio da `contract-keeper`.
-- **Orari all'arrivo e orario di fine itinerario** — voce "Orari di apertura verificati solo
-  all'ora del segnale; nessun orario di fine itinerario". Domanda di prodotto aperta: l'itinerario
-  è sempre una sessione nella stessa giornata, e chi dichiara l'orario di fine?
-  `tempo_disponibile_min` non ha tetto e oltre mezzanotte gli orari si riavvolgono.
+Voci aperte in `docs/LIMITI.md`. Nessuna è assegnata: prima la decisione di prodotto, poi
+`contract-keeper` se tocca il contratto → `experience-engine` → `test-engineer` → `ethics-guardian`.
+1. **Sostituzione ammessa se il costo non peggiora** — voce "Sostituzione rifiutata quando
+   l'itinerario supera già il limite". Oggi, se l'itinerario supera già
+   `min(tempo_effettivo_min, minuti alla mezzanotte)`, l'adattamento rifiuta anche un'alternativa
+   più corta e più tranquilla: contraddice la tesi "pertinenza vincolata alla distribuzione dei
+   flussi" di `docs/POSIZIONAMENTO_COMPETITIVO.md`. Correzione proposta:
+   `costo(ipotesi) <= max(limite, costo(itinerario corrente))`. Cambia il golden in modo
+   controllato.
+2. **Orari all'arrivo di ogni tappa** — residuo della voce "Orari di apertura verificati solo
+   all'ora del segnale" (decisione 2 del 2026-10-16: rimandato finché nessuna esperienza dichiara
+   `orari_apertura`).
+3. **Frase della tappa mantenuta senza budget** — voce "La frase della tappa mantenuta cita il
+   tempo anche senza budget".
 
-### Decisioni di prodotto per la wave sull'adattamento (confermate il 2026-10-16)
-Wave da lanciare in una sessione nuova di Claude Code, con il §0 nel prompt. Ordine dei gate:
+### Decisioni di prodotto per la wave sull'adattamento (confermate il 2026-10-16) — ATTUATE
+**→ Wave adattamento CHIUSA** (2026-10-16, ramo `wave-adattamento`): contratti `f84b97d`, engine
+`e68c704` + `11c163c` (disclosure unica), graph `b2269be`, app `8f268ec`; golden rigenerato una
+volta (58 casi con richieste invariate + 16 `adapt-budget|…`), ogni differenza attribuita a una
+decisione con 0 casi non attribuiti, `lucca_punteggi.json` invariato. Gate: `test-engineer` verde,
+`ethics-guardian` PASS con osservazioni non bloccanti (corrette o registrate in `docs/LIMITI.md`).
+Wave lanciata in una sessione di Claude Code, con il §0 nel prompt. Ordine dei gate:
 `contract-keeper` (punti 3 e 4 in un solo passaggio) → `experience-engine` / `graph-architect` →
 `test-engineer` → `ethics-guardian`. Il golden cambia in modo controllato.
 1. **Un itinerario è sempre una sessione nella stessa giornata.** Il tetto è la mezzanotte della
