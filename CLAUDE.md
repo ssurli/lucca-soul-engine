@@ -161,8 +161,17 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
 - Se un comando può non esistere, verificalo con `Get-Command` prima di usarlo: un comando
   inesistente non imposta `$LASTEXITCODE`.
 - TLS dietro proxy aziendale: `pip install pip-system-certs` (vedi `README.md`).
-- PS 5.1 mostra il JSON UTF-8 come Latin-1 (`Ã¨` per `è`): è solo visualizzazione, il dato è
-  corretto.
+- PS 5.1 e il JSON UTF-8 (`Ã¨` per `è`). In **lettura** è solo visualizzazione: il dato sul server
+  è corretto. Ma `Invoke-RestMethod` di PS 5.1 **decodifica come Latin-1** le risposte
+  `application/json` senza `charset`: un dato letto così e **rimandato** a un altro endpoint (es. la
+  risposta di `/itinerary` reinviata a `/itinerary/adapt`) arriva corrotto. Il BFF dichiara
+  `charset=utf-8` (`Utf8JSONResponse` in `services/api/api/main.py`); per qualunque altra risposta
+  senza charset, nei test con andata e ritorno leggi i byte e decodificali come UTF-8:
+  ```powershell
+  $w = Invoke-WebRequest "http://127.0.0.1:8000/itinerary" -Method Post -ContentType "application/json; charset=utf-8" -Body ([Text.Encoding]::UTF8.GetBytes($corpoJson)) -UseBasicParsing
+  $itinerario = [Text.Encoding]::UTF8.GetString($w.RawContentStream.ToArray()) | ConvertFrom-Json
+  ```
+  E invia sempre il corpo come byte UTF-8 (`[Text.Encoding]::UTF8.GetBytes(...)`), non come stringa.
 - Aura Free si cancella dopo 30 giorni: procedura in `services/urban-memory/README.md`,
   sezione "Aura cancellata".
 - Messaggi di commit con virgolette o accenti:
