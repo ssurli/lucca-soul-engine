@@ -2140,3 +2140,42 @@ senza disclosure né nell'attribuzione né nell'export Cypher. Oggi Lucca è cop
 dataset tipizzati. Correzione minima indicata dal gate `ethics-guardian` (2026-10-16, non
 bloccante): in `DatasetCitta.__post_init__` rifiutare ogni bottega con `fittizio` non `bool`. Da
 fare prima di scrivere il dataset di una seconda città.
+
+## Connessioni diverse tra seed in memoria e Neo4j: il `reason` dipende dalla sorgente (APERTO)
+
+**Trovato:** 2026-10-16, dalla prova end-to-end sul percorso Aura dopo il commit `f90f601`
+(botteghe dimostrative): `POST /itinerary` sul BFF collegato ad Aura, profilo del caso golden
+`compose|ama-arte|sereno`. **Non corretto:** qui è solo registrato. Le tappe coincidono con il
+golden; cambiano solo alcuni `reason`.
+
+| Esperienza | Golden (seed in memoria) | Aura (Neo4j) |
+|---|---|---|
+| `exp-facciata-san-michele` | «Giacomo Puccini è legato a Chiesa di San Michele in Foro» | «Giacomo Puccini è legato a questo luogo» |
+| `exp-mosaico-san-frediano` | «Evoca il tema "Arte"» | «Evoca il tema "Medievale"» |
+
+### Cause
+
+1. **Frasi diverse (verificato nel codice).** Le due sorgenti costruiscono le connessioni con
+   testi propri: `services/graph/graph/source.py:173` (seed in memoria,
+   `f"{artista.nome} è legato a {luogo.nome}."`) e `source.py:314` (Neo4j,
+   `f"{nome} è legato a questo luogo."`).
+2. **Ordine non garantito (probabile, non riprodotto).** Il `reason` usa solo
+   `connessioni[0]` (`services/rag/rag/reasons.py:128`, `services/experience-engine/experience_engine/engine.py:85`
+   e `:862`). Su Neo4j le liste vengono da `collect(DISTINCT …)`
+   (`services/graph/cypher/10_candidates.cypher:75-80`) senza `ORDER BY`: l'ordine dei temi non è
+   garantito. La richiesta non è stata ripetuta per vedere se varia tra esecuzioni.
+
+### Perché conta
+
+Un `reason` che cambia senza che cambino i dati è più difficile da sottoporre a verifica da parte
+di un'amministrazione. Il golden prova il percorso in memoria, non quello di produzione.
+
+### Correzione minima (decisa il 2026-10-16, nella wave sull'adattamento)
+
+- ordinamento esplicito delle connessioni (`ORDER BY` prima del `collect` nella query, o
+  ordinamento in Python, identico per le due sorgenti);
+- un solo helper di frasi condiviso tra le due sorgenti, come per l'attribuzione
+  (`services/graph/graph/attribuzione.py`); nello stesso passo l'attribuzione tautologica
+  («Pasticceria, bottega di pasticceria»).
+
+Il golden va rigenerato in modo controllato.

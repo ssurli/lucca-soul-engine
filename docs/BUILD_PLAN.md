@@ -395,6 +395,24 @@ assegnata: prima serve la decisione di prodotto, poi `contract-keeper` (contratt
   è sempre una sessione nella stessa giornata, e chi dichiara l'orario di fine?
   `tempo_disponibile_min` non ha tetto e oltre mezzanotte gli orari si riavvolgono.
 
+### Decisioni di prodotto per la wave sull'adattamento (confermate il 2026-10-16)
+Wave da lanciare in una sessione nuova di Claude Code, con il §0 nel prompt. Ordine dei gate:
+`contract-keeper` (punti 3 e 4 in un solo passaggio) → `experience-engine` / `graph-architect` →
+`test-engineer` → `ethics-guardian`. Il golden cambia in modo controllato.
+1. **Un itinerario è sempre una sessione nella stessa giornata.** Il tetto è la mezzanotte della
+   città e il budget viene troncato lì (l'onboarding produce 120 minuti di default; il problema
+   nasce solo da client che chiamano l'API direttamente).
+2. **Orari all'arrivo di ogni tappa: rimandati.** Nessuna esperienza ha `orari_apertura`; le uniche
+   candidate sono ora dichiaratamente dimostrative.
+3. **Budget registrato nell'`Itinerary` composto**, non nell'`AdaptRequest`: resta legato
+   all'itinerario e non obbliga a rimandare l'intero profilo.
+4. **Esito dell'adattamento per tappa** (per esempio «segnale valutato, mantenuta: nessuna
+   alternativa ammissibile»): un segnale può toccare più tappe con esiti diversi. Caso di prova
+   `adapt|onnivoro|pioggia`.
+5. **Allineare le connessioni tra seed e Neo4j** (frasi e ordine) — voce "Connessioni diverse tra
+   seed in memoria e Neo4j" in `docs/LIMITI.md`; sistema anche l'attribuzione tautologica
+   («Pasticceria, bottega di pasticceria»).
+
 ---
 
 ## KICKOFF — Modo A (guidato, consigliato)
