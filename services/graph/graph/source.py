@@ -49,6 +49,7 @@ from contracts import ExperienceNode, GraphCandidate, Partner, VisitorContext
 from neo4j import Driver, GraphDatabase, Record
 
 from graph.attribuzione import testo_attribuzione
+from graph.connessioni import frasi_connessioni
 from graph.dataset import Artista, Bottega, DatasetCitta, Luogo, Tema
 from graph.errors import translate_driver_errors
 from graph.registro import dataset_attivo
@@ -166,49 +167,32 @@ class SeedCandidateSource:
     def _connessioni(
         self, esperienza: ExperienceNode, luogo: Luogo, riferimento: str | None
     ) -> list[str]:
-        frasi: list[str] = []
-
-        for artista_id in self._artisti_per_luogo.get(luogo.id, []):
-            artista = self._artisti[artista_id]
-            frasi.append(f"{artista.nome} è legato a {luogo.nome}.")
-
-        for tema_id in esperienza.temi:
-            tema = self._temi.get(tema_id)
-            if tema is not None:
-                frasi.append(f'Evoca il tema "{tema.nome}".')
-
+        artisti_nomi = [self._artisti[a].nome for a in self._artisti_per_luogo.get(luogo.id, [])]
+        racconti: list[tuple[str, str]] = []
+        temi_bottega: list[tuple[str, str]] = []
         if esperienza.partner_id is not None:
-            frasi.extend(self._catena_semantica_bottega(esperienza.partner_id, esperienza.temi))
+            racconti = list(self._bottega_ispirata_da.get(esperienza.partner_id, []))
+            for tema_id in self._bottega_evoca.get(esperienza.partner_id, []):
+                tema = self._temi.get(tema_id)
+                if tema is not None:
+                    temi_bottega.append((tema_id, tema.nome))
 
+        vicinanza: tuple[int, str] | None = None
         if riferimento is not None and riferimento != luogo.id:
             luogo_riferimento = self._luoghi.get(riferimento)
-            if luogo_riferimento is not None:
-                for vicino_id, metri in self._vicini.get(luogo.id, []):
-                    if vicino_id == riferimento:
-                        frasi.append(f"A {metri} m da {luogo_riferimento.nome}, già visitato.")
-                        break
+            metri_vicino = [m for v, m in self._vicini.get(luogo.id, []) if v == riferimento]
+            if luogo_riferimento is not None and metri_vicino:
+                vicinanza = (min(metri_vicino), luogo_riferimento.nome)
 
-        return frasi
-
-    def _catena_semantica_bottega(self, bottega_id: str, temi_esperienza: list[str]) -> list[str]:
-        """Fatti SEMANTICI della bottega (`ISPIRATA_DA`, `EVOCA`): non fatti
-        commerciali (quello è `_attribuzione`). Sono ciò che rende
-        percorribile "Puccini -> ... -> liutaio -> violino" per sole
-        connessioni di significato (vedi `graph.topology`). Non duplica i
-        temi che l'esperienza evoca già."""
-        frasi: list[str] = []
-
-        for _artista_id, racconto in self._bottega_ispirata_da.get(bottega_id, []):
-            frasi.append(racconto)
-
-        for tema_id in self._bottega_evoca.get(bottega_id, []):
-            if tema_id in temi_esperienza:
-                continue
-            tema = self._temi.get(tema_id)
-            if tema is not None:
-                frasi.append(f'La bottega evoca anche il tema "{tema.nome}".')
-
-        return frasi
+        return frasi_connessioni(
+            luogo_nome=luogo.nome,
+            artisti_nomi=artisti_nomi,
+            temi_esperienza=esperienza.temi,
+            nomi_temi={t.id: t.nome for t in self._temi.values()},
+            racconti_ispirazione=racconti,
+            temi_bottega=temi_bottega,
+            riferimento=vicinanza,
+        )
 
     def _attribuzione(self, esperienza: ExperienceNode) -> str | None:
         """Fatto commerciale trasparente ("chi offre l'esperienza"), separato
@@ -284,10 +268,10 @@ class Neo4jCandidateSource:
         }
         with translate_driver_errors(), self._driver.session(database=self._database) as session:
             records = list(session.run(self._query, params))
-        return [self._to_candidate(record) for record in records]
+        return [self._to_candidate(record, vicino_a) for record in records]
 
     @staticmethod
-    def _to_candidate(record: Record) -> GraphCandidate:
+    def _to_candidate(record: Record, vicino_a: str | None = None) -> GraphCandidate:
         esperienza = ExperienceNode(
             id=record["id"],
             titolo=record["titolo"],
@@ -308,26 +292,40 @@ class Neo4jCandidateSource:
             # §2): si copia il valore così come scritto dal seed.
             prenotabile=record["prenotabile"],
         )
-        connessioni: list[str] = []
-        for nome in record["artisti_nomi"] or []:
-            if nome:
-                connessioni.append(f"{nome} è legato a questo luogo.")
-        for nome in record["temi_nomi"] or []:
-            if nome:
-                connessioni.append(f'Evoca il tema "{nome}".')
-        # `racconti_ispirazione` (ISPIRATA_DA) e `temi_bottega` (EVOCA
-        # Bottega->Tema) sono fatti SEMANTICI, non commerciali: entrano in
-        # `connessioni` come qualunque altro fatto del grafo (vedi docstring
-        # di modulo). Filtrano i duplicati con i temi già evocati da `e`.
-        for racconto in record["racconti_ispirazione"] or []:
-            if racconto:
-                connessioni.append(racconto)
-        temi_esperienza = set(record["temi"] or [])
-        for entry in record["temi_bottega"] or []:
-            tema_id = entry.get("id") if entry else None
-            tema_nome = entry.get("nome") if entry else None
-            if tema_id and tema_nome and tema_id not in temi_esperienza:
-                connessioni.append(f'La bottega evoca anche il tema "{tema_nome}".')
+        # Fatti SEMANTICI (artisti, temi, `ISPIRATA_DA`, `EVOCA` della bottega) e
+        # prossimità al luogo già visitato: testo e ORDINE sono imposti da
+        # `graph.connessioni`, identici al seed per costruzione (la query non
+        # garantisce alcun ordine nei `collect`).
+        nomi_temi = {t["id"]: t["nome"] for t in record["temi_evocati"] or [] if t and t["nome"]}
+        racconti = [
+            (r["artista_id"], r["racconto"])
+            for r in record["racconti_ispirazione"] or []
+            if r and r["racconto"]
+        ]
+        temi_bottega = [
+            (t["id"], t["nome"])
+            for t in record["temi_bottega"] or []
+            if t and t["id"] and t["nome"]
+        ]
+        metri = record["distanza_m"]
+        nome_riferimento = record["riferimento_nome"]
+        vicinanza = (
+            (metri, nome_riferimento)
+            if metri is not None
+            and nome_riferimento
+            and vicino_a is not None
+            and record["place_id"] != vicino_a
+            else None
+        )
+        connessioni = frasi_connessioni(
+            luogo_nome=record["place_nome"],
+            artisti_nomi=[n for n in record["artisti_nomi"] or [] if n],
+            temi_esperienza=list(record["temi"] or []),
+            nomi_temi=nomi_temi,
+            racconti_ispirazione=racconti,
+            temi_bottega=temi_bottega,
+            riferimento=vicinanza,
+        )
         # `botteghe` NON entra in `connessioni` (contate nello score del
         # motore): alimenta solo `attribuzione`, fatto commerciale separato e
         # non conteggiato — "nessuno spazio è acquistabile".

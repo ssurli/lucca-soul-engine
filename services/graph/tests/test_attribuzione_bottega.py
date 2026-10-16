@@ -63,10 +63,11 @@ def _record(esp_id: str, botteghe: list[dict[str, Any]] | None = None) -> dict[s
         "place_nome": luogo.nome,
         "artisti_nomi": [],
         "botteghe": botteghe,
-        "temi_nomi": [],
+        "temi_evocati": [],
         "racconti_ispirazione": [],
         "temi_bottega": [],
         "distanza_m": None,
+        "riferimento_nome": None,
         "partner_abbonamento_attivo": True,
     }
 
@@ -97,7 +98,7 @@ def test_fittizio_assente_nella_entry_implica_disclosure() -> None:
     )
     cand = Neo4jCandidateSource._to_candidate(rec)  # type: ignore[arg-type]
     assert cand.attribuzione == (
-        "Offerta da Bottega di liuteria, bottega di liuteria (esempio dimostrativo)."
+        "Offerta da Bottega di liuteria (esempio dimostrativo)."
     )
 
 

@@ -20,6 +20,13 @@
 // rende raggiungibile, per sole relazioni di significato, il percorso
 // "Puccini -> ... -> liutaio -> violino" (vedi graph/topology.py).
 //
+// ORDINE: i `collect` non sono ordinati e non serve: l'ordine canonico delle
+// `connessioni` lo impone `graph.connessioni.frasi_connessioni` in Python,
+// identico al seed. `temi_evocati` e `racconti_ispirazione` portano gli id
+// (tema, artista) necessari a quell'ordinamento; `distanza_m` e
+// `riferimento_nome` (nome del luogo `$vicino_a`, null senza VICINO)
+// alimentano la frase "A N m da X, già visitato.".
+//
 // `partner_abbonamento_attivo` (Wave 3a, marketplace — `docs/DATA_CONTRACTS.md`
 // §5) è un JOIN puro: legge `Partner.abbonamento_attivo` risalendo dalla
 // Bottega referenziata da `e.partner_id` via `HA_ABBONAMENTO`, MAI logica di
@@ -67,18 +74,19 @@ WHERE ($temi IS NULL OR size($temi) = 0
 OPTIONAL MATCH (art:Artista)-[:LEGATO_A]->(l)
 OPTIONAL MATCH (bot:Bottega)-[:OFFRE]->(e)
 OPTIONAL MATCH (e)-[:EVOCA]->(tema:Tema)
-OPTIONAL MATCH (bot)-[isp:ISPIRATA_DA]->(:Artista)
+OPTIONAL MATCH (bot)-[isp:ISPIRATA_DA]->(ispart:Artista)
 OPTIONAL MATCH (bot)-[:EVOCA]->(temab:Tema)
-OPTIONAL MATCH (l)-[vic:VICINO]-(:Luogo {id: $vicino_a})
+OPTIONAL MATCH (l)-[vic:VICINO]-(rif:Luogo {id: $vicino_a})
 OPTIONAL MATCH (bp:Bottega {id: e.partner_id})-[:HA_ABBONAMENTO]->(partner:Partner)
 WITH e, l,
      collect(DISTINCT art.nome) AS artisti_nomi,
      collect(DISTINCT {nome: bot.nome, mestiere: bot.mestiere,
                        fittizio: coalesce(bot.fittizio, true)}) AS botteghe,
-     collect(DISTINCT tema.nome) AS temi_nomi,
-     collect(DISTINCT isp.racconto) AS racconti_ispirazione,
+     collect(DISTINCT {id: tema.id, nome: tema.nome}) AS temi_evocati,
+     collect(DISTINCT {artista_id: ispart.id, racconto: isp.racconto}) AS racconti_ispirazione,
      collect(DISTINCT {id: temab.id, nome: temab.nome}) AS temi_bottega,
      min(vic.metri) AS distanza_m,
+     head(collect(DISTINCT rif.nome)) AS riferimento_nome,
      collect(DISTINCT partner.abbonamento_attivo) AS abbonamenti_partner
 RETURN
   e.id AS id,
@@ -103,10 +111,11 @@ RETURN
   l.nome AS place_nome,
   artisti_nomi,
   botteghe,
-  temi_nomi,
+  temi_evocati,
   racconti_ispirazione,
   temi_bottega,
   distanza_m,
+  riferimento_nome,
   CASE WHEN size(abbonamenti_partner) = 0 THEN true ELSE abbonamenti_partner[0] END
     AS partner_abbonamento_attivo
 ORDER BY e.id
