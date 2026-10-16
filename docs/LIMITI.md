@@ -2350,3 +2350,21 @@ con la tesi finché non è corretto.
 Correzione proposta: ammettere la sostituzione se il costo non peggiora, cioè
 `costo(ipotesi) <= max(limite, costo(itinerario corrente))`. Passa da `experience-engine`, poi
 `test-engineer` (golden) ed `ethics-guardian`.
+
+## L'app non ha nomi leggibili delle tappe: schede e note mostrano lo slug (APERTO)
+
+**Trovato:** 2026-10-16, dal gate `ethics-guardian` sulla wave adattamento (le note "Rimaste fuori
+oggi" mostravano righe identiche per tappe tagliate per lo stesso motivo); verificato in sola
+lettura da `frontend-engineer`. **Non corretto**, per decisione dell'utente.
+
+Né `ItineraryStop` né `TappaEsclusa` portano un titolo leggibile
+(`packages/contracts/contracts/models.py`), e il BFF non espone un catalogo delle esperienze. Le
+schede delle tappe (`_StopCard` in `apps/lucca_soul_app/lib/screens/itinerary_screen.dart`)
+mostrano lo slug `experience_id` (es. `exp-passeggiata-mura`); le note "Rimaste fuori oggi"
+mettono lo stesso slug davanti al `reason`, così le righe si distinguono, senza euristiche sullo
+slug e senza cambi di contratto.
+
+Correzione proposta (candidato in `docs/BUILD_PLAN.md`): un campo `titolo` dell'esperienza in
+`ItineraryStop` e `TappaEsclusa`, riempito dal grafo, da fare insieme alla prima esecuzione
+dell'app (voce sulle cartelle piattaforma assenti), quando le schermate si vedranno a schermo.
+Cambia il golden (campo nuovo in tutti i casi).

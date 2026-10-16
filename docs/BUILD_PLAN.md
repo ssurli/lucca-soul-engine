@@ -393,6 +393,10 @@ Voci aperte in `docs/LIMITI.md`. Nessuna è assegnata: prima la decisione di pro
    `orari_apertura`).
 3. **Frase della tappa mantenuta senza budget** — voce "La frase della tappa mantenuta cita il
    tempo anche senza budget".
+4. **Titolo dell'esperienza in `ItineraryStop` e `TappaEsclusa`, riempito dal grafo**, insieme
+   alla prima esecuzione dell'app (cartelle piattaforma assenti, `flutter run` senza target) —
+   voce "L'app non ha nomi leggibili delle tappe". Oggi schede e note mostrano lo slug
+   `experience_id`. Passa da `contract-keeper`; cambia il golden.
 
 ### Decisioni di prodotto per la wave sull'adattamento (confermate il 2026-10-16) — ATTUATE
 **→ Wave adattamento CHIUSA** (2026-10-16, ramo `wave-adattamento`): contratti `f84b97d`, engine

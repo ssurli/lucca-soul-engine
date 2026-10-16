@@ -8,6 +8,7 @@ import '../models/person_kind.dart';
 import '../models/signal.dart';
 import '../models/visitor_context.dart';
 import '../util/app_strings.dart';
+import '../util/excluded_stop_line.dart';
 import '../util/itinerary_diff.dart';
 import '../util/known_places.dart';
 import '../util/signal_presets.dart';
@@ -195,7 +196,7 @@ class _TappeEscluseNote extends StatelessWidget {
           for (final t in escluse)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(t.reason, style: textTheme.bodySmall),
+              child: Text(rigaTappaEsclusa(t), style: textTheme.bodySmall),
             ),
         ],
       ),
