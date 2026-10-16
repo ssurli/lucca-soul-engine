@@ -2218,3 +2218,52 @@ di un'amministrazione. Il golden prova il percorso in memoria, non quello di pro
   («Pasticceria, bottega di pasticceria»).
 
 Il golden va rigenerato in modo controllato.
+
+## Adattamento: il `reason` delle tappe mantenute o non toccate è testo del client (APERTO)
+
+**Trovato:** 2026-10-16, wave "adattamento", nella correzione della doppia disclosure partner.
+**Non corretto in questa wave:** qui è solo registrato.
+
+### Cosa succede
+
+`POST /itinerary/adapt` riceve l'itinerario intero in `AdaptRequest`, `reason` compresi. Per le
+tappe mantenute (`MANTENUTA_SENZA_ALTERNATIVA`) o non toccate (`NON_TOCCATA`) il motore
+(`adapt_itinerary` in `services/experience-engine/experience_engine/engine.py`) conserva il
+`reason` ricevuto e il BFF lo restituisce senza rigenerarlo. Il motore ricalcola soltanto:
+
+- la frase di esito (`_frase_esito`; quella di un adattamento precedente è tolta da
+  `_senza_frase_esito`);
+- la disclosure partner (`_con_disclosure`): l'ultima frase che inizia con "Offerta da " è
+  sostituita con l'attribuzione del candidato corrente del grafo, o tolta se il partner non c'è più;
+  una sola disclosure, sempre ultima. Vale solo per le tappe con un candidato reale.
+
+Le tappe la cui esperienza non è tra i candidati (fluttuanti, eventi promossi, esperienze non
+restituite dalla sorgente) restano intatte, disclosure compresa: non si riscrive al buio.
+
+### Cosa NON è garantito
+
+- Il resto del `reason` di quelle tappe può essere qualunque testo inviato dal client: il motore non
+  verifica che sia quello che aveva composto, e un client può far tornare indietro un testo
+  modificato.
+- Una disclosure nel formato precedente su una tappa senza candidato resta quella ricevuta.
+- La frase "Offerta da " è riconosciuta dal suo inizio; se non coincide con l'attribuzione corrente,
+  finisce al primo punto seguito da spazio. Un nome di bottega con un punto interno seguito da spazio
+  (per esempio "S.r.l. "), in un formato vecchio, verrebbe tagliato lì. Nessun dataset attuale ne ha.
+- Se il `reason` ricevuto contiene più frasi "Offerta da " (per esempio prodotte dal difetto
+  corretto), solo l'ultima è sostituita.
+
+### Cosa servirebbe
+
+Rigenerare il `reason` dal grafo anche per le tappe mantenute o non toccate (stesso `reason_fn`
+della composizione), oppure firmare il `reason` composto dal BFF e rifiutare quelli modificati.
+
+## `/itinerary/adapt`: nessun limite di lunghezza su `stops` e `tappe_escluse` (APERTO)
+
+**Trovato:** 2026-10-16, wave "adattamento". **Nessuna correzione ora (decisione dell'utente del
+2026-10-16).**
+
+Nel contratto (`packages/contracts`) `Itinerary.stops` e `Itinerary.tappe_escluse` non hanno una
+lunghezza massima, e `AdaptRequest` trasporta l'itinerario intero. Un client può inviare liste molto
+grandi: il motore le percorre tutte (e `_unisci_escluse` accumula `tappe_escluse` senza tetto), con
+costo di CPU e memoria proporzionale. Una correzione possibile è un `max_length` sui due campi nel
+contratto (passando da `contract-keeper`) o un limite sulla dimensione del corpo nel BFF.

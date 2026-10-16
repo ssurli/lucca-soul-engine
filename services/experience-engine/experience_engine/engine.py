@@ -151,24 +151,81 @@ def _tema_primario(candidate: GraphCandidate) -> str:
     return temi[0] if temi else ""
 
 
-def _con_disclosure(reason: str, candidate: GraphCandidate) -> str:
-    """Appende l'attribuzione del partner (se presente) IN CODA al `reason`.
+#: Inizio della frase di attribuzione (formato di `graph.attribuzione`, tutte
+#: le versioni): è ciò che riconosce una disclosure nel `reason`.
+_PREFISSO_ATTRIBUZIONE = "Offerta da "
+#: Fine di una frase: un punto seguito da spazio o dalla fine del testo.
+_RE_FINE_FRASE = re.compile(r"\.(?=\s|$)")
 
-    L'attribuzione ("Offerta da ...") è disclosure trasparente e veritiera, non
-    promozione: compare solo DOPO i motivi reali della scelta e non tocca lo
-    score (la visibilità non è acquistabile). Se il `reason` non contiene già
-    la frase, la si aggiunge come ultima frase."""
-    attribuzione = getattr(candidate, "attribuzione", None)
+
+def _attribuzione_corrente(candidate: GraphCandidate) -> str:
+    """Attribuzione del candidato normalizzata (spazi tolti, punto finale),
+    oppure stringa vuota se il candidato non ne ha."""
+    attribuzione = (getattr(candidate, "attribuzione", None) or "").strip()
     if not attribuzione:
+        return ""
+    return attribuzione if attribuzione.endswith(".") else attribuzione + "."
+
+
+def _ultima_frase_attribuzione(reason: str, attribuzione: str) -> tuple[int, int] | None:
+    """Estremi `[inizio, fine)` dell'ULTIMA frase del `reason` che inizia con
+    "Offerta da ", o `None` se non c'è.
+
+    La frase inizia a inizio testo o dopo uno spazio. Finisce: se coincide con
+    l'attribuzione corrente, dove finisce quella; altrimenti al primo punto
+    seguito da spazio o dalla fine del testo (un nome di bottega con un punto
+    interno, es. "S.r.l. ", in un formato vecchio sarebbe tagliato lì:
+    docs/LIMITI.md)."""
+    inizio = len(reason)
+    while True:
+        inizio = reason.rfind(_PREFISSO_ATTRIBUZIONE, 0, inizio)
+        if inizio < 0:
+            return None
+        if inizio == 0 or reason[inizio - 1].isspace():
+            break
+    if attribuzione and reason.startswith(attribuzione, inizio):
+        return inizio, inizio + len(attribuzione)
+    fine = _RE_FINE_FRASE.search(reason, inizio)
+    return inizio, fine.end() if fine else len(reason)
+
+
+def _con_disclosure(reason: str, candidate: GraphCandidate) -> str:
+    """Rende l'attribuzione del partner l'UNICA e ULTIMA frase "Offerta da ..."
+    del `reason`, calcolata dal candidato corrente del grafo.
+
+    L'attribuzione è disclosure trasparente e veritiera, non promozione:
+    compare solo DOPO i motivi reali della scelta e non tocca lo score (la
+    visibilità non è acquistabile). Regola:
+    - il `reason` finisce già con l'attribuzione corrente: invariato
+      (idempotente);
+    - il `reason` contiene una frase che inizia con "Offerta da " (per
+      esempio nel formato di una versione precedente, arrivata dal client in
+      `AdaptRequest`): l'ULTIMA di queste frasi è tolta e l'attribuzione
+      corrente va in coda; se il candidato non ha più attribuzione (partner
+      non più presente) la frase è solo tolta, il resto del `reason` non
+      cambia;
+    - nessuna frase "Offerta da " e attribuzione presente: si aggiunge in
+      coda.
+    Va chiamata SOLO con un candidato reale del grafo: le tappe sconosciute
+    (stub dell'adattamento) non passano di qui."""
+    attribuzione = _attribuzione_corrente(candidate)
+    if attribuzione and reason.rstrip().endswith(attribuzione):
         return reason
-    attribuzione = attribuzione.strip()
-    if not attribuzione or attribuzione in reason:
-        return reason
-    testo = reason.rstrip()
+    estremi = _ultima_frase_attribuzione(reason, attribuzione)
+    if estremi is None:
+        if not attribuzione:
+            return reason
+        testo = reason.rstrip()
+    else:
+        inizio, fine = estremi
+        prima = reason[:inizio].rstrip()
+        dopo = reason[fine:].strip()
+        testo = " ".join(parte for parte in (prima, dopo) if parte)
+        if not attribuzione:
+            return testo
     if testo and not testo.endswith("."):
         testo += "."
-    coda = attribuzione if attribuzione.endswith(".") else attribuzione + "."
-    return f"{testo} {coda}".strip()
+    return f"{testo} {attribuzione}".strip()
 
 
 def _con_bagliore(reason: str, candidate: GraphCandidate, frase: str | None) -> str:
@@ -183,6 +240,10 @@ def _con_bagliore(reason: str, candidate: GraphCandidate, frase: str | None) -> 
     - `reason_fn` HA GIÀ incluso l'attribuzione: `_con_disclosure` non la
       riappende (idempotente), quindi la frase va inserita PRIMA
       dell'ultima occorrenza dell'attribuzione, non in coda.
+    Se l'attribuzione corrente non compare ma il `reason` ha una frase
+    "Offerta da " (formato precedente, arrivato dal client), la frase va
+    prima di quella: `_con_disclosure` la sostituirà con l'attribuzione
+    corrente, che resta così l'ultima.
     `frase=None` -> `reason` restituito identico (bit per bit).
 
     Stessa regola per la frase dell'esito di adattamento
@@ -192,6 +253,9 @@ def _con_bagliore(reason: str, candidate: GraphCandidate, frase: str | None) -> 
         return reason
     attribuzione = (getattr(candidate, "attribuzione", None) or "").strip()
     idx = reason.rfind(attribuzione) if attribuzione else -1
+    if idx < 0:
+        estremi = _ultima_frase_attribuzione(reason, "")
+        idx = estremi[0] if estremi is not None else -1
     if idx >= 0:
         prima = reason[:idx].rstrip()
         dopo = reason[idx:]
@@ -324,7 +388,9 @@ def _costruisci_stops(
                 if frase:
                     luoghi_con_frase.add(place_id)
                     reason = _con_bagliore(reason, cand, frase)
-        reason = _con_disclosure(reason, cand)
+        # Mai un reason vuoto: se reason_fn avesse prodotto solo una frase
+        # "Offerta da" ormai senza partner, resta il suo testo.
+        reason = _con_disclosure(reason, cand) or reason
         stops.append(
             ItineraryStop(
                 experience_id=cand.experience.id,
@@ -903,7 +969,10 @@ def adapt_itinerary(
     quelli ricevuti e cambiano solo `reason` ed esito; altrimenti gli arrivi
     sono ricalcolati da `signal.ora`. Le tappe non toccate conservano il
     `reason` ricevuto (tolta soltanto un'eventuale frase di esito di un
-    adattamento precedente, che descriveva un altro segnale).
+    adattamento precedente, che descriveva un altro segnale); se la tappa ha
+    un candidato reale, la disclosure partner è ricalcolata dal candidato
+    corrente (`_con_disclosure`), una sola e sempre ultima. Le tappe senza
+    candidato restano intatte (`_reason_finale`).
 
     `tappe_escluse` si accumula: parte da `itinerary.tappe_escluse` e
     aggiunge le nuove, una sola voce per `experience_id` (vince l'esito più
@@ -1042,7 +1111,10 @@ def adapt_itinerary(
         stops = [
             stop.model_copy(
                 update={
-                    "reason": _con_disclosure(c.reason_deciso or stop.reason, c),
+                    "reason": _reason_finale(
+                        c, c.reason_deciso or stop.reason, profilo_effettivo, signal, fn,
+                        vocabolario=vocabolario,
+                    ),
                     "esito_adattamento": c.esito_deciso,
                 }
             )
@@ -1164,13 +1236,16 @@ class _CandidatoConReason(GraphCandidate):
     reason_deciso: str | None = None
     esito_deciso: EsitoAdattamento | None = None
     id_originale: str = ""
+    #: Tappa ricevuta la cui esperienza non è tra i candidati: il suo `reason`
+    #: resta intatto, disclosure compresa ("non riscrivere al buio").
+    senza_candidato: bool = False
 
 
 def _marca_reason(
     cand: GraphCandidate, reason: str, esito: EsitoAdattamento, id_originale: str
 ) -> _CandidatoConReason:
     dati = cand.model_dump()
-    for campo in ("reason_deciso", "esito_deciso", "id_originale"):
+    for campo in ("reason_deciso", "esito_deciso", "id_originale", "senza_candidato"):
         dati.pop(campo, None)
     return _CandidatoConReason(
         **dati, reason_deciso=reason, esito_deciso=esito, id_originale=id_originale
@@ -1198,6 +1273,7 @@ def _stub_da_stop(stop: ItineraryStop, reason: str) -> _CandidatoConReason:
         reason_deciso=reason,
         esito_deciso=EsitoAdattamento.NON_TOCCATA,
         id_originale=stop.experience_id,
+        senza_candidato=True,
     )
 
 
@@ -1277,6 +1353,33 @@ def _unisci_escluse(
     return [t for t in unite.values() if t.experience_id not in presenti]
 
 
+def _reason_finale(
+    cand: _CandidatoConReason,
+    reason: str,
+    profile: EmotionalProfile,
+    signal: Signal,
+    reason_fn: ReasonFn,
+    *,
+    vocabolario: VocabolarioTemi,
+) -> str:
+    """`reason` finale di una tappa adattata.
+
+    - Tappa senza candidato (stub): `reason` ricevuto INTATTO, disclosure
+      compresa: non si riscrive al buio.
+    - Tappa con candidato reale: disclosure ricalcolata dal candidato
+      corrente (`_con_disclosure`: una sola, sempre ultima). Il resto del
+      testo è quello deciso (ricevuto dal client per le tappe mantenute o non
+      toccate, docs/LIMITI.md). Se il `reason` manca, o resta vuoto dopo aver
+      tolto una disclosure non più valida, lo compone `reason_fn`."""
+    if cand.senza_candidato:
+        return reason
+    finale = _con_disclosure(reason, cand) if reason else ""
+    if not finale:
+        segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
+        finale = _con_disclosure(reason_fn(cand, profile, segnali), cand)
+    return finale
+
+
 def _ricostruisci_stops(
     correnti: list[_CandidatoConReason],
     profile: EmotionalProfile,
@@ -1295,13 +1398,9 @@ def _ricostruisci_stops(
     for i, cand in enumerate(correnti):
         if i > 0:
             orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
-        reason = cand.reason_deciso
-        if not reason:
-            segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
-            reason = reason_fn(cand, profile, segnali)
-        # Disclosure in coda (idempotente: non duplica se già presente, es.
-        # nelle tappe non toccate che conservano il reason originale).
-        reason = _con_disclosure(reason, cand)
+        reason = _reason_finale(
+            cand, cand.reason_deciso or "", profile, signal, reason_fn, vocabolario=vocabolario
+        )
         stops.append(
             ItineraryStop(
                 experience_id=cand.experience.id,
