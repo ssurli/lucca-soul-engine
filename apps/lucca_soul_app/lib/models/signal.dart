@@ -1,3 +1,4 @@
+import '../util/clock.dart';
 import 'meteo.dart';
 import 'time_hms.dart';
 
@@ -15,6 +16,10 @@ class Signal {
   /// letta dallo stesso `DateTime.now()` di `ora`: vedi [Signal.orologio].
   final DateTime? data;
 
+  /// Istante assoluto (UTC) della lettura; il BFF ne ricava ora/data nel fuso
+  /// della città. `ora`/`data` restano come fallback.
+  final DateTime? istante;
+
   const Signal({
     required this.meteo,
     required this.affollamento,
@@ -22,6 +27,7 @@ class Signal {
     required this.ora,
     this.eventiAttivi = const [],
     this.data,
+    this.istante,
   });
 
   factory Signal.fromJson(Map<String, dynamic> json) {
@@ -36,14 +42,20 @@ class Signal {
           (json['eventi_attivi'] as List<dynamic>?)?.map((e) => e as String).toList() ??
               const [],
       data: json['data'] == null ? null : parseIsoDate(json['data'] as String),
+      istante: json['istante'] == null
+          ? null
+          : DateTime.parse(json['istante'] as String).toUtc(),
     );
   }
 
   /// Ora e data locali da UNA SOLA lettura dell'orologio, così non possono
-  /// discordare a mezzanotte. Passare `now` esplicito solo nei test.
-  static ({TimeHms ora, DateTime data}) orologio([DateTime? now]) {
-    final t = now ?? DateTime.now();
+  /// discordare a mezzanotte. Senza `now` usa [Orologio] (device o demo);
+  /// `now` esplicito solo nei test. `ora`/`data` sono in ora locale del device.
+  static ({TimeHms ora, DateTime data, DateTime istante}) orologio([DateTime? now]) {
+    final assoluto = (now ?? Orologio.adesso()).toUtc();
+    final t = assoluto.toLocal();
     return (
+      istante: assoluto,
       ora: TimeHms(hour: t.hour, minute: t.minute, second: t.second),
       data: DateTime(t.year, t.month, t.day),
     );
@@ -70,6 +82,7 @@ class Signal {
         'ora': ora.toJson(),
         'eventi_attivi': eventiAttivi,
         if (data != null) 'data': formatIsoDate(data!),
+        if (istante != null) 'istante': istante!.toUtc().toIso8601String(),
       };
 
   Signal copyWith({
@@ -79,6 +92,7 @@ class Signal {
     TimeHms? ora,
     List<String>? eventiAttivi,
     DateTime? data,
+    DateTime? istante,
   }) {
     return Signal(
       meteo: meteo ?? this.meteo,
@@ -87,6 +101,7 @@ class Signal {
       ora: ora ?? this.ora,
       eventiAttivi: eventiAttivi ?? this.eventiAttivi,
       data: data ?? this.data,
+      istante: istante ?? this.istante,
     );
   }
 }

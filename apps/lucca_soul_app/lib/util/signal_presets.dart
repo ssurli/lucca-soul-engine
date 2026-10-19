@@ -12,6 +12,7 @@ Signal baselineSignal() {
     stanchezza: 0.1,
     ora: t.ora,
     data: t.data,
+    istante: t.istante,
   );
 }
 
@@ -44,13 +45,13 @@ Signal buildSimulatedSignal(SimulatedSignalKind kind, Signal current) {
   final t = Signal.orologio(); // una sola lettura per ora e data
   switch (kind) {
     case SimulatedSignalKind.pioggia:
-      return current.copyWith(meteo: Meteo.pioggia, ora: t.ora, data: t.data);
+      return current.copyWith(meteo: Meteo.pioggia, ora: t.ora, data: t.data, istante: t.istante);
     case SimulatedSignalKind.affollamento:
       return current.copyWith(
         affollamento: {for (final luogo in _luoghiTipicamenteAffollati) luogo: 0.95},
-        ora: t.ora, data: t.data,
+        ora: t.ora, data: t.data, istante: t.istante,
       );
     case SimulatedSignalKind.stanchezza:
-      return current.copyWith(stanchezza: 0.85, ora: t.ora, data: t.data);
+      return current.copyWith(stanchezza: 0.85, ora: t.ora, data: t.data, istante: t.istante);
   }
 }

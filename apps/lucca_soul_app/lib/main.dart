@@ -4,10 +4,39 @@ import 'api/bff_client.dart';
 import 'screens/citizen_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'util/clock.dart';
 import 'util/person_id.dart';
 
 void main() {
+  try {
+    Orologio.inizializza(); // legge DEMO_ISTANTE, se definito
+  } on FormatException catch (e) {
+    // Una demo con l'orologio sbagliato in silenzio è peggio di un errore:
+    // si ferma l'avvio e si mostra il motivo.
+    runApp(_ErroreAvvio(messaggio: e.message));
+    return;
+  }
   runApp(const LuccaSoulApp());
+}
+
+class _ErroreAvvio extends StatelessWidget {
+  final String messaggio;
+  const _ErroreAvvio({required this.messaggio});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(messaggio, textAlign: TextAlign.center),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// Radice dell'app. Un solo `BffClient` per l'intera sessione: l'app parla
