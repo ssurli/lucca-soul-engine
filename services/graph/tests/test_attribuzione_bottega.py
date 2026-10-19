@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
-from contracts import EmotionalProfile, Signal, VisitorContext  # noqa: I001
+from contracts import EmotionalProfile, Signal, VisitorContext, codifica_fasce  # noqa: I001
 from graph import attribuzione as _attribuzione
 from graph.dataset import Bottega
 from graph.seed_lucca import DATASET, ESPERIENZE
@@ -60,6 +60,7 @@ def _record(esp_id: str, botteghe: list[dict[str, Any]] | None = None) -> dict[s
         "partner_id": e.partner_id,
         "prezzo_eur": e.prezzo_eur,
         "prenotabile": e.prenotabile,
+        "orari_apertura": codifica_fasce(e.orari_apertura),
         "place_nome": luogo.nome,
         "artisti_nomi": [],
         "botteghe": botteghe,

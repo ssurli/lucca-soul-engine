@@ -45,7 +45,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-from contracts import ExperienceNode, GraphCandidate, Partner, VisitorContext
+from contracts import (
+    ExperienceNode,
+    GraphCandidate,
+    Partner,
+    VisitorContext,
+    decodifica_fasce,
+)
 from neo4j import Driver, GraphDatabase, Record
 
 from graph.attribuzione import testo_attribuzione
@@ -291,6 +297,10 @@ class Neo4jCandidateSource:
             # (non derivata da partner/abbonamento, vedi `docs/DATA_CONTRACTS.md`
             # §2): si copia il valore così come scritto dal seed.
             prenotabile=record["prenotabile"],
+            # Fail-closed: una fascia malformata solleva ValueError, non
+            # diventa lista vuota (= "sempre aperto"). L'assenza della
+            # proprietà è già `[]` per `coalesce` nella query.
+            orari_apertura=decodifica_fasce(record["orari_apertura"] or []),
         )
         # Fatti SEMANTICI (artisti, temi, `ISPIRATA_DA`, `EVOCA` della bottega) e
         # prossimità al luogo già visitato: testo e ORDINE sono imposti da

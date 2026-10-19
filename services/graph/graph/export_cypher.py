@@ -24,7 +24,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 
-from contracts import ExperienceNode, Partner
+from contracts import ExperienceNode, Partner, codifica_fasce
 
 from graph.dataset import DatasetCitta
 from graph.registro import CYPHER_DIR, carica_dataset, dataset_attivo, file_seed_cypher
@@ -162,7 +162,11 @@ def _esperienza_statement(e: ExperienceNode) -> str:
         f"    e.alimenta_memoria = {_cypher_bool(e.alimenta_memoria)},\n"
         f"    e.partner_id = {_cypher_str_or_null(e.partner_id)},\n"
         f"    e.prezzo_eur = {_cypher_number_or_null(e.prezzo_eur)},\n"
-        f"    e.prenotabile = {_cypher_bool(e.prenotabile)};"
+        f"    e.prenotabile = {_cypher_bool(e.prenotabile)},\n"
+        # Scritta SEMPRE, anche vuota: il `SET` sovrascrive, quindi un orario
+        # tolto dal dataset sparisce da un grafo già caricato (omettendola
+        # resterebbe quello vecchio). Formato: `contracts.codifica_fasce`.
+        f"    e.orari_apertura = {_cypher_str_list(codifica_fasce(e.orari_apertura))};"
     )
 
 

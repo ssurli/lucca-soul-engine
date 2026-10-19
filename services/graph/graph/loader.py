@@ -21,9 +21,11 @@ contracts -e services/graph` e con `.env` compilato):
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
+from contracts import decodifica_fasce
 from neo4j import GraphDatabase
 
 from graph.env import Neo4jConfig, load_neo4j_config
@@ -52,11 +54,62 @@ def _statements(path: Path) -> list[str]:
     return statements
 
 
+_LIT = r"'(?:[^'\\]|\\.)*'"  # letterale tra apici singoli, con escape `\x`
+_RE_ID_ESPERIENZA = re.compile(r"MERGE \(e:Esperienza \{id: '((?:[^'\\]|\\.)*)'\}\)")
+_RE_ORARI = re.compile(rf"e\.orari_apertura = \[((?:\s*{_LIT}\s*,?)*)\]")
+_RE_LITERAL_C = re.compile(r"'((?:[^'\\]|\\.)*)'")
+
+
+def _unescape(valore: str) -> str:
+    return re.sub(r"\\(.)", r"\1", valore)
+
+
+def valida_orari(path: Path) -> int:
+    """Valida TUTTE le `orari_apertura` di un file `.cypher` senza toccare il DB.
+
+    Appoggia sulla convenzione di `graph.export_cypher`: un'istruzione
+    `MERGE (e:Esperienza {id: '...'}) SET ..., e.orari_apertura = ['...', ...]`.
+    Ogni stringa passa da `contracts.decodifica_fasce` (fail-closed). Se un
+    file cita `orari_apertura` in una forma che non si riesce a leggere, è
+    rifiutato anch'esso: meglio un falso rifiuto di un orario guasto che
+    diventa "sempre aperto". Solleva `ValueError` (esperienza + stringa);
+    ritorna il numero di fasce validate.
+
+    Limiti: riconosce solo la forma generata dall'export (non è un parser
+    Cypher); un file scritto a mano in altra forma e con la proprietà
+    scritta altrove (es. `SET n += {...}`) non è coperto.
+    """
+    totale = 0
+    for statement in _statements(path):
+        if "orari_apertura" not in statement:
+            continue
+        m_id = _RE_ID_ESPERIENZA.search(statement)
+        nome = _unescape(m_id.group(1)) if m_id else "<esperienza non riconosciuta>"
+        m = _RE_ORARI.search(statement)
+        if m is None or m_id is None:
+            raise ValueError(
+                f"{path.name}: esperienza {nome!r}: 'orari_apertura' in forma non "
+                "riconosciuta (atteso lista di stringhe nell'istruzione MERGE Esperienza)"
+            )
+        valori = [_unescape(v) for v in _RE_LITERAL_C.findall(m.group(1))]
+        try:
+            decodifica_fasce(valori)
+        except ValueError as exc:
+            raise ValueError(
+                f"{path.name}: esperienza {nome!r}: orari_apertura {valori!r} non valido: {exc}"
+            ) from exc
+        totale += len(valori)
+    return totale
+
+
 def run(config: Neo4jConfig, seed_file: Path | None = None) -> int:
     """Esegue schema + seed su Neo4j. Ritorna il numero di istruzioni eseguite.
 
     `seed_file=None` -> il seed della città attiva (`CITY_SEED`)."""
     seed = seed_file if seed_file is not None else file_seed_cypher(dataset_attivo())
+    # Prima di QUALUNQUE connessione o scrittura: un orario malformato rifiuta
+    # l'intero caricamento (nessuna scrittura parziale).
+    valida_orari(seed)
     driver = GraphDatabase.driver(config.uri, auth=(config.username, config.password))
     eseguite = 0
     try:
@@ -79,7 +132,11 @@ def main() -> None:
         raise SystemExit(1) from exc
 
     seed_file = file_seed_cypher(dataset_attivo())
-    eseguite = run(config, seed_file)
+    try:
+        eseguite = run(config, seed_file)
+    except ValueError as exc:
+        print(f"Caricamento rifiutato: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
     print(
         f"OK: {eseguite} istruzioni Cypher eseguite su database={config.database!r} "
         f"({SCHEMA_FILE.name} + {seed_file.name})."

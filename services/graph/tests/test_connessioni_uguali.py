@@ -13,7 +13,7 @@ from datetime import time
 from typing import Any
 
 import pytest
-from contracts import EmotionalProfile, Signal, VisitorContext
+from contracts import EmotionalProfile, Signal, VisitorContext, codifica_fasce
 from graph.connessioni import frasi_connessioni
 from graph.seed_lucca import DATASET, ESPERIENZE
 from graph.source import Neo4jCandidateSource, SeedCandidateSource
@@ -84,6 +84,7 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
         "partner_id": e.partner_id,
         "prezzo_eur": e.prezzo_eur,
         "prenotabile": e.prenotabile,
+        "orari_apertura": codifica_fasce(e.orari_apertura),
         "place_nome": luogo.nome,
         "artisti_nomi": _mescola(artisti, rng),
         "botteghe": (

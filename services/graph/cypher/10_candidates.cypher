@@ -108,6 +108,14 @@ RETURN
   // degrada all'unico default sicuro — non prenotabile — esattamente come
   // `partner_abbonamento_attivo` degrada a `true` per un Partner assente.
   coalesce(e.prenotabile, false) AS prenotabile,
+  // `orari_apertura`: lista di stringhe "g|HH:MM|HH:MM" (formato di
+  // `contracts.orari`, decodificato FAIL-CLOSED da `Neo4jCandidateSource`).
+  // Su un grafo caricato prima dell'introduzione della proprietà manca: lì
+  // `coalesce` dà la lista vuota, cioè "nessun orario dichiarato" (come
+  // `ExperienceNode.orari_apertura` di default). Solo l'ASSENZA diventa vuota:
+  // un valore presente ma malformato NON viene toccato qui e fa sollevare il
+  // consumer.
+  coalesce(e.orari_apertura, []) AS orari_apertura,
   l.nome AS place_nome,
   artisti_nomi,
   botteghe,
