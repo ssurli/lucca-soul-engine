@@ -370,27 +370,27 @@
           },
           {
             "arrivo": "10:55:00",
-            "durata_min": 25,
+            "durata_min": 30,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-mosaico-san-frediano",
-            "reason": "Sostituita per l'affollamento a Orto Botanico di Lucca. Evoca il tema \"Arte\"."
+            "experience_id": "exp-giardino-pfanner",
+            "reason": "Sostituita per l'affollamento a Orto Botanico di Lucca. Evoca il tema \"Verde e giardini\"."
           },
           {
-            "arrivo": "11:30:00",
+            "arrivo": "11:35:00",
             "durata_min": 45,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-decorazione-ceramica",
             "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:25:00",
+            "arrivo": "12:30:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-buccellato-pasticceria",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:55:00",
+            "arrivo": "13:00:00",
             "durata_min": 25,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-facciata-san-michele",
@@ -468,34 +468,34 @@
         "stops": [
           {
             "arrivo": "10:00:00",
-            "durata_min": 25,
+            "durata_min": 30,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-mosaico-san-frediano",
-            "reason": "Sostituita per l'affollamento a Mura di Lucca. Evoca il tema \"Arte\"."
+            "experience_id": "exp-giardino-pfanner",
+            "reason": "Sostituita per l'affollamento a Mura di Lucca. Evoca il tema \"Verde e giardini\"."
           },
           {
-            "arrivo": "10:35:00",
+            "arrivo": "10:40:00",
             "durata_min": 60,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-orto-botanico-bambini",
             "reason": "Evoca il tema \"Adatto ai bambini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "11:45:00",
+            "arrivo": "11:50:00",
             "durata_min": 45,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-decorazione-ceramica",
             "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:40:00",
+            "arrivo": "12:45:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-buccellato-pasticceria",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
           },
           {
-            "arrivo": "13:10:00",
+            "arrivo": "13:15:00",
             "durata_min": 25,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-facciata-san-michele",
@@ -579,31 +579,31 @@
           },
           {
             "arrivo": "10:35:00",
-            "durata_min": 50,
+            "durata_min": 35,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Sostituita per la pioggia. Giacomo Puccini è legato a Chiesa di San Michele in Foro. Offerta da Bottega di liuteria (esempio dimostrativo)."
+            "experience_id": "exp-duomo-volto-santo",
+            "reason": "Sostituita per la pioggia. Luigi Boccherini è legato a Duomo di San Martino."
           },
           {
-            "arrivo": "11:35:00",
+            "arrivo": "11:20:00",
             "durata_min": 45,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-decorazione-ceramica",
             "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:30:00",
+            "arrivo": "12:15:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-buccellato-pasticceria",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
           },
           {
-            "arrivo": "13:00:00",
-            "durata_min": 35,
+            "arrivo": "12:45:00",
+            "durata_min": 55,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-duomo-volto-santo",
-            "reason": "Sostituita per la pioggia. Luigi Boccherini è legato a Duomo di San Martino."
+            "experience_id": "exp-collezione-villa-guinigi",
+            "reason": "Sostituita per la pioggia. Evoca il tema \"Arte\"."
           }
         ],
         "tappe_escluse": [],
@@ -787,8 +787,8 @@
             "arrivo": "11:35:00",
             "durata_min": 30,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-tramonto-baluardo",
-            "reason": "Sostituita per l'affollamento a Basilica di San Frediano. Evoca il tema \"Panorama\"."
+            "experience_id": "exp-mercato-anfiteatro",
+            "reason": "Sostituita per l'affollamento a Basilica di San Frediano. Evoca il tema \"Medievale\"."
           },
           {
             "arrivo": "12:15:00",
@@ -892,8 +892,8 @@
             "arrivo": "10:00:00",
             "durata_min": 30,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-tramonto-baluardo",
-            "reason": "Sostituita per l'affollamento a Chiesa di San Michele in Foro. Evoca il tema \"Panorama\"."
+            "experience_id": "exp-mercato-anfiteatro",
+            "reason": "Sostituita per l'affollamento a Chiesa di San Michele in Foro. Evoca il tema \"Medievale\"."
           },
           {
             "arrivo": "10:40:00",
@@ -1003,46 +1003,46 @@
     },
     "adapt-budget|curioso|pioggia": {
       "atteso": {
-        "adattato_da_segnale": true,
+        "adattato_da_segnale": false,
         "person_id": "golden-curioso",
         "stops": [
           {
             "arrivo": "10:00:00",
-            "durata_min": 20,
-            "esito_adattamento": "sostituita",
-            "experience_id": "exp-buccellato-pasticceria",
-            "reason": "Sostituita per la pioggia. Evoca il tema \"Gastronomia\". Offerta da Pasticceria (esempio dimostrativo)."
+            "durata_min": 25,
+            "esito_adattamento": "mantenuta_senza_alternativa",
+            "experience_id": "exp-facciata-san-michele",
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso e con il tempo a disposizione: la tappa resta in programma."
           },
           {
-            "arrivo": "10:30:00",
+            "arrivo": "10:35:00",
             "durata_min": 50,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-laboratorio-liuteria",
             "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria (esempio dimostrativo)."
           },
           {
-            "arrivo": "11:30:00",
+            "arrivo": "11:35:00",
             "durata_min": 25,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-mosaico-san-frediano",
             "reason": "Evoca il tema \"Arte\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "12:05:00",
-            "durata_min": 40,
-            "esito_adattamento": "sostituita",
-            "experience_id": "exp-telaio-tessitura",
-            "reason": "Sostituita per la pioggia. Evoca il tema \"Artigianato\". Offerta da Laboratorio di tessitura (esempio dimostrativo)."
+            "arrivo": "12:10:00",
+            "durata_min": 30,
+            "esito_adattamento": "mantenuta_senza_alternativa",
+            "experience_id": "exp-giardino-pfanner",
+            "reason": "Evoca il tema \"Verde e giardini\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso e con il tempo a disposizione: la tappa resta in programma."
           },
           {
-            "arrivo": "12:55:00",
+            "arrivo": "12:50:00",
             "durata_min": 35,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-duomo-volto-santo",
             "reason": "Luigi Boccherini è legato a Duomo di San Martino, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "13:40:00",
+            "arrivo": "13:35:00",
             "durata_min": 20,
             "esito_adattamento": "mantenuta_senza_alternativa",
             "experience_id": "exp-piazza-napoleone",
@@ -1270,76 +1270,76 @@
           },
           {
             "arrivo": "13:50:00",
-            "durata_min": 55,
+            "durata_min": 40,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-collezione-villa-guinigi",
-            "reason": "Sostituita per l'affollamento a Chiesa di San Michele in Foro. Evoca il tema \"Arte\"."
+            "experience_id": "exp-struscio-fillungo",
+            "reason": "Sostituita per l'affollamento a Chiesa di San Michele in Foro. Evoca il tema \"Gastronomia\"."
           },
           {
-            "arrivo": "14:55:00",
+            "arrivo": "14:40:00",
             "durata_min": 35,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-duomo-volto-santo",
             "reason": "Luigi Boccherini è legato a Duomo di San Martino, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "15:40:00",
+            "arrivo": "15:25:00",
             "durata_min": 45,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-decorazione-ceramica",
             "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica (esempio dimostrativo)."
           },
           {
-            "arrivo": "16:35:00",
+            "arrivo": "16:20:00",
             "durata_min": 50,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-casa-puccini-visita",
             "reason": "Giacomo Puccini è legato a Casa Natale di Giacomo Puccini, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "17:35:00",
+            "arrivo": "17:20:00",
             "durata_min": 60,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-passeggiata-mura",
             "reason": "Evoca il tema \"Verde e giardini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "18:45:00",
+            "arrivo": "18:30:00",
             "durata_min": 90,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-concerto-giglio",
             "reason": "Alfredo Catalani è legato a Teatro del Giglio, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "20:25:00",
+            "arrivo": "20:10:00",
             "durata_min": 40,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-salita-torre-guinigi",
             "reason": "Evoca il tema \"Panorama\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "21:15:00",
+            "arrivo": "21:00:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-buccellato-pasticceria",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
           },
           {
-            "arrivo": "21:45:00",
+            "arrivo": "21:30:00",
             "durata_min": 30,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-tramonto-baluardo",
             "reason": "Evoca il tema \"Panorama\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "22:25:00",
+            "arrivo": "22:10:00",
             "durata_min": 45,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-orto-botanico-silenzio",
             "reason": "Evoca il tema \"Verde e giardini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "23:20:00",
+            "arrivo": "23:05:00",
             "durata_min": 40,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-telaio-tessitura",
@@ -2427,20 +2427,20 @@
           },
           {
             "arrivo": "10:45:00",
-            "durata_min": 50,
+            "durata_min": 55,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-casa-puccini-visita",
-            "reason": "Sostituita per la pioggia. Giacomo Puccini è legato a Casa Natale di Giacomo Puccini."
+            "experience_id": "exp-collezione-villa-guinigi",
+            "reason": "Sostituita per la pioggia. Evoca il tema \"Arte\"."
           },
           {
-            "arrivo": "11:45:00",
+            "arrivo": "11:50:00",
             "durata_min": 25,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-mosaico-san-frediano",
             "reason": "Evoca il tema \"Arte\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "12:20:00",
+            "arrivo": "12:25:00",
             "durata_min": 50,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-laboratorio-liuteria",
@@ -2588,27 +2588,27 @@
           },
           {
             "arrivo": "10:55:00",
-            "durata_min": 25,
+            "durata_min": 30,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-mosaico-san-frediano",
-            "reason": "Sostituita per l'affollamento a Orto Botanico di Lucca. Evoca il tema \"Arte\"."
+            "experience_id": "exp-giardino-pfanner",
+            "reason": "Sostituita per l'affollamento a Orto Botanico di Lucca. Evoca il tema \"Verde e giardini\"."
           },
           {
-            "arrivo": "11:30:00",
+            "arrivo": "11:35:00",
             "durata_min": 45,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-decorazione-ceramica",
             "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:25:00",
+            "arrivo": "12:30:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-buccellato-pasticceria",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:55:00",
+            "arrivo": "13:00:00",
             "durata_min": 25,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-facciata-san-michele",
@@ -2678,34 +2678,34 @@
         "stops": [
           {
             "arrivo": "10:00:00",
-            "durata_min": 25,
+            "durata_min": 30,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-mosaico-san-frediano",
-            "reason": "Sostituita per l'affollamento a Mura di Lucca. Evoca il tema \"Arte\"."
+            "experience_id": "exp-giardino-pfanner",
+            "reason": "Sostituita per l'affollamento a Mura di Lucca. Evoca il tema \"Verde e giardini\"."
           },
           {
-            "arrivo": "10:35:00",
+            "arrivo": "10:40:00",
             "durata_min": 60,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-orto-botanico-bambini",
             "reason": "Evoca il tema \"Adatto ai bambini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "11:45:00",
+            "arrivo": "11:50:00",
             "durata_min": 45,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-decorazione-ceramica",
             "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:40:00",
+            "arrivo": "12:45:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-buccellato-pasticceria",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
           },
           {
-            "arrivo": "13:10:00",
+            "arrivo": "13:15:00",
             "durata_min": 25,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-facciata-san-michele",
@@ -2781,31 +2781,31 @@
           },
           {
             "arrivo": "10:35:00",
-            "durata_min": 50,
+            "durata_min": 35,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-laboratorio-liuteria",
-            "reason": "Sostituita per la pioggia. Giacomo Puccini è legato a Chiesa di San Michele in Foro. Offerta da Bottega di liuteria (esempio dimostrativo)."
+            "experience_id": "exp-duomo-volto-santo",
+            "reason": "Sostituita per la pioggia. Luigi Boccherini è legato a Duomo di San Martino."
           },
           {
-            "arrivo": "11:35:00",
+            "arrivo": "11:20:00",
             "durata_min": 45,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-decorazione-ceramica",
             "reason": "Evoca il tema \"Artigianato\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Laboratorio di ceramica (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:30:00",
+            "arrivo": "12:15:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-buccellato-pasticceria",
             "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
           },
           {
-            "arrivo": "13:00:00",
-            "durata_min": 35,
+            "arrivo": "12:45:00",
+            "durata_min": 55,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-duomo-volto-santo",
-            "reason": "Sostituita per la pioggia. Luigi Boccherini è legato a Duomo di San Martino."
+            "experience_id": "exp-collezione-villa-guinigi",
+            "reason": "Sostituita per la pioggia. Evoca il tema \"Arte\"."
           }
         ],
         "tappe_escluse": [],
@@ -2971,27 +2971,27 @@
           },
           {
             "arrivo": "11:35:00",
-            "durata_min": 50,
+            "durata_min": 55,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-casa-puccini-visita",
-            "reason": "Sostituita per l'affollamento a Basilica di San Frediano. Giacomo Puccini è legato a Casa Natale di Giacomo Puccini."
+            "experience_id": "exp-collezione-villa-guinigi",
+            "reason": "Sostituita per l'affollamento a Basilica di San Frediano. Evoca il tema \"Arte\"."
           },
           {
-            "arrivo": "12:35:00",
+            "arrivo": "12:40:00",
             "durata_min": 30,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-giardino-pfanner",
             "reason": "Evoca il tema \"Verde e giardini\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "13:15:00",
+            "arrivo": "13:20:00",
             "durata_min": 35,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-duomo-volto-santo",
             "reason": "Luigi Boccherini è legato a Duomo di San Martino, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "14:00:00",
+            "arrivo": "14:05:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-piazza-napoleone",
@@ -3067,41 +3067,41 @@
         "stops": [
           {
             "arrivo": "10:00:00",
+            "durata_min": 55,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-collezione-villa-guinigi",
+            "reason": "Sostituita per l'affollamento a Chiesa di San Michele in Foro. Evoca il tema \"Arte\"."
+          },
+          {
+            "arrivo": "11:05:00",
             "durata_min": 50,
             "esito_adattamento": "sostituita",
             "experience_id": "exp-casa-puccini-visita",
             "reason": "Sostituita per l'affollamento a Chiesa di San Michele in Foro. Giacomo Puccini è legato a Casa Natale di Giacomo Puccini."
           },
           {
-            "arrivo": "11:00:00",
-            "durata_min": 90,
-            "esito_adattamento": "sostituita",
-            "experience_id": "exp-concerto-giglio",
-            "reason": "Sostituita per l'affollamento a Chiesa di San Michele in Foro. Alfredo Catalani è legato a Teatro del Giglio."
-          },
-          {
-            "arrivo": "12:40:00",
+            "arrivo": "12:05:00",
             "durata_min": 25,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-mosaico-san-frediano",
             "reason": "Evoca il tema \"Arte\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "13:15:00",
+            "arrivo": "12:40:00",
             "durata_min": 30,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-giardino-pfanner",
             "reason": "Evoca il tema \"Verde e giardini\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "13:55:00",
+            "arrivo": "13:20:00",
             "durata_min": 35,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-duomo-volto-santo",
             "reason": "Luigi Boccherini è legato a Duomo di San Martino, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "14:40:00",
+            "arrivo": "14:05:00",
             "durata_min": 20,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-piazza-napoleone",
@@ -3176,41 +3176,41 @@
         "stops": [
           {
             "arrivo": "10:00:00",
-            "durata_min": 50,
+            "durata_min": 55,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-casa-puccini-visita",
-            "reason": "Sostituita per la pioggia. Giacomo Puccini è legato a Casa Natale di Giacomo Puccini."
+            "experience_id": "exp-collezione-villa-guinigi",
+            "reason": "Sostituita per la pioggia. Evoca il tema \"Arte\"."
           },
           {
-            "arrivo": "11:00:00",
+            "arrivo": "11:05:00",
             "durata_min": 50,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-laboratorio-liuteria",
             "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria (esempio dimostrativo)."
           },
           {
-            "arrivo": "12:00:00",
+            "arrivo": "12:05:00",
             "durata_min": 25,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-mosaico-san-frediano",
             "reason": "Evoca il tema \"Arte\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "12:35:00",
-            "durata_min": 90,
+            "arrivo": "12:40:00",
+            "durata_min": 50,
             "esito_adattamento": "sostituita",
-            "experience_id": "exp-concerto-giglio",
-            "reason": "Sostituita per la pioggia. Alfredo Catalani è legato a Teatro del Giglio."
+            "experience_id": "exp-casa-puccini-visita",
+            "reason": "Sostituita per la pioggia. Giacomo Puccini è legato a Casa Natale di Giacomo Puccini."
           },
           {
-            "arrivo": "14:15:00",
+            "arrivo": "13:40:00",
             "durata_min": 35,
             "esito_adattamento": "non_toccata",
             "experience_id": "exp-duomo-volto-santo",
             "reason": "Luigi Boccherini è legato a Duomo di San Martino, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
           },
           {
-            "arrivo": "15:00:00",
+            "arrivo": "14:25:00",
             "durata_min": 40,
             "esito_adattamento": "sostituita",
             "experience_id": "exp-telaio-tessitura",

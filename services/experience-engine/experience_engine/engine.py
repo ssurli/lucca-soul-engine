@@ -868,10 +868,12 @@ def _migliore_alternativa(
     *,
     entra_nel_budget: Callable[[GraphCandidate], bool] | None = None,
     vocabolario: VocabolarioTemi,
+    prezzo_tolta: float,
+    temi_tolta: Sequence[str],
 ) -> GraphCandidate | None:
     """Migliore candidato non già usato che rispetta i vincoli del segnale.
 
-    Deterministico: tie-break per `experience_id`.
+    Deterministico: ordinamento (tema condiviso, score, `experience_id`).
 
     I vincoli DURI vengono da un solo punto, `rules.passa_filtri_duri`
     (accessibilità richiesta dal profilo, affollamento critico, partner con
@@ -894,10 +896,26 @@ def _migliore_alternativa(
       candidato che sforerebbe il budget non è ammesso, e vince il migliore
       tra quelli che stanno nel budget. `None` = nessun vincolo di budget
       (itinerario senza budget). Il predicato non legge partner né prezzo:
-      il vincolo di tempo vale identico per ogni candidato.
+      il vincolo di tempo vale identico per ogni candidato;
+    - costo: `prezzo_tolta` è il prezzo della tappa tolta (None = 0). Un
+      candidato è ammesso solo se `(prezzo_eur or 0) <= prezzo_tolta`: chi
+      ha scelto una tappa gratuita non si ritrova a pagare per colpa della
+      pioggia o della folla.
+
+    Ordinamento degli ammessi: prima chi condivide almeno un tema con la
+    tappa tolta (`temi_tolta`), poi `-calcola_score`, poi `experience_id`.
+    Il tema è una preferenza FORTE ma NON un filtro: con la pioggia una
+    tappa all'aperto spesso non ha gemelle tematiche al chiuso, e meglio
+    un'alternativa di altro tema che nessuna.
+
+    Motivazione etica: il prezzo può solo ESCLUDERE un candidato più caro
+    della tappa tolta, mai dare punteggio o favorire un candidato. Tra gli
+    ammessi decidono solo tema e score, criteri uguali per tutti, partner
+    compresi: nessuno spazio è acquistabile. `partner_id` non è letto.
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
+    temi_set = set(temi_tolta)
     ammessi: list[GraphCandidate] = []
     for c in candidates:
         if not passa_filtri_duri(c, profile, signal, []):
@@ -913,11 +931,14 @@ def _migliore_alternativa(
             continue
         if entra_nel_budget is not None and not entra_nel_budget(c):
             continue
+        if (e.prezzo_eur or 0.0) > prezzo_tolta:
+            continue
         ammessi.append(c)
     if not ammessi:
         return None
     ammessi.sort(
         key=lambda c: (
+            not (temi_set & set(c.experience.temi)),
             -calcola_score(c, profile, signal, vocabolario=vocabolario),
             c.experience.id,
         )
@@ -942,7 +963,9 @@ def adapt_itinerary(
        alternativa `al_chiuso=True` non già presente; affollamento > soglia
        sul luogo di una tappa: sostituzione con alternativa in luogo
        scorrevole (distribuzione dei flussi). Un'alternativa entra solo se
-       l'itinerario con la sostituzione resta nel budget (vedi sotto). Senza
+       l'itinerario con la sostituzione resta nel budget (vedi sotto) e se
+       non costa più della tappa tolta; tra gli ammessi si preferisce chi ne
+       condivide un tema (`_migliore_alternativa`). Senza
        alternativa ammissibile la tappa resta, con esito
        `MANTENUTA_SENZA_ALTERNATIVA` e una frase in coda al `reason`.
     2. stanchezza > soglia: taglia le tappe in coda oltre ~2/3 del tempo
@@ -1055,6 +1078,8 @@ def adapt_itinerary(
             max_affollamento=SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
             entra_nel_budget=entra_nel_budget,
             vocabolario=vocabolario,
+            prezzo_tolta=e.prezzo_eur or 0.0,
+            temi_tolta=e.temi,
         )
         if alt is None:
             # Nessuna alternativa ammissibile (vincoli duri, segnale, budget):

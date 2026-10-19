@@ -106,7 +106,9 @@ modello (`rientra_in_orario`).
 ## 5. Determinismo
 
 - `_ordina_per_score`/`_migliore_alternativa`: a parità di score, tie-break su
-  `experience_id` — mai un ordine arbitrario del dizionario/lista.
+  `experience_id` — mai un ordine arbitrario del dizionario/lista. In `_migliore_alternativa`
+  la chiave è (condivide almeno un tema con la tappa tolta, score, `experience_id`): il tema
+  viene prima dello score (difetto g, 2026-10-19).
 - `_seleziona_tappe`: composizione a budget deterministica dato lo stesso input.
 - `compose_itinerary`: stesso profilo + stesso segnale + stessi candidati → stesso
   itinerario, sempre. Profili diversi possono (devono) produrre itinerari diversi — è il
@@ -121,7 +123,10 @@ di riscrittura mirata, con conseguenze concrete:
   l'`AdaptRequest` non li trasporta) e aggiunge SOLO i vincoli propri dell'adattamento:
   esperienze già nell'itinerario, accessibilità conservativa per tappa quando il profilo è
   assente (`AdaptRequest.profile` opzionale dal 2026-10-19, difetto j), `al_chiuso` su pioggia, affollamento `> 0.7` (più stretto della soglia critica
-  `>= 0.8` del filtro duro, che quindi resta assorbita). Storia: fino al 2026-10-15 i filtri
+  `>= 0.8` del filtro duro, che quindi resta assorbita), e dal 2026-10-19 (difetto g) il
+  **costo**: un sostituto è ammesso solo se `prezzo_eur` (None = 0) non supera quello della
+  tappa tolta. Il prezzo può solo escludere, mai ordinare né dare punteggio; `partner_id` non
+  è letto e `calcola_score` è invariato. Storia: fino al 2026-10-15 i filtri
   erano reimplementati a mano — prima mancavano gli orari (trovato da ethics-guardian), poi
   restava fuori `partner_abbonamento_attivo`, per cui un partner con abbonamento non attivo
   poteva essere reintrodotto in adattamento. Chiuso applicando il filtro duro in un solo

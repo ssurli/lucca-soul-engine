@@ -1315,7 +1315,14 @@ def test_adapt_senza_rag_usa_fallback_a_due_frasi(source: SeedCandidateSource) -
         contemplazione=0.6,
         arte=0.5,
         con_bambini=False,
-        tempo_disponibile_min=200,
+        # Scenario cambiato il 2026-10-19 (difetto g): il budget era 200 minuti e l'unica
+        # sostituzione era la pasticceria a 8 EUR al posto di una tappa GRATUITA, cioe' proprio
+        # il difetto g (un sostituto piu' caro della tappa tolta). Ora il sostituto non puo'
+        # costare di piu': con 200 minuti nessuna alternativa gratuita al chiuso entra nel
+        # budget e il test non avrebbe nulla da verificare. Il budget sale a 300 minuti cosi'
+        # la pioggia produce almeno una sostituzione AMMISSIBILE (gratuita). Lo scopo del
+        # test, la frase di fallback dell'adattamento, e le sue asserzioni sono invariati.
+        tempo_disponibile_min=300,
     )
     ctx = _ctx(profile)
     cands = _candidati(source, ctx)

@@ -34,6 +34,19 @@ prova il vincolo di budget dell'adattamento, che i casi esistenti (senza budget)
 non esercitano. Per questi casi, e per ogni caso con `tempo_effettivo_min`, il
 test asserisce che i minuti dopo l'adattamento non lo superino.
 
+QUARTA modifica autorizzata (2026-10-19, ondata 1, difetto g), solo in
+`lucca_itinerari.json`: l'`atteso` di 14 casi, tutti adattamenti di pioggia o
+affollamento (adapt-budget: con-bambini x3, curioso x3, onnivoro/affollamento-moderato;
+adapt: accessibile/pioggia, con-bambini x3, curioso x3). Motivo: nella sostituzione
+`_migliore_alternativa` ora (1) esclude un sostituto piu' caro della tappa tolta
+(`prezzo_eur` None = 0) e (2) preferisce, tra gli ammessi, chi condivide almeno un
+tema con la tappa tolta, poi score, poi id. Le RICHIESTE dei 74 casi e i 60 `atteso`
+restanti sono identici; `lucca_punteggi.json` intatto (punteggi invariati: g non
+tocca `calcola_score`). Ogni differenza e' stata attribuita da uno script di confronto
+atteso-vecchio/risposta-nuova (zero non attribuite) a: un sostituto "prima" piu' caro
+della tolta ora escluso (liuteria 15 EUR, pasticceria 8 EUR, concerto 25 EUR), oppure
+un sostituto "dopo" che condivide un tema dove il "prima" non lo condivideva, oppure
+slittamento/mantenuta conseguente (sostituto gia' preso da un'altra tappa; budget).
 Due livelli, entrambi "replay" dei JSON (richiesta/specifica + atteso):
   a) ITINERARI via HTTP del BFF (`POST /itinerary`, `POST /itinerary/adapt`):
      uguaglianza ESATTA di `person_id`, `adattato_da_segnale`,
