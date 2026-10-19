@@ -399,7 +399,7 @@ Voci aperte in `docs/LIMITI.md`. Nessuna è assegnata: prima la decisione di pro
    `experience_id`. Passa da `contract-keeper`; cambia il golden.
 
 ### Decisioni di prodotto per la wave sull'adattamento (confermate il 2026-10-16) — ATTUATE
-**→ Wave adattamento CHIUSA** (2026-10-16, ramo `wave-adattamento`): contratti `f84b97d`, engine
+**→ Wave adattamento COMPLETATA il 16/10/2026, provata su Aura** (ramo `wave-adattamento`, integrato in `main`): contratti `f84b97d`, engine
 `e68c704` + `11c163c` (disclosure unica), graph `b2269be`, app `8f268ec`; golden rigenerato una
 volta (58 casi con richieste invariate + 16 `adapt-budget|…`), ogni differenza attribuita a una
 decisione con 0 casi non attribuiti, `lucca_punteggi.json` invariato. Gate: `test-engineer` verde,
@@ -420,6 +420,28 @@ Wave lanciata in una sessione di Claude Code, con il §0 nel prompt. Ordine dei 
 5. **Allineare le connessioni tra seed e Neo4j** (frasi e ordine) — voce "Connessioni diverse tra
    seed in memoria e Neo4j" in `docs/LIMITI.md`; sistema anche l'attribuzione tautologica
    («Pasticceria, bottega di pasticceria»).
+
+## Traguardo A — demo presentabile  *(obiettivo 12/12/2026)*
+Blocchi in ordine: ognuno parte quando il precedente è chiuso. Ogni blocco segue il protocollo
+(`contract-keeper` se tocca il contratto → agente competente → `test-engineer` →
+`ethics-guardian` dove richiesto).
+1. **Prima esecuzione dell'app.** L'app compila (`flutter analyze` e `flutter test` verdi in CI)
+   ma non è mai stata avviata: mancano le cartelle piattaforma.
+2. **Titolo leggibile dell'esperienza** in `ItineraryStop` e `TappaEsclusa`, riempito dal grafo
+   — voce "L'app non ha nomi leggibili delle tappe" in `docs/LIMITI.md`.
+3. **Ora adatta di un'esperienza** — voce "Il motore non conosce l'ora adatta di un'esperienza".
+4. **Sostituzione ammessa se il costo non peggiora** — voce "Sostituzione rifiutata quando
+   l'itinerario supera già il limite".
+5. **Orari verificati all'arrivo di ogni tappa**, prima di qualunque esercizio con orari reali —
+   residuo della voce "Orari di apertura verificati solo all'ora del segnale".
+6. **Il curatore crea un luogo nuovo da un contributo di Urban Memory**, perché un racconto su un
+   luogo non ancora nel grafo non vada perso.
+
+**Rinviati finché non c'è una fonte reale:** flag `sintetico` su `behavior_event`; import di dati
+di affollamento.
+
+**Regola di perimetro:** i nuovi difetti trovati durante il Traguardo A vanno in `docs/LIMITI.md`,
+salvo che blocchino la demo.
 
 ---
 

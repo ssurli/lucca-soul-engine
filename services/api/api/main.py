@@ -951,7 +951,7 @@ def dashboard_index(
     itinerari oggi (buco nei dati dichiarato, `docs/LIMITI.md`), mai un
     default silenzioso diverso da lista vuota.
 
-    `periodo` è vincolato `pattern=r"^\d{4}-\d{2}$"` a livello di query
+    `periodo` è vincolato `pattern=r"^\\d{4}-\\d{2}$"` a livello di query
     (stesso principio di `ora: Query(ge=0, le=23)` su `dashboard_flows`
     sotto): una stringa malformata (es. `"abc"`, `"2026"`) è rifiutata con
     422 dalla validazione di FastAPI/Pydantic PRIMA di raggiungere
@@ -1007,7 +1007,7 @@ def dashboard_flows(
     `ora` è vincolato `ge=0, le=23` anche qui a livello di query (oltre che
     nel modello Pydantic sottostante): un valore fuori range produce un 422
     leggibile prima ancora di costruire il payload. `periodo` è vincolato
-    `pattern=r"^\d{4}-\d{2}$"` sullo STESSO principio (vedi `dashboard_index`
+    `pattern=r"^\\d{4}-\\d{2}$"` sullo STESSO principio (vedi `dashboard_index`
     sopra per il dettaglio validazione a monte/a valle): forma malformata ->
     422 dal `Query`, mese fuori range (es. `"2026-13"`) -> `ValueError` di
     `intervallo_periodo` catturato qui sotto e rilanciato come

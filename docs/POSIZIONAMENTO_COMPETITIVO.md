@@ -1,7 +1,8 @@
 # Posizionamento competitivo — Lucca Soul Lab rispetto alle app "anti-trappola" e anti-overtourism
 
-> Stato: analisi del 16/10/2026, verificata contro il codice al commit `4f84379`
-> (830 test passati, 2 saltati). Le affermazioni sui concorrenti vengono da fonti pubbliche
+> Stato: analisi del 16/10/2026, verificata contro il codice al commit `4f84379`; numeri dei test
+> rieseguiti il 19/10/2026 su `a79abc3`: 1.456 passati, 121 saltati (radice 273 + 5 saltati;
+> servizi 1.183 + 116 saltati). Le affermazioni sui concorrenti vengono da fonti pubbliche
 > (siti e stampa, elenco in fondo) e possono essere cambiate. Le etichette usate:
 > **[verificato]** = eseguito o letto nel codice di questo repo; **[fonte]** = dichiarato pubblicamente
 > dal concorrente; **[stima]** = inferenza, da confermare.
@@ -37,7 +38,9 @@ distribuzione dei flussi e da Urban Memory, non abbiamo concorrenti diretti tra 
 - **Misura.** `intelligence_index/distribuzione.py`: `distribuzione_flussi` come entropia di Shannon
   normalizzata, esposta in `GET /dashboard/index` e `/dashboard/flows` con soppressione a soglia k.
 - **Regressione bloccante.** `tests/test_integration_wave3b.py`: se il recommender peggiora
-  l'entropia aggregata, la CI si rompe (caso base 0,783 → 0,842).
+  l'entropia aggregata, la CI si rompe. Nello scenario originale (storico concentrato su 2 luoghi)
+  l'entropia passa da 0,783 a 0,842, ricalcolata il 19/10/2026 con gli helper del test; il test
+  verifica solo che non scenda, non questi valori.
 - **Nessun pay-to-play.** Nessun campo esprime priorità a pagamento; i vettori commerciali indiretti
   (segnali fluttuanti, eventi promossi) sono chiusi e verificati da `ethics-guardian`.
 
@@ -50,7 +53,7 @@ distribuzione dei flussi e da Urban Memory, non abbiamo concorrenti diretti tra 
 | L'Index misura **solo gli utenti dell'app** | Non è una fotografia dei flussi cittadini | Dichiararlo; incrociare con dati esterni |
 | `behavior_event` senza flag sintetico né finestra temporale | Un evento di prova altera ranking e indicatori | Flag `sintetico` + finestra su `ts` |
 | `nuovi_percorsi` senza persistenza degli itinerari | Il valore va letto come "non misurato", non come zero | Persistere gli itinerari |
-| Dashboard Flutter **mai compilata** | Non dimostrabile a un cliente | `flutter analyze` / `flutter test` / prova manuale |
+| App e dashboard Flutter: compilano (`flutter analyze` e `flutter test` verdi in CI) ma **non sono mai state avviate**: mancano le cartelle piattaforma | Non dimostrabile a un cliente | Prima esecuzione e prova manuale (Traguardo A, blocco 1, `docs/BUILD_PLAN.md`) |
 
 ### Come va raccontata all'amministrazione
 
@@ -105,34 +108,37 @@ Vende mappe e pass al viaggiatore (B2C). Si posiziona esplicitamente *contro* AI
 | Problema dichiarato | Stress del viaggiatore, trappole per turisti | Overtourism e significato della città |
 | Cliente | Viaggiatore pagante | Turista, Cittadino, Operatori, Comune, Sviluppatori |
 | Funzione obiettivo | Soddisfazione del singolo | Pertinenza **vincolata** alla distribuzione dei flussi [verificato] |
-| Fonte dei contenuti | Rete di local pagati + team editoriale | Knowledge Graph + Urban Memory partecipativa + CURATOR |
+| Fonte dei contenuti | Rete di local [non verificato: se siano pagati] + team editoriale | Knowledge Graph + Urban Memory partecipativa + CURATOR |
 | Unità consigliata | Il singolo posto | Il percorso di senso (relazioni nel grafo) |
 | Profilazione | Onboarding "come viaggi" → abbinamento a local simili | `EmotionalProfile` da onboarding conversazionale |
 | Eventi effimeri | Non dichiarati | Segnali fluttuanti → `:Evento` con cadenza, attrito, freno [verificato] |
 | Misura per la città | Assente | Urban Intelligence Index, privacy a soglia k [verificato] |
-| Spiegabilità | Nota del local sul posto | `reason` obbligatorio su ogni tappa [verificato] |
+| Spiegabilità | Nota del local sul posto | `reason` obbligatorio su ogni tappa [verificato]; in adattamento è verificabile solo per le tappe rigenerate dal server (`docs/LIMITI.md`, voce "il `reason` delle tappe mantenute o non toccate è testo del client") |
 | Pay-to-play | Escluso | Escluso, con gate etico separato [verificato] |
 | Copertura | 17 città, in espansione | 1 città pilota, replicabile cambiando dataset |
 | Maturità di mercato | App pubblicata, >3.000 acquirenti dichiarati | Mai in mano a utenti reali |
 
 **Pro di Lucca Soul Lab rispetto a Hint**
 - Obiettivo anti-concentrazione **nel codice e in CI**, non nel marketing.
-- Urban Memory: contenuto che una rete di local pagati non produce.
-- Profondità su una città (Puccini, liuteria, Mura, eventi) invece di ampiezza.
+- Urban Memory: contenuto che una rete di consiglieri locali non produce.
+- Profondità su una città (Puccini, Mura, eventi) invece di ampiezza.
 - Ha un cliente istituzionale naturale; Hint no.
-- Spiegabilità auditabile da un'amministrazione.
+- Spiegabilità auditabile da un'amministrazione, oggi solo per le tappe rigenerate dal server
+  (voce in `docs/LIMITI.md`).
 
 **Contro di Lucca Soul Lab rispetto a Hint**
 - Hint esiste sul mercato, ha capitale, brand, app negli store e utenti paganti; noi no.
 - La loro rete di local produce contenuti **validati sul campo**; il nostro seed è curato, non
   validato (`I_LIMITI_DEL_MOTORE.md` §11).
+- Le 5 botteghe del seed sono dimostrative; i posti di Hint sono reali.
 - Sull'esperienza d'ingresso (profilo emotivo → consigli personali) **siamo indistinguibili**.
 - Il nostro vantaggio sui flussi oggi gira senza dati reali di affollamento.
-- La nostra app non è mai stata compilata dopo le ultime modifiche.
+- La nostra app compila (`flutter analyze` e `flutter test` verdi in CI) ma non è mai stata
+  avviata: mancano le cartelle piattaforma.
 
 **Rischio specifico:** Firenze entra in Hint a breve. Lucca come "gita da Firenze" è plausibile nel
-medio periodo [stima], ma probabilmente come aggiunta leggera: il loro modello paga i local per
-posto, e su una città piccola il costo si divide su pochi acquirenti.
+medio periodo [stima], ma probabilmente come aggiunta leggera: se il loro modello paga i local per
+posto [non verificato], e su una città piccola il costo si divide su pochi acquirenti.
 
 ### Unexpected Italy
 
@@ -183,7 +189,8 @@ In ordine di priorità:
 
 1. **Una fonte reale per `Signal.affollamento`** — anche solo un CSV di biglietteria museale o parcheggi.
 2. **Flag `sintetico` + finestra temporale** su `behavior_event`, per non inquinare ranking e Index.
-3. **Dashboard compilata e provata a mano** almeno una volta.
+3. **App e dashboard avviate e provate a mano** almeno una volta (oggi compilano in CI ma mancano
+   le cartelle piattaforma).
 4. **Il percorso "luogo non nel grafo"** per Urban Memory, perché la memoria più fragile non vada persa.
 5. Una frase onesta sul confine: l'Index misura l'effetto delle raccomandazioni sugli utenti dell'app,
    non i flussi dell'intera città.

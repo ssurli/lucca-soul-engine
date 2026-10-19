@@ -382,7 +382,8 @@ l'intera app, mai i path di scrittura). Questo limite va riletto — non ignorat
 
 ### Cosa diceva il materiale di pitch
 
-Il White Paper (`LUCCA_SOUL_LAB_Portfolio_v1.1.pdf`, pagina 20 "Marketplace") promette
+Il White Paper (portfolio v1.1, documento esterno al repository, non più versionato; pagina 20
+"Marketplace") promette
 esplicitamente: *"La piattaforma mette in rete chi crea cultura e **gestisce disponibilità**,
 prenotazioni, pagamenti, recensioni e statistiche."* — "gestisce disponibilità" è una capacità
 dichiarata del concept, non una frase generica.
@@ -591,7 +592,8 @@ pseudonimo, mai loggato.
 
 1. **Nessun meccanismo di prova di presenza, in nessuna forma.** Cercato in tutto il repo
    (contratti, grafo, BFF, recommender, app Flutter) e nel White Paper
-   (`LUCCA_SOUL_LAB_Portfolio_v1.1.pdf`): zero occorrenze di GPS, check-in, QR,
+   (portfolio v1.1, documento esterno al repository, non più versionato): zero occorrenze di GPS,
+   check-in, QR,
    conferma operatore, geolocalizzazione, beacon, NFC. `services/recommender/README.md`
    DOCUMENTA esplicitamente l'assunzione su cui poggia l'intero schema di pesi
    (`PESI_TIPO`): `tipo="stop"` vale il doppio di `view` perché significa "presenza fisica
@@ -2368,3 +2370,47 @@ Correzione proposta (candidato in `docs/BUILD_PLAN.md`): un campo `titolo` dell'
 `ItineraryStop` e `TappaEsclusa`, riempito dal grafo, da fare insieme alla prima esecuzione
 dell'app (voce sulle cartelle piattaforma assenti), quando le schermate si vedranno a schermo.
 Cambia il golden (campo nuovo in tutti i casi).
+
+## Filtro duro del marketplace: `abbonamenti_partner[0]` non deterministico con più partner (APERTO)
+
+**Trovato:** 2026-10-19, in sola lettura. **Non corretto:** semantica da decidere con
+`ethics-guardian`.
+
+In `services/graph/cypher/10_candidates.cypher` l'abbonamento del partner di un'esperienza si
+legge da `collect(DISTINCT partner.abbonamento_attivo) AS abbonamenti_partner` e diventa
+`partner_abbonamento_attivo` con `abbonamenti_partner[0]`. Quel booleano alimenta il filtro duro
+del marketplace (`passa_filtri_duri` in `services/experience-engine/experience_engine/rules.py`:
+un partner con abbonamento non attivo esclude l'esperienza).
+
+### Cosa NON è garantito
+
+Se una bottega ha più nodi `:Partner` via `HA_ABBONAMENTO` con valori diversi, la lista contiene
+sia `true` sia `false` e `collect` non garantisce un ordine: lo stesso grafo può includere o
+escludere l'esperienza a seconda dell'esecuzione. Oggi nel seed ogni bottega ha al più un partner,
+quindi il caso non si presenta.
+
+### Domanda di prodotto (da decidere prima di correggere)
+
+Con più partner, basta un abbonamento attivo (`any`) o servono tutti (`all`)? Va deciso con
+`ethics-guardian`, perché cambia quando un'esperienza commerciale può comparire.
+
+## Il motore non conosce l'ora adatta di un'esperienza (APERTO)
+
+**Trovato:** 2026-10-16, dalla prova dell'adattamento su Aura (wave "adattamento"); registrato il
+2026-10-19. **Non corretto.**
+
+`ExperienceNode` dichiara al più `orari_apertura` (quando un'esperienza è aperta), non l'ora in cui
+ha senso viverla. In adattamento, nella sostituzione di una tappa per affollamento, il motore ha
+proposto "Tramonto dal Baluardo San Paolino" (`exp-tramonto-baluardo` nel seed della città) alle
+10:00. La tappa è ammissibile per i filtri duri, ma il titolo stesso la contraddice.
+
+### Cosa NON è garantito
+
+Nessuna esperienza legata a un momento della giornata (tramonto, sera, mattina presto) viene
+proposta solo nella fascia adatta, né in composizione né in adattamento.
+
+### Cosa servirebbe
+
+Un campo nel contratto (passa da `contract-keeper`) per la fascia oraria adatta, letto come filtro
+o penalità dall'Experience Engine; cambia il golden. È il blocco (3) del Traguardo A in
+`docs/BUILD_PLAN.md`.
