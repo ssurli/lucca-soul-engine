@@ -157,6 +157,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
             bffClient: widget.bffClient,
             itinerary: itinerario,
             signal: _segnale,
+            profile: widget.profile,
             strings: _strings,
             onAdapted: _onAdattato,
           ),

@@ -985,7 +985,7 @@ def adapt_itinerary(
     adapt_fn = adapt_reason_fn or _fallback_adapt_reason
     per_id = {c.experience.id: c for c in candidates}
     # Accessibilità: se il profilo la richiede, vale sempre. Se il profilo è
-    # assente (l'AdaptRequest non lo trasporta), regola CONSERVATIVA per tappa:
+    # assente (`AdaptRequest.profile` è opzionale), regola CONSERVATIVA per tappa:
     # una tappa accessibile può essere sostituita SOLO da una accessibile.
     base_accessibile = profile.accessibilita_richiesta if profile is not None else False
     profilo_effettivo = profile or _profilo_neutro()
@@ -1138,7 +1138,7 @@ def adapt_itinerary(
 
 
 def _profilo_neutro() -> EmotionalProfile:
-    """Profilo neutro usato quando l'`AdaptRequest` non trasporta il profilo:
+    """Profilo neutro usato quando `AdaptRequest.profile` è assente:
     serve solo a ordinare le alternative, non reintroduce preferenze. Il suo
     `tempo_disponibile_min` NON è mai usato come budget: il budget
     dell'adattamento viene dall'itinerario (`Itinerary.tempo_effettivo_min`)."""

@@ -1013,8 +1013,16 @@ class OnboardingRequest(ContractModel):
 
 
 class AdaptRequest(ContractModel):
-    """Input di POST /itinerary/adapt."""
+    """Input di POST /itinerary/adapt.
+
+    `profile` (opzionale, retrocompatibile): se presente, il profilo del visitatore
+    guida l'ordinamento delle alternative e l'accessibilita'
+    (`accessibilita_richiesta`). Se assente, profilo neutro e regola prudente per
+    tappa (una tappa accessibile si sostituisce solo con una accessibile):
+    comportamento invariato.
+    """
 
     itinerary: Itinerary
     signal: Signal
+    profile: EmotionalProfile | None = None
 

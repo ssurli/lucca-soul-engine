@@ -120,7 +120,7 @@ di riscrittura mirata, con conseguenze concrete:
 - `_migliore_alternativa` **chiama `rules.passa_filtri_duri`** (con `luoghi_gia_visti=[]`:
   l'`AdaptRequest` non li trasporta) e aggiunge SOLO i vincoli propri dell'adattamento:
   esperienze già nell'itinerario, accessibilità conservativa per tappa quando il profilo è
-  assente, `al_chiuso` su pioggia, affollamento `> 0.7` (più stretto della soglia critica
+  assente (`AdaptRequest.profile` opzionale dal 2026-10-19, difetto j), `al_chiuso` su pioggia, affollamento `> 0.7` (più stretto della soglia critica
   `>= 0.8` del filtro duro, che quindi resta assorbita). Storia: fino al 2026-10-15 i filtri
   erano reimplementati a mano — prima mancavano gli orari (trovato da ethics-guardian), poi
   restava fuori `partner_abbonamento_attivo`, per cui un partner con abbonamento non attivo

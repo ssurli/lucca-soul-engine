@@ -778,16 +778,17 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
 @app.post("/itinerary/adapt", response_model=Itinerary)
 def adapt_itinerary_endpoint(request: AdaptRequest) -> Itinerary:
     """Riscrive SOLO ciò che il nuovo `Signal` tocca (pioggia, affollamento,
-    stanchezza). `AdaptRequest` non trasporta il profilo: i candidati sono
-    interrogati con un profilo neutro (serve solo a costruire il
-    `VisitorContext` richiesto dalla `CandidateSource`, non introduce
-    preferenze); l'Experience Engine riceve `profile=None` e applica la
-    stessa regola conservativa già testata (una tappa accessibile resta
-    sostituita solo da una accessibile)."""
+    stanchezza). `AdaptRequest.profile` è opzionale (difetto j): se presente
+    è inoltrato all'Experience Engine e usato per il `VisitorContext` della
+    `CandidateSource`; se assente i candidati sono interrogati con un profilo
+    neutro (serve solo a costruire il `VisitorContext`, non introduce
+    preferenze) e il motore riceve `profile=None`, applicando la regola
+    conservativa già testata (una tappa accessibile resta sostituita solo da
+    una accessibile)."""
     source = get_candidate_source()
     ctx = VisitorContext(
         person_id=request.itinerary.person_id,
-        profile=_profilo_neutro_per_candidati(),
+        profile=request.profile or _profilo_neutro_per_candidati(),
         signal=request.signal,
     )
     candidates = source.candidates(ctx)
@@ -795,7 +796,7 @@ def adapt_itinerary_endpoint(request: AdaptRequest) -> Itinerary:
         request.itinerary,
         request.signal,
         candidates,
-        profile=None,
+        profile=request.profile,
         reason_fn=compose_reason,
         adapt_reason_fn=adapt_reason,
         vocabolario=get_dataset().vocabolario,
@@ -1041,8 +1042,8 @@ def dashboard_flows(
 
 def _profilo_neutro_per_candidati() -> EmotionalProfile:
     """Profilo neutro usato SOLO per costruire il `VisitorContext` richiesto
-    da `CandidateSource.candidates` in `/itinerary/adapt`, dove `AdaptRequest`
-    non trasporta un profilo. Non influenza la scelta: `SeedCandidateSource`
+    da `CandidateSource.candidates` in `/itinerary/adapt` quando
+    `AdaptRequest.profile` è assente. Non influenza la scelta: `SeedCandidateSource`
     e `Neo4jCandidateSource` derivano le connessioni proposte dai luoghi già
     visti, non dal profilo."""
     return EmotionalProfile(

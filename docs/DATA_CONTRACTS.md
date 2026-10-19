@@ -561,7 +561,7 @@ implica `conteggio_tappe is not None`; `disponibile=False` implica `conteggio_ta
 ```
 POST /session/onboarding   -> EmotionalProfile
 POST /itinerary            (VisitorContext) -> Itinerary
-POST /itinerary/adapt      (Itinerary + Signal) -> Itinerary
+POST /itinerary/adapt      (Itinerary + Signal + EmotionalProfile?) -> Itinerary
 POST /events               (BehaviorEvent) -> 202
 POST /memory               (MemoryContribution) -> 201   # richiede consenso
 GET  /memory/{place_id}    -> list[MemoryContribution]   # solo contenuti curati
@@ -590,6 +590,11 @@ class OnboardingRequest(BaseModel):        # input di POST /session/onboarding
 class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
     itinerary: Itinerary                   # il budget di tempo viaggia QUI
     signal: Signal                         # (Itinerary.tempo_disponibile_min), non nella richiesta
+    profile: EmotionalProfile | None = None
+    # Opzionale, retrocompatibile. Se presente, il profilo del visitatore guida
+    # l'ordinamento delle alternative e l'accessibilita' (accessibilita_richiesta).
+    # Se assente: profilo neutro e regola prudente per tappa (una tappa accessibile
+    # si sostituisce solo con una accessibile); comportamento invariato.
 ```
 
 > OpenAPI generato da FastAPI è la versione autoritativa dell'API; questo blocco è il riassunto.
@@ -689,6 +694,12 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 
 ## Changelog
 
+- **2026-10-19 — difetto j (adattamento e profilo).** Aggiunto `AdaptRequest.profile:
+  EmotionalProfile | None = None` (retrocompatibile: senza `profile` il comportamento è
+  invariato, profilo neutro e regola prudente per tappa). Nessun campo rinominato o rimosso.
+  Consumatori: `services/api` (`POST /itinerary/adapt`, oggi `profile=None`),
+  `services/experience-engine` (`adapt_itinerary`), `apps/lucca_soul_app`
+  (`lib/models/adapt_request.dart`, specchio Dart: da allineare solo se l'app deve inviarlo).
 - **2026-10-16 — wave "adattamento".** Aggiunti: `EsitoAdattamento` (enum),
   `ItineraryStop.esito_adattamento`, `TappaEsclusa`, `Itinerary.tempo_disponibile_min`,
   `Itinerary.tempo_effettivo_min`, `Itinerary.tappe_escluse`. Cambiata la semantica di

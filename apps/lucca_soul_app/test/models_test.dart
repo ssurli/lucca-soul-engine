@@ -240,5 +240,32 @@ void main() {
       final json = request.toJson();
       expect(json.keys.toSet(), {'itinerary', 'signal'});
     });
+
+    test('con profile serializza la chiave profile; senza, la chiave è assente', () {
+      final itinerary = Itinerary(
+        personId: 'visitor_abc',
+        stops: const [],
+        generatedAt: DateTime.utc(2026, 7, 13, 8),
+      );
+      final signal = Signal(
+        meteo: Meteo.pioggia,
+        affollamento: const {},
+        stanchezza: 0.2,
+        ora: TimeHms.parse('10:00:00'),
+      );
+      const profile = EmotionalProfile(
+        curiosita: 0.8,
+        contemplazione: 0.3,
+        arte: 0.6,
+        conBambini: true,
+        tempoDisponibileMin: 240,
+        lingue: ['it', 'en'],
+      );
+      final con = AdaptRequest(itinerary: itinerary, signal: signal, profile: profile).toJson();
+      expect(con.keys.toSet(), {'itinerary', 'signal', 'profile'});
+      expect(con['profile'], profile.toJson());
+      final senza = AdaptRequest(itinerary: itinerary, signal: signal).toJson();
+      expect(senza.containsKey('profile'), isFalse);
+    });
   });
 }

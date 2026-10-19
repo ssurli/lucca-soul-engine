@@ -239,7 +239,8 @@ Risposta HTTP 200 → app Flutter (ogni tappa con orario + reason in evidenza)
 Segnale che cambia a runtime (pioggia, affollamento, stanchezza):
 
 ```
-App → POST /itinerary/adapt { itinerary, signal }
+App → POST /itinerary/adapt { itinerary, signal, profile? }  (profile opzionale dal 2026-10-19, difetto j;
+        senza profilo vale la regola prudente: tappa accessibile sostituita solo da accessibile)
         → experience_engine.engine.adapt_itinerary(...)  → stesso motore, stessi filtri duri,
           reason_fn = rag.reasons.adapt_reason  → Itinerary riscritto, adattato_da_segnale=true
 ```

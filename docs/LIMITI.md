@@ -2087,10 +2087,16 @@ solo registrato.
   (`_migliore_alternativa`, `_taglia_per_stanchezza`, `_ricostruisci_stops`): grep sul file, le
   sole occorrenze sono nella composizione (`_seleziona_tappe`, le due code) e in `_profilo_neutro`.
 - Senza profilo usa `_profilo_neutro()`, che ha `tempo_disponibile_min=10_000`.
-- **Via HTTP il profilo non c'è mai:** `AdaptRequest` (`packages/contracts/contracts/models.py`)
-  contiene solo `itinerary` e `signal`, e il BFF chiama sempre
-  `adapt_itinerary(..., profile=None)` (`services/api/api/main.py`, `POST /itinerary/adapt`).
-  L'adattamento quindi non conosce il budget del visitatore.
+- **Via HTTP il profilo non c'era mai (CHIUSO 2026-10-19, difetto j):** `AdaptRequest`
+  (`packages/contracts/contracts/models.py`) conteneva solo `itinerary` e `signal`, e il BFF
+  chiamava sempre `adapt_itinerary(..., profile=None)`. Dal 2026-10-19 `AdaptRequest.profile` è
+  opzionale: l'app lo invia e il BFF (`services/api/api/main.py`, `POST /itinerary/adapt`) lo
+  inoltra al motore e al `VisitorContext` dei candidati. **Senza profilo vale la regola prudente di
+  prima** (`profile=None`: una tappa accessibile resta sostituita solo da una accessibile; profilo
+  neutro per ordinare le alternative). Il budget dell'adattamento continua a venire
+  dall'`Itinerary`, non dal profilo. **Residuo:** con un profilo presente vale solo
+  `accessibilita_richiesta`, che ha default `False`: un client che invia un profilo senza quel
+  campo perde la tutela prudente per tappa. L'app lo invia sempre dall'onboarding.
 - Le tappe fluttuanti e degli eventi promossi, che non sono tra i candidati, sono conservate come
   stub (`_stub_da_stop`) con durata e `reason` originali.
 
@@ -2135,9 +2141,11 @@ un budget > 0, quindi la composizione registra l'itinerario senza budget (entram
 ### Perché
 
 I JSON di itinerari composti prima del campo (salvati dall'app, il golden
-`services/api/tests/golden/lucca_itinerari.json`, client esterni) non portano il budget, e
-`AdaptRequest` non trasporta il profilo: non esiste un budget da applicare, e inventarne uno
-(per esempio il default dell'onboarding) imporrebbe al visitatore un vincolo che non ha dichiarato.
+`services/api/tests/golden/lucca_itinerari.json`, client esterni) non portano il budget, e il
+budget dell'adattamento viene per scelta dall'`Itinerary`, non dal profilo (che dal 2026-10-19
+`AdaptRequest.profile` può trasportare, opzionale): non esiste un budget da applicare, e inventarne
+uno (per esempio dal `tempo_disponibile_min` del profilo o dal default dell'onboarding) imporrebbe
+al visitatore un vincolo che non ha dichiarato su questo itinerario.
 
 ### Cosa NON è garantito
 

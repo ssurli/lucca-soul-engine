@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/bff_client.dart';
 import '../api/bff_exception.dart';
 import '../models/adapt_request.dart';
+import '../models/emotional_profile.dart';
 import '../models/itinerary.dart';
 import '../models/signal.dart';
 import '../util/app_strings.dart';
@@ -19,6 +20,7 @@ class AdaptiveCard extends StatefulWidget {
   final BffClient bffClient;
   final Itinerary itinerary;
   final Signal signal;
+  final EmotionalProfile profile;
   final AppStrings strings;
 
   /// Chiamato con il nuovo itinerario e il nuovo segnale dopo un adattamento
@@ -30,6 +32,7 @@ class AdaptiveCard extends StatefulWidget {
     required this.bffClient,
     required this.itinerary,
     required this.signal,
+    required this.profile,
     required this.strings,
     required this.onAdapted,
   });
@@ -49,7 +52,7 @@ class _AdaptiveCardState extends State<AdaptiveCard> {
     });
     try {
       final nuovoSegnale = buildSimulatedSignal(kind, widget.signal);
-      final richiesta = AdaptRequest(itinerary: widget.itinerary, signal: nuovoSegnale);
+      final richiesta = AdaptRequest(itinerary: widget.itinerary, signal: nuovoSegnale, profile: widget.profile);
       final nuovoItinerario = await widget.bffClient.adaptItinerary(richiesta);
       widget.onAdapted(nuovoItinerario, nuovoSegnale);
     } on BffException catch (error) {
