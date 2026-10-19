@@ -2246,6 +2246,408 @@
       },
       "tipo": "adapt"
     },
+    "adapt-profilo|accessibile|pioggia": {
+      "atteso": {
+        "adattato_da_segnale": true,
+        "person_id": "golden-apb-accessibile",
+        "stops": [
+          {
+            "arrivo": "10:00:00",
+            "durata_min": 35,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-duomo-volto-santo",
+            "reason": "Sostituita per la pioggia. Luigi Boccherini è legato a Duomo di San Martino."
+          },
+          {
+            "arrivo": "10:45:00",
+            "durata_min": 50,
+            "esito_adattamento": "non_toccata",
+            "experience_id": "exp-laboratorio-liuteria",
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria (esempio dimostrativo)."
+          },
+          {
+            "arrivo": "11:45:00",
+            "durata_min": 25,
+            "esito_adattamento": "mantenuta_senza_alternativa",
+            "experience_id": "exp-mosaico-san-frediano",
+            "reason": "Evoca il tema \"Arte\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso e con il tempo a disposizione: la tappa resta in programma."
+          },
+          {
+            "arrivo": "12:20:00",
+            "durata_min": 40,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-telaio-tessitura",
+            "reason": "Sostituita per la pioggia. Evoca il tema \"Artigianato\". Offerta da Laboratorio di tessitura (esempio dimostrativo)."
+          }
+        ],
+        "tappe_escluse": [],
+        "tempo_disponibile_min": 180,
+        "tempo_effettivo_min": 180
+      },
+      "richiesta": {
+        "itinerary": {
+          "adattato_da_segnale": false,
+          "generated_at": "2026-10-19T16:01:26.811080",
+          "person_id": "golden-apb-accessibile",
+          "stops": [
+            {
+              "arrivo": "10:00:00",
+              "durata_min": 25,
+              "esito_adattamento": null,
+              "experience_id": "exp-facciata-san-michele",
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "10:35:00",
+              "durata_min": 50,
+              "esito_adattamento": null,
+              "experience_id": "exp-laboratorio-liuteria",
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria (esempio dimostrativo)."
+            },
+            {
+              "arrivo": "11:35:00",
+              "durata_min": 25,
+              "esito_adattamento": null,
+              "experience_id": "exp-mosaico-san-frediano",
+              "reason": "Evoca il tema \"Arte\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "12:10:00",
+              "durata_min": 30,
+              "esito_adattamento": null,
+              "experience_id": "exp-giardino-pfanner",
+              "reason": "Evoca il tema \"Verde e giardini\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato."
+            }
+          ],
+          "tappe_escluse": [],
+          "tempo_disponibile_min": 180,
+          "tempo_effettivo_min": 180
+        },
+        "profile": {
+          "accessibilita_richiesta": true,
+          "arte": 0.5,
+          "con_bambini": false,
+          "contemplazione": 0.5,
+          "curiosita": 0.75,
+          "ha_gia_visto_firenze": false,
+          "lingue": [
+            "it"
+          ],
+          "tempo_disponibile_min": 180
+        },
+        "signal": {
+          "affollamento": {},
+          "data": "2026-06-15",
+          "eventi_attivi": [],
+          "meteo": "pioggia",
+          "ora": "10:00:00",
+          "stanchezza": 0.0
+        }
+      },
+      "tipo": "adapt"
+    },
+    "adapt-profilo|con-bambini|mura-affollate": {
+      "atteso": {
+        "adattato_da_segnale": true,
+        "person_id": "golden-apb-con-bambini",
+        "stops": [
+          {
+            "arrivo": "10:00:00",
+            "durata_min": 30,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-giardino-pfanner",
+            "reason": "Sostituita per l'affollamento a Mura di Lucca. Evoca il tema \"Verde e giardini\"."
+          },
+          {
+            "arrivo": "10:40:00",
+            "durata_min": 25,
+            "esito_adattamento": "non_toccata",
+            "experience_id": "exp-facciata-san-michele",
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
+          },
+          {
+            "arrivo": "11:15:00",
+            "durata_min": 60,
+            "esito_adattamento": "non_toccata",
+            "experience_id": "exp-orto-botanico-bambini",
+            "reason": "Evoca il tema \"Adatto ai bambini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
+          },
+          {
+            "arrivo": "12:25:00",
+            "durata_min": 20,
+            "esito_adattamento": "non_toccata",
+            "experience_id": "exp-buccellato-pasticceria",
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
+          }
+        ],
+        "tappe_escluse": [],
+        "tempo_disponibile_min": 180,
+        "tempo_effettivo_min": 180
+      },
+      "richiesta": {
+        "itinerary": {
+          "adattato_da_segnale": false,
+          "generated_at": "2026-10-19T16:01:26.801845",
+          "person_id": "golden-apb-con-bambini",
+          "stops": [
+            {
+              "arrivo": "10:00:00",
+              "durata_min": 45,
+              "esito_adattamento": null,
+              "experience_id": "exp-bici-mura",
+              "reason": "Evoca il tema \"Verde e giardini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "10:55:00",
+              "durata_min": 25,
+              "esito_adattamento": null,
+              "experience_id": "exp-facciata-san-michele",
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "11:30:00",
+              "durata_min": 60,
+              "esito_adattamento": null,
+              "experience_id": "exp-orto-botanico-bambini",
+              "reason": "Evoca il tema \"Adatto ai bambini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "12:40:00",
+              "durata_min": 20,
+              "esito_adattamento": null,
+              "experience_id": "exp-buccellato-pasticceria",
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
+            }
+          ],
+          "tappe_escluse": [],
+          "tempo_disponibile_min": 180,
+          "tempo_effettivo_min": 180
+        },
+        "profile": {
+          "accessibilita_richiesta": false,
+          "arte": 0.5,
+          "con_bambini": true,
+          "contemplazione": 0.5,
+          "curiosita": 0.75,
+          "ha_gia_visto_firenze": false,
+          "lingue": [
+            "it"
+          ],
+          "tempo_disponibile_min": 180
+        },
+        "signal": {
+          "affollamento": {
+            "mura-urbane": 0.9
+          },
+          "data": "2026-06-15",
+          "eventi_attivi": [],
+          "meteo": "sereno",
+          "ora": "10:00:00",
+          "stanchezza": 0.0
+        }
+      },
+      "tipo": "adapt"
+    },
+    "adapt-profilo|no-bambini|pioggia": {
+      "atteso": {
+        "adattato_da_segnale": true,
+        "person_id": "golden-apb-no-bambini",
+        "stops": [
+          {
+            "arrivo": "10:00:00",
+            "durata_min": 35,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-duomo-volto-santo",
+            "reason": "Sostituita per la pioggia. Luigi Boccherini è legato a Duomo di San Martino."
+          },
+          {
+            "arrivo": "10:45:00",
+            "durata_min": 50,
+            "esito_adattamento": "non_toccata",
+            "experience_id": "exp-laboratorio-liuteria",
+            "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria (esempio dimostrativo)."
+          },
+          {
+            "arrivo": "11:45:00",
+            "durata_min": 35,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-meccanismo-torre-ore",
+            "reason": "Sostituita per la pioggia. Evoca il tema \"Storia\"."
+          },
+          {
+            "arrivo": "12:30:00",
+            "durata_min": 30,
+            "esito_adattamento": "mantenuta_senza_alternativa",
+            "experience_id": "exp-giardino-pfanner",
+            "reason": "Evoca il tema \"Verde e giardini\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso e con il tempo a disposizione: la tappa resta in programma."
+          }
+        ],
+        "tappe_escluse": [],
+        "tempo_disponibile_min": 180,
+        "tempo_effettivo_min": 180
+      },
+      "richiesta": {
+        "itinerary": {
+          "adattato_da_segnale": false,
+          "generated_at": "2026-10-19T16:01:26.818881",
+          "person_id": "golden-apb-no-bambini",
+          "stops": [
+            {
+              "arrivo": "10:00:00",
+              "durata_min": 25,
+              "esito_adattamento": null,
+              "experience_id": "exp-facciata-san-michele",
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "10:35:00",
+              "durata_min": 50,
+              "esito_adattamento": null,
+              "experience_id": "exp-laboratorio-liuteria",
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato. Offerta da Bottega di liuteria (esempio dimostrativo)."
+            },
+            {
+              "arrivo": "11:35:00",
+              "durata_min": 25,
+              "esito_adattamento": null,
+              "experience_id": "exp-mosaico-san-frediano",
+              "reason": "Evoca il tema \"Arte\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "12:10:00",
+              "durata_min": 30,
+              "esito_adattamento": null,
+              "experience_id": "exp-giardino-pfanner",
+              "reason": "Evoca il tema \"Verde e giardini\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato."
+            }
+          ],
+          "tappe_escluse": [],
+          "tempo_disponibile_min": 180,
+          "tempo_effettivo_min": 180
+        },
+        "profile": {
+          "accessibilita_richiesta": false,
+          "arte": 0.5,
+          "con_bambini": false,
+          "contemplazione": 0.5,
+          "curiosita": 0.75,
+          "ha_gia_visto_firenze": false,
+          "lingue": [
+            "it"
+          ],
+          "tempo_disponibile_min": 180
+        },
+        "signal": {
+          "affollamento": {},
+          "data": "2026-06-15",
+          "eventi_attivi": [],
+          "meteo": "pioggia",
+          "ora": "10:00:00",
+          "stanchezza": 0.0
+        }
+      },
+      "tipo": "adapt"
+    },
+    "adapt-profilo|pioggia|tappa-gratuita": {
+      "atteso": {
+        "adattato_da_segnale": true,
+        "person_id": "golden-apb-con-bambini",
+        "stops": [
+          {
+            "arrivo": "10:00:00",
+            "durata_min": 35,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-meccanismo-torre-ore",
+            "reason": "Sostituita per la pioggia. Evoca il tema \"Storia\"."
+          },
+          {
+            "arrivo": "10:45:00",
+            "durata_min": 35,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-duomo-volto-santo",
+            "reason": "Sostituita per la pioggia. Luigi Boccherini è legato a Duomo di San Martino."
+          },
+          {
+            "arrivo": "11:30:00",
+            "durata_min": 50,
+            "esito_adattamento": "sostituita",
+            "experience_id": "exp-casa-puccini-visita",
+            "reason": "Sostituita per la pioggia. Giacomo Puccini è legato a Casa Natale di Giacomo Puccini."
+          },
+          {
+            "arrivo": "12:30:00",
+            "durata_min": 20,
+            "esito_adattamento": "non_toccata",
+            "experience_id": "exp-buccellato-pasticceria",
+            "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
+          }
+        ],
+        "tappe_escluse": [],
+        "tempo_disponibile_min": 180,
+        "tempo_effettivo_min": 180
+      },
+      "richiesta": {
+        "itinerary": {
+          "adattato_da_segnale": false,
+          "generated_at": "2026-10-19T16:01:26.801845",
+          "person_id": "golden-apb-con-bambini",
+          "stops": [
+            {
+              "arrivo": "10:00:00",
+              "durata_min": 45,
+              "esito_adattamento": null,
+              "experience_id": "exp-bici-mura",
+              "reason": "Evoca il tema \"Verde e giardini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "10:55:00",
+              "durata_min": 25,
+              "esito_adattamento": null,
+              "experience_id": "exp-facciata-san-michele",
+              "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "11:30:00",
+              "durata_min": 60,
+              "esito_adattamento": null,
+              "experience_id": "exp-orto-botanico-bambini",
+              "reason": "Evoca il tema \"Adatto ai bambini\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato."
+            },
+            {
+              "arrivo": "12:40:00",
+              "durata_min": 20,
+              "esito_adattamento": null,
+              "experience_id": "exp-buccellato-pasticceria",
+              "reason": "Evoca il tema \"Gastronomia\", ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato. Offerta da Pasticceria (esempio dimostrativo)."
+            }
+          ],
+          "tappe_escluse": [],
+          "tempo_disponibile_min": 180,
+          "tempo_effettivo_min": 180
+        },
+        "profile": {
+          "accessibilita_richiesta": false,
+          "arte": 0.5,
+          "con_bambini": true,
+          "contemplazione": 0.5,
+          "curiosita": 0.75,
+          "ha_gia_visto_firenze": false,
+          "lingue": [
+            "it"
+          ],
+          "tempo_disponibile_min": 180
+        },
+        "signal": {
+          "affollamento": {},
+          "data": "2026-06-15",
+          "eventi_attivi": [],
+          "meteo": "pioggia",
+          "ora": "10:00:00",
+          "stanchezza": 0.0
+        }
+      },
+      "tipo": "adapt"
+    },
     "adapt|accessibile|affollamento-moderato": {
       "atteso": {
         "adattato_da_segnale": true,

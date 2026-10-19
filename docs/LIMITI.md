@@ -2420,8 +2420,111 @@ proposto "Tramonto dal Baluardo San Paolino" (`exp-tramonto-baluardo` nel seed d
 Nessuna esperienza legata a un momento della giornata (tramonto, sera, mattina presto) viene
 proposta solo nella fascia adatta, né in composizione né in adattamento.
 
+Altri casi visti nella prova manuale del 2026-10-19: lo "Struscio serale" in via Fillungo e il
+"Tramonto" dal Baluardo scelti fuori fascia oraria. Dopo il difetto g (preferenza di tema) lo
+Struscio serale entra come sostituto della liuteria (tema "artigianato") nel caso golden
+`adapt-budget|onnivoro|affollamento-moderato`, di giorno: la preferenza di tema non guarda la
+fascia oraria, quindi può riproporre il problema.
+
 ### Cosa servirebbe
 
 Un campo nel contratto (passa da `contract-keeper`) per la fascia oraria adatta, letto come filtro
 o penalità dall'Experience Engine; cambia il golden. È il blocco (3) del Traguardo A in
 `docs/BUILD_PLAN.md`.
+
+## Ondata 1 (prova manuale del 2026-10-19): profilo, sostituzioni, dati (CHIUSO 2026-10-19)
+
+**Trovato:** 2026-10-19, prima prova manuale dell'app; cause verificate nel §0 dell'ondata 1.
+**Corretto** sul ramo `fix/ondata1-motore`, un commit per difetto:
+
+- **k** — "No, non sono con bambini" dava `con_bambini=True` (`_parse_bool` in
+  `services/rag/rag/onboarding.py` controllava "bambin" prima della negazione). Ora un sì/no
+  iniziale decide per primo. Test anti-deriva `services/rag/tests/test_onboarding_risposte_app.py`
+  sulle stringhe esatte del file Dart (la CI ora esegue anche `services/rag/tests`).
+- **l** — "Mezza giornata, circa tre ore" dava 240: ora un numero esplicito vince sulle frasi
+  generiche (180); "mezza giornata" da sola resta 240. Effetto collaterale: "mezz'ora" con
+  apostrofo ora dà 30 (prima cadeva sul default 120).
+- **j** — l'adattamento ignorava il profilo: `AdaptRequest.profile` opzionale (vedi la voce
+  "Adattamento senza budget").
+- **g** — il sostituto poteva costare di più della tappa tolta: ora vincolo duro sul prezzo
+  (None = 0) e preferenza per un tema in comune. Il prezzo esclude, non ordina.
+- **b** — `exp-mosaico-san-frediano` era segnata al chiuso (il mosaico è in facciata): ora
+  all'aperto; `exp-meccanismo-torre-ore` ora al chiuso.
+
+**Non è il blocco 4 del Traguardo A.** Il blocco 4 ("Sostituzione ammessa se il costo non
+peggiora", voce "Sostituzione rifiutata quando l'itinerario supera già il limite") riguarda il
+costo in **tempo** rispetto al budget; g riguarda il **prezzo**. Il blocco 4 resta aperto.
+
+## Onboarding: pesi asimmetrici (m) — "musica" o "storie" tolgono ma non attraggono (APERTO)
+
+**Trovato:** 2026-10-19 (ondata 1); verificato in lettura su `rules.calcola_score`
+(`services/experience-engine/experience_engine/rules.py`). **Non corretto.**
+
+`contemplazione` e `arte` sono due scale a un solo polo nello scoring: moltiplicano solo
+l'affinità con i temi contemplativi e d'arte del vocabolario. Rispondere "Musica ed energia"
+(contemplazione 0,2) o "I racconti e gli aneddoti" (arte 0,2) toglie punti alle esperienze di
+silenzio e d'arte, ma nessun termine premia le esperienze di musica o di storie: il polo opposto
+della domanda non attrae nulla.
+
+Correzione possibile: un gruppo di temi per il polo opposto nel `VocabolarioTemi` (dato del
+dataset) e un termine simmetrico in `calcola_score`. Cambia `lucca_punteggi.json` e molti casi
+golden; passa da `ethics-guardian`.
+
+## Firenze: domanda raccolta ma senza effetto sul punteggio (APERTO)
+
+**Trovato:** 2026-10-19 (ondata 1). **Non corretto:** si tratta nell'ondata 3.
+
+L'onboarding chiede "Hai già visto Firenze?" e il parser valorizza
+`EmotionalProfile.ha_gia_visto_firenze`, ma nessun modulo del motore lo legge (grep su
+`services/*/` escluso il parser): la risposta non cambia l'itinerario. Al visitatore si chiede
+un dato che non usiamo.
+
+## L'app invia frasi da interpretare invece di codici (APERTO)
+
+**Trovato:** 2026-10-19 (ondata 1). **Non corretto.**
+
+Le opzioni dell'onboarding (`kOnboardingQuestions` in
+`apps/lucca_soul_app/lib/screens/onboarding_screen.dart`) inviano al BFF frasi italiane
+("No, non sono con bambini") che il parser deve reinterpretare con parole chiave. È l'origine dei
+difetti k e l: l'app conosce già la scelta esatta, ma la trasmette come testo libero. Il test
+anti-deriva intercetta un testo cambiato senza aggiornare il parser, ma non elimina il rischio.
+Esempio residuo: "Circa un'ora" senza altre parole dà il default 120, perché l'apostrofo impedisce
+di leggere "un'ora"; la risposta dell'app dà 60 solo grazie a "poco tempo".
+
+Correzione possibile: un codice di opzione nel contratto dell'onboarding accanto al testo (passa
+da `contract-keeper`), con il parser di testo libero solo per le risposte libere.
+
+## Sostituzioni: concentrazione su pochi luoghi gratuiti al chiuso (APERTO)
+
+**Trovato:** 2026-10-19, gate `ethics-guardian` sui difetti g e b. **Non corretto:** registrato
+come rischio.
+
+Dopo g il sostituto non può costare più della tappa tolta, e quasi tutte le tappe tolte sono
+gratuite. Con la pioggia, il pool dei sostituti gratuiti al chiuso del seed di Lucca è Duomo,
+Casa Puccini, Villa Guinigi, tessitura e (solo per chi non chiede accessibilità) Torre delle
+Ore. Dopo b San Frediano non ne fa più parte. Nel golden **Villa Guinigi** è diventata un
+sostituto ricorrente: con la preferenza di tema vince ogni volta che la tappa tolta ha "arte".
+Su molti visitatori questo può concentrare i flussi proprio dove l'adattamento dovrebbe
+distribuirli.
+
+Due aggravanti:
+- **Il tema viene prima dello score**, quindi prima della penalità di affollamento sotto soglia
+  (che vive dentro `calcola_score`): un candidato con tema in comune ma più affollato (sotto 0,7)
+  batte uno più scorrevole.
+- **Pioggia + accessibilità + gratuito**: il pool scende a circa 4 esperienze, sui luoghi
+  principali. La Torre delle Ore, meno battuta, non è accessibile.
+
+Non verificato: la quota reale di Villa Guinigi tra i sostituti fuori dal golden. Direzione: misurarla con
+`distribuzione_flussi`; il rimedio per l'accessibilità è nuovo contenuto accessibile al chiuso
+nel dataset, non una deroga del motore.
+
+## Sostituzioni: la preferenza di tema è lessicografica (APERTO)
+
+**Trovato:** 2026-10-19 (ondata 1, difetto g). **Scelta esplicita**, registrata.
+
+In `_migliore_alternativa` la chiave di ordinamento è (condivide almeno un tema con la tappa
+tolta, score, id): un solo tema in comune batte qualunque differenza di score, e due temi in
+comune non valgono più di uno. Non è un peso combinato: il tema decide, lo score separa solo
+candidati con lo stesso esito sul tema. Conseguenze: un candidato tematicamente marginale ma con
+un tema in comune vince su uno molto più pertinente al profilo; e la penalità di affollamento
+(dentro lo score) agisce solo a parità di tema (vedi voce precedente).

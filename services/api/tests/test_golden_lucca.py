@@ -66,6 +66,17 @@ e' sostituita o mantenuta senza alternativa, oppure non e' piu' disponibile come
 al chiuso, oppure Torre delle Ore e' nuovo sostituto al chiuso (mai per chi chiede
 accessibilita'), oppure slittamento/budget conseguente. Zero differenze non attribuite.
 
+AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
+richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
+byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte
+dell'app. Itinerari composti dal codice attuale (con budget). Scopo:
+  - `con-bambini|mura-affollate`: famiglia con bambini, affollamento 0.9 a `mura-urbane`:
+    `exp-bici-mura` e' sostituita da un'esperienza gratuita con temi in comune (difetto g);
+  - `pioggia|tappa-gratuita`: pioggia su tappe all'aperto gratuite: ogni sostituto e' gratuito (g);
+  - `accessibile|pioggia`: accessibilita' richiesta nel profilo: ogni sostituto e' accessibile (j);
+  - `no-bambini|pioggia`: "No, non sono con bambini": nessun `reason` cita i bambini (j).
+La proprieta' di ciascuno e' asserita da `test_golden_adapt_profilo_proprieta`.
+
 Due livelli, entrambi "replay" dei JSON (richiesta/specifica + atteso):
   a) ITINERARI via HTTP del BFF (`POST /itinerary`, `POST /itinerary/adapt`):
      uguaglianza ESATTA di `person_id`, `adattato_da_segnale`,
@@ -262,6 +273,11 @@ def test_golden_itinerari_presente_e_non_vuoto() -> None:
         c["richiesta"]["itinerary"].get("tempo_effettivo_min") is not None
         for c in budget.values()
     )
+    # Ondata 1 (difetto j): 4 casi con il profilo nella richiesta di adattamento.
+    profilo = {k: c for k, c in casi.items() if k.startswith("adapt-profilo|")}
+    assert len(profilo) == 4
+    assert all(c["tipo"] == "adapt" for c in profilo.values())
+    assert all(c["richiesta"].get("profile") for c in profilo.values())
 
 
 @pytest.mark.parametrize("chiave", _id_casi())
@@ -283,6 +299,68 @@ def test_golden_itinerario(client: TestClient, chiave: str) -> None:
             f"{chiave}: {minuti} minuti oltre tempo_effettivo_min="
             f"{risposta['tempo_effettivo_min']}"
         )
+
+
+def _esperienze_seed() -> dict[str, Any]:
+    from graph.seed_lucca import ESPERIENZE
+
+    return {e.id: e for e in ESPERIENZE}
+
+
+def test_golden_adapt_profilo_proprieta() -> None:
+    """Sul golden (senza rieseguire il motore), la proprieta' dichiarata di ogni caso
+    `adapt-profilo|...`, con prezzo/accessibile/temi dal seed di Lucca."""
+    casi = _carica(FILE_ITINERARI)["casi"]
+    seed = _esperienze_seed()
+
+    def sostituzioni(chiave: str) -> list[tuple[str, str]]:
+        caso = casi[chiave]
+        originali = [s["experience_id"] for s in caso["richiesta"]["itinerary"]["stops"]]
+        stops = caso["atteso"]["stops"]
+        assert len(stops) == len(originali), chiave
+        coppie = [
+            (o, s["experience_id"])
+            for o, s in zip(originali, stops, strict=True)
+            if s["esito_adattamento"] == "sostituita"
+        ]
+        assert coppie, f"{chiave}: nessuna tappa sostituita"
+        assert all(a != b for a, b in coppie), chiave
+        return coppie
+
+    def gratuito(exp_id: str) -> bool:
+        return not seed[exp_id].prezzo_eur
+
+    # 1) bici delle Mura sostituita da un'esperienza gratuita con un tema in comune.
+    k1 = "adapt-profilo|con-bambini|mura-affollate"
+    assert casi[k1]["richiesta"]["profile"]["con_bambini"] is True
+    ids1 = [s["experience_id"] for s in casi[k1]["richiesta"]["itinerary"]["stops"]]
+    assert "exp-bici-mura" in ids1
+    coppie1 = sostituzioni(k1)
+    assert [o for o, _ in coppie1] == ["exp-bici-mura"]
+    for tolta, nuova in coppie1:
+        assert gratuito(nuova), (k1, nuova)
+        assert set(seed[tolta].temi) & set(seed[nuova].temi), (k1, tolta, nuova)
+
+    # 2) pioggia su tappe all'aperto gratuite: ogni sostituto e' gratuito.
+    k2 = "adapt-profilo|pioggia|tappa-gratuita"
+    assert casi[k2]["richiesta"]["signal"]["meteo"] == "pioggia"
+    coppie2 = sostituzioni(k2)
+    for tolta, nuova in coppie2:
+        assert not seed[tolta].al_chiuso and gratuito(tolta), (k2, tolta)
+        assert gratuito(nuova), (k2, nuova)
+
+    # 3) accessibilita' richiesta: ogni sostituto e' accessibile.
+    k3 = "adapt-profilo|accessibile|pioggia"
+    assert casi[k3]["richiesta"]["profile"]["accessibilita_richiesta"] is True
+    for _tolta, nuova in sostituzioni(k3):
+        assert seed[nuova].accessibile is True, (k3, nuova)
+
+    # 4) senza bambini: nessun reason di tappa li cita.
+    k4 = "adapt-profilo|no-bambini|pioggia"
+    assert casi[k4]["richiesta"]["profile"]["con_bambini"] is False
+    sostituzioni(k4)
+    for s in casi[k4]["atteso"]["stops"]:
+        assert "bambini" not in s["reason"].lower(), (k4, s["experience_id"], s["reason"])
 
 
 # ---------------------------------------------------------------------------
