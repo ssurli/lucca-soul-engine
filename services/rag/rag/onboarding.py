@@ -116,6 +116,8 @@ _RE_UN_PO = re.compile(r"\bun\s*po['`]?\b")
 _RE_SI_MODERATO = re.compile(r"\b(si|certo|ovvio|volentieri|abbastanza|diciamo)\b")
 _RE_NO_FORTE = re.compile(r"\b(per\s*niente|niente\s*affatto|assolutamente\s*no|zero)\b")
 _RE_NO = re.compile(r"\bno\b|\bnon\b|\bmai\b")
+_RE_INIZIO_SI = re.compile(r"^si\b")
+_RE_INIZIO_NO = re.compile(r"^(?:no|non)\b")
 
 
 def _parse_intensita(testo: str, default: float) -> float:
@@ -183,11 +185,23 @@ def _parse_bool(
     negativi_extra: tuple[str, ...] = (),
 ) -> bool:
     """Parsing sì/no robusto, con parole chiave di dominio opzionali
-    (es. "bambini"/"figli" implicano sì anche senza un "sì" esplicito)."""
+    (es. "bambini"/"figli" implicano sì anche senza un "sì" esplicito).
+
+    Precedenza:
+    1. un "sì" o un "no/non" ESPLICITO a inizio risposta (parola intera, dopo
+       la normalizzazione) decide per primo: "No, non sono con bambini" è
+       False anche se contiene "bambin"; "nonna" o "sicuro" non contano;
+    2. altrimenti `negativi_extra`, poi `positivi_extra`;
+    3. poi le regex generiche di negazione e di assenso;
+    4. altrimenti `default`."""
     try:
         t = _normalizza(testo)
         if not t:
             return default
+        if _RE_INIZIO_SI.match(t):
+            return True
+        if _RE_INIZIO_NO.match(t):
+            return False
         if any(k in t for k in negativi_extra):
             return False
         if any(k in t for k in positivi_extra):
@@ -232,16 +246,17 @@ _RE_MIN_PAROLA = re.compile(
 def _parse_minuti(testo: str, default: int) -> int:
     """Parsing dei minuti disponibili da testo libero: numeri, numeri scritti
     a parole, "mezza giornata", "tutto il giorno", "mezz'ora"... Mai eccezioni:
-    testo non interpretabile -> `default`."""
+    testo non interpretabile -> `default`.
+
+    Precedenza: "mezz'ora" (30), poi un NUMERO ESPLICITO (cifre o parole, ore o
+    minuti) che vince sulle frasi generiche, poi le frasi generiche
+    ("tutto il giorno" 480, "mezza giornata" 240, "poco tempo" 60,
+    "tanto tempo" 240). Es. "Mezza giornata, circa tre ore" -> 180."""
     try:
         t = _normalizza(testo)
         if not t:
             return default
-        if re.search(r"tutto il giorno|tutta la giornata|giornata intera", t):
-            return 480
-        if re.search(r"mezza giornata", t):
-            return 240
-        if re.search(r"mezz\s*or|mezzora", t):
+        if re.search(r"mezz\s*['`]?\s*or|mezzora", t):
             return 30
 
         m = _RE_ORE_NUM.search(t)
@@ -260,6 +275,10 @@ def _parse_minuti(testo: str, default: int) -> int:
         if m:
             return _NUMERI_ITALIANI[m.group(1)]
 
+        if re.search(r"tutto il giorno|tutta la giornata|giornata intera", t):
+            return 480
+        if re.search(r"mezza giornata", t):
+            return 240
         if re.search(r"poco tempo|pochissimo tempo|di corsa|poco", t):
             return 60
         if re.search(r"tanto tempo|tantissimo tempo|tutta la vita", t):
