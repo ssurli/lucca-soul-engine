@@ -440,6 +440,10 @@ Blocchi in ordine: ognuno parte quando il precedente è chiuso. Ogni blocco segu
 **Rinviati finché non c'è una fonte reale:** flag `sintetico` su `behavior_event`; import di dati
 di affollamento.
 
+**Candidati (registrati, non pianificati):**
+- App web servita dal BFF sulla stessa origine (niente CORS), per demo da telefono e messa online.
+  Oggi la prima esecuzione usa Chrome con `--disable-web-security`, solo in locale.
+
 **Regola di perimetro:** i nuovi difetti trovati durante il Traguardo A vanno in `docs/LIMITI.md`,
 salvo che blocchino la demo.
 
