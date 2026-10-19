@@ -47,6 +47,25 @@ atteso-vecchio/risposta-nuova (zero non attribuite) a: un sostituto "prima" piu'
 della tolta ora escluso (liuteria 15 EUR, pasticceria 8 EUR, concerto 25 EUR), oppure
 un sostituto "dopo" che condivide un tema dove il "prima" non lo condivideva, oppure
 slittamento/mantenuta conseguente (sostituto gia' preso da un'altra tappa; budget).
+
+QUINTA modifica autorizzata (2026-10-19, ondata 1, difetto b), in `lucca_itinerari.json`
+E, per la PRIMA volta, in `lucca_punteggi.json`. Motivo: correzione del seed di Lucca,
+`exp-mosaico-san-frediano` al_chiuso True->False (e' all'aperto) e
+`exp-meccanismo-torre-ore` al_chiuso False->True (e' al chiuso); `rules.calcola_score`
+legge `al_chiuso` solo con segnale pioggia (bonus al chiuso) e caldo (penalita' all'aperto).
+Itinerari: cambia l'`atteso` di 21 casi su 74 (richieste e altri 53 `atteso` identici):
+13 compose (accessibile, ama-arte, con-bambini, curioso, onnivoro, poco-tempo x caldo e
+pioggia, tranne contemplativo solo pioggia) e 8 adapt/adapt-budget (accessibile, con-bambini,
+curioso, onnivoro x pioggia). Cambiano solo casi con caldo o pioggia. Punteggi: 21 chiavi
+per ciascuna delle 3 funzioni (`calcola_score`, `score_fn_fredda`, `score_fn_calda`) =
+San Frediano x 7 profili x {caldo, pioggia} (14) + Torre delle Ore x 7 profili x pioggia (7);
+nessun'altra chiave. Attribuzione verificata da script (non dedotta): compose = San Frediano
+perde il bonus al chiuso con pioggia/caldo (o Torre delle Ore lo guadagna con pioggia) e
+cambiano posizione/ingresso/uscita; adapt = San Frediano, ora all'aperto, sotto la pioggia
+e' sostituita o mantenuta senza alternativa, oppure non e' piu' disponibile come sostituto
+al chiuso, oppure Torre delle Ore e' nuovo sostituto al chiuso (mai per chi chiede
+accessibilita'), oppure slittamento/budget conseguente. Zero differenze non attribuite.
+
 Due livelli, entrambi "replay" dei JSON (richiesta/specifica + atteso):
   a) ITINERARI via HTTP del BFF (`POST /itinerary`, `POST /itinerary/adapt`):
      uguaglianza ESATTA di `person_id`, `adattato_da_segnale`,

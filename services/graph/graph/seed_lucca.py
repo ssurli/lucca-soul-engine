@@ -383,7 +383,7 @@ ESPERIENZE: list[ExperienceNode] = [
         place_id="san-frediano",
         temi=["arte", "medievale", "romanico"],
         durata_min=25,
-        al_chiuso=True,
+        al_chiuso=False,
         accessibile=True,
     ),
     ExperienceNode(
@@ -392,7 +392,7 @@ ESPERIENZE: list[ExperienceNode] = [
         place_id="torre-delle-ore",
         temi=["storia", "panorama"],
         durata_min=35,
-        al_chiuso=False,
+        al_chiuso=True,
         accessibile=False,
     ),
     ExperienceNode(
