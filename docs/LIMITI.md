@@ -1900,7 +1900,10 @@ separata (Neo4j, Postgres, `.env` propri).
 - `lib/util/signal_presets.dart` — id di luoghi lucchesi (`mura-urbane`, `piazza-anfiteatro`)
   nel segnale di affollamento simulato;
 - `lib/util/app_strings.dart` — "La tua giornata a Lucca" / "Your day in Lucca";
-- `lib/main.dart` — "Sono cittadino/a di Lucca".
+- `lib/main.dart` — "Sono cittadino/a di Lucca";
+- `web/index.html`, `web/manifest.json` — descrizione "Percorsi a Lucca su misura, con il perché
+  di ogni tappa." (file statici della piattaforma web: fuori dallo scope della guardia, che
+  scansiona solo `lib/*.dart`).
 
 Questi quattro file sono in allowlist esplicita in `tests/test_guardia_citta.py`, che rimanda
 qui. Rimuovere il limite richiede un endpoint del BFF che esponga luoghi e nome della città dal

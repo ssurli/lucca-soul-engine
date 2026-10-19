@@ -1,11 +1,11 @@
 {
-    "name": "lucca_soul_app",
-    "short_name": "lucca_soul_app",
+    "name": "Lucca Soul",
+    "short_name": "Lucca Soul",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Percorsi a Lucca su misura, con il perché di ogni tappa.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
