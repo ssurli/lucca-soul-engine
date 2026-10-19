@@ -47,6 +47,7 @@ from typing import Protocol
 
 from contracts import (
     ExperienceNode,
+    FasciaApertura,
     GraphCandidate,
     Partner,
     VisitorContext,
@@ -228,6 +229,20 @@ class SeedCandidateSource:
 # ---------------------------------------------------------------------------
 
 
+def _fasce_da_record(record: Record) -> list[FasciaApertura]:
+    """Fail-closed: solo `None` (proprietà assente) è `[]`; ogni valore non
+    `list` solleva ValueError. Le fasce malformate le rifiuta `decodifica_fasce`."""
+    grezzo = record["orari_apertura"]
+    if grezzo is None:
+        return []
+    if not isinstance(grezzo, list):
+        raise ValueError(
+            f"orari_apertura dell'esperienza {record['id']!r}: attesa una lista, "
+            f"trovato {type(grezzo).__name__} {grezzo!r}"
+        )
+    return decodifica_fasce(grezzo)
+
+
 class Neo4jCandidateSource:
     """Stessa interfaccia di `SeedCandidateSource`, letta da Neo4j.
 
@@ -297,10 +312,10 @@ class Neo4jCandidateSource:
             # (non derivata da partner/abbonamento, vedi `docs/DATA_CONTRACTS.md`
             # §2): si copia il valore così come scritto dal seed.
             prenotabile=record["prenotabile"],
-            # Fail-closed: una fascia malformata solleva ValueError, non
-            # diventa lista vuota (= "sempre aperto"). L'assenza della
-            # proprietà è già `[]` per `coalesce` nella query.
-            orari_apertura=decodifica_fasce(record["orari_apertura"] or []),
+            # Fail-closed: una fascia malformata o un valore non-lista
+            # solleva ValueError, non diventa lista vuota (= "sempre
+            # aperto"). Solo `None` (proprietà assente) è `[]`.
+            orari_apertura=_fasce_da_record(record),
         )
         # Fatti SEMANTICI (artisti, temi, `ISPIRATA_DA`, `EVOCA` della bottega) e
         # prossimità al luogo già visitato: testo e ORDINE sono imposti da
