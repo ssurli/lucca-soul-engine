@@ -308,6 +308,39 @@ _EventRepositoryDep = Annotated[recommender.BehaviorEventRepository, Depends(get
 _log = logging.getLogger(__name__)
 
 
+def _normalizza_segnale(signal: contracts.Signal) -> contracts.Signal:
+    """Unico punto in cui `Signal.istante` diventa `ora`/`data`/`giorno_settimana`.
+
+    Il contratto non deriva nulla (non conosce il fuso): lo fa il BFF col fuso
+    della citta' (`api.deps.get_city_tz`, da `CITY_TZ`, nessun default nel
+    codice). Senza `istante` il segnale e' restituito IDENTICO (stesso
+    oggetto). Con `istante` e fuso valido, l'istante VINCE sui valori del
+    dispositivo (anche se discordano: nessun 422): `ora` al minuto (secondi e
+    microsecondi a zero: il motore tratta `Signal.ora` come orario al minuto,
+    `engine._minuti_rimanenti` ignora i secondi), `data` locale e
+    `giorno_settimana = data.weekday()`. Con `istante` ma fuso mancante o non
+    valido: fail-closed come gli eventi promossi, `istante` ignorato, valori
+    del client, un warning senza PII.
+
+    Il segnale e' ricostruito con `model_validate` (non `model_copy`), cosi' il
+    validatore data<->giorno_settimana resta garante."""
+    if signal.istante is None:
+        return signal
+    city_tz = get_city_tz()
+    if city_tz is None:
+        _log.warning(
+            "CITY_TZ assente o non valido: Signal.istante ignorato, "
+            "uso ora/data del client (fail-closed)"
+        )
+        return signal
+    locale = signal.istante.astimezone(city_tz)
+    dati = signal.model_dump()
+    dati["ora"] = locale.time().replace(second=0, microsecond=0)
+    dati["data"] = locale.date()
+    dati["giorno_settimana"] = locale.date().weekday()
+    return contracts.Signal.model_validate(dati)
+
+
 @app.exception_handler(UrbanMemoryError)
 def urban_memory_error_handler(request: Request, exc: UrbanMemoryError) -> Utf8JSONResponse:
     """Mappa i vincoli non negoziabili della Urban Memory (consenso,
@@ -657,6 +690,8 @@ def create_itinerary(ctx: VisitorContext) -> Itinerary:
     monkeypatch di `api.main.get_adesso`) e passato a `compose_itinerary(...,
     adesso=adesso)`, così il motore non legge mai l'orologio da sé e i test
     sono deterministici. `sweep_and_fetch_active` usa il proprio orologio."""
+    # Prima di ogni uso del segnale (candidati, eventi promossi, motore).
+    ctx = ctx.model_copy(update={"signal": _normalizza_segnale(ctx.signal)})
     source = get_candidate_source()
     candidates = source.candidates(ctx)
     # Fuori dal try: un CITY_SEED invalido non va mascherato da "recommender
@@ -785,16 +820,17 @@ def adapt_itinerary_endpoint(request: AdaptRequest) -> Itinerary:
     preferenze) e il motore riceve `profile=None`, applicando la regola
     conservativa già testata (una tappa accessibile resta sostituita solo da
     una accessibile)."""
+    segnale = _normalizza_segnale(request.signal)
     source = get_candidate_source()
     ctx = VisitorContext(
         person_id=request.itinerary.person_id,
         profile=request.profile or _profilo_neutro_per_candidati(),
-        signal=request.signal,
+        signal=segnale,
     )
     candidates = source.candidates(ctx)
     return adapt_itinerary(
         request.itinerary,
-        request.signal,
+        segnale,
         candidates,
         profile=request.profile,
         reason_fn=compose_reason,
