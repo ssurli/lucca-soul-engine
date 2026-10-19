@@ -22,10 +22,14 @@ curatela. Vivono qui perché sono *verità di sistema*, non design di un compone
 
 `compose_itinerary` (`engine.py:321`):
 
-1. Filtri duri etici → `rules.passa_filtri_duri` — **SELEZIONA** (ammette/esclude).
+1. Filtri duri etici statici (1-4) → `rules.passa_filtri_statici` — **SELEZIONA**
+   (ammette/esclude).
 2. Scoring → `score_fn` (default `rules.calcola_score`) — **ORDINA**, mai seleziona: riceve
    solo i candidati già ammessi dal passo 1, non può "salvare" un escluso.
-3. Composizione a budget con diversificazione → `_seleziona_tappe`.
+3. Composizione a budget con diversificazione → `_seleziona_tappe`, che applica il filtro
+   duro 5 (orari, `rules.aperta_durante`) slot per slot, all'ARRIVO del candidato (vedi §2):
+   un candidato chiuso in uno slot è saltato come uno fuori budget, resta tra i rimanenti
+   e può entrare in uno slot successivo. Lo score non lo scavalca.
 4. `reason` obbligatorio per ogni tappa → `_costruisci_stops`.
 5. Segnali FLUTTUANTI pertinenti, solo in coda → `_aggiungi_tappe_fluttuanti`.
 6. `:Evento` PROMOSSI pertinenti E in finestra temporale, solo in coda →
@@ -35,7 +39,12 @@ curatela. Vivono qui perché sono *verità di sistema*, non design di un compone
 esattamente il comportamento MVP — nessun chiamante esistente cambia comportamento
 introducendo l'iniezione.
 
-## 2. I cinque filtri duri di `passa_filtri_duri` (`rules.py:118`, in quest'ordine esatto)
+## 2. I cinque filtri duri di `passa_filtri_duri` (in quest'ordine esatto)
+
+`passa_filtri_duri(candidate, profile, signal, luoghi_gia_visti, *, arrivo)` =
+`passa_filtri_statici(...)` (filtri 1-4) **AND** `aperta_durante(esperienza,
+signal.giorno_settimana, arrivo)` (filtro 5). `arrivo` è keyword-only e **senza default**:
+nessun chiamante può tornare al controllo all'ora del segnale.
 
 1. `profile.accessibilita_richiesta` → solo `esperienza.accessibile=True`. Non negoziabile:
    nessuno score può reintrodurre una tappa inaccessibile a chi l'ha chiesta.
@@ -45,8 +54,16 @@ introducendo l'iniezione.
 4. `partner_id is not None and not partner_abbonamento_attivo` → esclusa. **L'unica leva
    commerciale ammessa** ed è un interruttore booleano di PRESENZA, non un input dello
    scoring.
-5. `not rientra_in_orario(orari_apertura, signal.giorno_settimana, signal.ora)` → esclusa
-   (Wave 3a+, orari di apertura). Se `orari_apertura=[]` o `signal.giorno_settimana is None`
+5. `not aperta_durante(esperienza, signal.giorno_settimana, arrivo)` → esclusa (Wave 3a+,
+   orari di apertura; ondata 1b1: **all'ARRIVO**, non all'ora del segnale).
+   `aperta_durante` è l'UNICO punto del motore che interpreta gli orari: un wrapper sopra
+   `contracts.rientra_in_orario(orari_apertura, giorno, arrivo, durata_min=esperienza.durata_min)`.
+   L'intervallo **[arrivo, arrivo + durata_min]** deve cadere in UNA fascia del giorno
+   (minuti dalla mezzanotte; oltre le 24:00 non rientra mai). `arrivo` è quello che il
+   visitatore vedrà: in composizione `signal.ora + tempo_usato + trasferimento` (0 per la
+   prima tappa, progressione di `_costruisci_stops`); in adattamento
+   `engine._arrivo_in_posizione` (progressione di `_ricostruisci_stops`).
+   Se `orari_apertura=[]` o `signal.giorno_settimana is None`
    il filtro non esclude MAI nulla — nessun default fabbricato. `giorno_settimana` è RICAVATO
    da `Signal.data` quando il client manda solo la data (l'app lo fa sempre): per l'app il
    filtro è attivo; effetto reale nullo finché il grafo non popola `orari_apertura`
@@ -69,7 +86,8 @@ Verificato sia da lettura diretta sia da un test-guard AST + un test comportamen
   componente `sorpresa` (che conta `len(candidate.connessioni)` e temi, nient'altro).
 - **`Signal.eventi_attivi`** (segnali fluttuanti) — mai letto: nessuna esperienza
   permanente vede il proprio punteggio cambiare per via di un segnale fluttuante.
-- **`ExperienceNode.orari_apertura`** — letto SOLO dal filtro duro 5, mai dallo scoring.
+- **`ExperienceNode.orari_apertura`** e gli **arrivi** delle tappe — letti SOLO dal filtro
+  duro 5 (`aperta_durante`), mai dallo scoring.
 - **Il bagliore** (`tracce_per_luogo`, `rules.bagliore`/`frase_bagliore`/`tema_dominante`/
   `peso_traccia`, `docs/PROMOZIONE_TRACCIA.md` §2b) — mai letto da `calcola_score` né da
   `passa_filtri_duri`. Entra SOLO nel `reason` di tappe permanenti GIÀ scelte
@@ -91,8 +109,10 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 
 | Funzione | Definita in | Chiamata da |
 |---|---|---|
-| `contracts.rientra_in_orario` | `packages/contracts/contracts/models.py:242` | `rules.passa_filtri_duri` (composizione e, tramite essa, adattamento) · `marketplace.service.request_booking` (prenotazione) |
-| `rules.passa_filtri_duri` | `rules.py` | `compose_itinerary` (composizione) · `engine._migliore_alternativa` (adattamento, con `luoghi_gia_visti=[]`) |
+| `contracts.rientra_in_orario` | `packages/contracts/contracts/models.py` | `rules.aperta_durante` (motore, con `durata_min=esperienza.durata_min`) · `marketplace.service.request_booking` (prenotazione, `durata_min=0`) |
+| `rules.aperta_durante` | `rules.py` | `rules.passa_filtri_duri` · `engine._seleziona_tappe` (composizione, all'arrivo di ogni slot) · `engine._taglia_fuori_orario` (adattamento, passo 4) |
+| `rules.passa_filtri_statici` | `rules.py` | `rules.passa_filtri_duri` · `compose_itinerary` (pre-filtro prima dello scoring) |
+| `rules.passa_filtri_duri` | `rules.py` | `engine._migliore_alternativa` (adattamento, con `luoghi_gia_visti=[]` e `arrivo` del candidato nella posizione della tappa tolta) |
 | `contracts.segnale_fluttuante_ammissibile` | `packages/contracts/contracts/models.py:117` | `rules.segnali_fluttuanti_pertinenti` |
 | `rules.segnali_fluttuanti_pertinenti` | `rules.py:270` | `engine._aggiungi_tappe_fluttuanti` — **solo** in `compose_itinerary`, mai in `adapt_itinerary` (vedi §6) |
 | `rules.affinita_temi` | `rules.py:109` | `calcola_score` (3 volte) · `_coerente_col_profilo` |
@@ -101,7 +121,7 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 | `rules.calcola_score` | `rules.py:165` | `compose_itinerary` (via `score_fn` default) · `_migliore_alternativa` (per ordinare le alternative in adapt) |
 
 Tre usi di "cosa significa aperto" (composizione, adattamento, prenotazione), un solo
-modello (`rientra_in_orario`).
+modello (`rientra_in_orario`); nel motore un solo wrapper (`aperta_durante`).
 
 ## 5. Determinismo
 
@@ -145,15 +165,30 @@ di riscrittura mirata, con conseguenze concrete:
   dedicato** che forza una vera ricostruzione (non solo l'invarianza banale del path
   "niente cambia").
 
-## 7. Limite di progettazione: i filtri valutano un solo istante
+## 7. Orari all'arrivo; l'affollamento resta un solo istante
 
-`passa_filtri_duri` valuta OGNI candidato contro **lo stesso `Signal`** (l'istante di
-inizio della composizione), non contro l'orario effettivo in cui quella tappa verrebbe
-visitata nella sequenza dell'itinerario. Vale sia per l'affollamento sia per gli orari di
-apertura — più visibile per gli orari (che cambiano nettamente in poche ore: un luogo
-aperto alle 9 può chiudere alle 13, e una tappa alle 15 nello stesso itinerario non viene
-ri-verificata contro quell'orario specifico). Non corretto in questa sessione: fuori
-scope, documentato in `docs/LIMITI.md`.
+**Orari (chiuso, ondata 1b1).** Il filtro duro 5 non valuta più l'ora del segnale ma
+l'ARRIVO di ogni tappa, per l'intera visita [arrivo, arrivo + durata]:
+- composizione: `_seleziona_tappe` calcola l'arrivo di ogni candidato nello slot corrente
+  (come `_costruisci_stops`) e salta, in quello slot, chi è chiuso;
+- adattamento, sostituzioni: il sostituto in posizione i è scelto sull'arrivo ricalcolato
+  `signal.ora + _minuti_usati_permanenti(tappe[:i]) + trasferimento(sostituto)`;
+- adattamento, passo 4 (`_taglia_fuori_orario`, dopo sostituzioni, stanchezza e tetto):
+  OGNI tappa è ricontrollata sull'arrivo che il visitatore vedrà. Se i passi 1-3 non hanno
+  cambiato nulla si usano gli arrivi RICEVUTI; se lì una tappa è chiusa esce, e le restanti
+  sono rivalutate sugli arrivi ricalcolati da `signal.ora`. Altrimenti un solo passaggio
+  in ordine da `signal.ora`, dove ogni arrivo dipende dalle tappe TENUTE prima. Le tappe
+  tolte vanno in `tappe_escluse` con `TAGLIATA_ORARIO` e accendono `adattato_da_segnale`.
+  Le tappe stub (fluttuanti, eventi promossi) non hanno orari e non escono mai per orario.
+  Garanzia: ogni tappa restituita è aperta all'arrivo con cui è restituita.
+
+**Affollamento (limite aperto).** `signal.affollamento` è ancora valutato contro **lo stesso
+`Signal`** per ogni tappa, non contro l'istante in cui quella tappa sarà visitata:
+documentato in `docs/LIMITI.md`.
+
+**Itinerario senza budget (limite).** In adattamento, senza `tempo_effettivo_min` l'arrivo
+di un sostituto è calcolato riavvolgendo oltre la mezzanotte (`_somma_minuti`); una tappa
+oltre le 24:00 è comunque tolta dal tetto della giornata (passo 3), prima del passo 4.
 
 ## 8. Segnali fluttuanti (`Signal.eventi_attivi`) — vincoli del passo 5
 
@@ -194,7 +229,8 @@ scope, documentato in `docs/LIMITI.md`.
   vivo".
 - Stessi vincoli di budget e posizione delle tappe fluttuanti (§8):
   `DURATA_TAPPA_EVENTO_MIN`, costo a budget, solo in coda, mai sostituzione.
-- `calcola_score` e `passa_filtri_duri` non leggono `Signal.data` (§3 resta vero).
+- `calcola_score` e `passa_filtri_duri` non leggono `Signal.data` (§3 resta vero;
+  `passa_filtri_duri` legge `giorno_settimana`, che il contratto può ricavare da `data`).
 
 ## 9. Separazione strutturale da Marketplace
 

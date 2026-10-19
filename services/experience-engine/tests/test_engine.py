@@ -432,9 +432,9 @@ def test_partner_non_attivo_escluso_dai_filtri_duri() -> None:
     # Esperienza senza partner: sempre visibile, anche col flag denormalizzato a False.
     senza_partner = _candidato(partner_id=None, partner_abbonamento_attivo=False)
 
-    assert rules.passa_filtri_duri(attivo, profile, signal, []) is True
-    assert rules.passa_filtri_duri(non_attivo, profile, signal, []) is False
-    assert rules.passa_filtri_duri(senza_partner, profile, signal, []) is True
+    assert rules.passa_filtri_duri(attivo, profile, signal, [], arrivo=signal.ora) is True
+    assert rules.passa_filtri_duri(non_attivo, profile, signal, [], arrivo=signal.ora) is False
+    assert rules.passa_filtri_duri(senza_partner, profile, signal, [], arrivo=signal.ora) is True
 
 
 # --- orari di apertura (Wave 3a+, validazione minima) -----------------------
@@ -464,9 +464,12 @@ def test_esperienza_chiusa_in_quel_giorno_ora_esclusa_dai_filtri_duri() -> None:
         meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(10, 0), giorno_settimana=2
     )
 
-    assert rules.passa_filtri_duri(candidato, profile, dentro, []) is True
-    assert rules.passa_filtri_duri(candidato, profile, fuori_ora, []) is False
-    assert rules.passa_filtri_duri(candidato, profile, fuori_giorno, []) is False
+    assert rules.passa_filtri_duri(candidato, profile, dentro, [], arrivo=dentro.ora) is True
+    assert rules.passa_filtri_duri(candidato, profile, fuori_ora, [], arrivo=fuori_ora.ora) is False
+    assert (
+        rules.passa_filtri_duri(candidato, profile, fuori_giorno, [], arrivo=fuori_giorno.ora)
+        is False
+    )
 
 
 def test_esperienza_senza_orari_dichiarati_mai_esclusa_per_questo_motivo() -> None:
@@ -482,7 +485,7 @@ def test_esperienza_senza_orari_dichiarati_mai_esclusa_per_questo_motivo() -> No
         signal = Signal(
             meteo="sereno", affollamento={}, stanchezza=0.0, ora=ora, giorno_settimana=giorno
         )
-        assert rules.passa_filtri_duri(candidato, profile, signal, []) is True
+        assert rules.passa_filtri_duri(candidato, profile, signal, [], arrivo=signal.ora) is True
 
 
 def test_segnale_senza_giorno_settimana_non_esclude_per_orario() -> None:
@@ -498,7 +501,9 @@ def test_segnale_senza_giorno_settimana_non_esclude_per_orario() -> None:
     candidato = _candidato(orari_apertura=[fascia])
     signal_senza_giorno = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(15, 0))
 
-    assert rules.passa_filtri_duri(candidato, profile, signal_senza_giorno, []) is True
+    assert rules.passa_filtri_duri(
+        candidato, profile, signal_senza_giorno, [], arrivo=signal_senza_giorno.ora
+    ) is True
 
 
 # --- FIX ethics-guardian (2026-07-24): adapt_itinerary poteva reintrodurre --
@@ -676,7 +681,9 @@ def test_score_fn_forza_una_tappa_specifica_in_testa(source: SeedCandidateSource
     # Scegli un candidato ammesso che NON è già la prima tappa del default.
     ammessi = [
         c for c in cands
-        if rules.passa_filtri_duri(c, profile, ctx.signal, ctx.luoghi_gia_visti)
+        if rules.passa_filtri_duri(
+            c, profile, ctx.signal, ctx.luoghi_gia_visti, arrivo=ctx.signal.ora
+        )
     ]
     prima_default = default.stops[0].experience_id
     bersaglio = next(c for c in ammessi if c.experience.id != prima_default)

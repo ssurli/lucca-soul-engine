@@ -16,12 +16,13 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from collections.abc import Set as AbstractSet
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Final
 
 from contracts import (
     EmotionalProfile,
     EventoPromosso,
+    ExperienceNode,
     GraphCandidate,
     SegnaleFluttuante,
     Signal,
@@ -136,13 +137,15 @@ def affinita_temi(temi: list[str], gruppo: AbstractSet[str]) -> float:
     return min(comuni, 2) / 2.0
 
 
-def passa_filtri_duri(
+def passa_filtri_statici(
     candidate: GraphCandidate,
     profile: EmotionalProfile,
     signal: Signal,
     luoghi_gia_visti: list[str],
 ) -> bool:
-    """Vincoli DURI dell'Ethical AI Engine (nessuna eccezione, mai):
+    """Vincoli DURI dell'Ethical AI Engine che NON dipendono dall'istante di
+    arrivo alla tappa (nessuna eccezione, mai). Sono i filtri 1-4 di
+    `passa_filtri_duri`; il filtro 5 (orari) è `aperta_durante`.
 
     - `accessibilita_richiesta` => solo esperienze `accessibile=True`.
       L'inclusione non è negoziabile: nessuno score può reintrodurre una
@@ -157,17 +160,9 @@ def passa_filtri_duri(
       concorre esattamente come tutti gli altri — il suo punteggio non cambia
       di un bit. Verificato dal booleano denormalizzato `partner_abbonamento_attivo`
       (popolato a monte dal grafo); `calcola_score` non lo legge mai.
-    - Esclude un'esperienza CHIUSA nel giorno/ora del segnale corrente
-      (validazione minima Wave 3a+, `ExperienceNode.orari_apertura`, fasce
-      settimanali ricorrenti — vedi `docs/LIMITI.md` per cosa resta fuori
-      scope: capienza, conflitti di slot, eccezioni calendariali). Usa
-      `contracts.rientra_in_orario`, la STESSA funzione riusata da
-      `marketplace.service.request_booking` per validare una prenotazione:
-      un solo modello di "cosa significa aperto", due usi. Se l'esperienza
-      non dichiara orari (lista vuota, il caso di ogni esperienza del seed
-      oggi) o se `signal.giorno_settimana` è `None` (il chiamante non l'ha
-      specificato), questo filtro non esclude MAI nulla — comportamento
-      invariato finché non c'è un dato reale da applicare.
+
+    Non legge orari né istanti: la composizione la usa come pre-filtro
+    (prima dello scoring) e controlla gli orari slot per slot, all'arrivo.
     """
     esperienza = candidate.experience
     if profile.accessibilita_richiesta and not esperienza.accessibile:
@@ -178,9 +173,63 @@ def passa_filtri_duri(
         return False
     if esperienza.partner_id is not None and not esperienza.partner_abbonamento_attivo:
         return False
-    if not rientra_in_orario(esperienza.orari_apertura, signal.giorno_settimana, signal.ora):
-        return False
     return True
+
+
+def aperta_durante(
+    esperienza: ExperienceNode, giorno_settimana: int | None, arrivo: time
+) -> bool:
+    """Filtro duro 5: l'esperienza è APERTA per tutta la visita, cioè
+    l'intervallo [`arrivo`, `arrivo` + `esperienza.durata_min`] cade in UNA
+    fascia di `orari_apertura` del giorno `giorno_settimana`.
+
+    UNICO punto del motore che interpreta gli orari: è un wrapper sopra
+    `contracts.rientra_in_orario(..., durata_min=esperienza.durata_min)`, la
+    STESSA funzione usata da `marketplace.service.request_booking` (un solo
+    modello di "cosa significa aperto"). Nessun'altra lettura di
+    `orari_apertura` nel motore.
+
+    `arrivo` è l'istante in cui il visitatore arriva alla tappa (quello che
+    vedrà nell'itinerario), MAI l'ora del segnale: un luogo aperto alle 9 e
+    chiuso alle 13 non è adatto a una tappa che inizia alle 15.
+
+    Lista `orari_apertura` vuota (il caso di ogni esperienza del seed oggi)
+    o `giorno_settimana` `None`: non esclude MAI nulla — nessun vincolo
+    fabbricato. Un intervallo che supera le 24:00 non rientra mai (lo dice
+    `rientra_in_orario`). Validazione minima: capienza, conflitti di slot ed
+    eccezioni calendariali restano fuori scope (`docs/LIMITI.md`)."""
+    return rientra_in_orario(
+        esperienza.orari_apertura,
+        giorno_settimana,
+        arrivo,
+        durata_min=esperienza.durata_min,
+    )
+
+
+def passa_filtri_duri(
+    candidate: GraphCandidate,
+    profile: EmotionalProfile,
+    signal: Signal,
+    luoghi_gia_visti: list[str],
+    *,
+    arrivo: time,
+) -> bool:
+    """TUTTI i vincoli DURI dell'Ethical AI Engine (nessuna eccezione, mai),
+    per un candidato che arriverebbe alla tappa all'istante `arrivo`:
+
+    1-4. `passa_filtri_statici`: accessibilità richiesta, luoghi già visti,
+         affollamento critico, partner con abbonamento non attivo;
+    5.   `aperta_durante(esperienza, signal.giorno_settimana, arrivo)`: aperta
+         per l'intero intervallo [arrivo, arrivo + durata].
+
+    `arrivo` è keyword-only e OBBLIGATORIO, senza default: nessun chiamante
+    può tornare per distrazione al controllo all'ora del SEGNALE. Il
+    chiamante calcola l'arrivo con la stessa progressione con cui costruisce
+    le tappe (`engine._costruisci_stops` / `engine._ricostruisci_stops`).
+    """
+    return passa_filtri_statici(candidate, profile, signal, luoghi_gia_visti) and aperta_durante(
+        candidate.experience, signal.giorno_settimana, arrivo
+    )
 
 
 def calcola_score(
@@ -196,7 +245,7 @@ def calcola_score(
     `candidate.experience.partner_id`, `candidate.experience.prezzo_eur`,
     `candidate.experience.partner_abbonamento_attivo` né
     `candidate.attribuzione`. L'abbonamento del partner decide solo la
-    PRESENZA del candidato (filtro duro in `passa_filtri_duri`), mai il
+    PRESENZA del candidato (filtro duro in `passa_filtri_statici`), mai il
     punteggio. L'attribuzione ("Offerta da ...") è una
     disclosure che vive SOLO nel `reason`, in coda ai motivi reali: non deve
     entrare nello scoring — in particolare non deve gonfiare la componente

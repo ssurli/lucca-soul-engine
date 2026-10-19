@@ -255,11 +255,15 @@ class Signal(ContractModel):
     # dichiarato); `rientra_in_orario` (sotto) allora non esclude nulla per
     # giorno.
     # ATTENZIONE (cambio di comportamento): la derivazione ACCENDE per la
-    # prima volta in produzione il filtro duro 5 sugli orari di apertura per
-    # giorno (`rientra_in_orario`), finora inerte perché nessun client mandava
-    # `giorno_settimana`; ora l'app manda `data`. Impatta composizione
-    # (`passa_filtri_duri`) e adattamento (`_migliore_alternativa`): candidati
-    # chiusi in quel giorno/ora vengono esclusi.
+    # prima volta in produzione il filtro sugli orari di apertura per giorno
+    # (`rientra_in_orario`), finora inerte perché nessun client mandava
+    # `giorno_settimana`; ora l'app manda `data`. Il giorno è valutato
+    # all'ARRIVO di ogni tappa, NON all'`ora` del segnale: in composizione
+    # `rules.aperta_durante(esperienza, giorno, arrivo)` è controllata slot per
+    # slot in `_seleziona_tappe` (il pre-filtro statico `passa_filtri_statici`
+    # non guarda gli orari); in adattamento il sostituto è valutato all'arrivo
+    # ricalcolato e `_taglia_fuori_orario` toglie (TAGLIATA_ORARIO) le tappe
+    # chiuse all'arrivo. `passa_filtri_duri(..., *, arrivo)` è la somma dei due.
     giorno_settimana: int | None = Field(default=None, ge=0, le=6)
     # Data (calendario LOCALE della città) della visita, mandata dal CLIENT
     # insieme a `ora`: stessa fonte e stesso orologio, quindi nessuno
@@ -446,8 +450,10 @@ def rientra_in_orario(
 
     Funzione PURA, riusata IDENTICA (stessa informazione, un solo modello,
     due usi) da:
-    - `experience_engine.rules.passa_filtri_duri` — quinto filtro duro
-      sull'itinerario, con `giorno_settimana`/`ora` da `Signal`;
+    - `experience_engine.rules.aperta_durante` (wrapper unico, con
+      `durata_min=esperienza.durata_min`) — filtro orari dell'itinerario,
+      con `giorno_settimana` da `Signal` e `ora` = ARRIVO della tappa (non
+      l'ora del segnale); parte di `passa_filtri_duri(..., *, arrivo)`;
     - `marketplace.service.request_booking` — validazione della
       prenotazione, con `giorno_settimana`/`ora` derivati da
       `BookingRequest.quando` (`.weekday()`/`.time()`, sempre presenti: una
@@ -758,7 +764,8 @@ class Itinerary(ContractModel):
     """Itinerario composto (e, eventualmente, adattato a un segnale).
 
     `adattato_da_segnale` è True se e solo se l'ultimo adattamento ha almeno
-    una tappa SOSTITUITA o una tappa TAGLIATA (stanchezza o tetto). Una tappa
+    una tappa SOSTITUITA o una tappa TAGLIATA (stanchezza, tetto o orario:
+    chiusa all'arrivo ricalcolato). Una tappa
     mantenuta senza alternativa NON lo accende (l'app lo mostra come badge
     "Riscritta"): quel caso è portato da `esito_adattamento` e da una frase
     nel `reason`.

@@ -88,6 +88,7 @@ def _scegli(
         richiede_accessibile=False,
         solo_al_chiuso=True,
         max_affollamento=SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
+        arrivo_di=lambda _c: PIOGGIA.ora,
         vocabolario=VOC,
         prezzo_tolta=prezzo_tolta or 0.0,
         temi_tolta=tolta.experience.temi,

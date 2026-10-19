@@ -93,10 +93,14 @@ class Signal(BaseModel):              # stato del mondo, ORA
     # giorno fabbricato: viene da una data dichiarata dal client; `data` è la
     # fonte unica del "quando" per giorno). Se `data` è None resta com'è
     # (anche None) e `rientra_in_orario` (§2) non esclude nulla per giorno.
-    # ATTENZIONE: la derivazione ACCENDE in produzione il filtro duro 5 sugli
-    # orari di apertura (composizione `passa_filtri_duri`, adattamento
-    # `_migliore_alternativa`), prima inerte perché nessun client mandava il
-    # giorno. Usato per valutare `ExperienceNode.orari_apertura`.
+    # ATTENZIONE: la derivazione ACCENDE in produzione il filtro sugli orari
+    # di apertura, prima inerte perché nessun client mandava il giorno. Gli
+    # orari sono valutati all'ARRIVO di ogni tappa, NON all'`ora` del segnale:
+    # composizione = `rules.aperta_durante(esperienza, giorno, arrivo)` slot per
+    # slot in `_seleziona_tappe` (il pre-filtro `passa_filtri_statici` non li
+    # guarda); adattamento = sostituto valutato all'arrivo ricalcolato +
+    # `_taglia_fuori_orario` (TAGLIATA_ORARIO). `passa_filtri_duri(..., *,
+    # arrivo)` = statici + aperta_durante. Usato per `ExperienceNode.orari_apertura`.
     giorno_settimana: int | None = None      # se presente: 0..6
     # Data (calendario LOCALE della città) della visita, mandata dal CLIENT
     # insieme a `ora` (stessa fonte, stesso orologio: nessuno sfasamento
@@ -194,7 +198,7 @@ class ExperienceNode(BaseModel):
     # `Partner.abbonamento_attivo`. Default True: un'esperienza senza partner
     # (partner_id=None) è SEMPRE visibile. È l'UNICO campo che l'Experience
     # Engine legge per decidere presenza/assenza di un candidato (filtro duro
-    # booleano in `passa_filtri_duri`), MAI un input numerico dello scoring:
+    # booleano in `passa_filtri_statici`), MAI un input numerico dello scoring:
     # così "visibilità non acquistabile" è strutturale, non una convenzione —
     # lo scoring non ha nemmeno bisogno di importare `Partner` o `prezzo_eur`.
     partner_abbonamento_attivo: bool = True
@@ -210,7 +214,8 @@ class ExperienceNode(BaseModel):
     # dichiara orari (tutte quelle del seed oggi). Letta da
     # `rientra_in_orario(orari_apertura, giorno_settimana, ora) -> bool`
     # (packages/contracts), riusata IDENTICA da `experience_engine.rules.
-    # passa_filtri_duri` (quinto filtro duro) e da
+    # aperta_durante` (wrapper unico con durata_min=esperienza.durata_min,
+    # valutato all'ARRIVO della tappa; parte di `passa_filtri_duri`) e da
     # `marketplace.service.request_booking` (validazione della
     # prenotazione): stessa informazione, un solo modello, due usi.
     orari_apertura: list[FasciaApertura] = []
@@ -227,6 +232,7 @@ def rientra_in_orario(orari_apertura: list[FasciaApertura], giorno_settimana: in
     #   in MINUTI dalla mezzanotte (mai aritmetica su `time`, che si riavvolge).
     #   Un intervallo che supera le 24:00 non rientra mai.
     # - durata_min<0 -> ValueError.
+    # - `ora` è l'ARRIVO della tappa (non l'ora del segnale) per l'engine.
 
 # Codifica degli orari per Neo4j (packages/contracts/contracts/orari.py, esportata
 # da `contracts`). Neo4j non accetta liste di mappe come proprietà: ogni fascia è
@@ -702,7 +708,8 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   escludono MAI nulla quando non dichiarati: `rientra_in_orario`
   ritorna sempre `True` in assenza di uno dei due dati — nessuna esclusione fabbricata per
   un'informazione che il chiamante non ha fornito. La stessa funzione, lo stesso modello,
-  alimenta sia il quinto filtro duro di `experience_engine.rules.passa_filtri_duri` sia la
+  alimenta sia il filtro orari di `experience_engine.rules.aperta_durante` (valutato
+  all'arrivo di ogni tappa, parte di `passa_filtri_duri`) sia la
   validazione di `marketplace.service.request_booking`: un vincolo su "cosa significa aperto"
   applicato in un solo punto, non duplicato con la possibilità di divergere.
 - `SegnaleFluttuante.non_commerciale` è OBBLIGATORIO, nessun default (vincolo di contratto:
