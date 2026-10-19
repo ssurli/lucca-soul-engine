@@ -279,6 +279,32 @@ class Signal(ContractModel):
     # segnale attivo, comportamento INVARIATO per ogni chiamante che non lo
     # popola (tutti, oggi).
     eventi_attivi: list[SegnaleFluttuante] = []
+    # Istante UTC (ISO 8601) mandato dal client. OPZIONALE, default None:
+    # senza istante il comportamento è IDENTICO a prima. Deve essere
+    # timezone-aware (un istante senza fuso è ambiguo: errore di
+    # validazione) e viene NORMALIZZATO a UTC. Il contratto NON deriva
+    # `ora`/`data`/`giorno_settimana` da `istante`: non conosce il fuso della
+    # città. Lo fa il BFF con `CITY_TZ`: se `istante` è presente il BFF
+    # SOSTITUISCE `ora`, `data` e `giorno_settimana` con i valori ricavati in
+    # `CITY_TZ` (l'istante vince sui valori del dispositivo). Se `CITY_TZ`
+    # manca o non è valido il BFF ignora `istante`, usa `ora`/`data` del
+    # client e lo scrive nel log (fail-closed come gli eventi promossi: 200 e
+    # log, nessun valore inventato). `ora` resta OBBLIGATORIO. `istante` è
+    # solo un dato di ingresso del BFF: non entra in scoring né in
+    # `segnali_rilevanti`.
+    istante: datetime | None = None
+
+    @field_validator("istante")
+    @classmethod
+    def _istante_aware_in_utc(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return None
+        if v.tzinfo is None or v.utcoffset() is None:
+            raise ValueError(
+                "istante deve avere un fuso orario (ISO 8601 con offset o 'Z'): "
+                f"{v.isoformat()!r} è naive e quindi ambiguo"
+            )
+        return v.astimezone(UTC)
 
     @field_validator("affollamento")
     @classmethod
@@ -388,11 +414,26 @@ class FasciaApertura(ContractModel):
 
 
 def rientra_in_orario(
-    orari_apertura: list[FasciaApertura], giorno_settimana: int | None, ora: time
+    orari_apertura: list[FasciaApertura],
+    giorno_settimana: int | None,
+    ora: time,
+    *,
+    durata_min: int = 0,
 ) -> bool:
     """Vero se `ora` (nel giorno `giorno_settimana`) rientra in almeno una
     fascia di `orari_apertura` — oppure se non c'è alcun vincolo da
     applicare.
+
+    Un solo interprete degli orari, tre usi: composizione (istante di
+    arrivo), prenotazione (`durata_min=0`) e adattamento (con `durata_min`
+    > 0: l'intero intervallo [ora, ora + durata_min] deve cadere in UNA
+    fascia).
+    - `durata_min == 0` (default): risultato IDENTICO al comportamento
+      storico, `apertura <= ora < chiusura` in almeno una fascia del giorno.
+    - `durata_min > 0`: `apertura <= ora` e `ora + durata_min <= chiusura`,
+      calcolato in MINUTI dalla mezzanotte (mai aritmetica su `time`, che si
+      riavvolge). Un intervallo che supera le 24:00 non rientra mai.
+    - `durata_min < 0`: `ValueError`.
 
     Due casi fanno passare SEMPRE, per costruzione, mai un'esclusione
     fabbricata per un dato che il chiamante non ha fornito:
@@ -419,10 +460,24 @@ def rientra_in_orario(
     su cosa significa "aperto" che entrambi possono importare senza
     introdurre una dipendenza diretta tra loro.
     """
+    if durata_min < 0:
+        raise ValueError(f"durata_min non può essere negativa: {durata_min}")
     if not orari_apertura or giorno_settimana is None:
         return True
+    if durata_min == 0:
+        return any(
+            fascia.giorno_settimana == giorno_settimana
+            and fascia.apertura <= ora < fascia.chiusura
+            for fascia in orari_apertura
+        )
+    inizio = ora.hour * 60 + ora.minute
+    fine = inizio + durata_min
+    if fine > 24 * 60:
+        return False
     return any(
-        fascia.giorno_settimana == giorno_settimana and fascia.apertura <= ora < fascia.chiusura
+        fascia.giorno_settimana == giorno_settimana
+        and fascia.apertura.hour * 60 + fascia.apertura.minute <= inizio
+        and fine <= fascia.chiusura.hour * 60 + fascia.chiusura.minute
         for fascia in orari_apertura
     )
 
@@ -636,8 +691,11 @@ class EsitoAdattamento(str, Enum):
     - `SOSTITUITA`: la tappa è stata sostituita da un'alternativa.
     - `MANTENUTA_SENZA_ALTERNATIVA`: il segnale la penalizzava ma non esisteva
       un'alternativa; resta in itinerario (NON accende `adattato_da_segnale`).
-    - `TAGLIATA_STANCHEZZA` / `TAGLIATA_TETTO_GIORNATA`: la tappa è stata tolta;
-      compare solo in `Itinerary.tappe_escluse`, mai tra le `stops`.
+    - `TAGLIATA_STANCHEZZA` / `TAGLIATA_TETTO_GIORNATA` / `TAGLIATA_ORARIO`:
+      la tappa è stata tolta; compare solo in `Itinerary.tappe_escluse`, mai
+      tra le `stops`. `TAGLIATA_ORARIO`: all'arrivo ricalcolato il luogo è
+      chiuso (l'intervallo [arrivo, arrivo + durata] non cade in una fascia
+      di apertura).
     """
 
     NON_TOCCATA = "non_toccata"
@@ -645,10 +703,15 @@ class EsitoAdattamento(str, Enum):
     MANTENUTA_SENZA_ALTERNATIVA = "mantenuta_senza_alternativa"
     TAGLIATA_STANCHEZZA = "tagliata_stanchezza"
     TAGLIATA_TETTO_GIORNATA = "tagliata_tetto_giornata"
+    TAGLIATA_ORARIO = "tagliata_orario"
 
 
 _ESITI_TAGLIO = frozenset(
-    {EsitoAdattamento.TAGLIATA_STANCHEZZA, EsitoAdattamento.TAGLIATA_TETTO_GIORNATA}
+    {
+        EsitoAdattamento.TAGLIATA_STANCHEZZA,
+        EsitoAdattamento.TAGLIATA_TETTO_GIORNATA,
+        EsitoAdattamento.TAGLIATA_ORARIO,
+    }
 )
 
 
@@ -674,7 +737,7 @@ class ItineraryStop(ContractModel):
 
 
 class TappaEsclusa(ContractModel):
-    """Tappa tolta da un adattamento (stanchezza o tetto della giornata)."""
+    """Tappa tolta da un adattamento (stanchezza, tetto della giornata, orario)."""
 
     experience_id: str
     esito: EsitoAdattamento
@@ -686,7 +749,7 @@ class TappaEsclusa(ContractModel):
         if v not in _ESITI_TAGLIO:
             raise ValueError(
                 "esito di TappaEsclusa ammesso solo: tagliata_stanchezza, "
-                "tagliata_tetto_giornata"
+                "tagliata_tetto_giornata, tagliata_orario"
             )
         return v
 

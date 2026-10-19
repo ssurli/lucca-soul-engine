@@ -19,6 +19,7 @@ from pydantic import ValidationError
 ESITI_DI_TAGLIO = [
     EsitoAdattamento.TAGLIATA_STANCHEZZA,
     EsitoAdattamento.TAGLIATA_TETTO_GIORNATA,
+    EsitoAdattamento.TAGLIATA_ORARIO,
 ]
 ESITI_DI_TAPPA = [
     EsitoAdattamento.NON_TOCCATA,
@@ -60,6 +61,7 @@ def test_esiti_hanno_i_valori_canonici() -> None:
         "mantenuta_senza_alternativa",
         "tagliata_stanchezza",
         "tagliata_tetto_giornata",
+        "tagliata_orario",
     }
 
 

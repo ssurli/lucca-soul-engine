@@ -40,8 +40,11 @@ from .models import (
     rientra_in_orario,
     segnale_fluttuante_ammissibile,
 )
+from .orari import codifica_fasce, decodifica_fasce
 
 __all__ = [
+    "codifica_fasce",
+    "decodifica_fasce",
     "AdaptRequest",
     "BehaviorEvent",
     "Booking",

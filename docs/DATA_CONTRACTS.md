@@ -113,6 +113,20 @@ class Signal(BaseModel):              # stato del mondo, ORA
     # (default) = nessun segnale attivo, comportamento invariato per ogni
     # chiamante che non lo popola.
     eventi_attivi: list[SegnaleFluttuante] = []
+    # Istante UTC (ISO 8601) mandato dal client. Opzionale, default None: senza
+    # istante il comportamento è identico a prima. Validatore: deve essere
+    # timezone-aware (un datetime naive -> errore di validazione, un istante
+    # senza fuso è ambiguo) e viene NORMALIZZATO a UTC.
+    # Il contratto NON deriva ora/data/giorno_settimana da `istante` (non
+    # conosce il fuso della città): lo fa il BFF con `CITY_TZ`. Se `istante` è
+    # presente il BFF SOSTITUISCE `ora`, `data` e `giorno_settimana` con i valori
+    # ricavati in `CITY_TZ` (l'istante vince sui valori del dispositivo). Se
+    # `CITY_TZ` manca o non è valido il BFF ignora `istante`, usa `ora`/`data`
+    # del client e lo scrive nel log (stesso schema fail-closed degli eventi
+    # promossi: 200 e log, nessun valore inventato). `ora` resta OBBLIGATORIO.
+    # `istante` è solo un dato di ingresso del BFF: non entra in scoring né in
+    # `segnali_rilevanti`.
+    istante: datetime | None = None
 
     # `field_validator` su `affollamento`: rigetta con errore in italiano (che
     # indica il place_id incriminato) qualunque valore fuori [0,1]. Motivo:
@@ -200,6 +214,38 @@ class ExperienceNode(BaseModel):
     # `marketplace.service.request_booking` (validazione della
     # prenotazione): stessa informazione, un solo modello, due usi.
     orari_apertura: list[FasciaApertura] = []
+
+def rientra_in_orario(orari_apertura: list[FasciaApertura], giorno_settimana: int | None,
+                      ora: time, *, durata_min: int = 0) -> bool: ...
+    # Un solo interprete degli orari, tre usi: composizione, prenotazione
+    # (durata_min=0) e adattamento (durata_min>0).
+    # - lista vuota o giorno None -> True (nessun vincolo), sempre.
+    # - durata_min=0 (default): IDENTICA a prima, `apertura <= ora < chiusura`
+    #   in almeno una fascia del giorno. Il marketplace non passa durata_min.
+    # - durata_min>0: True se [ora, ora+durata_min] cade interamente in UNA
+    #   fascia del giorno: `apertura <= ora` e `ora+durata <= chiusura`, calcolato
+    #   in MINUTI dalla mezzanotte (mai aritmetica su `time`, che si riavvolge).
+    #   Un intervallo che supera le 24:00 non rientra mai.
+    # - durata_min<0 -> ValueError.
+
+# Codifica degli orari per Neo4j (packages/contracts/contracts/orari.py, esportata
+# da `contracts`). Neo4j non accetta liste di mappe come proprietà: ogni fascia è
+# UNA stringa "g|HH:MM|HH:MM" (g = 0..6, 0=lunedì come date.weekday(); ore a due
+# cifre con zero iniziale; niente spazi né secondi). L'UNICO modulo che conosce il
+# formato: chi scrive (export cypher) e chi legge (loader, Neo4jCandidateSource)
+# lo importa da lì.
+#   codifica_fasce(fasce: Sequence[FasciaApertura]) -> list[str]
+#   decodifica_fasce(valori: Sequence[str]) -> list[FasciaApertura]
+# Validi:      "0|10:00|18:00"   "6|09:30|13:00"   (più fasce nello stesso giorno ammesse)
+# Non validi:  "7|10:00|18:00" (giorno)   "0|9:00|18:00" (ora senza zero)
+#              "0|10:00|18:00:00" (secondi)   "0| 10:00|18:00" (spazi)
+#              "0|18:00|10:00" e "0|10:00|10:00" (chiusura <= apertura)
+#              "0|25:00|26:00" (ora non valida)   42 / None (non stringa)
+# FAIL-CLOSED: decodifica_fasce solleva ValueError (citando la stringa) per
+# qualunque valore malformato; MAI lista vuota né stringa saltata, perché una
+# lista vuota significa "sempre aperto" e un orario guasto non deve mai diventarlo.
+# Andata e ritorno esatto, ordine preservato: decodifica(codifica(x)) == x.
+# codifica_fasce rifiuta (ValueError) orari con secondi o fuso, non rappresentabili.
 
 class GraphCandidate(BaseModel):
     """Ciò che il grafo PROPONE all'Experience Engine.
@@ -327,6 +373,9 @@ class EsitoAdattamento(str, Enum):
     MANTENUTA_SENZA_ALTERNATIVA = "mantenuta_senza_alternativa"
     TAGLIATA_STANCHEZZA = "tagliata_stanchezza"
     TAGLIATA_TETTO_GIORNATA = "tagliata_tetto_giornata"
+    TAGLIATA_ORARIO = "tagliata_orario"   # all'arrivo ricalcolato il luogo è chiuso: l'intervallo
+                                          # [arrivo, arrivo+durata] non cade in una fascia di apertura.
+                                          # Solo in Itinerary.tappe_escluse, mai tra le stops
 
 class ItineraryStop(BaseModel):
     experience_id: str
@@ -340,7 +389,7 @@ class ItineraryStop(BaseModel):
 
 class TappaEsclusa(BaseModel):        # tappa tolta da un adattamento
     experience_id: str
-    esito: EsitoAdattamento           # solo TAGLIATA_STANCHEZZA o TAGLIATA_TETTO_GIORNATA (validatore)
+    esito: EsitoAdattamento           # solo TAGLIATA_STANCHEZZA, TAGLIATA_TETTO_GIORNATA o TAGLIATA_ORARIO (validatore)
     reason: str                       # in italiano, min 1 carattere (spiegabilità obbligatoria)
 
 class Itinerary(BaseModel):
@@ -348,7 +397,7 @@ class Itinerary(BaseModel):
     stops: list[ItineraryStop]
     generated_at: datetime
     adattato_da_segnale: bool = False # True se e solo se l'ULTIMO adattamento ha almeno una tappa
-                                      # SOSTITUITA o TAGLIATA (stanchezza o tetto). Una tappa
+                                      # SOSTITUITA o TAGLIATA (stanchezza, tetto o orario). Una tappa
                                       # MANTENUTA_SENZA_ALTERNATIVA NON lo accende (l'app lo mostra
                                       # come badge "Riscritta"): quel caso è portato da
                                       # esito_adattamento e da una frase nel reason.
