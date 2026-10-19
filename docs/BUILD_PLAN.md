@@ -432,8 +432,12 @@ Blocchi in ordine: ognuno parte quando il precedente è chiuso. Ogni blocco segu
 3. **Ora adatta di un'esperienza** — voce "Il motore non conosce l'ora adatta di un'esperienza".
 4. **Sostituzione ammessa se il costo non peggiora** — voce "Sostituzione rifiutata quando
    l'itinerario supera già il limite".
-5. **Orari verificati all'arrivo di ogni tappa**, prima di qualunque esercizio con orari reali —
-   residuo della voce "Orari di apertura verificati solo all'ora del segnale".
+5. ~~**Orari verificati all'arrivo di ogni tappa**, prima di qualunque esercizio con orari reali —
+   residuo della voce "Orari di apertura verificati solo all'ora del segnale".~~ **CHIUSO
+   (2026-10-19, ondata 1b-1):** controllo all'arrivo in composizione e in adattamento, esito
+   `tagliata_orario`, fuso della città da `Signal.istante`, orari attraverso il grafo. Test:
+   `test_orari_all_arrivo.py`, `test_istante_bff.py`, `test_orari_grafo*.py`. Golden invariato.
+   Il blocco 3 (ora adatta) resta aperto: dipende dagli orari reali dell'ondata 1b-2.
 6. **Il curatore crea un luogo nuovo da un contributo di Urban Memory**, perché un racconto su un
    luogo non ancora nel grafo non vada perso.
 

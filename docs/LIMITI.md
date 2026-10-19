@@ -1547,7 +1547,14 @@ Prima di popolare il primo `orari_apertura` reale nel grafo: (1) risolvere il fu
 ricalcola `ora`/`data`/giorno in `CITY_TZ` dall'istante della richiesta, oppure l'app invia un
 istante UTC e il BFF converte; (2) chiudere il gap `partner_abbonamento_attivo` in
 `_migliore_alternativa` — **(2) CHIUSO (2026-10-15)**: `passa_filtri_duri` applicato in
-`_migliore_alternativa`; resta aperta la (1).
+`_migliore_alternativa`. **(1) CHIUSO (2026-10-19, ondata 1b-1):** l'app invia `Signal.istante`
+(UTC) e il BFF ne ricava `ora`, `data` e giorno in `CITY_TZ` (`api.main._normalizza_segnale`), su
+`/itinerary` e `/itinerary/adapt`; senza `istante` il comportamento è quello di prima; con
+`istante` ma `CITY_TZ` assente o non valido il BFF usa i valori del client e lo scrive nel log.
+Test: `services/api/tests/test_istante_bff.py` (23:30 UTC dell'11/12 → 00:30 del 12/12 a Roma,
+cambio d'ora del 25/10, `CITY_TZ` assente e non valido; 20 test su 26 falliscono col BFF di
+prima). Resta vero quanto sopra per un client che NON manda `istante` (PowerShell, versioni
+vecchie dell'app): giorno e ora del dispositivo.
 
 ### Decisione
 
@@ -1999,9 +2006,12 @@ di conseguenza.
 > (dichiarato) e `tempo_effettivo_min` (dopo il tetto); in adattamento le tappe che non entrano
 > vanno in `tappe_escluse` con `tagliata_tetto_giornata`. Test: `test_tetto_giornata.py`; golden:
 > 9 casi `onnivoro`.
-> **Residuo aperto:** gli orari di apertura sono ancora verificati solo all'ora del segnale e non
-> all'arrivo di ciascuna tappa (decisione 2 del 2026-10-16: rimandato; oggi nessuna esperienza
-> del seed dichiara `orari_apertura`). Il testo sotto descrive lo stato prima della correzione.
+> **Residuo CHIUSO (2026-10-19, ondata 1b-1, blocco 5 del Traguardo A):** gli orari si
+> verificano all'arrivo di ciascuna tappa, sull'intervallo [arrivo, arrivo + durata], in
+> composizione (`_seleziona_tappe`) e in adattamento (sostituto all'arrivo ricalcolato, più il
+> passo `_taglia_fuori_orario` con esito `tagliata_orario`). Test:
+> `services/experience-engine/tests/test_orari_all_arrivo.py`. Residui nella voce "Ondata 1b-1"
+> in fondo a questo file. Il testo sotto descrive lo stato prima della correzione.
 
 **Trovato:** 2026-10-15, verifica §0 in sola lettura (nessun codice modificato). **Non corretto:**
 qui è solo registrato, con la domanda di prodotto che va decisa prima di qualunque correzione.
@@ -2528,3 +2538,57 @@ comune non valgono più di uno. Non è un peso combinato: il tema decide, lo sco
 candidati con lo stesso esito sul tema. Conseguenze: un candidato tematicamente marginale ma con
 un tema in comune vince su uno molto più pertinente al profilo; e la penalità di affollamento
 (dentro lo score) agisce solo a parità di tema (vedi voce precedente).
+
+## Ondata 1b-1 (orari all'arrivo, fuso, orari nel grafo): cosa resta fuori (APERTO)
+
+**Introdotto:** 2026-10-19, ramo `fix/ondata1b1-infra-orari`. Nessun orario reale nel seed:
+gli effetti diventano concreti con l'ondata 1b-2 (dati). Voci chiuse da questa ondata: blocco 5
+del Traguardo A e punto (1) della "Condizione di riesame" (vedi sopra).
+
+### Cosa NON è garantito
+
+- **L'adattamento non sa quali tappe sono già passate.** Se cambia anche una sola tappa, tutti
+  gli arrivi sono ricalcolati da `signal.ora` dell'adattamento, anche quelli delle tappe del
+  mattino: un itinerario delle 10:00 adattato alle 15:00 ricomincia alle 15:00. In demo, con
+  `DEMO_ISTANTE` fisso, composizione e adattamento partono dallo stesso istante e il problema
+  non si vede. Correzione: l'`AdaptRequest` dovrebbe dire da quale tappa si riparte (cambio di
+  contratto).
+- **"Nulla cambiato" giudica sugli arrivi ricevuti.** Se il segnale non tocca nessuna tappa, il
+  controllo orari usa gli arrivi che il visitatore aveva davanti; una tappa chiusa lì esce, anche
+  se dopo il ricalcolo da `signal.ora` sarebbe tornata aperta. Scelta documentata in
+  `engine._taglia_fuori_orario`, bloccata dai test di cascata.
+- **Una tappa tolta per orario non viene sostituita.** Esce in `tappe_escluse` con il suo
+  `reason`, ma il motore non cerca un'alternativa aperta: la persona perde la tappa.
+- **In composizione non c'è spiegazione per ciò che resta fuori.** Se tutti i candidati sono
+  chiusi in ogni slot l'itinerario è vuoto (`stops=[]`) senza `tappe_escluse`: in composizione
+  ciò che non entra "non è mai stato proposto", come per budget e tetto.
+- **Tappe fluttuanti ed eventi promossi non sono controllati sugli orari.** Le code della
+  composizione non passano da `aperta_durante`; in adattamento le tappe senza candidato non sono
+  mai tolte per orario (contano solo nella timeline).
+- **`distanza_m` è misurata dal luogo di riferimento** (l'ultimo di `luoghi_gia_visti`), non dalla
+  tappa precedente: gli arrivi, e quindi il controllo orari, usano trasferimenti stimati. Senza
+  luoghi visti il trasferimento è il valore predefinito.
+- **Itinerario senza budget (`tempo_effettivo_min=None`):** l'arrivo di un sostituto oltre la
+  mezzanotte si riavvolge; la tappa esce comunque al passo del tetto, ma può aver preso il posto
+  dell'originale (`docs/ENGINE_INVARIANTS.md` §7).
+- **Un grafo senza la proprietà `orari_apertura` dà "sempre aperto".** È il caso di un Aura caricato
+  prima di questa ondata (`coalesce` in `10_candidates.cypher`): oggi è innocuo (nessun orario
+  reale), ma dopo l'ondata 1b-2 un grafo non ricaricato mostrerebbe luoghi chiusi senza segnali.
+  Correzione possibile: una verifica del seed che le esperienze con orari dichiarati li abbiano nel
+  grafo. Il seed va ricaricato dopo ogni ondata che tocca gli orari.
+- **Un orario malformato in Aura blocca `/itinerary`.** `Neo4jCandidateSource` solleva (fail-closed,
+  mai "sempre aperto"): l'errore è sull'intera richiesta, non su una sola esperienza. Il loader
+  impedisce che ci arrivi dal seed versionato; un valore scritto a mano su Aura no.
+- **Il loader non è un parser Cypher.** `graph.loader.valida_orari` riconosce la forma generata da
+  `graph.export_cypher` (`e.orari_apertura = [...]` dentro il `MERGE` di un'esperienza) e rifiuta
+  ogni altra forma che citi `orari_apertura`; una proprietà scritta con un altro nome non è coperta.
+- **Client senza `istante`** (PowerShell, versioni vecchie dell'app): giorno e ora restano quelli
+  del dispositivo, come prima.
+
+### Trovato durante l'ondata, non corretto (preesistente)
+
+- **La tolleranza di diversità non agisce.** In `engine._seleziona_tappe`, `score - alt_score`
+  vale sempre 0 (`alt_score` è lo score del candidato corrente del ciclo, che coincide con
+  `score`), quindi `TOLLERANZA_DIVERSITA` non limita mai la diversificazione: vince il primo
+  candidato successivo con tema diverso, a qualunque distanza di score. Correggerlo cambia il
+  golden: va deciso a parte. Trovato da `test-engineer` il 2026-10-19.
