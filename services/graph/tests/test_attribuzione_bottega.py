@@ -61,6 +61,7 @@ def _record(esp_id: str, botteghe: list[dict[str, Any]] | None = None) -> dict[s
         "prezzo_eur": e.prezzo_eur,
         "prenotabile": e.prenotabile,
         "orari_apertura": codifica_fasce(e.orari_apertura),
+        "sospesa": e.sospesa,
         "place_nome": luogo.nome,
         "artisti_nomi": [],
         "botteghe": botteghe,

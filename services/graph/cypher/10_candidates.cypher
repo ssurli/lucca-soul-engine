@@ -116,6 +116,11 @@ RETURN
   // un valore presente ma malformato NON viene toccato qui e fa sollevare il
   // consumer.
   coalesce(e.orari_apertura, []) AS orari_apertura,
+  // `sospesa`: NON si applica `coalesce`. Proprietà assente -> null nel record
+  // (grafo caricato prima del campo), che `Neo4jCandidateSource` legge come
+  // `false`; un valore presente non booleano fa sollevare il consumer
+  // (fail-closed). Il filtro duro è nell'Experience Engine, non qui.
+  e.sospesa AS sospesa,
   l.nome AS place_nome,
   artisti_nomi,
   botteghe,

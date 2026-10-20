@@ -302,7 +302,7 @@ def _seleziona_tappe(
       (`compose_itinerary` passa il budget EFFETTIVO, già troncato alla
       mezzanotte da `_minuti_alla_mezzanotte`);
     - max 2 esperienze per stesso place_id;
-    - orari (filtro duro 5, `rules.aperta_durante`): per ogni candidato si
+    - orari (filtro duro 6, `rules.aperta_durante`): per ogni candidato si
       calcola l'arrivo ESATTAMENTE come in `_costruisci_stops`,
       `ora_partenza + tempo_usato + trasferimento` (trasferimento 0 per la
       prima tappa); se l'esperienza non è aperta per [arrivo, arrivo +
@@ -745,8 +745,10 @@ def compose_itinerary(
 
     Pipeline (separata in funzioni pure e testabili):
       1. filtri duri etici statici -> `rules.passa_filtri_statici`
+         (esperienza sospesa, accessibilità richiesta, luoghi già visti,
+         affollamento critico, partner con abbonamento non attivo)
       2. scoring per affinità -> `score_fn` (default: `rules.calcola_score`)
-      3. composizione a budget con diversificazione e filtro duro 5 (orari,
+      3. composizione a budget con diversificazione e filtro duro 6 (orari,
          `rules.aperta_durante`) all'ARRIVO di ogni slot -> `_seleziona_tappe`
       4. `reason` obbligatorio per ogni tappa -> `_costruisci_stops`
       5. segnali FLUTTUANTI pertinenti, in CODA -> `_aggiungi_tappe_fluttuanti`
@@ -912,8 +914,9 @@ def _migliore_alternativa(
     Deterministico: ordinamento (tema condiviso, score, `experience_id`).
 
     I vincoli DURI vengono da un solo punto, `rules.passa_filtri_duri`
-    (accessibilità richiesta dal profilo, affollamento critico, partner con
-    abbonamento NON attivo, orari di apertura): gli stessi filtri della
+    (esperienza sospesa, accessibilità richiesta dal profilo, affollamento
+    critico, partner con abbonamento NON attivo, orari di apertura): gli
+    stessi filtri della
     composizione iniziale (`passa_filtri_statici` + `aperta_durante`), così
     una sostituzione in adattamento non può MAI reintrodurre ciò che la
     composizione esclude. L'adattamento non ha luoghi già visti da passare
@@ -1015,7 +1018,7 @@ def adapt_itinerary(
        tappe che finirebbero oltre le 24:00 escono e vanno in
        `tappe_escluse` (`TAGLIATA_TETTO_GIORNATA`). Vale sempre, anche per
        un itinerario senza budget.
-    4. orari di apertura (`rules.aperta_durante`, filtro duro 5): OGNI tappa
+    4. orari di apertura (`rules.aperta_durante`, filtro duro 6): OGNI tappa
        rimasta, anche non toccata, è ricontrollata sull'arrivo che il
        visitatore vedrà; quelle chiuse per [arrivo, arrivo + durata] escono
        in `tappe_escluse` (`TAGLIATA_ORARIO`). Timeline
@@ -1027,6 +1030,14 @@ def adapt_itinerary(
        TENUTE prima di lei. Le tappe stub (fluttuanti, eventi promossi) non
        hanno orari e non escono mai per orario. Un taglio per orario accende
        `adattato_da_segnale`.
+
+    Filtri statici e tappe MANTENUTE: le tappe che restano (non toccate o
+    mantenute senza alternativa) NON ripassano `rules.passa_filtri_statici`,
+    solo `rules.aperta_durante` (passo 4). In particolare un'esperienza
+    diventata `sospesa` dopo la composizione resta nell'itinerario finché un
+    segnale non la sostituisce; i SOSTITUTI, invece, passano tutti i filtri
+    duri (`_migliore_alternativa` -> `rules.passa_filtri_duri`). Scelta del
+    committente, documentata in `docs/LIMITI.md`.
 
     Sostituzioni e orari: il sostituto in posizione i è scelto sull'arrivo
     che il visitatore vedrà, `signal.ora + _minuti_usati_permanenti(

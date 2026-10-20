@@ -97,6 +97,7 @@ SET e.titolo = 'Passeggiata sulle Mura rinascimentali',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-bici-mura'})
 SET e.titolo = 'Giro in bicicletta sulle Mura',
@@ -109,6 +110,7 @@ SET e.titolo = 'Giro in bicicletta sulle Mura',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-mercato-anfiteatro'})
 SET e.titolo = 'Il mercato mattutino nell\'ovale romano',
@@ -121,6 +123,7 @@ SET e.titolo = 'Il mercato mattutino nell\'ovale romano',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-salita-torre-guinigi'})
 SET e.titolo = 'Salita alla Torre Guinigi tra i lecci',
@@ -133,6 +136,7 @@ SET e.titolo = 'Salita alla Torre Guinigi tra i lecci',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-duomo-volto-santo'})
 SET e.titolo = 'Il Volto Santo e il labirinto del Duomo',
@@ -145,6 +149,7 @@ SET e.titolo = 'Il Volto Santo e il labirinto del Duomo',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-casa-puccini-visita'})
 SET e.titolo = 'Le stanze di Giacomo Puccini',
@@ -157,6 +162,7 @@ SET e.titolo = 'Le stanze di Giacomo Puccini',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-concerto-giglio'})
 SET e.titolo = 'Un\'aria all\'opera del Giglio',
@@ -169,6 +175,7 @@ SET e.titolo = 'Un\'aria all\'opera del Giglio',
     e.partner_id = NULL,
     e.prezzo_eur = 25.0,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-facciata-san-michele'})
 SET e.titolo = 'La facciata scolpita di San Michele in Foro',
@@ -181,6 +188,7 @@ SET e.titolo = 'La facciata scolpita di San Michele in Foro',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-orto-botanico-silenzio'})
 SET e.titolo = 'Un\'ora di silenzio tra le piante secolari',
@@ -193,6 +201,7 @@ SET e.titolo = 'Un\'ora di silenzio tra le piante secolari',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-orto-botanico-bambini'})
 SET e.titolo = 'Caccia al tesoro botanica per famiglie',
@@ -205,6 +214,7 @@ SET e.titolo = 'Caccia al tesoro botanica per famiglie',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-giardino-pfanner'})
 SET e.titolo = 'Il giardino barocco di Palazzo Pfanner',
@@ -217,6 +227,7 @@ SET e.titolo = 'Il giardino barocco di Palazzo Pfanner',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-mosaico-san-frediano'})
 SET e.titolo = 'Il mosaico dorato di San Frediano',
@@ -229,6 +240,7 @@ SET e.titolo = 'Il mosaico dorato di San Frediano',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-meccanismo-torre-ore'})
 SET e.titolo = 'Il meccanismo ottocentesco della Torre delle Ore',
@@ -241,6 +253,7 @@ SET e.titolo = 'Il meccanismo ottocentesco della Torre delle Ore',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-piazza-napoleone'})
 SET e.titolo = 'La piazza granducale e i suoi platani',
@@ -253,6 +266,7 @@ SET e.titolo = 'La piazza granducale e i suoi platani',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-struscio-fillungo'})
 SET e.titolo = 'Struscio serale in via Fillungo',
@@ -265,6 +279,7 @@ SET e.titolo = 'Struscio serale in via Fillungo',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-tramonto-baluardo'})
 SET e.titolo = 'Tramonto dal Baluardo San Paolino',
@@ -277,6 +292,7 @@ SET e.titolo = 'Tramonto dal Baluardo San Paolino',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-collezione-villa-guinigi'})
 SET e.titolo = 'La collezione archeologica di Villa Guinigi',
@@ -289,6 +305,7 @@ SET e.titolo = 'La collezione archeologica di Villa Guinigi',
     e.partner_id = NULL,
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-laboratorio-liuteria'})
 SET e.titolo = 'Un violino nasce: laboratorio del liutaio',
@@ -301,6 +318,7 @@ SET e.titolo = 'Un violino nasce: laboratorio del liutaio',
     e.partner_id = 'liuteria-lucchese',
     e.prezzo_eur = 15.0,
     e.prenotabile = true,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-decorazione-ceramica'})
 SET e.titolo = 'Decora la tua ciotola: bottega di ceramica',
@@ -313,6 +331,7 @@ SET e.titolo = 'Decora la tua ciotola: bottega di ceramica',
     e.partner_id = 'ceramica-lucca',
     e.prezzo_eur = 20.0,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-torchio-stamperia'})
 SET e.titolo = 'Una pagina al torchio: la stamperia storica',
@@ -325,6 +344,7 @@ SET e.titolo = 'Una pagina al torchio: la stamperia storica',
     e.partner_id = 'stamperia-lucca',
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-buccellato-pasticceria'})
 SET e.titolo = 'Il buccellato: il dolce di Lucca',
@@ -337,6 +357,7 @@ SET e.titolo = 'Il buccellato: il dolce di Lucca',
     e.partner_id = 'pasticceria-storica',
     e.prezzo_eur = 8.0,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-telaio-tessitura'})
 SET e.titolo = 'Il telaio a mano: tessitura lucchese',
@@ -349,6 +370,7 @@ SET e.titolo = 'Il telaio a mano: tessitura lucchese',
     e.partner_id = 'tessitura-lucca',
     e.prezzo_eur = NULL,
     e.prenotabile = false,
+    e.sospesa = false,
     e.orari_apertura = [];
 
 // --- Nodi: Partner (Wave 3a, marketplace) -------------------------------

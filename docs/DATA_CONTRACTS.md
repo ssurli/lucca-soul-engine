@@ -98,7 +98,7 @@ class Signal(BaseModel):              # stato del mondo, ORA
     # orari sono valutati all'ARRIVO di ogni tappa, NON all'`ora` del segnale:
     # composizione = `rules.aperta_durante(esperienza, giorno, arrivo)` slot per
     # slot in `_seleziona_tappe` (il pre-filtro `passa_filtri_statici` non li
-    # guarda); adattamento = sostituto valutato all'arrivo ricalcolato +
+    # guarda; guarda invece `ExperienceNode.sospesa`, esclusa sempre); adattamento = sostituto valutato all'arrivo ricalcolato +
     # `_taglia_fuori_orario` (TAGLIATA_ORARIO). `passa_filtri_duri(..., *,
     # arrivo)` = statici + aperta_durante. Usato per `ExperienceNode.orari_apertura`.
     giorno_settimana: int | None = None      # se presente: 0..6
@@ -219,6 +219,16 @@ class ExperienceNode(BaseModel):
     # `marketplace.service.request_booking` (validazione della
     # prenotazione): stessa informazione, un solo modello, due usi.
     orari_apertura: list[FasciaApertura] = []
+    # L'esperienza ESISTE nel grafo ma oggi NON si può fare (chiusura
+    # stagionale, restauro). Distinto dagli orari: `orari_apertura` dice
+    # QUANDO è aperta nella settimana, `sospesa` dice che in questo periodo
+    # non lo è mai. Interruttore manuale del dataset (da riportare a False
+    # alla riapertura). Esiste perché il loader del grafo fa solo MERGE:
+    # togliere un'esperienza dal seed lascerebbe un nodo orfano su Aura, quindi
+    # la si sospende invece di toglierla. Vincolo di PRESENZA (filtro duro in
+    # `experience_engine.rules.passa_filtri_statici`), mai un input dello
+    # scoring: `calcola_score` non lo legge.
+    sospesa: bool = False
 
 def rientra_in_orario(orari_apertura: list[FasciaApertura], giorno_settimana: int | None,
                       ora: time, *, durata_min: int = 0) -> bool: ...
@@ -712,6 +722,12 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   all'arrivo di ogni tappa, parte di `passa_filtri_duri`) sia la
   validazione di `marketplace.service.request_booking`: un vincolo su "cosa significa aperto"
   applicato in un solo punto, non duplicato con la possibilità di divergere.
+- `ExperienceNode.sospesa` (`False` di default) è un filtro statico di presenza in
+  `experience_engine.rules.passa_filtri_statici`: un'esperienza sospesa è esclusa SEMPRE, sia in
+  composizione sia in sostituzione (adattamento), indipendentemente da giorno, ora e
+  `orari_apertura` (che dicono QUANDO è aperta, non SE è fattibile nel periodo). Mai un input
+  dello scoring. Lettura da Neo4j: proprietà assente -> `False`; valore non booleano -> errore
+  (fail-closed, come gli orari).
 - `SegnaleFluttuante.non_commerciale` è OBBLIGATORIO, nessun default (vincolo di contratto:
   campo richiesto, non `bool = False`/`bool = True`): chi genera un segnale fluttuante deve
   dichiararlo esplicitamente. `segnale_fluttuante_ammissibile` è l'UNICO punto che lo legge

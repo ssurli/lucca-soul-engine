@@ -22,12 +22,12 @@ curatela. Vivono qui perché sono *verità di sistema*, non design di un compone
 
 `compose_itinerary` (`engine.py:321`):
 
-1. Filtri duri etici statici (1-4) → `rules.passa_filtri_statici` — **SELEZIONA**
+1. Filtri duri etici statici (1-5) → `rules.passa_filtri_statici` — **SELEZIONA**
    (ammette/esclude).
 2. Scoring → `score_fn` (default `rules.calcola_score`) — **ORDINA**, mai seleziona: riceve
    solo i candidati già ammessi dal passo 1, non può "salvare" un escluso.
 3. Composizione a budget con diversificazione → `_seleziona_tappe`, che applica il filtro
-   duro 5 (orari, `rules.aperta_durante`) slot per slot, all'ARRIVO del candidato (vedi §2):
+   duro 6 (orari, `rules.aperta_durante`) slot per slot, all'ARRIVO del candidato (vedi §2):
    un candidato chiuso in uno slot è saltato come uno fuori budget, resta tra i rimanenti
    e può entrare in uno slot successivo. Lo score non lo scavalca.
 4. `reason` obbligatorio per ogni tappa → `_costruisci_stops`.
@@ -39,22 +39,27 @@ curatela. Vivono qui perché sono *verità di sistema*, non design di un compone
 esattamente il comportamento MVP — nessun chiamante esistente cambia comportamento
 introducendo l'iniezione.
 
-## 2. I cinque filtri duri di `passa_filtri_duri` (in quest'ordine esatto)
+## 2. I sei filtri duri di `passa_filtri_duri` (in quest'ordine esatto)
 
 `passa_filtri_duri(candidate, profile, signal, luoghi_gia_visti, *, arrivo)` =
-`passa_filtri_statici(...)` (filtri 1-4) **AND** `aperta_durante(esperienza,
-signal.giorno_settimana, arrivo)` (filtro 5). `arrivo` è keyword-only e **senza default**:
+`passa_filtri_statici(...)` (filtri 1-5) **AND** `aperta_durante(esperienza,
+signal.giorno_settimana, arrivo)` (filtro 6). `arrivo` è keyword-only e **senza default**:
 nessun chiamante può tornare al controllo all'ora del segnale.
 
-1. `profile.accessibilita_richiesta` → solo `esperienza.accessibile=True`. Non negoziabile:
+1. `esperienza.sospesa` → esclusa, sempre (ondata 1b-2). L'esperienza esiste nel grafo ma in
+   questo periodo non si può fare (chiusura stagionale, restauro). Si sospende invece di
+   toglierla dal seed perché il loader fa solo `MERGE`: un nodo tolto resterebbe orfano su
+   Aura. Vale a prescindere da giorno, ora e orari; è un interruttore di PRESENZA, non un
+   input dello scoring. Le tappe MANTENUTE in `adapt_itinerary` non lo ripassano (§6).
+2. `profile.accessibilita_richiesta` → solo `esperienza.accessibile=True`. Non negoziabile:
    nessuno score può reintrodurre una tappa inaccessibile a chi l'ha chiesta.
-2. `esperienza.place_id in luoghi_gia_visti` → esclusa.
-3. `signal.affollamento.get(place_id, 0.0) >= SOGLIA_AFFOLLAMENTO_CRITICO` (**0.8**) →
+3. `esperienza.place_id in luoghi_gia_visti` → esclusa.
+4. `signal.affollamento.get(place_id, 0.0) >= SOGLIA_AFFOLLAMENTO_CRITICO` (**0.8**) →
    esclusa. Vincolo etico duro (distribuzione dei flussi), non una preferenza.
-4. `partner_id is not None and not partner_abbonamento_attivo` → esclusa. **L'unica leva
+5. `partner_id is not None and not partner_abbonamento_attivo` → esclusa. **L'unica leva
    commerciale ammessa** ed è un interruttore booleano di PRESENZA, non un input dello
    scoring.
-5. `not aperta_durante(esperienza, signal.giorno_settimana, arrivo)` → esclusa (Wave 3a+,
+6. `not aperta_durante(esperienza, signal.giorno_settimana, arrivo)` → esclusa (Wave 3a+,
    orari di apertura; ondata 1b1: **all'ARRIVO**, non all'ora del segnale).
    `aperta_durante` è l'UNICO punto del motore che interpreta gli orari: un wrapper sopra
    `contracts.rientra_in_orario(orari_apertura, giorno, arrivo, durata_min=esperienza.durata_min)`.
@@ -69,17 +74,17 @@ nessun chiamante può tornare al controllo all'ora del segnale.
    filtro è attivo; effetto reale nullo finché il grafo non popola `orari_apertura`
    (`docs/LIMITI.md`, voce "`giorno_settimana` ricavato da `Signal.data`").
 
-Nessun sesto filtro esiste oggi. Se se ne aggiunge uno, va qui — non altrove, non
+Nessun settimo filtro esiste oggi. Se se ne aggiunge uno, va qui — non altrove, non
 duplicato.
 
 ## 3. `calcola_score` — cosa NON legge mai (visibilità non acquistabile)
 
 Verificato sia da lettura diretta sia da un test-guard AST + un test comportamentale
-(score invariante a partner/prezzo/attribuzione, stesso file `rules.py:165`):
+(score invariante a partner/prezzo/attribuzione, stesso file `rules.calcola_score`):
 
 - **`experience.partner_id`** — mai letto.
 - **`experience.prezzo_eur`** — mai letto.
-- **`experience.partner_abbonamento_attivo`** — decide solo la PRESENZA (filtro 4 sopra),
+- **`experience.partner_abbonamento_attivo`** — decide solo la PRESENZA (filtro 5 sopra),
   mai il punteggio: quando un partner c'è, concorre esattamente come tutti gli altri.
 - **`candidate.attribuzione`** — vive SOLO nel `reason` finale (disclosure "Offerta da…",
   aggiunta in coda dal motivo reale), mai nello scoring, in particolare mai nella
@@ -87,7 +92,9 @@ Verificato sia da lettura diretta sia da un test-guard AST + un test comportamen
 - **`Signal.eventi_attivi`** (segnali fluttuanti) — mai letto: nessuna esperienza
   permanente vede il proprio punteggio cambiare per via di un segnale fluttuante.
 - **`ExperienceNode.orari_apertura`** e gli **arrivi** delle tappe — letti SOLO dal filtro
-  duro 5 (`aperta_durante`), mai dallo scoring.
+  duro 6 (`aperta_durante`), mai dallo scoring.
+- **`ExperienceNode.sospesa`** — letto SOLO dal filtro duro 1 (`passa_filtri_statici`), mai
+  dallo scoring (test-guard AST).
 - **Il bagliore** (`tracce_per_luogo`, `rules.bagliore`/`frase_bagliore`/`tema_dominante`/
   `peso_traccia`, `docs/PROMOZIONE_TRACCIA.md` §2b) — mai letto da `calcola_score` né da
   `passa_filtri_duri`. Entra SOLO nel `reason` di tappe permanenti GIÀ scelte
@@ -118,7 +125,7 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 | `rules.affinita_temi` | `rules.py:109` | `calcola_score` (3 volte) · `_coerente_col_profilo` |
 | `rules.evento_in_finestra` / `rules.occorrenza_attesa_giorni` | `rules.py` | `rules.eventi_promossi_pertinenti` (la decisione "in finestra") · `rules.giorno_occorrenza_attesa` → `engine._reason_evento_promosso` (solo il testo, mai la decisione) |
 | `rules.eventi_promossi_pertinenti` | `rules.py` | `engine._aggiungi_tappe_eventi_promossi` — **solo** in `compose_itinerary`, mai in `adapt_itinerary` |
-| `rules.calcola_score` | `rules.py:165` | `compose_itinerary` (via `score_fn` default) · `_migliore_alternativa` (per ordinare le alternative in adapt) |
+| `rules.calcola_score` | `rules.calcola_score` | `compose_itinerary` (via `score_fn` default) · `_migliore_alternativa` (per ordinare le alternative in adapt) |
 
 Tre usi di "cosa significa aperto" (composizione, adattamento, prenotazione), un solo
 modello (`rientra_in_orario`); nel motore un solo wrapper (`aperta_durante`).
@@ -151,6 +158,10 @@ di riscrittura mirata, con conseguenze concrete:
   restava fuori `partner_abbonamento_attivo`, per cui un partner con abbonamento non attivo
   poteva essere reintrodotto in adattamento. Chiuso applicando il filtro duro in un solo
   punto (vedi `docs/LIMITI.md`).
+- **Le tappe MANTENUTE non ripassano `passa_filtri_statici`** (ondata 1b-2, scelta del
+  committente): ricontrolla solo gli orari (`_taglia_fuori_orario`). Un'esperienza sospesa
+  DOPO la composizione resta nell'itinerario finché un segnale non la sostituisce; ogni
+  sostituto passa invece tutti i filtri duri (`docs/LIMITI.md`).
 - **Non chiama mai `segnali_fluttuanti_pertinenti`**: un segnale fluttuante comparso *dopo*
   la composizione iniziale non entra mai via `adapt_itinerary` — solo `compose_itinerary`
   ne tiene conto.
@@ -167,7 +178,7 @@ di riscrittura mirata, con conseguenze concrete:
 
 ## 7. Orari all'arrivo; l'affollamento resta un solo istante
 
-**Orari (chiuso, ondata 1b1).** Il filtro duro 5 non valuta più l'ora del segnale ma
+**Orari (chiuso, ondata 1b1).** Il filtro duro 6 non valuta più l'ora del segnale ma
 l'ARRIVO di ogni tappa, per l'intera visita [arrivo, arrivo + durata]:
 - composizione: `_seleziona_tappe` calcola l'arrivo di ogni candidato nello slot corrente
   (come `_costruisci_stops`) e salta, in quello slot, chi è chiuso;

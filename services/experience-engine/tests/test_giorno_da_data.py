@@ -1,7 +1,7 @@
 """`Signal.giorno_settimana` DERIVATO da `Signal.data` - test comportamentali.
 
 Cambio di contratto: se il client manda solo `data`, `Signal` ricava
-`giorno_settimana = data.weekday()`. Effetto: il filtro duro 5 sugli orari di
+`giorno_settimana = data.weekday()`. Effetto: il filtro duro 6 sugli orari di
 apertura (`rientra_in_orario`) si accende anche per un client che manda solo
 `data` (l'app Flutter), sia in composizione (`passa_filtri_duri`) sia in
 adattamento (`_migliore_alternativa`).

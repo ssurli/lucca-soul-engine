@@ -163,6 +163,9 @@ def _esperienza_statement(e: ExperienceNode) -> str:
         f"    e.partner_id = {_cypher_str_or_null(e.partner_id)},\n"
         f"    e.prezzo_eur = {_cypher_number_or_null(e.prezzo_eur)},\n"
         f"    e.prenotabile = {_cypher_bool(e.prenotabile)},\n"
+        # Scritta SEMPRE (anche `false`): il `SET` sovrascrive, quindi una
+        # sospensione tolta dal dataset torna `false` in un grafo già caricato.
+        f"    e.sospesa = {_cypher_bool(e.sospesa)},\n"
         # Scritta SEMPRE, anche vuota: il `SET` sovrascrive, quindi un orario
         # tolto dal dataset sparisce da un grafo già caricato (omettendola
         # resterebbe quello vecchio). Formato: `contracts.codifica_fasce`.

@@ -144,9 +144,18 @@ def passa_filtri_statici(
     luoghi_gia_visti: list[str],
 ) -> bool:
     """Vincoli DURI dell'Ethical AI Engine che NON dipendono dall'istante di
-    arrivo alla tappa (nessuna eccezione, mai). Sono i filtri 1-4 di
-    `passa_filtri_duri`; il filtro 5 (orari) è `aperta_durante`.
+    arrivo alla tappa (nessuna eccezione, mai). Sono i filtri 1-5 di
+    `passa_filtri_duri`; il filtro 6 (orari) è `aperta_durante`.
 
+    - Esclude le esperienze SOSPESE (`sospesa=True`): l'esperienza esiste nel
+      grafo ma in questo periodo non si può fare (chiusura stagionale,
+      restauro). La si sospende invece di toglierla dal seed perché il loader
+      del grafo fa solo MERGE: un nodo tolto resterebbe orfano su Aura. Vale
+      SEMPRE, a prescindere da giorno, ora e `orari_apertura` (che dicono
+      QUANDO è aperta nella settimana, non SE lo è in questo periodo). È un
+      interruttore di PRESENZA, non uno score: `calcola_score` non lo legge.
+      Primo controllo: un'esperienza sospesa è esclusa qualunque altra cosa
+      valga per lei.
     - `accessibilita_richiesta` => solo esperienze `accessibile=True`.
       L'inclusione non è negoziabile: nessuno score può reintrodurre una
       tappa inaccessibile per una persona che ha chiesto accessibilità.
@@ -165,6 +174,8 @@ def passa_filtri_statici(
     (prima dello scoring) e controlla gli orari slot per slot, all'arrivo.
     """
     esperienza = candidate.experience
+    if esperienza.sospesa:
+        return False
     if profile.accessibilita_richiesta and not esperienza.accessibile:
         return False
     if esperienza.place_id in luoghi_gia_visti:
@@ -179,7 +190,7 @@ def passa_filtri_statici(
 def aperta_durante(
     esperienza: ExperienceNode, giorno_settimana: int | None, arrivo: time
 ) -> bool:
-    """Filtro duro 5: l'esperienza è APERTA per tutta la visita, cioè
+    """Filtro duro 6: l'esperienza è APERTA per tutta la visita, cioè
     l'intervallo [`arrivo`, `arrivo` + `esperienza.durata_min`] cade in UNA
     fascia di `orari_apertura` del giorno `giorno_settimana`.
 
@@ -217,9 +228,10 @@ def passa_filtri_duri(
     """TUTTI i vincoli DURI dell'Ethical AI Engine (nessuna eccezione, mai),
     per un candidato che arriverebbe alla tappa all'istante `arrivo`:
 
-    1-4. `passa_filtri_statici`: accessibilità richiesta, luoghi già visti,
-         affollamento critico, partner con abbonamento non attivo;
-    5.   `aperta_durante(esperienza, signal.giorno_settimana, arrivo)`: aperta
+    1-5. `passa_filtri_statici`: esperienza sospesa, accessibilità
+         richiesta, luoghi già visti, affollamento critico, partner con
+         abbonamento non attivo;
+    6.   `aperta_durante(esperienza, signal.giorno_settimana, arrivo)`: aperta
          per l'intero intervallo [arrivo, arrivo + durata].
 
     `arrivo` è keyword-only e OBBLIGATORIO, senza default: nessun chiamante
@@ -246,7 +258,9 @@ def calcola_score(
     `candidate.experience.partner_abbonamento_attivo` né
     `candidate.attribuzione`. L'abbonamento del partner decide solo la
     PRESENZA del candidato (filtro duro in `passa_filtri_statici`), mai il
-    punteggio. L'attribuzione ("Offerta da ...") è una
+    punteggio. Allo stesso modo NON legge `candidate.experience.sospesa`:
+    un'esperienza sospesa è esclusa a monte da `passa_filtri_statici` (vincolo
+    di presenza) e non arriva mai qui come penalità o bonus. L'attribuzione ("Offerta da ...") è una
     disclosure che vive SOLO nel `reason`, in coda ai motivi reali: non deve
     entrare nello scoring — in particolare non deve gonfiare la componente
     `sorpresa`, che conta le `connessioni` del grafo e nient'altro. Un partner

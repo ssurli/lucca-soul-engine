@@ -85,6 +85,7 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
         "prezzo_eur": e.prezzo_eur,
         "prenotabile": e.prenotabile,
         "orari_apertura": codifica_fasce(e.orari_apertura),
+        "sospesa": e.sospesa,
         "place_nome": luogo.nome,
         "artisti_nomi": _mescola(artisti, rng),
         "botteghe": (

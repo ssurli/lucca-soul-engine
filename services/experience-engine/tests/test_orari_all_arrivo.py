@@ -1,4 +1,4 @@
-"""Orari di apertura valutati all'ARRIVO della tappa (filtro duro 5).
+"""Orari di apertura valutati all'ARRIVO della tappa (filtro duro 6).
 
 Il filtro non guarda piu' `signal.ora` ma l'istante in cui il visitatore
 ARRIVA alla tappa, e l'intero intervallo [arrivo, arrivo + durata] deve cadere

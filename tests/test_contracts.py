@@ -321,6 +321,7 @@ def make_dashboard_flows_response(**overrides: object) -> DashboardFlowsResponse
                 "partner_id",
                 "prezzo_eur",
                 "orari_apertura",
+                "sospesa",
             },
         ),
         (

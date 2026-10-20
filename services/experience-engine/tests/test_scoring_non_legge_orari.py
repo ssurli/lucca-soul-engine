@@ -59,6 +59,30 @@ def test_calcola_score_non_legge_orari_arrivo_istante_giorno() -> None:
         )
 
 
+def test_calcola_score_non_legge_sospesa() -> None:
+    """`sospesa` e' un interruttore di presenza (`passa_filtri_statici`), mai
+    un fattore di score: ne' penalita' ne' bonus."""
+    albero = ast.parse(textwrap.dedent(inspect.getsource(rules.calcola_score)))
+    funzione = albero.body[0]
+    assert isinstance(funzione, ast.FunctionDef)
+    usati = {n.lower() for n in _nomi_usati(funzione)}
+    assert not any("sospesa" in n for n in usati), (
+        "calcola_score non deve riferirsi a 'sospesa': e' un filtro di presenza"
+    )
+
+
+def test_la_guardia_sospesa_scatta_su_un_accesso_attributo() -> None:
+    sorgente = textwrap.dedent(
+        '''
+        def f(candidate):
+            return 0.0 if candidate.experience.sospesa else 1.0
+        '''
+    )
+    funzione = ast.parse(sorgente).body[0]
+    assert isinstance(funzione, ast.FunctionDef)
+    assert "sospesa" in _nomi_usati(funzione)
+
+
 def test_la_guardia_sa_riconoscere_un_riferimento_vietato() -> None:
     """Controllo di sensibilita': la guardia scatta davvero."""
     sorgente = textwrap.dedent(

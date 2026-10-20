@@ -1502,7 +1502,8 @@ Accettato come v1 della finestra. Verifica: giro dedicato di `ethics-guardian` (
 
 **Introdotto:** subito dopo la finestra temporale degli `:Evento` promossi, in un commit
 separato perché è un CAMBIAMENTO DI COMPORTAMENTO, non un refactoring. **Componenti:**
-`contracts.Signal` (validatore `_data_coerente_con_giorno_settimana`), filtro duro 5
+`contracts.Signal` (validatore `_data_coerente_con_giorno_settimana`), filtro duro 5 (il 6
+dall'ondata 1b-2, che ha aggiunto `sospesa` in testa ai filtri statici)
 (`contracts.rientra_in_orario` in `experience_engine.rules.passa_filtri_duri` e in
 `engine._migliore_alternativa`).
 
@@ -2592,3 +2593,26 @@ del Traguardo A e punto (1) della "Condizione di riesame" (vedi sopra).
   `score`), quindi `TOLLERANZA_DIVERSITA` non limita mai la diversificazione: vince il primo
   candidato successivo con tema diverso, a qualunque distanza di score. Correggerlo cambia il
   golden: va deciso a parte. Trovato da `test-engineer` il 2026-10-19.
+
+## Ondata 1b-2: esperienza sospesa (APERTO)
+
+`ExperienceNode.sospesa` dice che un'esperienza esiste ma in questo periodo non si può fare
+(chiusura stagionale, restauro). È il primo filtro duro di `rules.passa_filtri_statici`: vale in
+composizione e nelle sostituzioni dell'adattamento, a prescindere da giorno, ora e orari, e non entra
+mai nello scoring. Si sospende invece di togliere l'esperienza dal seed perché `graph.loader` fa solo
+`MERGE`: un nodo tolto resterebbe orfano su Aura.
+
+- **È un interruttore manuale del dataset.** Nessuna data di riapertura: va riportato a `False` a
+  mano, e il seed ricaricato su Aura.
+- **Le tappe MANTENUTE in adattamento non lo ripassano** (scelta del committente, 2026-10-20).
+  `adapt_itinerary` ricontrolla sulle tappe rimaste solo gli orari: un itinerario composto prima
+  della sospensione e adattato dopo conserva la tappa sospesa, finché un segnale non la sostituisce.
+  I sostituti passano invece tutti i filtri duri. Il caso richiede un itinerario composto prima di
+  una ricarica del seed: gli itinerari della demo nascono al momento.
+- **Un valore non booleano in Aura blocca `/itinerary`** (fail-closed, come gli orari): proprietà
+  assente vale `False`; stringhe, numeri o altri tipi sollevano un errore sull'intera richiesta.
+- **La prenotazione diretta non controlla `sospesa`.** `marketplace.service.request_booking`
+  verifica `prenotabile` e gli orari, non la sospensione: un'esperienza sospesa e prenotabile
+  riceverebbe ancora prenotazioni. Oggi non accade: l'unica esperienza prenotabile del seed
+  (`exp-laboratorio-liuteria`) non è sospesa. Va chiuso prima di sospendere un'esperienza
+  prenotabile (rilievo N2 di `ethics-guardian`, 2026-10-20).

@@ -521,6 +521,16 @@ class ExperienceNode(ContractModel):
     # `rientra_in_orario`, mai altrove: un solo punto interpreta questo
     # campo, sia in composizione d'itinerario sia in prenotazione.
     orari_apertura: list[FasciaApertura] = []
+    # L'esperienza ESISTE nel grafo ma oggi NON si può fare (chiusura
+    # stagionale, restauro). Distinto dagli orari: `orari_apertura` dice
+    # QUANDO è aperta nella settimana, `sospesa` dice che in questo periodo
+    # non lo è mai. Interruttore manuale del dataset (va riportato a False
+    # alla riapertura). Esiste perché il loader del grafo fa solo MERGE:
+    # togliere un'esperienza dal seed lascerebbe un nodo orfano su Aura,
+    # quindi la si sospende invece di toglierla. È un vincolo di PRESENZA
+    # (filtro duro in `experience_engine.rules.passa_filtri_statici`), mai
+    # un input dello scoring: `calcola_score` non lo legge.
+    sospesa: bool = False
 
 
 class GraphCandidate(ContractModel):

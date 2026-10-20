@@ -229,6 +229,21 @@ class SeedCandidateSource:
 # ---------------------------------------------------------------------------
 
 
+def _sospesa_da_record(record: Record) -> bool:
+    """Fail-closed: solo `None` (proprietà assente) è `False`; solo un `bool`
+    vero e proprio è accettato. Stringhe e int (anche 0/1: in Python `bool` è
+    sottoclasse di `int`, qui si rifiuta l'int) sollevano ValueError."""
+    grezzo = record["sospesa"]
+    if grezzo is None:
+        return False
+    if not isinstance(grezzo, bool):
+        raise ValueError(
+            f"sospesa dell'esperienza {record['id']!r}: atteso un booleano, "
+            f"trovato {type(grezzo).__name__} {grezzo!r}"
+        )
+    return grezzo
+
+
 def _fasce_da_record(record: Record) -> list[FasciaApertura]:
     """Fail-closed: solo `None` (proprietà assente) è `[]`; ogni valore non
     `list` solleva ValueError. Le fasce malformate le rifiuta `decodifica_fasce`."""
@@ -316,6 +331,7 @@ class Neo4jCandidateSource:
             # solleva ValueError, non diventa lista vuota (= "sempre
             # aperto"). Solo `None` (proprietà assente) è `[]`.
             orari_apertura=_fasce_da_record(record),
+            sospesa=_sospesa_da_record(record),
         )
         # Fatti SEMANTICI (artisti, temi, `ISPIRATA_DA`, `EVOCA` della bottega) e
         # prossimità al luogo già visitato: testo e ORDINE sono imposti da
