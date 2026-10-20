@@ -2747,14 +2747,33 @@ committente (19–20/10/2026), sito del Comune di Lucca, Puccini Museum.
 
 ## Ondata 1c: contenuti locali per la demo (APERTO)
 
-- **Orari delle botteghe dimostrativi (fittizi)**, non di esercizi reali: liuteria, ceramica, torchio,
-  telaio mar-sab 09:30-12:30 e 15:30-19:00; pasticceria mar-dom 08:00-13:00 e 15:30-19:30.
+- **Orari delle botteghe dimostrativi (fittizi)**, non di esercizi reali e non da fonti: fissati dal
+  committente per la demo. `exp-laboratorio-liuteria`, `exp-decorazione-ceramica`,
+  `exp-torchio-stamperia`, `exp-telaio-tessitura` mar-sab 09:30-12:30 e 15:30-19:00;
+  `exp-buccellato-pasticceria` mar-dom 08:00-13:00 e 15:30-19:30. Conseguenze (rilievo
+  dell'ethics-guardian):
+  - spostano le presenze dei partner: da 10 a 7 nei 13 casi demo e feriali del golden. Il confronto
+    partner/pubblico dipende da questi numeri inventati, non è un risultato del motore;
+  - lunedì e domenica (salvo la pasticceria) le botteghe sono chiuse, mentre molti luoghi pubblici
+    senza fascia sono sempre ammessi: svantaggio artificiale per i partner;
+  - dopo le 18:00 le botteghe restano tra le poche offerte al chiuso aperte (Duomo e Reparata chiudono
+    alle 18:00): vantaggio artificiale per i partner, oggi non osservato nel golden;
+  - le botteghe sono l'unico gruppo con fasce inventate. Prima di un uso reale gli orari devono venire
+    da fonti, oppure le botteghe fittizie restano senza fasce come le esperienze pubbliche senza fascia.
 - **Concerto al Giglio senza orari**: è un evento a orario fisso, oggi non modellato.
 - **Barsanti**: aperto nei festivi, chiuso il 24 e 25 dicembre; non modellabile (gli orari sono solo
   settimanali).
 - **Santa Croce**: il committente indica 10:00-16:00, il sito turistico del Comune riporta 10:00-16:30;
   tenuto il più restrittivo.
-- **Accessibilità di Barsanti e Santa Croce non verificata**: `accessibile=False` prudente.
+- **Accessibilità di Barsanti e Santa Croce non verificata**: `accessibile=False` prudente, come per
+  Reparata, via del Fosso e il Pfanner visto dalle Mura.
+- **Accessibilità della sortita di San Paolino dichiarata dal committente, non verificata**
+  (`accessibile=True`): è l'unica eccezione al principio prudente tra le esperienze nuove, ed è anche
+  uno dei 3 sostituti gratuiti al chiuso e accessibili con la pioggia (con il Duomo e la tessitura del
+  partner). Va verificata prima di un uso con utenti reali; se non è possibile, va portata a `False`.
+- **Esperienze senza fascia non sono aperture verificate**: la sortita di San Paolino (sotterraneo al
+  chiuso) e via del Fosso (all'aperto, illuminata) valgono "sempre aperte" e possono essere proposte
+  di sera. Per la sortita è l'errore opposto a quello innocuo ("nessuno davanti a un luogo chiuso").
 - **Distanze dei 4 luoghi nuovi stimate** in linea d'aria (`museo-barsanti-matteucci`, `via-del-fosso`,
   `baluardo-santa-croce`, `santi-giovanni-reparata`): saranno sostituite dalle coordinate.
 - **`exp-pfanner-dalle-mura` sta sul luogo `palazzo-pfanner`** per la regola "una tappa per luogo":
@@ -2766,3 +2785,31 @@ committente (19–20/10/2026), sito del Comune di Lucca, Puccini Museum.
 - **Indicatore di distribuzione dei flussi dell'Index non confrontabile prima/dopo il ricarico**: i
   luoghi passano da 17 a 21. I nuovi archi `VICINO` hanno l'epoca di default e non contano come nuovi
   percorsi.
+
+## I ricordi dimostrativi della Urban Memory contano nei totali dell'Index e compaiono come memorie pubbliche (APERTO)
+
+**Ondata 1c.** `scripts/carica_ricordi_demo.py` carica 4 ricordi di esempio (id `memoria-demo-*`,
+pseudonimo `demo-lucca-soul`, `contributor_kind=cittadino`, licenza CC-BY-SA-4.0, consenso
+registrato) su Mura, Anfiteatro, Duomo/Luminara e San Francesco. Ogni testo termina con
+«(esempio dimostrativo)». Passano dal flusso vero: consenso, licenza, curatela con verifica dei
+target nel grafo, aggancio. Lo script rifiuta di scrivere se le persone distinte in Urban Memory,
+pseudonimo demo incluso, sono 7 o più (k = 10 meno 3 di margine).
+
+### Cosa NON è garantito
+- **Non sono contributi di cittadini**, ma `GET /memory/{place_id}` li restituisce e l'app li mostra
+  come memorie curate con l'etichetta "Cittadino": l'unico segnale è il testo «(esempio
+  dimostrativo)».
+- **Entrano in `contributi_memoria` dell'Index**, nel conteggio e nelle persone distinte del gate k,
+  nel mese del caricamento (`creato_il`). Se in quel mese le persone reali arrivano a 9, il gate passa
+  con 9 persone reali e il totale include 4 contributi finti.
+- **Il margine k − 3 vale al momento del caricamento**, non dopo.
+- **I contenuti storici dei testi** sono stati approvati dal committente ma non verificati su fonti
+  dagli agenti (rilievo dell'ethics-guardian su Geminiani a San Francesco e sul Volto Santo collocato
+  prima a San Frediano, che è il racconto della tradizione).
+
+### Cosa servirebbe
+Un campo `dimostrativo` sul contratto (passa da `contract-keeper`), escluso da `contributi_memoria`,
+dal conteggio delle persone del gate k, dalle altre aggregazioni e dalla dashboard, e mostrato come
+badge nell'app. Va introdotto **prima che le persone reali nel periodo del caricamento arrivino a 8**.
+Quando esiste, i 4 ricordi vanno marcati e la voce chiusa; in alternativa, se la demo non serve più,
+vanno rimossi con una procedura da definire (oggi non esiste un cestino per le memorie curate).
