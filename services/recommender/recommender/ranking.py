@@ -40,8 +40,39 @@ del grafo — questo modulo non importa `graph`.
 LIMITE NOTO (documentato anche nel README): questa è una correzione LOCALE,
 per-richiesta. Non può garantire matematicamente che una metrica di
 distribuzione aggregata su una POPOLAZIONE di richieste non peggiori mai —
-riduce sostanzialmente il rischio di regressione, non lo elimina per
-qualunque scenario storico possibile.
+non la garantisce e non la elimina il rischio di regressione. Nella
+configurazione finale (con il gating sotto) B >= A vale in 34 storici
+casuali su 40, meno dei 38 su 40 della versione precedente a questa
+correzione: il gating migliora la distribuzione media ma non e' monotono.
+
+CORREZIONE PROVVISORIA "GATING PER PRESSIONE DI CONTENUTO" (ondata 1b-2,
+candidata G3). Il termine STORICO di ogni luogo e' moltiplicato per
+`min(1, esposizione / (FATTORE_SOGLIA_ESPOSIZIONE / N))`, dove `esposizione`
+e' la quota con cui il luogo compare nei primi `K_ESPOSIZIONE_TOP` (3) per
+ciascuno dei 6 `ARCHETIPI_STRUTTURALI`, con segnale neutro, e `N` e' il
+numero di luoghi tra i candidati correnti. Idea: uno storico alto su un
+luogo che il CONTENUTO non spinge verso i primi posti di nessun archetipo
+e' scontato meno ("effetto gregge": penalizzare un luogo gia' frequentato
+che il ranking per pertinenza non avrebbe comunque proposto sposta il
+flusso su altri luoghi senza ridurre la concentrazione). Il gating non
+introduce penalita' nuove e non supera mai il termine storico originale:
+i pesi (0.3 / 0.2) e `LIMITE_PESO_COMBINATO_MAX` sono invariati.
+
+Limiti dichiarati, senza abbellimenti:
+
+- L'esposizione dipende dai 6 archetipi del recommender, NON dal profilo del
+  visitatore reale: due visitatori diversi vedono lo stesso gating.
+- E' una correzione PROVVISORIA dell'"effetto gregge", da riprogettare dopo
+  la demo. I parametri (k=3, fattore 2) sono quelli simulati, non tarati.
+- Non garantisce B >= A su qualunque storico: nella batteria di 40 storici
+  casuali della configurazione finale B >= A vale in 34 casi su 40 (vedi
+  `scripts/misura_concentrazione_recommender.py`, non e' un test).
+- Rischio: un luogo molto frequentato ma poco spinto dal contenuto viene
+  scoraggiato MENO di prima, quindi puo' restare congestionato.
+
+Il recommender ORDINA, non filtra: nessun luogo e nessuna esperienza esce
+dalla lista, e nessun campo commerciale (`partner_id`, `prezzo_eur`,
+`partner_abbonamento_attivo`, `prenotabile`, attribuzione) e' letto.
 """
 
 from __future__ import annotations
@@ -63,6 +94,8 @@ __all__ = [
     "ALPHA_LAPLACE",
     "ARCHETIPI_STRUTTURALI",
     "SEGNALE_NEUTRO_STRUTTURALE",
+    "K_ESPOSIZIONE_TOP",
+    "FATTORE_SOGLIA_ESPOSIZIONE",
     "costruisci_score_fn",
 ]
 
@@ -227,6 +260,19 @@ ARCHETIPI_STRUTTURALI: list[EmotionalProfile] = [
     ),  # MISTO_EQUILIBRATO
 ]
 
+#: Ampiezza (k) della classifica per archetipo usata per misurare la
+#: ESPOSIZIONE di contenuto di un luogo nel gating del termine storico: un
+#: luogo e' "spinto dal contenuto" se compare tra i primi `k = 3` luoghi di
+#: almeno un archetipo. Provvisorio: valore simulato, non tarato.
+K_ESPOSIZIONE_TOP: int = 3
+
+#: Fattore della soglia di esposizione: il termine storico di un luogo e'
+#: pieno (moltiplicatore 1) quando la sua esposizione raggiunge
+#: `FATTORE_SOGLIA_ESPOSIZIONE / N` (N = numero di luoghi candidati), cioe'
+#: il doppio della quota uniforme `1 / N`; sotto, scala linearmente fino a 0.
+#: Provvisorio: valore simulato, non tarato.
+FATTORE_SOGLIA_ESPOSIZIONE: float = 2.0
+
 
 def _conteggio_grezzo_per_place(
     conteggio_per_esperienza: dict[str, float],
@@ -350,6 +396,61 @@ def _quota_strutturale_per_place(
     return {place_id: credito / n_archetipi for place_id, credito in crediti.items()}
 
 
+def _esposizione_top_k_per_place(
+    candidati_correnti: list[GraphCandidate],
+    *,
+    vocabolario: VocabolarioTemi,
+    k: int = K_ESPOSIZIONE_TOP,
+) -> dict[str, float]:
+    """Esposizione di contenuto per `place_id`, in [0, 1]: quota di
+    apparizione del luogo nei primi `k` per ciascuno dei 6
+    `ARCHETIPI_STRUTTURALI`, con `SEGNALE_NEUTRO_STRUTTURALE`.
+
+    Per ogni archetipo si prende, PER LUOGO, il punteggio migliore tra le sue
+    esperienze (come nella quota strutturale), si ordinano i luoghi per
+    punteggio decrescente (a parita', per `place_id` crescente: ordine
+    deterministico) e ciascuno dei primi `k` riceve un credito `1 / k`. La
+    quota e' la media dei crediti sugli archetipi.
+
+    Dipende dai 6 archetipi del recommender, NON dal profilo del visitatore.
+    Nessun dato storico, nessun campo commerciale.
+    """
+    place_ids = {candidato.experience.place_id for candidato in candidati_correnti}
+    crediti: dict[str, float] = dict.fromkeys(place_ids, 0.0)
+    for archetipo in ARCHETIPI_STRUTTURALI:
+        migliore: dict[str, float] = {}
+        for candidato in candidati_correnti:
+            punteggio = calcola_score(
+                candidato, archetipo, SEGNALE_NEUTRO_STRUTTURALE, vocabolario=vocabolario
+            )
+            place_id = candidato.experience.place_id
+            if place_id not in migliore or punteggio > migliore[place_id]:
+                migliore[place_id] = punteggio
+        in_testa = sorted(migliore.items(), key=lambda coppia: (-coppia[1], coppia[0]))[:k]
+        for place_id, _ in in_testa:
+            crediti[place_id] += 1.0 / k
+    n_archetipi = len(ARCHETIPI_STRUTTURALI)
+    return {place_id: credito / n_archetipi for place_id, credito in crediti.items()}
+
+
+def _applica_gating_esposizione(
+    quota_storica: dict[str, float],
+    esposizione: dict[str, float],
+    *,
+    fattore: float = FATTORE_SOGLIA_ESPOSIZIONE,
+) -> dict[str, float]:
+    """Moltiplica la quota storica di ogni luogo per
+    `min(1, esposizione / (fattore / N))`, con `N = len(quota_storica)`.
+    Non aumenta mai la quota: il gating puo' solo ridurre la penalita'."""
+    if not quota_storica:
+        return {}  # nessun luogo candidato: niente da pesare (evita la divisione per zero)
+    soglia = fattore / len(quota_storica)
+    return {
+        place_id: quota * min(1.0, esposizione.get(place_id, 0.0) / soglia)
+        for place_id, quota in quota_storica.items()
+    }
+
+
 def costruisci_score_fn(
     repo: BehaviorEventRepository,
     candidati_correnti: list[GraphCandidate],
@@ -385,6 +486,18 @@ def costruisci_score_fn(
     ribalta mai un vantaggio di pertinenza enorme" è verificato a runtime,
     non solo documentato.
 
+    GATING (correzione PROVVISORIA, ondata 1b-2): il termine storico di ogni
+    luogo e' moltiplicato per `min(1, esposizione / (FATTORE_SOGLIA_ESPOSIZIONE
+    / N))`, con `esposizione` = quota del luogo nei primi `K_ESPOSIZIONE_TOP`
+    (3) per ciascuno dei 6 `ARCHETIPI_STRUTTURALI` (segnale neutro). Onesta':
+    la penalita' dipende dai 6 archetipi del recommender, NON dal profilo del
+    visitatore; e' una correzione provvisoria dell'"effetto gregge", da
+    riprogettare dopo la demo; non garantisce B >= A su qualunque storico
+    (34 su 40 nella batteria della configurazione finale); un luogo molto
+    frequentato ma poco spinto dal contenuto viene scoraggiato meno. Pesi,
+    limite combinato e soglia del cold start sono invariati; il termine
+    strutturale resta il rank-1 originale. Il recommender ordina, non filtra.
+
     La funzione ritornata (`_score`) è quella verificata dal test-guard AST
     del servizio (`tests/test_ranking.py`): NON legge mai
     `candidate.experience.partner_id`, `.prezzo_eur`,
@@ -411,8 +524,9 @@ def costruisci_score_fn(
         quota_storica: dict[str, float] = {}
         quota_strutturale: dict[str, float] = {}
     else:
-        quota_storica = _quota_storica_per_place(
-            conteggio_grezzo, candidati_correnti, alpha_smoothing
+        quota_storica = _applica_gating_esposizione(
+            _quota_storica_per_place(conteggio_grezzo, candidati_correnti, alpha_smoothing),
+            _esposizione_top_k_per_place(candidati_correnti, vocabolario=vocabolario),
         )
         quota_strutturale = _quota_strutturale_per_place(
             candidati_correnti, vocabolario=vocabolario

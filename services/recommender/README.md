@@ -107,6 +107,27 @@ completa — cosa servirebbe per una garanzia vera (allocazione globale a
 batch, o stato condiviso in tempo reale con un algoritmo di allocazione
 online) e il costo stimato — in **`docs/LIMITI.md`**, sezione "Il Recommender
 ML non garantisce matematicamente la non-concentrazione aggregata".
+Il gating descritto sotto non cambia questo limite: nella configurazione
+finale B >= A vale in 34 storici casuali su 40 (la versione precedente: 38
+su 40). Dettagli e rischi in `docs/LIMITI.md`, sezione "Recommender:
+correzione provvisoria dell'effetto gregge".
+
+### Gating per pressione di contenuto (provvisorio)
+
+Il termine storico di ogni luogo e' moltiplicato per
+`min(1, esposizione / (2 / N))`, con N = numero di luoghi candidati ed
+`esposizione` = quota di apparizione del luogo nei primi 3 (costanti
+`K_ESPOSIZIONE_TOP`, `FATTORE_SOGLIA_ESPOSIZIONE`) per ciascuno dei 6
+`ARCHETIPI_STRUTTURALI`, con segnale neutro. Un luogo molto frequentato ma
+non spinto dal contenuto e' penalizzato meno ("effetto gregge"). Limiti:
+
+- **Provvisorio**: correzione da riprogettare dopo la demo; parametri non tarati.
+- Dipende dai **6 archetipi** del recommender, **non dal profilo** del visitatore.
+- Non garantisce B >= A su qualunque storico; un luogo congestionato ma poco
+  spinto dal contenuto viene scoraggiato meno.
+- Pesi (0.3 / 0.2), limite combinato e soglia del cold start invariati; il
+  recommender ordina, non filtra.
+- Misura (non e' un test): `scripts/misura_concentrazione_recommender.py`.
 
 ## Feature usate — lista esplicita, con motivazione
 

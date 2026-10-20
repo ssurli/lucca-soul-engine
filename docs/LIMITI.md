@@ -2620,3 +2620,31 @@ mai nello scoring. Si sospende invece di togliere l'esperienza dal seed perché 
   alla composizione. Il caso concreto: una tappa partner il cui abbonamento scade dopo la
   composizione resta nell'itinerario fino alla composizione successiva. Pioggia e affollamento
   oltre 0.7 riscrivono comunque la tappa.
+
+## Recommender: correzione provvisoria dell'"effetto gregge" (APERTO, da riprogettare dopo la demo)
+
+**Trovato il 2026-10-20 (ondata 1b-2).** La penalità del recommender (`ranking.py`: quota storica e
+quota strutturale) dipende solo dal luogo: tutti i profili ricevono lo stesso vettore di penalità,
+e il flusso tolto a un luogo penalizzato finisce per tutti sugli stessi pochi luoghi meno
+penalizzati. Esisteva già su `main`, coperto dal margine del test dei 4 scenari; la regola "una
+tappa per luogo" e i dati reali lo hanno scoperto.
+
+Correzione PROVVISORIA ("Cand. 1"): la quota storica di un luogo pesa solo nella misura in cui il
+contenuto lo spinge (esposizione nei top-3 dei 6 archetipi del recommender). Parametri fissati
+senza ulteriore taratura.
+
+- **La penalità dipende dai 6 archetipi del recommender, non dal profilo del visitatore.** Gli
+  archetipi sono una scelta di progetto, fissa e uguale per tutti.
+- **Nessuna garanzia B ≥ A su qualunque storico.** Su 40 storici casuali (seed 200–239), nella
+  configurazione finale (dati reali + regola "una tappa per luogo") vale in 34/40, peggior B − A
+  −0.0358. Su `main` valeva in 38/40. Misura ripetibile, non bloccante:
+  `scripts/misura_concentrazione_recommender.py`.
+- **Margine zero nello scenario casuale** del test (0.8190 → 0.8190): uno spostamento di tappa lo fa
+  fallire.
+- **Rischio etico: un luogo molto frequentato ma poco spinto dal contenuto viene scoraggiato meno**
+  (per esempio il Duomo, se l'algoritmo non lo propone spesso ma la storia lo dà affollato).
+- **Il test confronta campioni di dimensione diversa** (il budget fa entrare un numero diverso di
+  tappe in A e in B): un solo spostamento vale circa 0.01–0.02 di distribuzione.
+- **In demo il recommender quasi certamente non agisce**: l'app non invia eventi (`POST /events`),
+  quindi sotto la soglia di massa 20 l'ordinamento è quello di `calcola_score`. Non verificato su
+  Neon.

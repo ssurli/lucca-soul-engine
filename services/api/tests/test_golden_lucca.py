@@ -66,6 +66,21 @@ e' sostituita o mantenuta senza alternativa, oppure non e' piu' disponibile come
 al chiuso, oppure Torre delle Ore e' nuovo sostituto al chiuso (mai per chi chiede
 accessibilita'), oppure slittamento/budget conseguente. Zero differenze non attribuite.
 
+SESTA modifica autorizzata (2026-10-20, ondata 1b-2, recommender Cand. 1), SOLO in
+`lucca_punteggi.json` e SOLO in `punteggi.score_fn_calda`: 630 chiavi su 770 cambiano
+(max |diff| 0.0368, min 0.0023; tutte in diminuzione di penalita', mai in aumento).
+`calcola_score` e `score_fn_fredda` byte-identici (verificato per uguaglianza dei valori
+e del testo del file fuori da `score_fn_calda`); `lucca_itinerari.json` intatto (gli
+itinerari girano a freddo, il gating non e' attivo sotto la soglia del cold start).
+Motivo: `ranking.py` moltiplica la quota storica di ogni luogo per
+`min(1, esposizione / (2/N))`, con `esposizione` = quota del luogo nei primi 3 dei 6
+`ARCHETIPI_STRUTTURALI` e N = 15 luoghi di Lucca: 13 luoghi su 15 hanno fattore < 1, quindi
+la penalita' storica si riduce su tutte le loro chiavi calde. Attribuzione verificata da
+script, chiave per chiave (non dedotta): ogni chiave cambiata appartiene a un luogo con
+fattore < 1, ogni chiave di un luogo con fattore < 1 cambia (0 invariate), zero chiavi non
+attribuite; ricalcolando con il gating disattivato si riottiene esattamente il golden
+precedente. Pesi, termine strutturale e cold start invariati.
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte

@@ -240,6 +240,18 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   spiegabilità. *Limite noto — vedi `docs/LIMITI.md`: la correzione è locale per-richiesta,
   robustezza empirica su 4 scenari, non garanzia matematica su una popolazione di richieste.
   Documentato con cosa servirebbe per una garanzia vera e il costo stimato — non intrapreso ora.*
+  **→ RIAPERTA (2026-10-20, ondata 1b-2).** Con la regola "una tappa per luogo" e i dati reali
+  invernali del commit B dell'ondata 1b-2 (17 luoghi, 26 esperienze; il seed precedente, su cui
+  è calcolato il golden dei punteggi, ne ha 15 e 22) il test dei 4 scenari falliva in 2 (Mura 0.8190 → 0.8180;
+  casuale 0.8190 → 0.7810): la penalità del recommender dipende solo dal luogo e spinge tutti i
+  profili sulla stessa alternativa ("effetto gregge"), che già su `main` il margine del test
+  copriva. Correzione PROVVISORIA "Cand. 1" (la quota storica pesa solo quanto il contenuto spinge
+  il luogo): 4/4 scenari, ma margine zero nel casuale (0.8190 → 0.8190). Su 40 storici casuali
+  (seed 200–239, `scripts/misura_concentrazione_recommender.py`) B ≥ A vale:
+  - `main` (dati e motore di oggi): 38/40, peggior B − A −0.0233;
+  - recommender attuale, configurazione finale (dati reali + regola): 20/40, peggiore −0.0556;
+  - Cand. 1, configurazione finale: 34/40, peggiore −0.0358.
+  Nessuna garanzia B ≥ A su qualunque storico. Da riprogettare dopo la demo (`docs/LIMITI.md`).
 
 ## Wave 4 — Urban Intelligence Index + Dashboard  *(= Fase 3, Smart City)*
 - **index-engineer**: aggregazioni anonime, calcolo degli 8 indicatori, endpoint `/dashboard/*`.
