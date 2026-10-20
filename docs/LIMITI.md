@@ -2806,9 +2806,10 @@ pseudonimo demo incluso, sono 7 o più (k = 10 meno 3 di margine).
   nel mese del caricamento (`creato_il`). Se in quel mese le persone reali arrivano a 9, il gate passa
   con 9 persone reali e il totale include 4 contributi finti.
 - **Il margine k − 3 vale al momento del caricamento**, non dopo.
-- **I contenuti storici dei testi** sono stati approvati dal committente ma non verificati su fonti
-  dagli agenti (rilievo dell'ethics-guardian su Geminiani a San Francesco e sul Volto Santo collocato
-  prima a San Frediano, che è il racconto della tradizione).
+- **I contenuti storici dei testi** sono stati approvati dal committente. Due punti sollevati
+  dall'ethics-guardian: il Volto Santo collocato prima a San Frediano è il racconto della tradizione,
+  e il testo ora lo dice ("secondo la tradizione"); Geminiani sepolto in San Francesco resta, con la
+  fonte del committente (Wikipedia, voce "Chiesa di San Francesco (Lucca)").
 
 ### Cosa servirebbe
 Un campo `dimostrativo` sul contratto (passa da `contract-keeper`), escluso da `contributi_memoria`,

@@ -71,9 +71,9 @@ RICORDI_DEMO: tuple[tuple[str, str, str], ...] = (
         "memoria-demo-duomo-san-martino",
         "duomo-san-martino",
         "Ogni 13 settembre migliaia di lumini accendono il centro per la Luminara di Santa "
-        "Croce. La processione parte da San Frediano, dove il Volto Santo fu collocato per "
-        "primo, attraversa via Fillungo e piazza San Michele e arriva qui, davanti al Duomo "
-        "che oggi lo custodisce. (esempio dimostrativo)",
+        "Croce. La processione parte da San Frediano, dove, secondo la tradizione, il Volto "
+        "Santo fu collocato per primo, attraversa via Fillungo e piazza San Michele e arriva "
+        "qui, davanti al Duomo che oggi lo custodisce. (esempio dimostrativo)",
     ),
     (
         "memoria-demo-chiesa-san-francesco",
