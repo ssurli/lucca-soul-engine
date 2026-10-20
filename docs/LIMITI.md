@@ -2744,3 +2744,25 @@ committente (19–20/10/2026), sito del Comune di Lucca, Puccini Museum.
 - **Archi `EVOCA` rimasti su Aura**: l'export genera per ogni esperienza la cancellazione degli archi
   `EVOCA` verso temi non più dichiarati (decisione D1). Altri archi tolti dal seed (`VICINO`,
   `LEGATO_A`) resterebbero su Aura: oggi nessuno è stato tolto.
+
+## Ondata 1c: contenuti locali per la demo (APERTO)
+
+- **Orari delle botteghe dimostrativi (fittizi)**, non di esercizi reali: liuteria, ceramica, torchio,
+  telaio mar-sab 09:30-12:30 e 15:30-19:00; pasticceria mar-dom 08:00-13:00 e 15:30-19:30.
+- **Concerto al Giglio senza orari**: è un evento a orario fisso, oggi non modellato.
+- **Barsanti**: aperto nei festivi, chiuso il 24 e 25 dicembre; non modellabile (gli orari sono solo
+  settimanali).
+- **Santa Croce**: il committente indica 10:00-16:00, il sito turistico del Comune riporta 10:00-16:30;
+  tenuto il più restrittivo.
+- **Accessibilità di Barsanti e Santa Croce non verificata**: `accessibile=False` prudente.
+- **Distanze dei 4 luoghi nuovi stimate** in linea d'aria (`museo-barsanti-matteucci`, `via-del-fosso`,
+  `baluardo-santa-croce`, `santi-giovanni-reparata`): saranno sostituite dalle coordinate.
+- **`exp-pfanner-dalle-mura` sta sul luogo `palazzo-pfanner`** per la regola "una tappa per luogo":
+  "Come arrivo qui" dovrà puntare al punto sulle Mura, da gestire nell'ondata delle coordinate.
+- **Obiettivo pioggia della demo raggiunto in 1 caso su 3**: alle 17:50-18:10 di dicembre i sostituti
+  gratuiti al chiuso sono già chiusi, e la tappa all'aperto resta con il suo motivo (mantenuta senza
+  alternativa). La demo "Piove" usa il profilo curioso. Da valutare dopo la demo se togliere invece di
+  mantenere.
+- **Indicatore di distribuzione dei flussi dell'Index non confrontabile prima/dopo il ricarico**: i
+  luoghi passano da 17 a 21. I nuovi archi `VICINO` hanno l'epoca di default e non contano come nuovi
+  percorsi.

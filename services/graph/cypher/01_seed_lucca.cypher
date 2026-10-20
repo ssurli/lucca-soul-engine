@@ -38,6 +38,14 @@ MERGE (l:Luogo {id: 'chiesa-san-francesco'})
 SET l.nome = 'Chiesa di San Francesco', l.categoria = 'chiesa';
 MERGE (l:Luogo {id: 'real-collegio'})
 SET l.nome = 'Real Collegio', l.categoria = 'chiostro';
+MERGE (l:Luogo {id: 'museo-barsanti-matteucci'})
+SET l.nome = 'Museo Barsanti e Matteucci', l.categoria = 'museo';
+MERGE (l:Luogo {id: 'via-del-fosso'})
+SET l.nome = 'Via del Fosso', l.categoria = 'via';
+MERGE (l:Luogo {id: 'baluardo-santa-croce'})
+SET l.nome = 'Baluardo Santa Croce', l.categoria = 'mura';
+MERGE (l:Luogo {id: 'santi-giovanni-reparata'})
+SET l.nome = 'Chiesa dei Santi Giovanni e Reparata', l.categoria = 'chiesa';
 
 // --- Nodi: Artista ------------------------------------------------------
 MERGE (a:Artista {id: 'artista-puccini'})
@@ -323,7 +331,7 @@ SET e.titolo = 'Un violino nasce: laboratorio del liutaio',
     e.prezzo_eur = 15.0,
     e.prenotabile = true,
     e.sospesa = false,
-    e.orari_apertura = [];
+    e.orari_apertura = ['1|09:30|12:30', '2|09:30|12:30', '3|09:30|12:30', '4|09:30|12:30', '5|09:30|12:30', '1|15:30|19:00', '2|15:30|19:00', '3|15:30|19:00', '4|15:30|19:00', '5|15:30|19:00'];
 MERGE (e:Esperienza {id: 'exp-decorazione-ceramica'})
 SET e.titolo = 'Decora la tua ciotola: bottega di ceramica',
     e.place_id = 'via-fillungo',
@@ -336,7 +344,7 @@ SET e.titolo = 'Decora la tua ciotola: bottega di ceramica',
     e.prezzo_eur = 20.0,
     e.prenotabile = false,
     e.sospesa = false,
-    e.orari_apertura = [];
+    e.orari_apertura = ['1|09:30|12:30', '2|09:30|12:30', '3|09:30|12:30', '4|09:30|12:30', '5|09:30|12:30', '1|15:30|19:00', '2|15:30|19:00', '3|15:30|19:00', '4|15:30|19:00', '5|15:30|19:00'];
 MERGE (e:Esperienza {id: 'exp-torchio-stamperia'})
 SET e.titolo = 'Una pagina al torchio: la stamperia storica',
     e.place_id = 'piazza-anfiteatro',
@@ -349,7 +357,7 @@ SET e.titolo = 'Una pagina al torchio: la stamperia storica',
     e.prezzo_eur = NULL,
     e.prenotabile = false,
     e.sospesa = false,
-    e.orari_apertura = [];
+    e.orari_apertura = ['1|09:30|12:30', '2|09:30|12:30', '3|09:30|12:30', '4|09:30|12:30', '5|09:30|12:30', '1|15:30|19:00', '2|15:30|19:00', '3|15:30|19:00', '4|15:30|19:00', '5|15:30|19:00'];
 MERGE (e:Esperienza {id: 'exp-buccellato-pasticceria'})
 SET e.titolo = 'Il buccellato: il dolce di Lucca',
     e.place_id = 'piazza-napoleone',
@@ -362,7 +370,7 @@ SET e.titolo = 'Il buccellato: il dolce di Lucca',
     e.prezzo_eur = 8.0,
     e.prenotabile = false,
     e.sospesa = false,
-    e.orari_apertura = [];
+    e.orari_apertura = ['1|08:00|13:00', '2|08:00|13:00', '3|08:00|13:00', '4|08:00|13:00', '5|08:00|13:00', '6|08:00|13:00', '1|15:30|19:30', '2|15:30|19:30', '3|15:30|19:30', '4|15:30|19:30', '5|15:30|19:30', '6|15:30|19:30'];
 MERGE (e:Esperienza {id: 'exp-telaio-tessitura'})
 SET e.titolo = 'Il telaio a mano: tessitura lucchese',
     e.place_id = 'san-frediano',
@@ -375,7 +383,7 @@ SET e.titolo = 'Il telaio a mano: tessitura lucchese',
     e.prezzo_eur = NULL,
     e.prenotabile = false,
     e.sospesa = false,
-    e.orari_apertura = [];
+    e.orari_apertura = ['1|09:30|12:30', '2|09:30|12:30', '3|09:30|12:30', '4|09:30|12:30', '5|09:30|12:30', '1|15:30|19:00', '2|15:30|19:00', '3|15:30|19:00', '4|15:30|19:00', '5|15:30|19:00'];
 MERGE (e:Esperienza {id: 'exp-interno-san-michele'})
 SET e.titolo = 'L\'interno di San Michele in Foro',
     e.place_id = 'san-michele-in-foro',
@@ -428,6 +436,84 @@ SET e.titolo = 'Il chiostro del Real Collegio',
     e.prenotabile = false,
     e.sospesa = false,
     e.orari_apertura = ['0|09:00|12:00', '1|09:00|12:00', '2|09:00|12:00', '3|09:00|12:00', '4|09:00|12:00'];
+MERGE (e:Esperienza {id: 'exp-sortita-san-paolino'})
+SET e.titolo = 'La sortita sotterranea del Baluardo San Paolino',
+    e.place_id = 'baluardo-san-paolino',
+    e.temi = ['storia', 'con-bambini'],
+    e.durata_min = 20,
+    e.al_chiuso = true,
+    e.accessibile = true,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = NULL,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.orari_apertura = [];
+MERGE (e:Esperienza {id: 'exp-museo-barsanti-matteucci'})
+SET e.titolo = 'Il motore a scoppio di Barsanti e Matteucci',
+    e.place_id = 'museo-barsanti-matteucci',
+    e.temi = ['storia', 'con-bambini'],
+    e.durata_min = 45,
+    e.al_chiuso = true,
+    e.accessibile = false,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = NULL,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.orari_apertura = ['4|11:00|17:00', '5|11:00|17:00', '6|11:00|17:00'];
+MERGE (e:Esperienza {id: 'exp-pfanner-dalle-mura'})
+SET e.titolo = 'Il giardino Pfanner visto dalle Mura',
+    e.place_id = 'palazzo-pfanner',
+    e.temi = ['verde', 'panorama'],
+    e.durata_min = 15,
+    e.al_chiuso = false,
+    e.accessibile = false,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = NULL,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.orari_apertura = ['0|08:00|17:00', '1|08:00|17:00', '2|08:00|17:00', '3|08:00|17:00', '4|08:00|17:00', '5|08:00|17:00', '6|08:00|17:00'];
+MERGE (e:Esperienza {id: 'exp-via-del-fosso'})
+SET e.titolo = 'Via del Fosso: il canale e i ponticelli',
+    e.place_id = 'via-del-fosso',
+    e.temi = ['silenzio', 'storia'],
+    e.durata_min = 20,
+    e.al_chiuso = false,
+    e.accessibile = false,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = NULL,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.orari_apertura = [];
+MERGE (e:Esperienza {id: 'exp-sotterraneo-santa-croce'})
+SET e.titolo = 'Il sotterraneo del Baluardo Santa Croce e la mostra "Ri-conoscere le Mura"',
+    e.place_id = 'baluardo-santa-croce',
+    e.temi = ['storia'],
+    e.durata_min = 40,
+    e.al_chiuso = true,
+    e.accessibile = false,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = NULL,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.orari_apertura = ['0|10:00|16:00', '1|10:00|16:00', '2|10:00|16:00', '3|10:00|16:00', '4|10:00|16:00', '5|10:00|16:00', '6|10:00|16:00'];
+MERGE (e:Esperienza {id: 'exp-santi-giovanni-reparata'})
+SET e.titolo = 'La chiesa dei Santi Giovanni e Reparata e l\'area archeologica',
+    e.place_id = 'santi-giovanni-reparata',
+    e.temi = ['storia', 'arte', 'romanico'],
+    e.durata_min = 40,
+    e.al_chiuso = true,
+    e.accessibile = false,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = 4.0,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.orari_apertura = ['0|10:00|18:00', '1|10:00|18:00', '2|10:00|18:00', '3|10:00|18:00', '4|10:00|18:00', '5|10:00|18:00', '6|10:00|18:00'];
 
 // --- Nodi: Partner (Wave 3a, marketplace) -------------------------------
 MERGE (p:Partner {id: 'partner-liuteria-lucchese'})
@@ -582,6 +668,72 @@ SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'real-collegio'}), (b:Luogo {id: 'via-fillungo'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 350, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'museo-barsanti-matteucci'}), (b:Luogo {id: 'torre-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 100, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'museo-barsanti-matteucci'}), (b:Luogo {id: 'via-fillungo'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'museo-barsanti-matteucci'}), (b:Luogo {id: 'piazza-anfiteatro'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 250, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'museo-barsanti-matteucci'}), (b:Luogo {id: 'chiesa-san-francesco'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 350, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'museo-barsanti-matteucci'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 450, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'via-del-fosso'}), (b:Luogo {id: 'mura-urbane'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 100, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'via-del-fosso'}), (b:Luogo {id: 'chiesa-san-francesco'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 100, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'via-del-fosso'}), (b:Luogo {id: 'orto-botanico'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 150, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'via-del-fosso'}), (b:Luogo {id: 'museo-nazionale-guinigi'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'via-del-fosso'}), (b:Luogo {id: 'piazza-anfiteatro'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 450, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'baluardo-santa-croce'}), (b:Luogo {id: 'mura-urbane'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 50, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'baluardo-santa-croce'}), (b:Luogo {id: 'palazzo-pfanner'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 450, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'baluardo-santa-croce'}), (b:Luogo {id: 'casa-puccini'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 450, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'baluardo-santa-croce'}), (b:Luogo {id: 'san-michele-in-foro'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 550, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'baluardo-santa-croce'}), (b:Luogo {id: 'real-collegio'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 600, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'baluardo-santa-croce'}), (b:Luogo {id: 'san-frediano'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 650, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'baluardo-santa-croce'}), (b:Luogo {id: 'piazza-anfiteatro'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 750, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'santi-giovanni-reparata'}), (b:Luogo {id: 'duomo-san-martino'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 100, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'santi-giovanni-reparata'}), (b:Luogo {id: 'piazza-napoleone'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'santi-giovanni-reparata'}), (b:Luogo {id: 'casa-puccini'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 250, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'santi-giovanni-reparata'}), (b:Luogo {id: 'teatro-del-giglio'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 250, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'santi-giovanni-reparata'}), (b:Luogo {id: 'san-michele-in-foro'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 
 // --- Relazioni: LEGATO_A (Artista -> Luogo) ----------------------------
 MATCH (a:Artista {id: 'artista-puccini'}), (l:Luogo {id: 'casa-puccini'})
@@ -653,6 +805,18 @@ MERGE (e)-[:SI_SVOLGE_A]->(l);
 MATCH (e:Esperienza {id: 'exp-chiesa-chiostro-san-francesco'}), (l:Luogo {id: 'chiesa-san-francesco'})
 MERGE (e)-[:SI_SVOLGE_A]->(l);
 MATCH (e:Esperienza {id: 'exp-chiostro-real-collegio'}), (l:Luogo {id: 'real-collegio'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-sortita-san-paolino'}), (l:Luogo {id: 'baluardo-san-paolino'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-museo-barsanti-matteucci'}), (l:Luogo {id: 'museo-barsanti-matteucci'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-pfanner-dalle-mura'}), (l:Luogo {id: 'palazzo-pfanner'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-via-del-fosso'}), (l:Luogo {id: 'via-del-fosso'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-sotterraneo-santa-croce'}), (l:Luogo {id: 'baluardo-santa-croce'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-santi-giovanni-reparata'}), (l:Luogo {id: 'santi-giovanni-reparata'})
 MERGE (e)-[:SI_SVOLGE_A]->(l);
 
 // --- Relazioni: EVOCA (Esperienza -> Tema), da temi --------------------
@@ -811,6 +975,36 @@ MATCH (e:Esperienza {id: 'exp-chiostro-real-collegio'})-[r:EVOCA]->(t:Tema) WHER
 MATCH (e:Esperienza {id: 'exp-chiostro-real-collegio'}), (t:Tema {id: 'silenzio'})
 MERGE (e)-[:EVOCA]->(t);
 MATCH (e:Esperienza {id: 'exp-chiostro-real-collegio'}), (t:Tema {id: 'storia'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-sortita-san-paolino'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['storia', 'con-bambini'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-sortita-san-paolino'}), (t:Tema {id: 'storia'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-sortita-san-paolino'}), (t:Tema {id: 'con-bambini'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-museo-barsanti-matteucci'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['storia', 'con-bambini'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-museo-barsanti-matteucci'}), (t:Tema {id: 'storia'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-museo-barsanti-matteucci'}), (t:Tema {id: 'con-bambini'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-pfanner-dalle-mura'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['verde', 'panorama'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-pfanner-dalle-mura'}), (t:Tema {id: 'verde'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-pfanner-dalle-mura'}), (t:Tema {id: 'panorama'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-via-del-fosso'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['silenzio', 'storia'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-via-del-fosso'}), (t:Tema {id: 'silenzio'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-via-del-fosso'}), (t:Tema {id: 'storia'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-sotterraneo-santa-croce'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['storia'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-sotterraneo-santa-croce'}), (t:Tema {id: 'storia'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-santi-giovanni-reparata'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['storia', 'arte', 'romanico'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-santi-giovanni-reparata'}), (t:Tema {id: 'storia'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-santi-giovanni-reparata'}), (t:Tema {id: 'arte'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-santi-giovanni-reparata'}), (t:Tema {id: 'romanico'})
 MERGE (e)-[:EVOCA]->(t);
 
 // --- Relazioni: OFFRE (Bottega -> Esperienza), da partner_id -----------

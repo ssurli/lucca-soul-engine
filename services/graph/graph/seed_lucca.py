@@ -112,7 +112,7 @@ VICINO_EPOCA = _EPOCA
 # sono ri-esportati qui per compatibilità.
 
 # ---------------------------------------------------------------------------
-# Luoghi — 17 luoghi reali di Lucca
+# Luoghi — 21 luoghi reali di Lucca
 # ---------------------------------------------------------------------------
 
 LUOGHI: list[Luogo] = [
@@ -136,6 +136,12 @@ LUOGHI: list[Luogo] = [
     # termini più fedeli al luogo.
     Luogo("chiesa-san-francesco", "Chiesa di San Francesco", "chiesa"),
     Luogo("real-collegio", "Real Collegio", "chiostro"),
+    # Ondata 1c (dati del committente).
+    Luogo("museo-barsanti-matteucci", "Museo Barsanti e Matteucci", "museo"),  # via Sant'Andrea 58
+    Luogo("via-del-fosso", "Via del Fosso", "via"),
+    # Angolo nord-ovest delle Mura, tra Porta San Donato e la Piattaforma San Frediano.
+    Luogo("baluardo-santa-croce", "Baluardo Santa Croce", "mura"),
+    Luogo("santi-giovanni-reparata", "Chiesa dei Santi Giovanni e Reparata", "chiesa"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -278,7 +284,7 @@ HA_ABBONAMENTO: list[RelazioneHaAbbonamento] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Esperienze — 26 esperienze (>= 15 richieste), mix voluto di al_chiuso,
+# Esperienze — 32 esperienze (>= 15 richieste), mix voluto di al_chiuso,
 # accessibile, durata (20-90 min) e temi, per produrre itinerari DIVERSI a
 # seconda del profilo e riscritture credibili su pioggia/affollamento.
 #
@@ -311,6 +317,12 @@ def _fasce(
 
 _TUTTI = [0, 1, 2, 3, 4, 5, 6]
 _LUN_SAB = [0, 1, 2, 3, 4, 5]
+# Orari DIMOSTRATIVI delle botteghe fittizie (fissati dal committente, non di
+# esercizi reali): mar-sab 09:30-12:30 e 15:30-19:00. Il concerto al Giglio
+# resta senza orari (evento a orario fisso, non modellato).
+_ORARI_BOTTEGA_DEMO = _fasce([1, 2, 3, 4, 5], (9, 30), (12, 30)) + _fasce(
+    [1, 2, 3, 4, 5], (15, 30), (19, 0)
+)
 
 ESPERIENZE: list[ExperienceNode] = [
     ExperienceNode(
@@ -522,6 +534,8 @@ ESPERIENZE: list[ExperienceNode] = [
         # canonico resa prenotabile, a dimostrazione che il campo non si
         # deduce mai da `partner_id`/l'abbonamento della bottega.
         prenotabile=True,
+        # Orari DIMOSTRATIVI (fittizi, fissati dal committente), come la bottega.
+        orari_apertura=_ORARI_BOTTEGA_DEMO,
     ),
     ExperienceNode(
         id="exp-decorazione-ceramica",
@@ -533,6 +547,7 @@ ESPERIENZE: list[ExperienceNode] = [
         accessibile=True,
         partner_id="ceramica-lucca",
         prezzo_eur=20.0,
+        orari_apertura=_ORARI_BOTTEGA_DEMO,  # dimostrativi (fittizi)
     ),
     ExperienceNode(
         id="exp-torchio-stamperia",
@@ -543,6 +558,7 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=True,
         accessibile=False,
         partner_id="stamperia-lucca",
+        orari_apertura=_ORARI_BOTTEGA_DEMO,  # dimostrativi (fittizi)
     ),
     ExperienceNode(
         id="exp-buccellato-pasticceria",
@@ -555,6 +571,11 @@ ESPERIENZE: list[ExperienceNode] = [
         alimenta_memoria=True,
         partner_id="pasticceria-storica",
         prezzo_eur=8.0,
+        # Orari DIMOSTRATIVI (fittizi, fissati dal committente): mar-dom.
+        orari_apertura=(
+            _fasce([1, 2, 3, 4, 5, 6], (8, 0), (13, 0))
+            + _fasce([1, 2, 3, 4, 5, 6], (15, 30), (19, 30))
+        ),
     ),
     ExperienceNode(
         id="exp-telaio-tessitura",
@@ -565,6 +586,7 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=True,
         accessibile=True,
         partner_id="tessitura-lucca",
+        orari_apertura=_ORARI_BOTTEGA_DEMO,  # dimostrativi (fittizi)
     ),
     # Quattro esperienze di interni (ondata 1b-2). Tutte gratuite, al chiuso,
     # senza partner, senza alimenta_memoria. `accessibile=False` perché
@@ -613,6 +635,77 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=True,
         accessibile=False,
         orari_apertura=_fasce([0, 1, 2, 3, 4], (9, 0), (12, 0)),
+    ),
+    # Sei esperienze di contenuto locale (ondata 1c). Tutte senza partner. Fonte:
+    # committente; Barsanti: barsantiematteucci.it via committente; Reparata:
+    # museocattedralelucca.it via committente. `accessibile=False` dove non
+    # verificato (prudente).
+    ExperienceNode(
+        # Nessuna fascia: accesso 24 ore su 24.
+        id="exp-sortita-san-paolino",
+        titolo="La sortita sotterranea del Baluardo San Paolino",
+        place_id="baluardo-san-paolino",
+        temi=["storia", "con-bambini"],
+        durata_min=20,
+        al_chiuso=True,
+        accessibile=True,
+    ),
+    ExperienceNode(
+        # Ven, sab, dom 11:00-17:00. Accessibilità non verificata.
+        id="exp-museo-barsanti-matteucci",
+        titolo="Il motore a scoppio di Barsanti e Matteucci",
+        place_id="museo-barsanti-matteucci",
+        temi=["storia", "con-bambini"],
+        durata_min=45,
+        al_chiuso=True,
+        accessibile=False,
+        orari_apertura=_fasce([4, 5, 6], (11, 0), (17, 0)),
+    ),
+    ExperienceNode(
+        # Stesso luogo del giardino: la regola "una tappa per luogo" le rende
+        # alternative. Tutti i giorni 08:00-17:00.
+        id="exp-pfanner-dalle-mura",
+        titolo="Il giardino Pfanner visto dalle Mura",
+        place_id="palazzo-pfanner",
+        temi=["verde", "panorama"],
+        durata_min=15,
+        al_chiuso=False,
+        accessibile=False,
+        orari_apertura=_fasce(_TUTTI, (8, 0), (17, 0)),
+    ),
+    ExperienceNode(
+        # Nessuna fascia: illuminata la sera.
+        id="exp-via-del-fosso",
+        titolo="Via del Fosso: il canale e i ponticelli",
+        place_id="via-del-fosso",
+        temi=["silenzio", "storia"],
+        durata_min=20,
+        al_chiuso=False,
+        accessibile=False,
+    ),
+    ExperienceNode(
+        # Tutti i giorni 10:00-16:00 (il sito del Comune riporta 16:30: tenuto
+        # il più restrittivo). Accessibilità non verificata.
+        id="exp-sotterraneo-santa-croce",
+        titolo='Il sotterraneo del Baluardo Santa Croce e la mostra "Ri-conoscere le Mura"',
+        place_id="baluardo-santa-croce",
+        temi=["storia"],
+        durata_min=40,
+        al_chiuso=True,
+        accessibile=False,
+        orari_apertura=_fasce(_TUTTI, (10, 0), (16, 0)),
+    ),
+    ExperienceNode(
+        # Tutti i giorni 10:00-18:00.
+        id="exp-santi-giovanni-reparata",
+        titolo="La chiesa dei Santi Giovanni e Reparata e l'area archeologica",
+        place_id="santi-giovanni-reparata",
+        temi=["storia", "arte", "romanico"],
+        durata_min=40,
+        al_chiuso=True,
+        accessibile=False,
+        prezzo_eur=4.0,
+        orari_apertura=_fasce(_TUTTI, (10, 0), (18, 0)),
     ),
 ]
 
@@ -700,6 +793,36 @@ VICINO: list[RelazioneVicino] = [
     RelazioneVicino("real-collegio", "mura-urbane", 250),
     RelazioneVicino("real-collegio", "piazza-anfiteatro", 300),
     RelazioneVicino("real-collegio", "via-fillungo", 350),
+    #
+    # STIME (ondata 1c): distanze in linea d'aria dei 4 luoghi nuovi, dichiarate
+    # stime (fonte: committente), non misure. `creato_il` = epoca di default (non
+    # una data reale): questi archi NON contano come nuovi percorsi nell'Index.
+    # museo-barsanti-matteucci
+    RelazioneVicino("museo-barsanti-matteucci", "torre-guinigi", 100),
+    RelazioneVicino("museo-barsanti-matteucci", "via-fillungo", 200),
+    RelazioneVicino("museo-barsanti-matteucci", "piazza-anfiteatro", 250),
+    RelazioneVicino("museo-barsanti-matteucci", "chiesa-san-francesco", 350),
+    RelazioneVicino("museo-barsanti-matteucci", "museo-nazionale-guinigi", 450),
+    # via-del-fosso
+    RelazioneVicino("via-del-fosso", "mura-urbane", 100),
+    RelazioneVicino("via-del-fosso", "chiesa-san-francesco", 100),
+    RelazioneVicino("via-del-fosso", "orto-botanico", 150),
+    RelazioneVicino("via-del-fosso", "museo-nazionale-guinigi", 200),
+    RelazioneVicino("via-del-fosso", "piazza-anfiteatro", 450),
+    # baluardo-santa-croce
+    RelazioneVicino("baluardo-santa-croce", "mura-urbane", 50),
+    RelazioneVicino("baluardo-santa-croce", "palazzo-pfanner", 450),
+    RelazioneVicino("baluardo-santa-croce", "casa-puccini", 450),
+    RelazioneVicino("baluardo-santa-croce", "san-michele-in-foro", 550),
+    RelazioneVicino("baluardo-santa-croce", "real-collegio", 600),
+    RelazioneVicino("baluardo-santa-croce", "san-frediano", 650),
+    RelazioneVicino("baluardo-santa-croce", "piazza-anfiteatro", 750),
+    # santi-giovanni-reparata
+    RelazioneVicino("santi-giovanni-reparata", "duomo-san-martino", 100),
+    RelazioneVicino("santi-giovanni-reparata", "piazza-napoleone", 200),
+    RelazioneVicino("santi-giovanni-reparata", "casa-puccini", 250),
+    RelazioneVicino("santi-giovanni-reparata", "teatro-del-giglio", 250),
+    RelazioneVicino("santi-giovanni-reparata", "san-michele-in-foro", 300),
 ]
 
 # ---------------------------------------------------------------------------
