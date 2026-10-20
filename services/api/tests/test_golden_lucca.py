@@ -207,6 +207,60 @@ adapt-budget 11 su 16, adapt-profilo 4 su 4), 18 restano identici.
   `test_golden_orari_rispettati`, `test_golden_nessuna_sospesa` e
   `test_golden_pioggia_sostituti_non_piu_cari`, su TUTTI i casi.
 
+NONA modifica autorizzata (2026-10-20, ondata 1c, contenuti locali per la demo;
+rigenerazione AUTORIZZATA dal committente), in `lucca_itinerari.json` E in
+`lucca_punteggi.json`. Motivo: i dati del commit 47eb400 cambiano il seed in due modi (e
+solo in due): (a) 4 luoghi nuovi (museo-barsanti-matteucci, via-del-fosso,
+baluardo-santa-croce, santi-giovanni-reparata; 21 in tutto) con 22 archi VICINO, e 6
+esperienze nuove (sortita di San Paolino, Barsanti e Matteucci, Pfanner dalle Mura, via del
+Fosso, sotterraneo di Santa Croce, Santi Giovanni e Reparata; 32 in tutto); (b) gli orari
+DIMOSTRATIVI delle 5 botteghe (liuteria, ceramica, stamperia, telaio mar-sab 9:30-12:30 e
+15:30-19:00; pasticceria mar-dom 8-13 e 15:30-19:30). Le RICHIESTE dei 91 casi sono
+identiche (verificato per confronto con `git show HEAD:...`; nessun caso aggiunto o tolto):
+anche i 3 `demo|...|pioggia-15` restano casi `adapt` con l'itinerario congelato composto con
+i dati vecchi. Cambia l'`atteso` di 69 casi su 91, 22 restano identici.
+  ATTRIBUZIONE degli itinerari, verificata da script e non dedotta (stesso metodo
+  dell'OTTAVA). Dataset del commit c446a13 (prima di 1c) con UNA categoria applicata alla
+  volta (valori del seed attuale): [nuovo] = luoghi + legato_a + vicino + 6 esperienze nuove;
+  [orario] = `orari_apertura` delle 5 botteghe. Replay delle stesse richieste e confronto
+  con l'`atteso` precedente. Controlli: senza categorie i 91 `atteso` precedenti sono
+  riprodotti ESATTAMENTE (0 differenze); con entrambe il dataset coincide col seed attuale
+  (luoghi, vicino ed esperienze uguali; 69 differenze, quelle del golden nuovo). Zero casi
+  senza causa. Causa UNICA 31 casi: orario 16, nuovo 15. Cause COMBINATE (orario+nuovo) 38
+  casi. In tutto: orario 54 casi, nuovo 53.
+  Composizione/adattamento (composizione = compose, demo `sereno-10`, feriale: 38 cambiati su
+  52; adattamento = adapt, adapt-budget, adapt-profilo, demo `pioggia-15`: 31 su 39):
+    composizione 38 = orario solo 2 (compose|accessibile|{caldo,pioggia}); nuovo solo 12
+    (compose|{ama-arte,curioso}|{affollamento,sereno,stanchezza,visti}, demo|ama-arte|
+    sereno-10, demo|curioso|sereno-10, feriale|{con-bambini,curioso}|sereno-10);
+    orario+nuovo 24 (compose 21, demo 2, feriale 1).
+    adattamento 31 = orario solo 14 (adapt e adapt-budget, 7 ciascuno: accessibile|
+    {affollamento-moderato,pioggia}, curioso|{affollamento-moderato,stanchezza},
+    onnivoro|{affollamento-moderato,affollamento-oltre-soglia,stanchezza}); nuovo solo 3
+    (i 3 `demo|...|pioggia-15`: un sostituto al chiuso nuovo, p. es. Barsanti, Santi Giovanni
+    e Reparata, sortita di San Paolino); orario+nuovo 14 (adapt-budget 5, adapt-profilo 4,
+    adapt 5).
+  Lettura: compose cambiano per esperienze nuove che entrano nel ranking/nel budget, o per
+  botteghe chiuse all'arrivo (lunedi' e prima delle 15:30 o dopo le 12:30); adapt per
+  sostituti nuovi (al chiuso) o botteghe chiuse all'arrivo, oppure slittamento/budget
+  conseguente. I 22 identici: 14 composizione, 8 adattamento.
+  DEMO PIOGGIA-15 (misura a parte). Richiesta congelata (itinerario vecchio): tappe
+  all'aperto mantenute senza alternativa 1 per caso (mosaico di San Frediano; Piazza
+  Napoleone x2), prima di 1c 0, 3 e 2. Flusso realistico (composto alle 15:00 sereno con i
+  dati 1c, adattato alle 15:00 con pioggia, profilo nell'AdaptRequest; NON e' nel golden):
+  con-bambini 1 (facciata di San Michele), contemplativo 1 (Piazza Napoleone), curioso 0.
+  PUNTEGGI. Chiavi: 910 -> 1120 per ciascuna delle 3 funzioni. Chiavi NUOVE: 210 per funzione
+  = le 6 esperienze nuove x 7 profili x 5 segnali (35 ciascuna); nessun'altra, nessuna
+  tolta. Chiavi CAMBIATE nelle 26 esperienze preesistenti: `calcola_score` e
+  `score_fn_fredda` 0 (gli orari non sono letti dallo score; i luoghi nuovi non entrano nello
+  score di un'altra esperienza). `score_fn_calda` 595 = 17 esperienze preesistenti x 35
+  (max |diff| 0.0201); 9 esperienze (7 luoghi) restano invariate. Causa: le 6 candidate
+  nuove nell'insieme dei candidati (N luoghi 17 -> 21): cambiano il fattore di gating di
+  esposizione della Cand. 1 (`ranking.py`: 7 luoghi, es. palazzo-pfanner da 0.472 a 0.000,
+  mura-urbane e orto-botanico a 1.000) e la quota strutturale (casa-puccini, san-frediano,
+  san-michele-in-foro, teatro-del-giglio); verificato: con i dati 1c ma l'insieme dei
+  candidati SENZA le 6 nuove restano 0 chiavi cambiate.
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte
@@ -268,7 +322,7 @@ FILE_PUNTEGGI = GOLDEN_DIR / "lucca_punteggi.json"
 
 ADESSO_FISSO = datetime(2026, 6, 15, 10, 0, 0, tzinfo=UTC)
 TOLLERANZA_ASSOLUTA = 1e-9
-ESPERIENZE_LUCCA = 26
+ESPERIENZE_LUCCA = 32
 
 
 # ---------------------------------------------------------------------------
@@ -282,7 +336,7 @@ def _h_fonte_candidati() -> Any:
 
 
 def _h_candidati_lucca() -> list[Any]:
-    """I 26 candidati di Lucca, con un contesto neutro (nessun luogo visto)."""
+    """I 32 candidati di Lucca, con un contesto neutro (nessun luogo visto)."""
     ctx = contracts.VisitorContext(
         person_id="golden-candidati",
         profile=contracts.EmotionalProfile(

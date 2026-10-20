@@ -2652,6 +2652,9 @@ senza ulteriore taratura.
   `scripts/misura_concentrazione_recommender.py`.
 - **Margine zero nello scenario casuale** del test (0.8190 → 0.8190): uno spostamento di tappa lo fa
   fallire.
+- **Aggiornamento ondata 1c (21 luoghi, 32 esperienze):** lo script dà B ≥ A in 40/40 storici,
+  peggiore B − A +0.0006; nel test dei 4 scenari lo scenario casuale passa da 0.7221 a 0.7547. Il
+  miglioramento viene dai dati (più luoghi), non da una modifica della correzione: resta provvisoria.
 - **Rischio etico: un luogo molto frequentato ma poco spinto dal contenuto viene scoraggiato meno**
   (per esempio il Duomo, se l'algoritmo non lo propone spesso ma la storia lo dà affollato).
 - **Il test confronta campioni di dimensione diversa** (il budget fa entrare un numero diverso di
@@ -2769,8 +2772,8 @@ committente (19–20/10/2026), sito del Comune di Lucca, Puccini Museum.
   Reparata, via del Fosso e il Pfanner visto dalle Mura.
 - **Accessibilità della sortita di San Paolino dichiarata dal committente, non verificata**
   (`accessibile=True`): è l'unica eccezione al principio prudente tra le esperienze nuove, ed è anche
-  uno dei 3 sostituti gratuiti al chiuso e accessibili con la pioggia (con il Duomo e la tessitura del
-  partner). Va verificata prima di un uso con utenti reali; se non è possibile, va portata a `False`.
+  uno dei 2 sostituti gratuiti al chiuso e accessibili con la pioggia il sabato alle 15:00 (l'altro è
+  il Duomo; la tessitura del partner, con gli orari dimostrativi, apre alle 15:30). Va verificata prima di un uso con utenti reali; se non è possibile, va portata a `False`.
 - **Esperienze senza fascia non sono aperture verificate**: la sortita di San Paolino (sotterraneo al
   chiuso) e via del Fosso (all'aperto, illuminata) valgono "sempre aperte" e possono essere proposte
   di sera. Per la sortita è l'errore opposto a quello innocuo ("nessuno davanti a un luogo chiuso").
