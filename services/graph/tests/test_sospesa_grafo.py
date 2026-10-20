@@ -25,18 +25,21 @@ def _stmt(testo: str, esp_id: str) -> str:
 
 def test_export_scrive_sempre_sospesa() -> None:
     testo = build_seed(DATASET)
-    assert testo.count("e.sospesa = false,") == len(DATASET.esperienze)
-    assert "e.sospesa = true" not in testo
+    sospese = [e for e in DATASET.esperienze if e.sospesa]
+    assert testo.count("e.sospesa = false,") == len(DATASET.esperienze) - len(sospese)
+    assert testo.count("e.sospesa = true,") == len(sospese)
 
 
 def test_export_scrive_true_per_esperienza_sospesa() -> None:
     from dataclasses import replace
 
     sosp = DATASET.esperienze[0].model_copy(update={"sospesa": True})
+    assert not DATASET.esperienze[0].sospesa
     ds = replace(DATASET, esperienze=[sosp, *DATASET.esperienze[1:]])
     testo = build_seed(ds)
     assert "e.sospesa = true," in _stmt(testo, sosp.id)
-    assert testo.count("e.sospesa = false,") == len(DATASET.esperienze) - 1
+    gia_sospese = sum(1 for e in DATASET.esperienze if e.sospesa)
+    assert testo.count("e.sospesa = true,") == gia_sospese + 1
 
 
 def test_file_cypher_versionato_coerente_col_seed() -> None:

@@ -127,7 +127,7 @@ def test_puccini_non_raggiunge_la_bottega_di_liuteria_solo_via_vicino() -> None:
 # grado_semantico() — Wave 4, indicatore `attivazione_locale`. Test di
 # PROPRIETÀ (soglie/dispersione), non di valori esatti: il seed cambia nel
 # tempo (vedi commento di modulo di `graph.topology`). Verificato a mano dal
-# committente sul seed attuale (15 luoghi, grado da 1 a 10, mediana 2, 5
+# committente sul seed di allora (15 luoghi; oggi 17, grado da 1 a 10, mediana 2, 5
 # luoghi sotto mediana) — questi test fissano solo le proprietà strutturali
 # che rendono la metrica non degenere, non quei numeri.
 # ---------------------------------------------------------------------------

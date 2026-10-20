@@ -2518,6 +2518,17 @@ sostituto ricorrente: con la preferenza di tema vince ogni volta che la tappa to
 Su molti visitatori questo può concentrare i flussi proprio dove l'adattamento dovrebbe
 distribuirli.
 
+**Aggiornamento 2026-10-20 (ondata 1b-2, dati reali).** L'elenco sopra non vale più. Con i prezzi
+reali Casa Puccini (9 €) e Villa Guinigi (6 €) non sostituiscono una tappa gratuita, e la Torre
+delle Ore è sospesa. I sostituti gratuiti al chiuso sono ora: Duomo, telaio della tessitura
+(partner), e le 4 esperienze nuove (interno di San Michele, basilica di San Frediano, San Francesco,
+chiostro del Real Collegio), tutte `accessibile=False`. La stamperia è esclusa (abbonamento non
+attivo). Per **pioggia + accessibilità + tappa gratuita** il pool scende a **2**: Duomo e telaio
+della tessitura. Con la regola "una tappa per luogo", se il Duomo è già in itinerario resta solo la
+tessitura, un'esperienza partner; se anche quella è occupata, la tappa all'aperto resta sotto la
+pioggia (`mantenuta_senza_alternativa`). La regola non legge il partner, ma la tessitura diventa
+quasi l'unico sostituto accessibile: va detto con chiarezza a Comune e partner.
+
 Due aggravanti:
 - **Il tema viene prima dello score**, quindi prima della penalità di affollamento sotto soglia
   (che vive dentro `calcola_score`): un candidato con tema in comune ma più affollato (sotto 0,7)
@@ -2671,3 +2682,45 @@ dei flussi.
   di un'altra tappa". Un motivo distinto richiederebbe una modifica del contratto.
 - **La regola ha tolto il margine al test di concentrazione del recommender**: vedi la sezione
   "Recommender: correzione provvisoria dell'effetto gregge".
+
+## Ondata 1b-2: dati reali invernali nel seed di Lucca (APERTO)
+
+Il seed porta l'orario **invernale** (novembre–dicembre): è la stagione della demo (sabato
+12/12/2026) ed è il caso più restrittivo. L'errore che ne risulta è quello innocuo: d'estate si
+omette un luogo aperto, d'inverno non si manda nessuno davanti a un luogo chiuso. Fonti: dati del
+committente (19–20/10/2026), sito del Comune di Lucca, Puccini Museum.
+
+- **Orari solo settimanali, nel seed quelli invernali.** Non sono modellati:
+  - le stagioni: orto botanico aperto tutti i giorni in ottobre; torri e Casa Puccini con un orario
+    estivo più lungo; la fascia "luce del giorno" del giardino Pfanner (08:00–16:30) d'estate è più
+    lunga;
+  - l'"ultimo ingresso" (30 minuti prima della chiusura a Casa Puccini): non serve, perché il motore
+    chiede già che la visita finisca entro la chiusura, che è più restrittivo;
+  - i festivi (Torre Guinigi chiusa il 25/12);
+  - le aperture straordinarie (Real Collegio nei fine settimana di eventi; Villa Guinigi in alcune
+    domeniche, omesse);
+  - le chiusure private di Palazzo Pfanner: aperto fino al 31/12, orario giornaliero non pubblicato;
+    il seed ha solo la fascia "luce del giorno".
+- **Esperienze all'aperto senza fascia.** Mura (a piedi e in bici), facciata di San Michele e mosaico
+  di San Frediano sono illuminati e si prestano alla visita serale; Struscio, tramonto, Anfiteatro e
+  piazza Napoleone sono frequentati anche di sera. Il motore può quindi proporle dopo il tramonto.
+- **`sospesa` della Torre delle Ore va riportato a `False` a marzo**, quando la torre riapre, e il
+  seed ricaricato su Aura.
+- **Prezzi = biglietto intero.** Riduzioni e gratuità non sono modellate.
+- **I prezzi reali hanno ridotto i sostituti gratuiti**, e le 4 esperienze nuove sono gratuite ma
+  non accessibili: non aiutano chi chiede accessibilità (pool di 2 con la pioggia, vedi "Sostituzioni:
+  concentrazione su pochi luoghi gratuiti al chiuso"). Il rimedio resta nuovo contenuto accessibile
+  al chiuso, verificato.
+- **Fasce stimate**: lo Struscio (17:30–21:00) e il tramonto (16:00–17:00, ora del tramonto di
+  dicembre arrotondata, non da una fonte pubblicata).
+- **Il Real Collegio (lun–ven 9–12) non compare mai nella demo di sabato**, e San Francesco (sab–dom)
+  mai nei giorni feriali: coerente con il principio "nessuno davanti a un luogo chiuso".
+- **Accessibilità dei 4 luoghi nuovi non verificata**: `accessibile=False` prudente (interno di San
+  Michele, basilica di San Frediano, San Francesco, chiostro del Real Collegio).
+- **Distanze dei 2 luoghi nuovi stimate** (`chiesa-san-francesco`, `real-collegio`): saranno
+  sostituite dalle coordinate.
+- **Mercatini dell'Anfiteatro non modellati**: sono eventi, non esperienze. `exp-mercato-anfiteatro`
+  è stata riscritta come visita all'ovale (stesso id, per non lasciare un nodo orfano su Aura).
+- **Archi `EVOCA` rimasti su Aura**: l'export genera per ogni esperienza la cancellazione degli archi
+  `EVOCA` verso temi non più dichiarati (decisione D1). Altri archi tolti dal seed (`VICINO`,
+  `LEGATO_A`) resterebbero su Aura: oggi nessuno è stato tolto.

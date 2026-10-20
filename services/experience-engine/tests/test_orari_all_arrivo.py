@@ -560,12 +560,13 @@ def test_nonreg_compose_con_data_ma_senza_orari_e_identico_a_senza_data() -> Non
 
 
 def test_nonreg_compose_seed_con_data_identico_a_senza_data() -> None:
-    """Il seed non dichiara orari: la data non cambia nulla."""
+    """Seed spogliato degli orari: se nessuna esperienza dichiara orari, la data
+    non cambia nulla. (Il seed reale ora dichiara orari: vedi `_senza_orari`.)"""
     out = []
     for data in (None, LUNEDI):
         signal = _segnale("10:00", data=data)
         ctx = VisitorContext(person_id="p", profile=_profilo(240), signal=signal)
-        cands = SeedCandidateSource().candidates(ctx)
+        cands = _senza_orari(SeedCandidateSource().candidates(ctx))
         it = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO_LUCCA)
         out.append([(s.experience_id, s.arrivo, s.durata_min, s.reason) for s in it.stops])
     assert out[0] == out[1]
@@ -616,11 +617,12 @@ def test_nonreg_adapt_con_data_ma_senza_orari_non_taglia_per_orario() -> None:
 
 
 def test_nonreg_adapt_seed_con_data_identico_a_senza_data() -> None:
+    """Seed spogliato degli orari: la data non cambia l'adattamento."""
     outs = []
     for data in (None, LUNEDI):
         signal = _segnale("10:00", data=data)
         ctx = VisitorContext(person_id="p", profile=_profilo(240), signal=signal)
-        cands = SeedCandidateSource().candidates(ctx)
+        cands = _senza_orari(SeedCandidateSource().candidates(ctx))
         base = compose_itinerary(ctx, cands, compose_reason, vocabolario=VOCABOLARIO_LUCCA)
         pioggia = _segnale("10:00", data=data, meteo="pioggia")
         it = adapt_itinerary(

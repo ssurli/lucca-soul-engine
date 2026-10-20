@@ -60,7 +60,9 @@ Marketplace (Wave 3a — `docs/DATA_CONTRACTS.md` §5):
 
 from __future__ import annotations
 
-from contracts import ExperienceNode, Partner, VocabolarioTemi
+from datetime import time
+
+from contracts import ExperienceNode, FasciaApertura, Partner, VocabolarioTemi
 
 from graph.dataset import VICINO_EPOCA_PREDEFINITA as _EPOCA
 from graph.dataset import (
@@ -110,7 +112,7 @@ VICINO_EPOCA = _EPOCA
 # sono ri-esportati qui per compatibilità.
 
 # ---------------------------------------------------------------------------
-# Luoghi — 15 luoghi reali di Lucca
+# Luoghi — 17 luoghi reali di Lucca
 # ---------------------------------------------------------------------------
 
 LUOGHI: list[Luogo] = [
@@ -129,6 +131,11 @@ LUOGHI: list[Luogo] = [
     Luogo("via-fillungo", "Via Fillungo", "via"),
     Luogo("baluardo-san-paolino", "Baluardo San Paolino", "mura"),
     Luogo("museo-nazionale-guinigi", "Museo Nazionale di Villa Guinigi", "museo"),
+    # `Luogo.categoria` è una stringa libera (nessuna lista chiusa, nessuna
+    # logica la legge: solo scritta sul nodo); "chiesa" e "chiostro" sono i
+    # termini più fedeli al luogo.
+    Luogo("chiesa-san-francesco", "Chiesa di San Francesco", "chiesa"),
+    Luogo("real-collegio", "Real Collegio", "chiostro"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -150,6 +157,10 @@ LEGATO_A: list[RelazioneLegatoA] = [
     RelazioneLegatoA("artista-boccherini", "duomo-san-martino"),
     RelazioneLegatoA("artista-civitali", "duomo-san-martino"),
     RelazioneLegatoA("artista-catalani", "teatro-del-giglio"),
+    # Boccherini è sepolto in San Francesco (fonte: Comune di Lucca). Unico
+    # legame aggiunto: ogni connessione in più alza la "sorpresa" nello score
+    # e concentrerebbe le visite.
+    RelazioneLegatoA("artista-boccherini", "chiesa-san-francesco"),
 ]
 
 # ---------------------------------------------------------------------------
@@ -267,10 +278,39 @@ HA_ABBONAMENTO: list[RelazioneHaAbbonamento] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Esperienze — 22 esperienze (>= 15 richieste), mix voluto di al_chiuso,
+# Esperienze — 26 esperienze (>= 15 richieste), mix voluto di al_chiuso,
 # accessibile, durata (20-90 min) e temi, per produrre itinerari DIVERSI a
 # seconda del profilo e riscritture credibili su pioggia/affollamento.
+#
+# PRINCIPIO DEI DATI (orari, prezzi, sospensioni): il seed porta l'orario
+# INVERNALE (novembre-dicembre), la stagione della demo (sabato 12/12/2026) e
+# il caso più restrittivo. L'errore che ne risulta è quello innocuo: d'estate
+# si omette un luogo aperto, d'inverno non si manda nessuno davanti a un
+# luogo chiuso. `giorno_settimana`: 0 = lunedì. `prezzo_eur` = biglietto
+# intero.
+#
+# Fonti: dati del committente (19-20/10/2026); sito del Comune di Lucca
+# (Torre delle Ore chiusa da novembre a febbraio; Boccherini sepolto in San
+# Francesco); Puccini Museum per Casa Puccini (orario 1/11-31/1). Le fonti
+# per esperienza sono nei commenti. Nessuna esperienza non citata ha fasce:
+# nessuna fascia = nessun vincolo orario noto.
 # ---------------------------------------------------------------------------
+
+
+def _fasce(
+    giorni: list[int], apertura: tuple[int, int], chiusura: tuple[int, int]
+) -> list[FasciaApertura]:
+    """Una fascia [apertura, chiusura) per ciascun giorno (0 = lunedì)."""
+    return [
+        FasciaApertura(
+            giorno_settimana=g, apertura=time(*apertura), chiusura=time(*chiusura)
+        )
+        for g in giorni
+    ]
+
+
+_TUTTI = [0, 1, 2, 3, 4, 5, 6]
+_LUN_SAB = [0, 1, 2, 3, 4, 5]
 
 ESPERIENZE: list[ExperienceNode] = [
     ExperienceNode(
@@ -293,10 +333,12 @@ ESPERIENZE: list[ExperienceNode] = [
         accessibile=True,
     ),
     ExperienceNode(
+        # Riscritta (stesso id): in piazza non c'è un mercato quotidiano; i
+        # mercatini occasionali sono eventi, non esperienze. Nessun orario.
         id="exp-mercato-anfiteatro",
-        titolo="Il mercato mattutino nell'ovale romano",
+        titolo="L'ovale dell'Anfiteatro romano",
         place_id="piazza-anfiteatro",
-        temi=["medievale", "storia", "gastronomia"],
+        temi=["storia", "medievale"],
         durata_min=30,
         al_chiuso=False,
         accessibile=True,
@@ -310,6 +352,9 @@ ESPERIENZE: list[ExperienceNode] = [
         durata_min=40,
         al_chiuso=False,
         accessibile=False,
+        prezzo_eur=8.0,
+        # Tutti i giorni 09:30-16:30 (fonte: dati del committente, 19-20/10/2026).
+        orari_apertura=_fasce(_TUTTI, (9, 30), (16, 30)),
     ),
     ExperienceNode(
         id="exp-duomo-volto-santo",
@@ -319,6 +364,8 @@ ESPERIENZE: list[ExperienceNode] = [
         durata_min=35,
         al_chiuso=True,
         accessibile=True,
+        # Lun-sab 10:00-18:00; dom 12:00-18:00 (fonte: dati del committente).
+        orari_apertura=_fasce(_LUN_SAB, (10, 0), (18, 0)) + _fasce([6], (12, 0), (18, 0)),
     ),
     ExperienceNode(
         id="exp-casa-puccini-visita",
@@ -329,6 +376,10 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=True,
         accessibile=True,
         alimenta_memoria=True,
+        prezzo_eur=9.0,
+        # Orario 1/11-31/1 (fonte: Puccini Museum): lun, mer, gio 10-14; ven, sab,
+        # dom 10-17; martedì chiuso.
+        orari_apertura=_fasce([0, 2, 3], (10, 0), (14, 0)) + _fasce([4, 5, 6], (10, 0), (17, 0)),
     ),
     ExperienceNode(
         id="exp-concerto-giglio",
@@ -358,6 +409,9 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=False,
         accessibile=True,
         alimenta_memoria=True,
+        prezzo_eur=6.0,
+        # Ven, sab, dom 11:00-16:00 (fonte: dati del committente).
+        orari_apertura=_fasce([4, 5, 6], (11, 0), (16, 0)),
     ),
     ExperienceNode(
         id="exp-orto-botanico-bambini",
@@ -367,6 +421,9 @@ ESPERIENZE: list[ExperienceNode] = [
         durata_min=60,
         al_chiuso=False,
         accessibile=True,
+        prezzo_eur=6.0,
+        # Ven, sab, dom 11:00-16:00 (fonte: dati del committente).
+        orari_apertura=_fasce([4, 5, 6], (11, 0), (16, 0)),
     ),
     ExperienceNode(
         id="exp-giardino-pfanner",
@@ -376,6 +433,10 @@ ESPERIENZE: list[ExperienceNode] = [
         durata_min=30,
         al_chiuso=False,
         accessibile=True,
+        # Biglietto unico giardino e museo. Fascia "luce del giorno" invernale,
+        # tutti i giorni 08:00-16:30: giardino privato, di sera chiuso.
+        prezzo_eur=10.0,
+        orari_apertura=_fasce(_TUTTI, (8, 0), (16, 30)),
     ),
     ExperienceNode(
         id="exp-mosaico-san-frediano",
@@ -394,6 +455,10 @@ ESPERIENZE: list[ExperienceNode] = [
         durata_min=35,
         al_chiuso=True,
         accessibile=False,
+        prezzo_eur=8.0,
+        # Chiusa da novembre a febbraio (fonte: sito del Comune di Lucca): esiste
+        # ma in questo periodo non è visitabile.
+        sospesa=True,
     ),
     ExperienceNode(
         id="exp-piazza-napoleone",
@@ -412,6 +477,8 @@ ESPERIENZE: list[ExperienceNode] = [
         durata_min=40,
         al_chiuso=False,
         accessibile=True,
+        # Tutti i giorni 17:30-21:00: STIMA (fonte: dati del committente).
+        orari_apertura=_fasce(_TUTTI, (17, 30), (21, 0)),
     ),
     ExperienceNode(
         id="exp-tramonto-baluardo",
@@ -422,6 +489,9 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=False,
         accessibile=True,
         alimenta_memoria=True,
+        # Tutti i giorni 16:00-17:00: il tramonto di dicembre (STIMA: ora del tramonto
+        # arrotondata, non da una fonte pubblicata).
+        orari_apertura=_fasce(_TUTTI, (16, 0), (17, 0)),
     ),
     ExperienceNode(
         id="exp-collezione-villa-guinigi",
@@ -431,6 +501,10 @@ ESPERIENZE: list[ExperienceNode] = [
         durata_min=55,
         al_chiuso=True,
         accessibile=True,
+        prezzo_eur=6.0,
+        # Mar-sab 12:00-18:00 (fonte: dati del committente). Alcune domeniche è
+        # aperta: omesse (caso più restrittivo).
+        orari_apertura=_fasce([1, 2, 3, 4, 5], (12, 0), (18, 0)),
     ),
     ExperienceNode(
         id="exp-laboratorio-liuteria",
@@ -491,6 +565,54 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=True,
         accessibile=True,
         partner_id="tessitura-lucca",
+    ),
+    # Quattro esperienze di interni (ondata 1b-2). Tutte gratuite, al chiuso,
+    # senza partner, senza alimenta_memoria. `accessibile=False` perché
+    # l'accessibilità NON è stata verificata: in dubbio si esclude, non si
+    # promette. Orari: dati del committente (19-20/10/2026).
+    ExperienceNode(
+        id="exp-interno-san-michele",
+        titolo="L'interno di San Michele in Foro",
+        place_id="san-michele-in-foro",
+        temi=["romanico", "arte"],
+        durata_min=20,
+        al_chiuso=True,
+        accessibile=False,
+        orari_apertura=_fasce(_LUN_SAB, (7, 40), (12, 0)) + _fasce(_LUN_SAB, (15, 0), (17, 30)),
+    ),
+    ExperienceNode(
+        id="exp-interno-san-frediano",
+        titolo="La basilica di San Frediano e il fonte lustrale",
+        place_id="san-frediano",
+        temi=["romanico", "arte", "medievale"],
+        durata_min=30,
+        al_chiuso=True,
+        accessibile=False,
+        orari_apertura=(
+            _fasce(_LUN_SAB, (8, 30), (12, 0))
+            + _fasce(_LUN_SAB, (15, 0), (17, 0))
+            + _fasce([6], (10, 30), (17, 0))
+        ),
+    ),
+    ExperienceNode(
+        id="exp-chiesa-chiostro-san-francesco",
+        titolo="La chiesa di San Francesco e il suo chiostro",
+        place_id="chiesa-san-francesco",
+        temi=["musica", "silenzio", "storia"],
+        durata_min=30,
+        al_chiuso=True,
+        accessibile=False,
+        orari_apertura=_fasce([5, 6], (10, 0), (19, 0)),
+    ),
+    ExperienceNode(
+        id="exp-chiostro-real-collegio",
+        titolo="Il chiostro del Real Collegio",
+        place_id="real-collegio",
+        temi=["silenzio", "storia"],
+        durata_min=20,
+        al_chiuso=True,
+        accessibile=False,
+        orari_apertura=_fasce([0, 1, 2, 3, 4], (9, 0), (12, 0)),
     ),
 ]
 
@@ -562,6 +684,22 @@ VICINO: list[RelazioneVicino] = [
     # orto-botanico (ex vicolo cieco: ora 4 vicini)
     RelazioneVicino("orto-botanico", "museo-nazionale-guinigi", 700),
     # museo-nazionale-guinigi (ex vicolo cieco: ora 4 vicini)
+    #
+    # STIME (ondata 1b-2): le distanze dei due luoghi nuovi sono stime
+    # dichiarate, non misure; saranno sostituite dalle coordinate in
+    # un'ondata successiva.
+    # chiesa-san-francesco
+    RelazioneVicino("chiesa-san-francesco", "museo-nazionale-guinigi", 250),
+    RelazioneVicino("chiesa-san-francesco", "mura-urbane", 300),
+    RelazioneVicino("chiesa-san-francesco", "piazza-anfiteatro", 400),
+    RelazioneVicino("chiesa-san-francesco", "torre-guinigi", 450),
+    RelazioneVicino("chiesa-san-francesco", "via-fillungo", 500),
+    # real-collegio
+    RelazioneVicino("real-collegio", "san-frediano", 100),
+    RelazioneVicino("real-collegio", "palazzo-pfanner", 200),
+    RelazioneVicino("real-collegio", "mura-urbane", 250),
+    RelazioneVicino("real-collegio", "piazza-anfiteatro", 300),
+    RelazioneVicino("real-collegio", "via-fillungo", 350),
 ]
 
 # ---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 """Parità degli orari di apertura tra seed, Cypher e `Neo4jCandidateSource`.
 
-Le esperienze con orari sono DI TEST (il seed non ne ha ancora). Nessuna
+L'esperienza con orari usata qui e` DI TEST; negli helper il seed e` privato
+dei suoi orari reali, cosi` i conteggi dipendono solo dai dati di test. Nessuna
 connessione a Neo4j: il loader è provato con un driver finto che registra le
 chiamate.
 """
@@ -33,7 +34,9 @@ def _esp_con_orari() -> ExperienceNode:
 def _dataset_con_orari() -> Any:
     from dataclasses import replace
 
-    return replace(DATASET, esperienze=[*DATASET.esperienze, _esp_con_orari()])
+    # Gli orari REALI del seed sono azzerati: qui contano solo le fasce di test.
+    senza_orari = [e.model_copy(update={"orari_apertura": []}) for e in DATASET.esperienze]
+    return replace(DATASET, esperienze=[*senza_orari, _esp_con_orari()])
 
 
 def _valori_dal_cypher(testo: str, esp_id: str) -> list[str]:
@@ -59,7 +62,9 @@ def _record_da(e: ExperienceNode, orari: Any) -> dict[str, Any]:
 
 def test_export_scrive_sempre_la_proprieta_anche_vuota() -> None:
     testo = build_seed(DATASET)
-    assert testo.count("e.orari_apertura = [];") == len(DATASET.esperienze)
+    senza_orari = [e for e in DATASET.esperienze if not e.orari_apertura]
+    assert senza_orari, "il seed deve avere anche esperienze senza fasce"
+    assert testo.count("e.orari_apertura = [];") == len(senza_orari)
 
 
 def test_parita_seed_cypher_decodifica_fasce_multiple_stesso_giorno() -> None:

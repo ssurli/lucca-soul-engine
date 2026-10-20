@@ -11,7 +11,7 @@ from graph.seed_lucca import ARTISTI, BOTTEGHE, ESPERIENZE, LEGATO_A, LUOGHI, TE
 
 
 def test_almeno_dodici_luoghi() -> None:
-    assert 12 <= len(LUOGHI) <= 15
+    assert 12 <= len(LUOGHI) <= 17
 
 
 def test_cinque_botteghe() -> None:

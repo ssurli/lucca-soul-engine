@@ -206,6 +206,20 @@ def _evoca_statement(e: ExperienceNode, tema_id: str) -> str:
     )
 
 
+def _pulisci_evoca_statement(e: ExperienceNode) -> str:
+    """Toglie gli archi `EVOCA` verso temi non più in `e.temi` (il loader fa
+    solo MERGE: senza questo, un tema tolto dal dataset resterebbe sul grafo).
+
+    FORMA ESATTA, una riga, che `graph.loader.valida_nessuna_cancellazione`
+    riconosce e che è l'UNICA cancellazione ammessa nel seed: solo il tipo
+    `EVOCA`, solo fra `:Esperienza` e `:Tema`, label esplicite, mai
+    `DETACH DELETE` né cancellazione di nodi."""
+    return (
+        f"MATCH (e:Esperienza {{id: {_cypher_str(e.id)}}})-[r:EVOCA]->(t:Tema) "
+        f"WHERE NOT t.id IN {_cypher_str_list(e.temi)} DELETE r;"
+    )
+
+
 def _offre_statement(e: ExperienceNode, bottega_id: str) -> str:
     return (
         f"MATCH (b:Bottega {{id: {_cypher_str(bottega_id)}}}), "
@@ -289,6 +303,8 @@ def build_seed(dataset: DatasetCitta | None = None) -> str:
 
     parts.append("\n// --- Relazioni: EVOCA (Esperienza -> Tema), da temi --------------------")
     for esperienza in ds.esperienze:
+        # Prima la pulizia degli archi non più nel dataset, poi i MERGE.
+        parts.append(_pulisci_evoca_statement(esperienza))
         for tema_id in esperienza.temi:
             parts.append(_evoca_statement(esperienza, tema_id))
 

@@ -26,9 +26,15 @@ def _testo_reale() -> str:
     return file_seed_cypher(dataset_attivo()).read_text(encoding="utf-8")
 
 
-def test_file_reale_generato_e_valido_e_senza_fasce() -> None:
-    """Il seed versionato oggi non dichiara orari: valida, zero fasce."""
-    assert loader.valida_orari(file_seed_cypher(dataset_attivo())) == 0
+def _fasce_nel_dataset() -> int:
+    return sum(len(e.orari_apertura) for e in dataset_attivo().esperienze)
+
+
+def test_file_reale_generato_e_valido_e_conta_le_fasce_del_dataset() -> None:
+    """Il seed versionato valida e le fasce lette sono quelle del dataset
+    (alcune esperienze ne hanno, altre no: restano righe vuote)."""
+    assert _fasce_nel_dataset() > 0
+    assert loader.valida_orari(file_seed_cypher(dataset_attivo())) == _fasce_nel_dataset()
     assert RIGA_VUOTA in _testo_reale()
 
 
@@ -72,7 +78,7 @@ def test_file_reale_con_tutte_le_fasce_valide_conta_e_carica(
         testo.replace(RIGA_VUOTA, "e.orari_apertura = ['1|09:00|18:00', '1|19:00|22:00'];"),
         encoding="utf-8",
     )
-    assert loader.valida_orari(f) == 2 * n
+    assert loader.valida_orari(f) == 2 * n + _fasce_nel_dataset()
     registro: list[str] = []
     monkeypatch.setattr(loader.GraphDatabase, "driver", lambda *a, **k: _Driver(registro))
     assert loader.run(_config(), f) > 10

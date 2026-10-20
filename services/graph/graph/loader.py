@@ -102,6 +102,38 @@ def valida_orari(path: Path) -> int:
     return totale
 
 
+# Unica cancellazione ammessa nel seed: la forma generata da
+# `graph.export_cypher._pulisci_evoca_statement` (una riga, label e tipo espliciti).
+_RE_PULIZIA_EVOCA = re.compile(
+    rf"MATCH \(e:Esperienza \{{id: {_LIT}\}}\)-\[r:EVOCA\]->\(t:Tema\) "
+    rf"WHERE NOT t\.id IN \[(?:{_LIT}(?:, {_LIT})*)?\] DELETE r"
+)
+_RE_CANCELLAZIONE = re.compile(r"\b(?:DETACH|DELETE|REMOVE)\b", re.IGNORECASE)
+_RE_LITERAL_ALL = re.compile(_LIT)
+
+
+def valida_cancellazioni(path: Path) -> int:
+    """Rifiuta un seed che contiene `DELETE`, `DETACH` o `REMOVE` in una forma
+    diversa dalla pulizia `EVOCA` esatta generata dall'export.
+
+    Le parole dentro i letterali stringa (titoli, racconti) non contano; i
+    commenti `//` sono già esclusi da `_statements`. Solleva `ValueError`;
+    ritorna il numero di pulizie `EVOCA` riconosciute. Limite: non è un parser
+    Cypher, è una guardia a forma esatta (fail-closed)."""
+    pulizie = 0
+    for statement in _statements(path):
+        senza_stringhe = _RE_LITERAL_ALL.sub("''", statement)
+        if _RE_CANCELLAZIONE.search(senza_stringhe) is None:
+            continue
+        if _RE_PULIZIA_EVOCA.fullmatch(statement) is None:
+            raise ValueError(
+                f"{path.name}: cancellazione non ammessa (solo la pulizia "
+                f"(:Esperienza)-[:EVOCA]->(:Tema) generata dall'export): {statement[:120]!r}"
+            )
+        pulizie += 1
+    return pulizie
+
+
 def run(config: Neo4jConfig, seed_file: Path | None = None) -> int:
     """Esegue schema + seed su Neo4j. Ritorna il numero di istruzioni eseguite.
 
@@ -110,6 +142,7 @@ def run(config: Neo4jConfig, seed_file: Path | None = None) -> int:
     # Prima di QUALUNQUE connessione o scrittura: un orario malformato rifiuta
     # l'intero caricamento (nessuna scrittura parziale).
     valida_orari(seed)
+    valida_cancellazioni(seed)
     driver = GraphDatabase.driver(config.uri, auth=(config.username, config.password))
     eseguite = 0
     try:
