@@ -1,6 +1,6 @@
 # Stato del progetto — 2026-10-20
 
-`main` al commit `e36dfec` (merge fast-forward di `feat/ondata1c-contenuti`; CI verde sul ramo).
+`main`: ondata 1c inclusa (merge fast-forward di `feat/ondata1c-contenuti`, correzione `e36dfec`; CI verde).
 I dettagli sono in `docs/LIMITI.md` e `docs/BUILD_PLAN.md`; questo file è solo il punto della
 situazione.
 
@@ -26,8 +26,10 @@ Comandi PowerShell completi nel report della 1c; tutti dalla radice del repo, su
 3. Prova a secco dei ricordi: `.venv\Scripts\python.exe scripts\carica_ricordi_demo.py`
    (legge soltanto; si ferma se le persone distinte sarebbero 7 o più, o se un luogo manca su Aura).
 4. Scrittura dei ricordi: stesso comando con `--esegui`; se l'aggancio al grafo non riesce, rilanciarlo.
-5. Riavvio del BFF e prova "Piove" con il profilo curioso (app con
-   `--dart-define=DEMO_ISTANTE=2026-12-12T14:00:00Z`, cioè le 15:00 di Lucca, poi pioggia).
+5. Riavvio del BFF e prova "Piove" con il profilo curioso: app con
+   `--dart-define=DEMO_ISTANTE=2026-12-12T14:00:00Z` (le 15:00 di Lucca), onboarding da visitatore
+   curioso, poi il pulsante "Piove" premuto UNA volta (oggi i segnali si sommano). Criterio: nessuna
+   tappa all'aperto e nessuna bottega partner.
 
 ## Prossima ondata: 2 (testi e app)
 
@@ -37,6 +39,30 @@ Comandi PowerShell completi nel report della 1c; tutti dalla radice del repo, su
 - Interruttori dei segnali nell'app.
 - Campo "curiosità" per le leggende (labirinto, smeraldo, Lucida Mansi, leccio dei Guinigi, ...):
   testo della tappa che non entra mai nel punteggio.
+
+## Dopo l'ondata 2, verso la demo del 12/12/2026
+
+1. **Coordinate e mappa**: coordinate dei luoghi nel seed, distanze reali tra le tappe, link
+   "Come arrivo qui" a Google Maps (a piedi, un link per tappa, nessuna chiave). Per
+   `exp-pfanner-dalle-mura` il punto è sulle Mura, non il palazzo. Riferimento per il controllo:
+   la mappa ufficiale del centro storico 2024.
+2. **Ondata grafica**: direzione "C" (canvas "Lucca Soul — direzioni grafiche": caratteri del deck,
+   accento mattone, mappa in alto, interruttori dei segnali con "Annulla"), logo delle Mura nella
+   testata, icona e favicon dell'app (oggi quelle di Flutter). Miniature solo con foto di licenza
+   nota (proprie o Wikimedia Commons con credito).
+3. **Blocco del codice verso il 5/12**, poi prove con l'orologio fissato a sabato 12/12 (10:00 e
+   15:00) e Aura verificata RUNNING il giorno prima.
+
+## Dopo la demo
+
+- **Modello del tempo**: orari con periodo di validità (stagioni), chiusure e aperture per data,
+  tramonto calcolato dalle coordinate, stato dell'itinerario (tappe fatte / in corso / da fare);
+  `sospesa` sostituito da un periodo di chiusura.
+- **Recommender**: riprogettazione dell'effetto gregge con un criterio di uscita misurabile.
+- **Ricordi**: campo `dimostrativo` escluso da ogni aggregazione dell'Index.
+- **Pioggia**: valutare di togliere, invece di mantenere, una tappa all'aperto senza alternativa.
+- **Contenuti rinviati**: Museo della Zecca, Cammino di San Josemaría (descritto in modo neutro),
+  Domus Romana, Palazzo Mansi; botteghe reali solo come aderenti, con il loro consenso.
 
 ## Voci aperte principali di `docs/LIMITI.md`
 
