@@ -22,6 +22,7 @@ from contracts import (
     VisitorContext,
 )
 from experience_engine import compose_itinerary, rules
+from experience_engine.engine import _costruisci_stops
 from graph.seed_lucca import VOCABOLARIO
 
 ADESSO = datetime(2026, 6, 1, 12, 0, tzinfo=UTC)
@@ -451,6 +452,32 @@ def _tracce_fisse(*temi: str, n: int = 3) -> list[tuple[datetime, tuple[str, ...
 
 
 def test_due_tappe_stesso_luogo_frase_una_sola_volta_sulla_prima() -> None:
+    """Guardia di `_costruisci_stops`: la composizione sceglie al piu' una tappa
+    per luogo (regola "una tappa per luogo", ondata 1b-2), quindi il caso di due
+    tappe nello stesso luogo non e' piu' raggiungibile da `compose_itinerary`.
+    La guardia pero' resta nel codice: la si esercita chiamando direttamente
+    `_costruisci_stops` con due candidati dello stesso luogo."""
+    selezionati = [
+        _cand("exp-a1", "luogo-a", ["arte"], 100.0),
+        _cand("exp-a2", "luogo-a", ["arte"], 150.0),
+        _cand("exp-b", "luogo-b", ["arte"], 200.0),
+    ]
+    tracce = {"luogo-a": _tracce_fisse("arte"), "luogo-b": _tracce_fisse("arte")}
+    stops = _costruisci_stops(
+        selezionati, PROFILO, _ctx().signal, _Spia(),
+        tracce_per_luogo=tracce, adesso=ADESSO, vocabolario=VOCABOLARIO,
+    )
+    del_luogo_a = [s for s in stops if s.experience_id in ("exp-a1", "exp-a2")]
+    assert len(del_luogo_a) == 2  # il caso e' davvero esercitato
+    assert [FRASE_ARTE in s.reason for s in del_luogo_a] == [True, False]
+    assert sum(s.reason.count(FRASE_ARTE) for s in stops) == 2  # una per luogo
+    b = next(s for s in stops if s.experience_id == "exp-b")
+    assert FRASE_ARTE in b.reason
+
+
+def test_la_composizione_non_produce_due_tappe_nello_stesso_luogo_col_bagliore() -> None:
+    """Con la regola "una tappa per luogo" la frase del bagliore compare una
+    sola volta per luogo anche da `compose_itinerary`."""
     cands = [
         _cand("exp-a1", "luogo-a", ["arte"], 100.0),
         _cand("exp-a2", "luogo-a", ["arte"], 150.0),
@@ -460,12 +487,8 @@ def test_due_tappe_stesso_luogo_frase_una_sola_volta_sulla_prima() -> None:
     it = compose_itinerary(
         _ctx(), cands, _Spia(), tracce_per_luogo=tracce, adesso=ADESSO, vocabolario=VOCABOLARIO,
     )
-    del_luogo_a = [s for s in it.stops if s.experience_id in ("exp-a1", "exp-a2")]
-    assert len(del_luogo_a) == 2  # il caso e' davvero esercitato
-    assert [FRASE_ARTE in s.reason for s in del_luogo_a] == [True, False]
-    assert sum(s.reason.count(FRASE_ARTE) for s in it.stops) == 2  # una per luogo
-    b = next(s for s in it.stops if s.experience_id == "exp-b")
-    assert FRASE_ARTE in b.reason
+    assert len([s for s in it.stops if s.experience_id in ("exp-a1", "exp-a2")]) == 1
+    assert sum(s.reason.count(FRASE_ARTE) for s in it.stops) == 2  # luogo-a e luogo-b
 
 
 def test_adesso_e_keyword_only() -> None:

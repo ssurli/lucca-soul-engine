@@ -34,6 +34,7 @@ from contracts import (  # noqa: E402
     VisitorContext,
 )
 from experience_engine import adapt_itinerary, compose_itinerary  # noqa: E402
+from experience_engine.rules import stima_trasferimento_min  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 from graph.dataset import DatasetCitta  # noqa: E402
 from graph.registro import carica_dataset  # noqa: E402
@@ -260,6 +261,9 @@ def test_motore_adatta_su_segnale(borgo: DatasetCitta, nome: str, segnale: Signa
         ids_base = [x.experience_id for x in base.stops]
         ids_nuovi = [x.experience_id for x in adattato.stops]
 
+        per_cand = {c.experience.id: c for c in cands}
+        limite = base.tempo_effettivo_min  # budget effettivo scelto dal motore (None = nessuno)
+
         def alternative_ammissibili(tappa: str, gia_usate: list[str]) -> set[str]:
             """Alternative al chiuso per `tappa`, calcolate dal DATASET (non da
             `passa_filtri_duri`, che sarebbe un oracolo tautologico): al chiuso,
@@ -268,8 +272,29 @@ def test_motore_adatta_su_segnale(borgo: DatasetCitta, nome: str, segnale: Signa
             l'accessibilita' non si degrada). Orari di apertura e affollamento
             NON entrano: verificato che nel borgo nessuna esperienza dichiara
             `orari_apertura` e il segnale di pioggia non ha affollamento ne'
-            `giorno_settimana` (asserito sotto)."""
+            `giorno_settimana` (asserito sotto).
+
+            Vincoli di SOSTITUZIONE gia' approvati del motore, rispecchiati qui in
+            forma minima (non e' `_migliore_alternativa`, per non essere tautologici):
+            - una tappa per luogo (ondata 1b-2): il sostituto non sta nel
+              `place_id` di un'ALTRA tappa dell'itinerario (quello della tappa
+              sostituita e' ammesso);
+            - costo (difetto g, 2026-10-19): non costa piu' della tappa tolta
+              (`prezzo_eur` None = 0);
+            - budget: l'itinerario con la sostituzione resta entro il tempo
+              effettivo (durate + `stima_trasferimento_min` per ogni tappa dopo
+              la prima, come il conteggio del motore)."""
             sostituita = per_id[tappa]
+            luoghi_altre = {per_id[i].place_id for i in gia_usate if i != tappa}
+
+            def minuti(con: str) -> int:
+                ids = [con if i == tappa else i for i in gia_usate]
+                return sum(
+                    per_id[i].durata_min
+                    + (stima_trasferimento_min(per_cand[i].distanza_m) if k > 0 else 0)
+                    for k, i in enumerate(ids)
+                )
+
             return {
                 e.id
                 for e in borgo.esperienze
@@ -277,6 +302,9 @@ def test_motore_adatta_su_segnale(borgo: DatasetCitta, nome: str, segnale: Signa
                 and e.id not in gia_usate
                 and not (e.partner_id is not None and not _partner_attivo(borgo, e))
                 and (e.accessibile or not sostituita.accessibile)
+                and e.place_id not in luoghi_altre
+                and (e.prezzo_eur or 0.0) <= (sostituita.prezzo_eur or 0.0)
+                and (limite is None or minuti(e.id) <= limite)
             }
 
         assert all(not e.orari_apertura for e in borgo.esperienze)

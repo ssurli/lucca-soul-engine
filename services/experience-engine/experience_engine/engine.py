@@ -20,6 +20,7 @@ from __future__ import annotations
 import math
 import re
 from collections.abc import Callable, Sequence
+from collections.abc import Set as AbstractSet
 from datetime import UTC, date, datetime, time, timedelta
 from functools import partial
 from typing import Literal
@@ -302,7 +303,13 @@ def _seleziona_tappe(
     - budget: somma durate + trasferimenti stimati <= tempo disponibile
       (`compose_itinerary` passa il budget EFFETTIVO, già troncato alla
       mezzanotte da `_minuti_alla_mezzanotte`);
-    - max 2 esperienze per stesso place_id;
+    - una tappa per luogo (vincolo di composizione): al massimo UNA
+      esperienza per `place_id`. Un candidato il cui `place_id` è già tra le
+      tappe scelte è saltato, come uno fuori budget, e non rientra più
+      (il luogo resta occupato fino alla fine). Motivazione: distribuzione
+      dei flussi — due tappe nello stesso luogo concentrano le visite e non
+      aggiungono esperienza. Il vincolo legge solo `place_id`: mai partner,
+      prezzo né attribuzione, e non tocca lo score;
     - orari (filtro duro 6, `rules.aperta_durante`): per ogni candidato si
       calcola l'arrivo ESATTAMENTE come in `_costruisci_stops`,
       `ora_partenza + tempo_usato + trasferimento` (trasferimento 0 per la
@@ -319,16 +326,15 @@ def _seleziona_tappe(
     non salta mai nulla: selezione identica a prima.
     """
     selezionati: list[GraphCandidate] = []
-    conteggio_place: dict[str, int] = {}
+    luoghi_scelti: set[str] = set()
     tempo_usato = 0
     rimanenti = list(valutati)
 
     while rimanenti:
         scelto_idx: int | None = None
         for idx, (score, cand) in enumerate(rimanenti):
-            place = cand.experience.place_id
-            if conteggio_place.get(place, 0) >= 2:
-                continue
+            if cand.experience.place_id in luoghi_scelti:
+                continue  # una tappa per luogo: il luogo è già in itinerario
             trasferimento = stima_trasferimento_min(cand.distanza_m) if selezionati else 0
             costo = cand.experience.durata_min + trasferimento
             if tempo_usato + costo > tempo_disponibile_min:
@@ -359,9 +365,7 @@ def _seleziona_tappe(
         _, cand = rimanenti.pop(scelto_idx)
         trasferimento = stima_trasferimento_min(cand.distanza_m) if selezionati else 0
         tempo_usato += cand.experience.durata_min + trasferimento
-        conteggio_place[cand.experience.place_id] = (
-            conteggio_place.get(cand.experience.place_id, 0) + 1
-        )
+        luoghi_scelti.add(cand.experience.place_id)
         selezionati.append(cand)
 
     return selezionati
@@ -391,10 +395,10 @@ def _costruisci_stops(
     decide quali, quante né in che ordine. `None`/vuoto o `adesso=None` ->
     nessuna frase, `reason` identico a prima.
 
-    Una sola frase per luogo per itinerario: se più tappe condividono lo
-    stesso `place_id` (fino a 2, `_seleziona_tappe`), la frase va SOLO sulla
-    prima in ordine di tappa; le successive dello stesso luogo hanno il
-    `reason` senza frase (ripeterla sarebbe rumore, non spiegazione).
+    Una sola frase per luogo per itinerario: `_seleziona_tappe` sceglie già
+    al più una tappa per `place_id`, ma la guardia resta: se più tappe
+    condividessero lo stesso `place_id`, la frase andrebbe SOLO sulla prima
+    in ordine di tappa (ripeterla sarebbe rumore, non spiegazione).
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
@@ -749,7 +753,10 @@ def compose_itinerary(
          (esperienza sospesa, accessibilità richiesta, luoghi già visti,
          affollamento critico, partner con abbonamento non attivo)
       2. scoring per affinità -> `score_fn` (default: `rules.calcola_score`)
-      3. composizione a budget con diversificazione e filtro duro 6 (orari,
+      3. composizione a budget con diversificazione, vincolo "una tappa per
+         luogo" (al massimo una esperienza per `place_id`: distribuzione dei
+         flussi, due tappe nello stesso luogo concentrano le visite e non
+         aggiungono esperienza) e filtro duro 6 (orari,
          `rules.aperta_durante`) all'ARRIVO di ogni slot -> `_seleziona_tappe`
       4. `reason` obbligatorio per ogni tappa -> `_costruisci_stops`
       5. segnali FLUTTUANTI pertinenti, in CODA -> `_aggiungi_tappe_fluttuanti`
@@ -807,6 +814,11 @@ def compose_itinerary(
     città, dato del dataset; il motore non ne ha uno proprio.
     Inoltrato a ogni regola che legge i temi; se `score_fn` è `None` lo score
     di default è `rules.calcola_score` legato a questo vocabolario.
+
+    Il vincolo "una tappa per luogo" riguarda le tappe PERMANENTI (passo 3).
+    Le code dei passi 5-6 non lo applicano: una tappa fluttuante o un evento
+    promosso nello stesso luogo di una tappa permanente si aggiunge comunque
+    (comportamento invariato: la regola approvata riguarda le esperienze).
 
     Determinismo totale: a parità di score l'ordine è per `experience_id`.
     Due profili diversi possono produrre itinerari diversi — è il criterio
@@ -904,6 +916,7 @@ def _migliore_alternativa(
     solo_al_chiuso: bool,
     max_affollamento: float,
     *,
+    luoghi_occupati: AbstractSet[str] = frozenset(),
     entra_nel_budget: Callable[[GraphCandidate], bool] | None = None,
     arrivo_di: Callable[[GraphCandidate], time],
     vocabolario: VocabolarioTemi,
@@ -928,6 +941,16 @@ def _migliore_alternativa(
 
     A questi si aggiungono SOLO i vincoli specifici dell'adattamento:
     - `esclusi`: esperienze già presenti nell'itinerario;
+    - una tappa per luogo (`luoghi_occupati`): un sostituto non può avere
+      il `place_id` di un'ALTRA tappa rimasta nell'itinerario. Il chiamante
+      passa i luoghi delle tappe correnti al momento della scelta, ESCLUSA
+      la tappa che si sostituisce: facciata -> interno della stessa chiesa
+      resta ammesso. Le tappe stub (fluttuanti, eventi promossi, esperienze
+      sparite) non occupano luoghi. Default vuoto solo per i test di dominio
+      che chiamano la funzione direttamente; `adapt_itinerary` lo passa
+      sempre. Motivazione: distribuzione dei flussi —
+      due tappe nello stesso luogo concentrano le visite e non aggiungono
+      esperienza. Legge solo `place_id`, mai partner, prezzo o attribuzione;
     - `richiede_accessibile`: regola CONSERVATIVA per tappa quando il
       profilo è assente (una tappa accessibile si sostituisce solo con una
       accessibile) — l'accessibilità non viene mai degradata;
@@ -967,6 +990,8 @@ def _migliore_alternativa(
         e = c.experience
         if e.id in esclusi:
             continue
+        if e.place_id in luoghi_occupati:
+            continue  # una tappa per luogo: luogo già di un'altra tappa
         if richiede_accessibile and not e.accessibile:
             continue
         if solo_al_chiuso and not e.al_chiuso:
@@ -1009,7 +1034,13 @@ def adapt_itinerary(
        scorrevole (distribuzione dei flussi). Un'alternativa entra solo se
        l'itinerario con la sostituzione resta nel budget (vedi sotto) e se
        non costa più della tappa tolta; tra gli ammessi si preferisce chi ne
-       condivide un tema (`_migliore_alternativa`). Senza
+       condivide un tema (`_migliore_alternativa`). Vincolo "una tappa per
+       luogo": il sostituto non può stare nel `place_id` di un'altra tappa
+       rimasta (distribuzione dei flussi: due tappe nello stesso luogo
+       concentrano le visite e non aggiungono esperienza); il luogo della
+       tappa sostituita è ammesso. I luoghi sono quelli delle tappe correnti
+       AL MOMENTO della scelta (sostituzioni precedenti comprese), escluse le
+       tappe stub. Senza
        alternativa ammissibile la tappa resta, con esito
        `MANTENUTA_SENZA_ALTERNATIVA` e una frase in coda al `reason`.
     2. stanchezza > soglia: taglia le tappe in coda oltre ~2/3 del tempo
@@ -1149,11 +1180,21 @@ def adapt_itinerary(
         arrivo_di = partial(
             _arrivo_in_posizione, ora_partenza=signal.ora, precedenti=correnti[:i]
         )
+        # Una tappa per luogo: luoghi delle ALTRE tappe correnti in questo
+        # momento (le sostituzioni già fatte contano), esclusa la i-esima che
+        # si sostituisce. Gli stub non hanno un luogo reale: il loro
+        # `place_id` fittizio è l'`experience_id`, e non entra nell'insieme.
+        luoghi_occupati = {
+            c.experience.place_id
+            for j, c in enumerate(correnti)
+            if j != i and not c.senza_candidato
+        }
         alt = _migliore_alternativa(
             candidates=candidates,
             signal=signal,
             profile=profilo_effettivo,
             esclusi=usati,
+            luoghi_occupati=luoghi_occupati,
             richiede_accessibile=richiede_accessibile,
             solo_al_chiuso=piove_e_aperto,
             max_affollamento=SOGLIA_AFFOLLAMENTO_ADATTAMENTO,

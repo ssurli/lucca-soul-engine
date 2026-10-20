@@ -29,7 +29,10 @@ curatela. Vivono qui perché sono *verità di sistema*, non design di un compone
 3. Composizione a budget con diversificazione → `_seleziona_tappe`, che applica il filtro
    duro 6 (orari, `rules.aperta_durante`) slot per slot, all'ARRIVO del candidato (vedi §2):
    un candidato chiuso in uno slot è saltato come uno fuori budget, resta tra i rimanenti
-   e può entrare in uno slot successivo. Lo score non lo scavalca.
+   e può entrare in uno slot successivo. Lo score non lo scavalca. **Una tappa per luogo**
+   (ondata 1b-2): un candidato il cui `place_id` è già tra le tappe scelte è saltato e non
+   rientra più (prima il tetto era 2). Distribuzione dei flussi: due tappe nello stesso luogo
+   concentrano le visite e non aggiungono esperienza. Le code (passi 5-6) non sono vincolate.
 4. `reason` obbligatorio per ogni tappa → `_costruisci_stops`.
 5. Segnali FLUTTUANTI pertinenti, solo in coda → `_aggiungi_tappe_fluttuanti`.
 6. `:Evento` PROMOSSI pertinenti E in finestra temporale, solo in coda →
@@ -159,7 +162,9 @@ di riscrittura mirata, con conseguenze concrete:
   erano reimplementati a mano — prima mancavano gli orari (trovato da ethics-guardian), poi
   restava fuori `partner_abbonamento_attivo`, per cui un partner con abbonamento non attivo
   poteva essere reintrodotto in adattamento. Chiuso applicando il filtro duro in un solo
-  punto (vedi `docs/LIMITI.md`).
+  punto (vedi `docs/LIMITI.md`). Dall'ondata 1b-2, **una tappa per luogo**: un sostituto non
+  può avere il `place_id` di un'altra tappa rimasta (escluso quello della tappa che sostituisce:
+  facciata → interno della stessa chiesa resta ammesso); gli stub non occupano luoghi.
 - **Le tappe MANTENUTE ripassano `sospesa`, non gli altri filtri statici** (ondata 1b-2,
   commit A2): al passo 4 (`_taglia_fuori_orario`) una tappa con candidato reale e
   `sospesa=True` esce con `tagliata_sospesa`, prima del controllo orari. Accessibilità,

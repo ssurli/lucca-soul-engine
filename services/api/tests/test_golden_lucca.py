@@ -81,6 +81,67 @@ fattore < 1, ogni chiave di un luogo con fattore < 1 cambia (0 invariate), zero 
 attribuite; ricalcolando con il gating disattivato si riottiene esattamente il golden
 precedente. Pesi, termine strutturale e cold start invariati.
 
+SETTIMA modifica autorizzata (2026-10-20, ondata 1b-2, regola una tappa per luogo), SOLO
+in `lucca_itinerari.json` (l'`atteso` di 25 casi su 78; richieste e altri 53 `atteso`
+identici; `lucca_punteggi.json` byte-identico, verificato con `cmp`). Motivo:
+`_seleziona_tappe` ammette al massimo UNA esperienza per `place_id` (prima 2) e, in
+adattamento, un sostituto non puo' avere il `place_id` di un'altra tappa rimasta (il
+luogo della tappa sostituita resta ammesso). Attribuzione verificata da script, caso per
+caso (zero non attribuiti): tipo (a) = compose il cui `atteso` precedente aveva due tappe
+nello stesso `place_id`; tipo (b) = adapt in cui un sostituto precedente stava nel luogo
+di un'altra tappa rimasta; tipo (c) = slittamento o budget conseguente ad (a)/(b)
+(la tappa tolta libera tempo, entrano altre tappe o cambiano gli orari).
+  compose, 21 casi, tutti con duplicato nell'`atteso` precedente. Duplicati (numero di casi,
+  alcuni ne hanno piu' di uno): San Michele in Foro (facciata + liuteria) 20; Mura urbane
+  (bici + passeggiata) 6; San Frediano (mosaico + telaio) 6; Orto botanico 5; Piazza
+  Napoleone 2. Classe: [a] = solo duplicato (le uniche tappe tolte sono membri di un
+  duplicato, entrano altre nel budget liberato, l'ordine relativo delle restanti non
+  cambia, cambiano gli orari successivi): 9 casi; [a+c] = oltre al duplicato cambiano altre
+  tappe (tolta una non duplicata, o riordino delle restanti per slittamento/diversificazione):
+  12 casi. Tabella (nome profilo|segnale, `-` tolte, `+` aggiunte, senza prefisso `exp-`):
+  accessibile|affollamento [a] -laboratorio-liuteria +casa-puccini-visita
+  accessibile|sereno [a] -laboratorio-liuteria +casa-puccini-visita
+  accessibile|stanchezza [a] -laboratorio-liuteria +tramonto-baluardo,piazza-napoleone
+  accessibile|visti [a+c] -laboratorio-liuteria,piazza-napoleone +casa-puccini-visita
+  ama-arte|affollamento [a+c] -laboratorio-liuteria,giardino-pfanner +concerto-giglio
+  ama-arte|pioggia [a] -facciata-san-michele +mosaico-san-frediano
+  ama-arte|sereno [a+c] -laboratorio-liuteria,giardino-pfanner +concerto-giglio
+  ama-arte|stanchezza [a+c] -laboratorio-liuteria +duomo-volto-santo,piazza-napoleone
+  ama-arte|visti [a+c] -laboratorio-liuteria,giardino-pfanner,piazza-napoleone +concerto-giglio
+  contemplativo|visti [a] -passeggiata-mura +orto-botanico-silenzio
+  curioso|affollamento [a+c] -laboratorio-liuteria +salita-torre-guinigi,piazza-napoleone
+  curioso|pioggia [a] -facciata-san-michele +buccellato-pasticceria
+  curioso|sereno [a+c] -laboratorio-liuteria +casa-puccini-visita
+  curioso|stanchezza [a+c] -laboratorio-liuteria,piazza-napoleone
+      +tramonto-baluardo,salita-torre-guinigi
+  curioso|visti [a+c] -laboratorio-liuteria,salita-torre-guinigi
+      +casa-puccini-visita,tramonto-baluardo
+  onnivoro|affollamento [a] -laboratorio-liuteria,orto-botanico-silenzio,telaio-tessitura
+      +mercato-anfiteatro
+  onnivoro|caldo [a+c] -facciata-san-michele,passeggiata-mura,orto-botanico-silenzio,
+      telaio-tessitura
+      +collezione-villa-guinigi,meccanismo-torre-ore,mercato-anfiteatro
+  onnivoro|pioggia [a+c] -facciata-san-michele,telaio-tessitura,passeggiata-mura,piazza-napoleone
+      +salita-torre-guinigi,mercato-anfiteatro,tramonto-baluardo
+  onnivoro|sereno [a+c] -laboratorio-liuteria,passeggiata-mura,orto-botanico-silenzio,
+      telaio-tessitura
+      +collezione-villa-guinigi,meccanismo-torre-ore,mercato-anfiteatro
+  onnivoro|stanchezza [a] -laboratorio-liuteria,orto-botanico-silenzio,passeggiata-mura,
+      telaio-tessitura
+      +meccanismo-torre-ore,collezione-villa-guinigi,mercato-anfiteatro
+  onnivoro|visti [a] -laboratorio-liuteria,passeggiata-mura,orto-botanico-silenzio,telaio-tessitura,
+      piazza-napoleone
+      +collezione-villa-guinigi,meccanismo-torre-ore
+  adapt, tipo (b), 4 casi: adapt-budget|accessibile|pioggia e adapt-profilo|accessibile|
+  pioggia (telaio-tessitura stava a San Frediano, come il mosaico rimasto: ora
+  giardino-pfanner); adapt-budget|onnivoro|affollamento-moderato (piazza-napoleone nel
+  luogo del buccellato, struscio-fillungo nel luogo della decorazione ceramica);
+  adapt-budget|onnivoro|affollamento-oltre-soglia (piazza-napoleone nel luogo del
+  buccellato). Le richieste di adattamento restano le vecchie: contengono ancora itinerari
+  con due tappe nello stesso luogo, che l'adattamento non tocca.
+  Effetto sulla liuteria: `exp-laboratorio-liuteria` compare in 25 dei 42 compose prima,
+  in 9 dopo.
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte

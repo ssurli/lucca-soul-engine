@@ -2648,3 +2648,26 @@ senza ulteriore taratura.
 - **In demo il recommender quasi certamente non agisce**: l'app non invia eventi (`POST /events`),
   quindi sotto la soglia di massa 20 l'ordinamento è quello di `calcola_score`. Non verificato su
   Neon.
+
+## Ondata 1b-2: una tappa per luogo (APERTO)
+
+Dal 2026-10-20 la composizione ammette al massimo un'esperienza per luogo (prima due) e in
+adattamento un sostituto non può stare nel luogo di un'altra tappa rimasta. Motivo: distribuzione
+dei flussi.
+
+- **Le code non sono vincolate.** Un segnale fluttuante o un evento promosso in un luogo già in
+  itinerario viene aggiunto in coda comunque: la regola riguarda le esperienze.
+- **I doppioni già presenti restano.** Un itinerario ricevuto in adattamento con due tappe nello
+  stesso luogo, non toccate dal segnale, le conserva: la regola vincola solo i sostituti.
+- **Esperienze diverse nello stesso luogo non stanno più insieme** (per esempio il liutaio e la
+  facciata di San Michele): una delle due resta fuori anche quando sarebbero entrambe pertinenti.
+- **La visibilità di un'esperienza dipende dal luogo che condivide**, per struttura dei dati e non
+  per trattamento: la regola non legge partner né prezzo, entra la più pertinente (tie-break per id).
+  Nel golden il laboratorio del liutaio (partner, unica esperienza prenotabile) passa da 25 a 9
+  composizioni su 42 perché condivide il luogo con la facciata di San Michele. Va detto con chiarezza
+  a Comune e partner: la presenza non è promettibile né acquistabile.
+- **La frase della tappa mantenuta senza alternativa non nomina la regola del luogo** ("compatibile
+  con questo percorso"): è veritiera ma non distingue "nessuna alternativa" da "alternative nel luogo
+  di un'altra tappa". Un motivo distinto richiederebbe una modifica del contratto.
+- **La regola ha tolto il margine al test di concentrazione del recommender**: vedi la sezione
+  "Recommender: correzione provvisoria dell'effetto gregge".
