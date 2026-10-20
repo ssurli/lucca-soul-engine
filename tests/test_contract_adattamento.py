@@ -20,6 +20,7 @@ ESITI_DI_TAGLIO = [
     EsitoAdattamento.TAGLIATA_STANCHEZZA,
     EsitoAdattamento.TAGLIATA_TETTO_GIORNATA,
     EsitoAdattamento.TAGLIATA_ORARIO,
+    EsitoAdattamento.TAGLIATA_SOSPESA,
 ]
 ESITI_DI_TAPPA = [
     EsitoAdattamento.NON_TOCCATA,
@@ -62,6 +63,7 @@ def test_esiti_hanno_i_valori_canonici() -> None:
         "tagliata_stanchezza",
         "tagliata_tetto_giornata",
         "tagliata_orario",
+        "tagliata_sospesa",
     }
 
 

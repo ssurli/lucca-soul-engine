@@ -47,6 +47,7 @@ from .rules import (
     TOLLERANZA_DIVERSITA,
     aperta_durante,
     calcola_score,
+    esperienza_sospesa,
     eventi_promossi_pertinenti,
     frase_bagliore,
     giorno_occorrenza_attesa,
@@ -1018,26 +1019,31 @@ def adapt_itinerary(
        tappe che finirebbero oltre le 24:00 escono e vanno in
        `tappe_escluse` (`TAGLIATA_TETTO_GIORNATA`). Vale sempre, anche per
        un itinerario senza budget.
-    4. orari di apertura (`rules.aperta_durante`, filtro duro 6): OGNI tappa
-       rimasta, anche non toccata, è ricontrollata sull'arrivo che il
-       visitatore vedrà; quelle chiuse per [arrivo, arrivo + durata] escono
-       in `tappe_escluse` (`TAGLIATA_ORARIO`). Timeline
-       (`_taglia_fuori_orario`): se i passi 1-3 non hanno cambiato nulla si
-       usano gli arrivi RICEVUTI; se lì una tappa è chiusa, esce, e le
-       restanti sono rivalutate sugli arrivi ricalcolati da `signal.ora`. Se
-       i passi 1-3 hanno cambiato qualcosa, un solo passaggio in ordine da
-       `signal.ora`, dove l'arrivo di ogni tappa dipende dalle sole tappe
-       TENUTE prima di lei. Le tappe stub (fluttuanti, eventi promossi) non
-       hanno orari e non escono mai per orario. Un taglio per orario accende
-       `adattato_da_segnale`.
+    4. sospensione e orari di apertura (`_taglia_fuori_orario`): OGNI tappa
+       rimasta con un candidato reale, anche non toccata, è ricontrollata.
+       Prima la sospensione (`rules.esperienza_sospesa`): un'esperienza
+       diventata `sospesa` dopo la composizione esce in `tappe_escluse`
+       (`TAGLIATA_SOSPESA`), anche se fosse pure fuori orario. Poi gli orari
+       (`rules.aperta_durante`, filtro duro 6) sull'arrivo che il visitatore
+       vedrà: le tappe chiuse per [arrivo, arrivo + durata] escono in
+       `tappe_escluse` (`TAGLIATA_ORARIO`). Timeline, uguale per i due tagli:
+       se i passi 1-3 non hanno cambiato nulla si usano gli arrivi RICEVUTI;
+       se lì una tappa esce, le restanti sono rivalutate sugli arrivi
+       ricalcolati da `signal.ora`. Se i passi 1-3 hanno cambiato qualcosa,
+       un solo passaggio in ordine da `signal.ora`, dove l'arrivo di ogni
+       tappa dipende dalle sole tappe TENUTE prima di lei. Le tappe stub
+       (fluttuanti, eventi promossi) non hanno orari né `sospesa` e non
+       escono mai a questo passo. Un taglio per sospensione o per orario
+       accende `adattato_da_segnale`.
 
     Filtri statici e tappe MANTENUTE: le tappe che restano (non toccate o
-    mantenute senza alternativa) NON ripassano `rules.passa_filtri_statici`,
-    solo `rules.aperta_durante` (passo 4). In particolare un'esperienza
-    diventata `sospesa` dopo la composizione resta nell'itinerario finché un
-    segnale non la sostituisce; i SOSTITUTI, invece, passano tutti i filtri
-    duri (`_migliore_alternativa` -> `rules.passa_filtri_duri`). Scelta del
-    committente, documentata in `docs/LIMITI.md`.
+    mantenute senza alternativa) ripassano la sospensione e gli orari
+    (passo 4), non gli altri filtri statici (accessibilità, luoghi già
+    visti, affollamento critico, partner non attivo): quelli li ripassano
+    solo i SOSTITUTI (`_migliore_alternativa` -> `rules.passa_filtri_duri`).
+    La sospensione è letta con la stessa funzione di
+    `rules.passa_filtri_statici` (`rules.esperienza_sospesa`): un solo punto
+    la interpreta.
 
     Sostituzioni e orari: il sostituto in posizione i è scelto sull'arrivo
     che il visitatore vedrà, `signal.ora + _minuti_usati_permanenti(
@@ -1056,7 +1062,8 @@ def adapt_itinerary(
     Esito: ogni tappa presente ha `esito_adattamento` valorizzato
     (`NON_TOCCATA`, `SOSTITUITA`, `MANTENUTA_SENZA_ALTERNATIVA`), riferito
     SOLO a questo segnale. `adattato_da_segnale` è True se e solo se almeno
-    una tappa è sostituita o tagliata (stanchezza, tetto o orario). Se
+    una tappa è sostituita o tagliata (stanchezza, tetto, sospensione o
+    orario). Se
     nessuna lo è, gli arrivi restano quelli ricevuti e cambiano solo
     `reason` ed esito; altrimenti gli arrivi
     sono ricalcolati da `signal.ora`. Le tappe non toccate conservano il
@@ -1199,18 +1206,20 @@ def adapt_itinerary(
     )
     correnti = entro
 
-    # 4. Orari di apertura, sull'arrivo che il visitatore VEDRÀ (vedi la
-    # docstring: arrivi ricevuti se nulla è cambiato, altrimenti da
-    # `signal.ora`). Le tappe tolte non spostano mai in avanti le successive:
-    # il tetto della giornata del passo 3 resta rispettato.
+    # 4. Sospensione, poi orari di apertura sull'arrivo che il visitatore
+    # VEDRÀ (vedi la docstring: arrivi ricevuti se nulla è cambiato,
+    # altrimenti da `signal.ora`). Le tappe tolte non spostano mai in avanti
+    # le successive: il tetto della giornata del passo 3 resta rispettato.
     cambiato_prima = sostituite or bool(nuove_escluse)
-    correnti, fuori_orario = _taglia_fuori_orario(
+    correnti, tolte = _taglia_fuori_orario(
         correnti,
         signal,
         arrivi_ricevuti=None if cambiato_prima else [s.arrivo for s in itinerary.stops],
     )
-    nuove_escluse.extend(_escludi(c, EsitoAdattamento.TAGLIATA_ORARIO) for c in fuori_orario)
+    nuove_escluse.extend(_escludi(c, esito) for c, esito in tolte)
 
+    # Un taglio per sospensione o per orario aggiunge una voce a
+    # `nuove_escluse`, quindi accende `cambiato`.
     cambiato = sostituite or bool(nuove_escluse)
 
     if cambiato:
@@ -1282,6 +1291,7 @@ _FRASE_TAGLIATA_ORARIO = (
     "Tolta: all'ora in cui ci arriveresti il luogo è chiuso, "
     "o chiude prima della fine della visita."
 )
+_FRASE_TAGLIATA_SOSPESA = "Tolta: in questo periodo il luogo è chiuso."
 
 #: Riconosce la frase di affollamento qualunque sia il luogo. Il luogo è
 #: "temperato": non può contenere di nuovo il prefisso, così la corrispondenza
@@ -1310,8 +1320,8 @@ def _frase_esito(
     - `MANTENUTA_SENZA_ALTERNATIVA`: frase della pioggia (anche se il luogo è
       pure affollato) o dell'affollamento a `luogo`; va in coda al `reason`,
       prima della disclosure partner;
-    - `TAGLIATA_STANCHEZZA` / `TAGLIATA_TETTO_GIORNATA` / `TAGLIATA_ORARIO`:
-      `reason` della `TappaEsclusa`;
+    - `TAGLIATA_STANCHEZZA` / `TAGLIATA_TETTO_GIORNATA` / `TAGLIATA_ORARIO` /
+      `TAGLIATA_SOSPESA`: `reason` della `TappaEsclusa`;
     - `NON_TOCCATA` / `SOSTITUITA`: nessuna frase (`None`); la sostituita ha
       il proprio `reason` di sostituzione."""
     if esito is EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA:
@@ -1324,6 +1334,8 @@ def _frase_esito(
         return _FRASE_TAGLIATA_TETTO
     if esito is EsitoAdattamento.TAGLIATA_ORARIO:
         return _FRASE_TAGLIATA_ORARIO
+    if esito is EsitoAdattamento.TAGLIATA_SOSPESA:
+        return _FRASE_TAGLIATA_SOSPESA
     return None
 
 
@@ -1474,56 +1486,71 @@ def _taglia_fuori_orario(
     signal: Signal,
     *,
     arrivi_ricevuti: list[time] | None,
-) -> tuple[list[_CandidatoConReason], list[_CandidatoConReason]]:
-    """Passo 4 di `adapt_itinerary`: OGNI tappa (anche non toccata dal
-    segnale) è ricontrollata con `rules.aperta_durante` sull'arrivo che il
-    visitatore vedrà. Restituisce (tappe tenute, tappe tolte), entrambe
+) -> tuple[list[_CandidatoConReason], list[tuple[_CandidatoConReason, EsitoAdattamento]]]:
+    """Passo 4 di `adapt_itinerary`: OGNI tappa con un candidato reale (anche
+    non toccata dal segnale) è ricontrollata, in quest'ordine:
+    1. sospensione (`rules.esperienza_sospesa`): se l'esperienza è sospesa
+       esce con `TAGLIATA_SOSPESA`, qualunque sia il suo arrivo e anche se
+       fosse pure fuori orario;
+    2. orari (`rules.aperta_durante`) sull'arrivo che il visitatore vedrà:
+       se è chiusa esce con `TAGLIATA_ORARIO`.
+    Restituisce (tappe tenute, tappe tolte con il loro esito), entrambe
     nell'ordine dell'itinerario.
 
-    Timeline:
+    Timeline (identica per i due tagli: entrambi liberano tempo):
     - `arrivi_ricevuti` non `None` (nulla è cambiato ai passi 1-3: gli arrivi
       restituiti sarebbero quelli ricevuti): ogni tappa è valutata al SUO
-      arrivo ricevuto. Se sono tutte aperte, nulla cambia. Se almeno una è
-      chiusa, quelle tappe sono tolte, l'itinerario diventa "cambiato" e si
-      prosegue come sotto sulle restanti (gli arrivi saranno ricalcolati da
-      `signal.ora`, quindi vanno rivalutati lì).
+      arrivo ricevuto. Se nessuna esce, nulla cambia. Se almeno una esce
+      (sospesa o chiusa), quelle tappe sono tolte, l'itinerario diventa
+      "cambiato" e si prosegue come sotto sulle restanti (gli arrivi saranno
+      ricalcolati da `signal.ora`, quindi vanno rivalutati lì).
     - altrimenti (o dopo il caso sopra): UN solo passaggio in ordine, con
       l'arrivo di ogni tappa calcolato da `signal.ora` sulle sole tappe
       TENUTE prima di lei (`_arrivo_in_posizione`, la progressione di
       `_ricostruisci_stops`). Togliere una tappa anticipa le successive, che
       sono valutate già al nuovo arrivo.
-    Così ogni tappa restituita è aperta all'arrivo con cui viene restituita.
+    Così ogni tappa restituita non è sospesa ed è aperta all'arrivo con cui
+    viene restituita.
 
     Le tappe stub (senza candidato: fluttuanti, eventi promossi, esperienze
-    sparite) non hanno orari e non sono mai tolte; contano però nella
-    timeline. Con `orari_apertura` vuoti o `signal.giorno_settimana` `None`
-    nessuna tappa è mai tolta: comportamento identico a prima."""
+    sparite) non hanno orari né `sospesa` e non sono mai tolte; contano però
+    nella timeline. Senza esperienze sospese, con `orari_apertura` vuoti o
+    `signal.giorno_settimana` `None` nessuna tappa è mai tolta: comportamento
+    identico a prima."""
     giorno = signal.giorno_settimana
+
+    def esito_uscita(cand: _CandidatoConReason, arrivo: time) -> EsitoAdattamento | None:
+        if cand.senza_candidato:
+            return None
+        if esperienza_sospesa(cand.experience):
+            return EsitoAdattamento.TAGLIATA_SOSPESA
+        if not aperta_durante(cand.experience, giorno, arrivo):
+            return EsitoAdattamento.TAGLIATA_ORARIO
+        return None
+
+    esiti: dict[int, EsitoAdattamento] = {}  # id(candidato) -> esito di uscita
     restanti = correnti
-    tolte_ricevuti: list[int] = []
     if arrivi_ricevuti is not None:
-        tolte_ricevuti = [
-            k
-            for k, (cand, arrivo) in enumerate(zip(correnti, arrivi_ricevuti, strict=True))
-            if not cand.senza_candidato and not aperta_durante(cand.experience, giorno, arrivo)
-        ]
-        if not tolte_ricevuti:
+        for cand, arrivo in zip(correnti, arrivi_ricevuti, strict=True):
+            esito = esito_uscita(cand, arrivo)
+            if esito is not None:
+                esiti[id(cand)] = esito
+        if not esiti:
             return correnti, []
-        restanti = [c for k, c in enumerate(correnti) if k not in tolte_ricevuti]
+        restanti = [c for c in correnti if id(c) not in esiti]
 
     tenuti: list[_CandidatoConReason] = []
-    tolte_ricalcolo: list[_CandidatoConReason] = []
     for cand in restanti:
         if not cand.senza_candidato:
             arrivo = _arrivo_in_posizione(cand, ora_partenza=signal.ora, precedenti=tenuti)
-            if not aperta_durante(cand.experience, giorno, arrivo):
-                tolte_ricalcolo.append(cand)
+            esito = esito_uscita(cand, arrivo)
+            if esito is not None:
+                esiti[id(cand)] = esito
                 continue
         tenuti.append(cand)
 
     # Tolte nell'ordine dell'itinerario ricevuto (gli oggetti sono distinti).
-    tolte_id = {id(c) for c in tolte_ricalcolo} | {id(correnti[k]) for k in tolte_ricevuti}
-    tolte = [c for c in correnti if id(c) in tolte_id]
+    tolte = [(c, esiti[id(c)]) for c in correnti if id(c) in esiti]
     return tenuti, tolte
 
 
@@ -1537,7 +1564,8 @@ def _esclusa_canonica(experience_id: str, esito: EsitoAdattamento) -> TappaEsclu
 
 
 def _escludi(cand: _CandidatoConReason, esito: EsitoAdattamento) -> TappaEsclusa:
-    """`TappaEsclusa` per una tappa tolta (stanchezza, tetto, orario): in
+    """`TappaEsclusa` per una tappa tolta (stanchezza, tetto, sospensione,
+    orario): in
     `tappe_escluse` finisce la tappa che il visitatore aveva
     (`id_originale`), non la sua eventuale sostituta."""
     return _esclusa_canonica(cand.id_originale or cand.experience.id, esito)
@@ -1552,7 +1580,8 @@ def _unisci_escluse(
     `experience_id`, vince la più recente (che va in fondo). Nessun tetto di
     lunghezza. Un'esperienza tornata tra le tappe non è più esclusa.
 
-    Vale per ogni esito di taglio, `TAGLIATA_ORARIO` compreso.
+    Vale per ogni esito di taglio, `TAGLIATA_ORARIO` e `TAGLIATA_SOSPESA`
+    compresi.
 
     Il `reason` di OGNI voce è rigenerato dall'esito (`_esclusa_canonica`):
     le esclusioni ricevute dal client portano un testo libero, e il testo

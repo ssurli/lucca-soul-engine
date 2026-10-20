@@ -2604,15 +2604,19 @@ mai nello scoring. Si sospende invece di togliere l'esperienza dal seed perché 
 
 - **È un interruttore manuale del dataset.** Nessuna data di riapertura: va riportato a `False` a
   mano, e il seed ricaricato su Aura.
-- **Le tappe MANTENUTE in adattamento non lo ripassano** (scelta del committente, 2026-10-20).
-  `adapt_itinerary` ricontrolla sulle tappe rimaste solo gli orari: un itinerario composto prima
-  della sospensione e adattato dopo conserva la tappa sospesa, finché un segnale non la sostituisce.
-  I sostituti passano invece tutti i filtri duri. Il caso richiede un itinerario composto prima di
-  una ricarica del seed: gli itinerari della demo nascono al momento.
+- **Tappe MANTENUTE in adattamento: CHIUSO (commit A2, 2026-10-20).** Nel commit A le tappe rimaste
+  dopo un adattamento non ripassavano `sospesa`. Ora il passo che ricontrolla ogni tappa (lo stesso di
+  `tagliata_orario`) toglie una tappa sospesa con esito `tagliata_sospesa` e reason "Tolta: in questo
+  periodo il luogo è chiuso.". Le tappe stub (fluttuanti, eventi promossi) non hanno `sospesa` e non
+  sono toccate.
 - **Un valore non booleano in Aura blocca `/itinerary`** (fail-closed, come gli orari): proprietà
   assente vale `False`; stringhe, numeri o altri tipi sollevano un errore sull'intera richiesta.
-- **La prenotazione diretta non controlla `sospesa`.** `marketplace.service.request_booking`
-  verifica `prenotabile` e gli orari, non la sospensione: un'esperienza sospesa e prenotabile
-  riceverebbe ancora prenotazioni. Oggi non accade: l'unica esperienza prenotabile del seed
-  (`exp-laboratorio-liuteria`) non è sospesa. Va chiuso prima di sospendere un'esperienza
-  prenotabile (rilievo N2 di `ethics-guardian`, 2026-10-20).
+- **Prenotazione diretta: CHIUSO (commit A2, 2026-10-20).** `marketplace.service.request_booking`
+  rifiuta un'esperienza sospesa con `ExperienceNotAvailableError`, come per gli orari; il BFF passa
+  `ExperienceNode.sospesa` (rilievo N2 di `ethics-guardian`).
+- **Le tappe mantenute non ripassano gli altri filtri statici** (preesistente, segnalato da
+  `ethics-guardian` il 2026-10-20). In adattamento una tappa rimasta ripassa solo `sospesa` e gli
+  orari: accessibilità, luoghi già visti, affollamento critico e abbonamento partner valgono come
+  alla composizione. Il caso concreto: una tappa partner il cui abbonamento scade dopo la
+  composizione resta nell'itinerario fino alla composizione successiva. Pioggia e affollamento
+  oltre 0.7 riscrivono comunque la tappa.

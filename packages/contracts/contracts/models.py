@@ -712,6 +712,11 @@ class EsitoAdattamento(str, Enum):
       tra le `stops`. `TAGLIATA_ORARIO`: all'arrivo ricalcolato il luogo è
       chiuso (l'intervallo [arrivo, arrivo + durata] non cade in una fascia
       di apertura).
+    - `TAGLIATA_SOSPESA`: la tappa è uscita in adattamento perché la sua
+      esperienza è sospesa (`ExperienceNode.sospesa=True`: esiste ma in questo
+      periodo non si può fare). Vale solo per le tappe con un candidato reale;
+      le tappe stub (fluttuanti, eventi promossi) non hanno `sospesa`. Va in
+      `tappe_escluse` con reason "Tolta: in questo periodo il luogo è chiuso."
     """
 
     NON_TOCCATA = "non_toccata"
@@ -720,6 +725,7 @@ class EsitoAdattamento(str, Enum):
     TAGLIATA_STANCHEZZA = "tagliata_stanchezza"
     TAGLIATA_TETTO_GIORNATA = "tagliata_tetto_giornata"
     TAGLIATA_ORARIO = "tagliata_orario"
+    TAGLIATA_SOSPESA = "tagliata_sospesa"
 
 
 _ESITI_TAGLIO = frozenset(
@@ -727,6 +733,7 @@ _ESITI_TAGLIO = frozenset(
         EsitoAdattamento.TAGLIATA_STANCHEZZA,
         EsitoAdattamento.TAGLIATA_TETTO_GIORNATA,
         EsitoAdattamento.TAGLIATA_ORARIO,
+        EsitoAdattamento.TAGLIATA_SOSPESA,
     }
 )
 
@@ -753,7 +760,7 @@ class ItineraryStop(ContractModel):
 
 
 class TappaEsclusa(ContractModel):
-    """Tappa tolta da un adattamento (stanchezza, tetto della giornata, orario)."""
+    """Tappa tolta da un adattamento (stanchezza, tetto della giornata, orario, sospesa)."""
 
     experience_id: str
     esito: EsitoAdattamento
@@ -765,7 +772,7 @@ class TappaEsclusa(ContractModel):
         if v not in _ESITI_TAGLIO:
             raise ValueError(
                 "esito di TappaEsclusa ammesso solo: tagliata_stanchezza, "
-                "tagliata_tetto_giornata, tagliata_orario"
+                "tagliata_tetto_giornata, tagliata_orario, tagliata_sospesa"
             )
         return v
 
@@ -774,8 +781,8 @@ class Itinerary(ContractModel):
     """Itinerario composto (e, eventualmente, adattato a un segnale).
 
     `adattato_da_segnale` è True se e solo se l'ultimo adattamento ha almeno
-    una tappa SOSTITUITA o una tappa TAGLIATA (stanchezza, tetto o orario:
-    chiusa all'arrivo ricalcolato). Una tappa
+    una tappa SOSTITUITA o una tappa TAGLIATA (stanchezza, tetto, orario:
+    chiusa all'arrivo ricalcolato, o sospesa). Una tappa
     mantenuta senza alternativa NON lo accende (l'app lo mostra come badge
     "Riscritta"): quel caso è portato da `esito_adattamento` e da una frase
     nel `reason`.

@@ -333,3 +333,43 @@ def test_percentuale_commissione_letta_dal_contratto_non_duplicata() -> None:
     from marketplace.service import _PERCENTUALE_COMMISSIONE_DEFAULT
 
     assert _PERCENTUALE_COMMISSIONE_DEFAULT == CommissionRecord.model_fields["percentuale"].default
+
+
+# --- sospensione (ondata 1b-2) ----------------------------------------------
+
+
+def test_request_booking_sospesa_rifiuta_e_non_scrive(repo, booking_request_factory) -> None:
+    with pytest.raises(ExperienceNotAvailableError):
+        request_booking(
+            repo, booking_request_factory(), prezzo_eur=20.0, prenotabile=True, sospesa=True
+        )
+    assert repo._bookings == {}
+
+
+def test_request_booking_sospesa_vince_anche_con_orario_valido(
+    repo, booking_request_factory
+) -> None:
+    sabato = FasciaApertura(giorno_settimana=5, apertura=time(14, 0), chiusura=time(19, 0))
+    with pytest.raises(ExperienceNotAvailableError):
+        request_booking(
+            repo, booking_request_factory(), prezzo_eur=20.0, prenotabile=True,
+            orari_apertura=[sabato], sospesa=True,  # sabato 15:00: orario valido
+        )
+    assert repo._bookings == {}
+
+
+def test_request_booking_non_prenotabile_precede_la_sospensione(
+    repo, booking_request_factory
+) -> None:
+    with pytest.raises(ExperienceNotBookableError):
+        request_booking(
+            repo, booking_request_factory(), prezzo_eur=20.0, prenotabile=False, sospesa=True
+        )
+
+
+def test_request_booking_sospesa_false_non_cambia_nulla(repo, booking_request_factory) -> None:
+    b = request_booking(
+        repo, booking_request_factory(), prezzo_eur=20.0, prenotabile=True, sospesa=False
+    )
+    assert b.stato == BookingStatus.RICHIESTA
+    assert repo.get(b.id) == b

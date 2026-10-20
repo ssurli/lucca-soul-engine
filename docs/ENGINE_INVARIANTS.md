@@ -50,7 +50,8 @@ nessun chiamante può tornare al controllo all'ora del segnale.
    questo periodo non si può fare (chiusura stagionale, restauro). Si sospende invece di
    toglierla dal seed perché il loader fa solo `MERGE`: un nodo tolto resterebbe orfano su
    Aura. Vale a prescindere da giorno, ora e orari; è un interruttore di PRESENZA, non un
-   input dello scoring. Le tappe MANTENUTE in `adapt_itinerary` non lo ripassano (§6).
+   input dello scoring. Le tappe MANTENUTE in `adapt_itinerary` sono ricontrollate al passo 4
+   ed escono con `tagliata_sospesa` (§6).
 2. `profile.accessibilita_richiesta` → solo `esperienza.accessibile=True`. Non negoziabile:
    nessuno score può reintrodurre una tappa inaccessibile a chi l'ha chiesta.
 3. `esperienza.place_id in luoghi_gia_visti` → esclusa.
@@ -93,8 +94,8 @@ Verificato sia da lettura diretta sia da un test-guard AST + un test comportamen
   permanente vede il proprio punteggio cambiare per via di un segnale fluttuante.
 - **`ExperienceNode.orari_apertura`** e gli **arrivi** delle tappe — letti SOLO dal filtro
   duro 6 (`aperta_durante`), mai dallo scoring.
-- **`ExperienceNode.sospesa`** — letto SOLO dal filtro duro 1 (`passa_filtri_statici`), mai
-  dallo scoring (test-guard AST).
+- **`ExperienceNode.sospesa`** — letto SOLO tramite `rules.esperienza_sospesa` (filtro duro 1
+  e passo 4 dell'adattamento), mai dallo scoring (test-guard AST).
 - **Il bagliore** (`tracce_per_luogo`, `rules.bagliore`/`frase_bagliore`/`tema_dominante`/
   `peso_traccia`, `docs/PROMOZIONE_TRACCIA.md` §2b) — mai letto da `calcola_score` né da
   `passa_filtri_duri`. Entra SOLO nel `reason` di tappe permanenti GIÀ scelte
@@ -118,6 +119,7 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 |---|---|---|
 | `contracts.rientra_in_orario` | `packages/contracts/contracts/models.py` | `rules.aperta_durante` (motore, con `durata_min=esperienza.durata_min`) · `marketplace.service.request_booking` (prenotazione, `durata_min=0`) |
 | `rules.aperta_durante` | `rules.py` | `rules.passa_filtri_duri` · `engine._seleziona_tappe` (composizione, all'arrivo di ogni slot) · `engine._taglia_fuori_orario` (adattamento, passo 4) |
+| `rules.esperienza_sospesa` | `rules.py` | `rules.passa_filtri_statici` (filtro duro 1) · `engine._taglia_fuori_orario` (adattamento, passo 4: `tagliata_sospesa`) |
 | `rules.passa_filtri_statici` | `rules.py` | `rules.passa_filtri_duri` · `compose_itinerary` (pre-filtro prima dello scoring) |
 | `rules.passa_filtri_duri` | `rules.py` | `engine._migliore_alternativa` (adattamento, con `luoghi_gia_visti=[]` e `arrivo` del candidato nella posizione della tappa tolta) |
 | `contracts.segnale_fluttuante_ammissibile` | `packages/contracts/contracts/models.py:117` | `rules.segnali_fluttuanti_pertinenti` |
@@ -158,10 +160,12 @@ di riscrittura mirata, con conseguenze concrete:
   restava fuori `partner_abbonamento_attivo`, per cui un partner con abbonamento non attivo
   poteva essere reintrodotto in adattamento. Chiuso applicando il filtro duro in un solo
   punto (vedi `docs/LIMITI.md`).
-- **Le tappe MANTENUTE non ripassano `passa_filtri_statici`** (ondata 1b-2, scelta del
-  committente): ricontrolla solo gli orari (`_taglia_fuori_orario`). Un'esperienza sospesa
-  DOPO la composizione resta nell'itinerario finché un segnale non la sostituisce; ogni
-  sostituto passa invece tutti i filtri duri (`docs/LIMITI.md`).
+- **Le tappe MANTENUTE ripassano `sospesa`, non gli altri filtri statici** (ondata 1b-2,
+  commit A2): al passo 4 (`_taglia_fuori_orario`) una tappa con candidato reale e
+  `sospesa=True` esce con `tagliata_sospesa`, prima del controllo orari. Accessibilità,
+  luoghi visti, affollamento critico e abbonamento partner NON sono ricontrollati sulle tappe
+  mantenute (comportamento preesistente, non cambiato dall'ondata 1b-2): pioggia e
+  affollamento oltre 0.7 le riscrivono al passo 1.
 - **Non chiama mai `segnali_fluttuanti_pertinenti`**: un segnale fluttuante comparso *dopo*
   la composizione iniziale non entra mai via `adapt_itinerary` — solo `compose_itinerary`
   ne tiene conto.

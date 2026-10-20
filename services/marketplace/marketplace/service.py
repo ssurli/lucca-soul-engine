@@ -76,15 +76,17 @@ class ExperienceNotBookableError(MarketplaceError):
 
 
 class ExperienceNotAvailableError(MarketplaceError):
-    """`BookingRequest.quando` cade fuori dalle fasce settimanali dichiarate
+    """L'esperienza non è disponibile: o è sospesa (`ExperienceNode.sospesa=
+    True`, esiste ma in questo periodo non si può fare), o
+    `BookingRequest.quando` cade fuori dalle fasce settimanali dichiarate
     in `ExperienceNode.orari_apertura` (validazione MINIMA, Wave 3a+: fasce
     ricorrenti soltanto — niente capienza, conflitti di slot o eccezioni
     calendariali, vedi `docs/LIMITI.md`). Distinta da
     `ExperienceNotBookableError`: quella dice "questa esperienza non si
     prenota mai", questa dice "non in QUESTO momento". Un'esperienza che non
     dichiara orari (`orari_apertura` vuota, il default) non solleva MAI
-    questo errore — nessun vincolo fabbricato per un'esperienza che non ne
-    ha dichiarato uno."""
+    questo errore PER GLI ORARI — nessun vincolo fabbricato per un'esperienza
+    che non ne ha dichiarato uno; la sospensione, invece, la solleva sempre."""
 
 
 class BookingNotFoundError(MarketplaceError):
@@ -105,6 +107,7 @@ def request_booking(
     prezzo_eur: float,
     prenotabile: bool,
     orari_apertura: list[FasciaApertura] | None = None,
+    sospesa: bool = False,
     id_generator: Callable[[], str] | None = None,
 ) -> Booking:
     """Crea una `Booking` in stato `RICHIESTA` e la persiste.
@@ -122,12 +125,19 @@ def request_booking(
     partner (docs/DATA_CONTRACTS.md §2), lo decide solo questo flag,
     verificato in un solo punto.
 
+    `sospesa` — stesso pattern di `orari_apertura`: arriva da chi chiama,
+    letto dall'`ExperienceNode` corrente (`ExperienceNode.sospesa`).
+    Se `True` l'esperienza esiste ma in questo periodo non si può fare:
+    rifiuta SUBITO (`ExperienceNotAvailableError`, nessuna scrittura). Il
+    controllo viene DOPO `prenotabile` e PRIMA degli orari. Default `False`:
+    i chiamanti che non lo passano mantengono il comportamento precedente.
+
     `orari_apertura` (validazione MINIMA, Wave 3a+): stesso pattern di
     `prezzo_eur`/`prenotabile`, arriva da chi chiama, letto
     dall'`ExperienceNode` corrente. Rifiuta SUBITO (`ExperienceNotAvailableError`,
     nessuna scrittura) se `request.quando` cade fuori da TUTTE le fasce
     dichiarate — usa `contracts.rientra_in_orario`, la STESSA funzione
-    riusata dal quinto filtro duro di `experience_engine.rules.
+    riusata dal filtro duro 6 (orari) di `experience_engine.rules.
     passa_filtri_duri` (stessa informazione, un solo modello, due usi).
     `None`/lista vuota (default) = nessun orario dichiarato: non solleva mai
     questo errore per un'esperienza che non ha dichiarato vincoli — nessuna
@@ -145,6 +155,13 @@ def request_booking(
             f"esperienza id={request.experience_id!r} non è prenotabile "
             "(ExperienceNode.prenotabile=False): richiesta rifiutata, "
             "nessuna prenotazione creata."
+        )
+
+    if sospesa:
+        raise ExperienceNotAvailableError(
+            f"esperienza id={request.experience_id!r} è sospesa "
+            "(ExperienceNode.sospesa=True): in questo periodo non si può "
+            "fare, richiesta rifiutata, nessuna prenotazione creata."
         )
 
     if not rientra_in_orario(

@@ -137,6 +137,18 @@ def affinita_temi(temi: list[str], gruppo: AbstractSet[str]) -> float:
     return min(comuni, 2) / 2.0
 
 
+def esperienza_sospesa(esperienza: ExperienceNode) -> bool:
+    """Vero se l'esperienza è SOSPESA in questo periodo (`sospesa=True`:
+    esiste nel grafo ma non si può fare, per chiusura stagionale o restauro).
+
+    UNICO punto del motore che interpreta `ExperienceNode.sospesa` per la
+    decisione di presenza. La usano `passa_filtri_statici` (composizione e
+    sostituti in adattamento) e il passo 4 di `engine.adapt_itinerary` (tappe
+    MANTENUTE, esito `TAGLIATA_SOSPESA`). Vale a prescindere da giorno, ora e
+    `orari_apertura`. È un interruttore di presenza, mai uno score."""
+    return esperienza.sospesa
+
+
 def passa_filtri_statici(
     candidate: GraphCandidate,
     profile: EmotionalProfile,
@@ -155,7 +167,8 @@ def passa_filtri_statici(
       QUANDO è aperta nella settimana, non SE lo è in questo periodo). È un
       interruttore di PRESENZA, non uno score: `calcola_score` non lo legge.
       Primo controllo: un'esperienza sospesa è esclusa qualunque altra cosa
-      valga per lei.
+      valga per lei. La lettura passa da `esperienza_sospesa`, la stessa
+      funzione con cui `adapt_itinerary` toglie le tappe MANTENUTE sospese.
     - `accessibilita_richiesta` => solo esperienze `accessibile=True`.
       L'inclusione non è negoziabile: nessuno score può reintrodurre una
       tappa inaccessibile per una persona che ha chiesto accessibilità.
@@ -174,7 +187,7 @@ def passa_filtri_statici(
     (prima dello scoring) e controlla gli orari slot per slot, all'arrivo.
     """
     esperienza = candidate.experience
-    if esperienza.sospesa:
+    if esperienza_sospesa(esperienza):
         return False
     if profile.accessibilita_richiesta and not esperienza.accessibile:
         return False

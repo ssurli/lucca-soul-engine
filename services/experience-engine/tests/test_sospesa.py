@@ -6,8 +6,9 @@ qualunque cosa dicano orari, score o tema. Vale per ogni candidato, a
 prescindere da `orari_apertura` (che dicono QUANDO e' aperta nella settimana,
 non SE lo e' in questo periodo).
 
-Scelta del committente (documentata in `docs/LIMITI.md`): le tappe MANTENUTE da
-`adapt_itinerary` NON ripassano i filtri statici; il test dedicato la fissa.
+Ondata 1b-2 (cambio voluto del committente): le tappe MANTENUTE da
+`adapt_itinerary` ripassano la sospensione al passo 4; una tappa sospesa esce
+in `tappe_escluse` con `TAGLIATA_SOSPESA` (gli altri filtri statici no).
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from contracts import (
     Itinerary,
     ItineraryStop,
     Signal,
+    TappaEsclusa,
     VisitorContext,
     VocabolarioTemi,
 )
@@ -197,11 +199,18 @@ def test_adapt_affollamento_il_sostituto_ideale_sospeso_non_e_scelto(sospesa: bo
     assert _ids(out) == (["z-altro"] if sospesa else ["a-ideale"])
 
 
-def test_adapt_tappa_mantenuta_gia_sospesa_resta_scelta_del_committente() -> None:
-    """NON e' un bug: le tappe mantenute non ripassano i filtri statici
-    (docs/LIMITI.md). Un itinerario con x, poi sospesa, adattato per un segnale
-    che non tocca x (pioggia, x al chiuso) la conserva; il sostituto di t sceglie
-    invece fra le non sospese."""
+FRASE_SOSPESA = "Tolta: in questo periodo il luogo è chiuso."
+FUORI_ORARIO = [FasciaApertura(giorno_settimana=0, apertura=time(6, 0), chiusura=time(7, 0))]
+
+
+def _esclusa(out: Itinerary, id_: str) -> list[TappaEsclusa]:
+    return [t for t in out.tappe_escluse if t.experience_id == id_]
+
+
+def test_adapt_tappa_mantenuta_sospesa_esce_con_tagliata_sospesa() -> None:
+    """Riscritto (era `..._resta_scelta_del_committente`): il vecchio test
+    fissava che una tappa mantenuta, poi sospesa, restasse NON_TOCCATA. Il
+    committente ha cambiato apposta il comportamento (ondata 1b-2): ora esce."""
     x = _cand("x", sospesa=True, al_chiuso=True, temi=("silenzio",))
     t = _cand("t", al_chiuso=False)
     s = _cand("s", temi=("verde",))
@@ -209,5 +218,104 @@ def test_adapt_tappa_mantenuta_gia_sospesa_resta_scelta_del_committente() -> Non
         _itin([_tappa("x", "10:00"), _tappa("t", "10:30")]), _segnale(meteo="pioggia"),
         [x, t, s],
     )
-    assert _ids(out) == ["x", "s"]
-    assert out.stops[0].esito_adattamento is EsitoAdattamento.NON_TOCCATA
+    assert _ids(out) == ["s"]
+    (e,) = _esclusa(out, "x")
+    assert e.esito is EsitoAdattamento.TAGLIATA_SOSPESA
+    assert e.reason == FRASE_SOSPESA
+    assert out.adattato_da_segnale is True
+
+
+def test_adapt_sospesa_con_segnale_neutro_esce_e_accende_adattato() -> None:
+    x = _cand("x", sospesa=True)
+    y = _cand("y", temi=("verde",))
+    out = _adatta(_itin([_tappa("x", "10:00"), _tappa("y", "10:30")]), _segnale(), [x, y])
+    assert _ids(out) == ["y"]
+    (e,) = _esclusa(out, "x")
+    assert (e.esito, e.reason) == (EsitoAdattamento.TAGLIATA_SOSPESA, FRASE_SOSPESA)
+    assert out.adattato_da_segnale is True
+
+
+def test_adapt_sospesa_e_fuori_orario_esce_come_sospesa() -> None:
+    x = _cand("x", sospesa=True, orari=FUORI_ORARIO)
+    y = _cand("y", temi=("verde",))
+    out = _adatta(
+        _itin([_tappa("x", "10:00"), _tappa("y", "10:30")]), _segnale(data=LUNEDI), [x, y]
+    )
+    (e,) = _esclusa(out, "x")
+    assert e.esito is EsitoAdattamento.TAGLIATA_SOSPESA
+    assert all(t.esito is not EsitoAdattamento.TAGLIATA_ORARIO for t in out.tappe_escluse)
+
+
+def test_adapt_fuori_orario_non_sospesa_resta_tagliata_orario() -> None:
+    """Controllo: l'esito per orario non e' stato rimpiazzato."""
+    x = _cand("x", orari=FUORI_ORARIO)
+    y = _cand("y", temi=("verde",))
+    out = _adatta(
+        _itin([_tappa("x", "10:00"), _tappa("y", "10:30")]), _segnale(data=LUNEDI), [x, y]
+    )
+    (e,) = _esclusa(out, "x")
+    assert e.esito is EsitoAdattamento.TAGLIATA_ORARIO
+
+
+def test_adapt_stub_senza_candidato_non_esce_mai() -> None:
+    """Una tappa senza candidato (esperienza non piu' tra i candidati) e' uno
+    stub: non ha `sospesa` e non esce a questo passo."""
+    x = _cand("x", sospesa=True)
+    out = _adatta(_itin([_tappa("fantasma", "10:00"), _tappa("x", "10:30")]), _segnale(), [x])
+    assert _ids(out) == ["fantasma"]
+    assert _esclusa(out, "fantasma") == []
+    assert [t.experience_id for t in out.tappe_escluse] == ["x"]
+
+
+def test_adapt_solo_stub_non_cambia_nulla() -> None:
+    out = _adatta(_itin([_tappa("fantasma", "10:00")]), _segnale(), [])
+    assert _ids(out) == ["fantasma"]
+    assert out.tappe_escluse == []
+    assert out.adattato_da_segnale is False
+
+
+def test_adapt_sospesa_ricevuta_con_reason_alterato_torna_canonica() -> None:
+    y = _cand("y", temi=("verde",))
+    it = _itin([_tappa("y", "10:00")]).model_copy(update={"tappe_escluse": [
+        TappaEsclusa(
+            experience_id="vecchia", esito=EsitoAdattamento.TAGLIATA_SOSPESA,
+            reason="testo manomesso dal client",
+        )
+    ]})
+    out = _adatta(it, _segnale(), [y])
+    (e,) = _esclusa(out, "vecchia")
+    assert e.esito is EsitoAdattamento.TAGLIATA_SOSPESA
+    assert e.reason == FRASE_SOSPESA
+
+
+def test_adapt_senza_sospese_identico_a_prima() -> None:
+    a = _cand("a")
+    b = _cand("b", temi=("verde",))
+    it = _itin([_tappa("a", "10:00"), _tappa("b", "10:30")])
+    out = _adatta(it, _segnale(), [a, b])
+    assert _ids(out) == ["a", "b"]
+    assert out.tappe_escluse == []
+    assert out.adattato_da_segnale is False
+    assert [s.arrivo for s in out.stops] == [s.arrivo for s in it.stops]
+    assert all(s.esito_adattamento is EsitoAdattamento.NON_TOCCATA for s in out.stops)
+
+
+def test_adapt_dopo_sospesa_gli_arrivi_non_avanzano_e_restano_nel_tetto() -> None:
+    cands = [
+        _cand("a", durata=60), _cand("x", sospesa=True, durata=60),
+        _cand("b", temi=("verde",), durata=60), _cand("c", temi=("musica",), durata=60),
+    ]
+    it = _itin([
+        _tappa("a", "21:00", 60), _tappa("x", "22:00", 60),
+        _tappa("b", "23:00", 60), _tappa("c", "23:30", 60),
+    ])
+    sig = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(21, 0))
+    out = _adatta(it, sig, cands)
+    assert "x" not in _ids(out)
+    assert _esclusa(out, "x")[0].esito is EsitoAdattamento.TAGLIATA_SOSPESA
+    ricevuti = {s.experience_id: s.arrivo for s in it.stops}
+    for s in out.stops:
+        assert s.arrivo <= ricevuti[s.experience_id]  # mai in avanti
+        assert s.arrivo.hour * 60 + s.arrivo.minute + s.durata_min <= 24 * 60
+    # b, subito dopo a, parte alla fine di a: anticipata, non spostata in avanti.
+    assert {s.experience_id: s.arrivo for s in out.stops}["b"] == time(22, 0)

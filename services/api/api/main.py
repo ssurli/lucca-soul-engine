@@ -898,7 +898,7 @@ def create_booking(
     inesistente, non un vincolo di dominio — non un `MarketplaceError`).
 
     Delega TUTTI i vincoli non negoziabili — stato iniziale `RICHIESTA`,
-    rifiuto immediato se `prenotabile=False` — a
+    rifiuto immediato se `prenotabile=False` o `sospesa=True`, orari — a
     `marketplace.service.request_booking`: un solo punto verificabile, mai
     duplicato qui. Le violazioni di dominio sollevano `MarketplaceError` (o
     una sottoclasse), mappata a 422 da `marketplace_error_handler`. Un
@@ -932,6 +932,7 @@ def create_booking(
         prezzo_eur=candidato.experience.prezzo_eur or 0.0,
         prenotabile=candidato.experience.prenotabile,
         orari_apertura=candidato.experience.orari_apertura,
+        sospesa=candidato.experience.sospesa,
     )
 
 

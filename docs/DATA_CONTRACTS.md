@@ -392,6 +392,11 @@ class EsitoAdattamento(str, Enum):
     TAGLIATA_ORARIO = "tagliata_orario"   # all'arrivo ricalcolato il luogo è chiuso: l'intervallo
                                           # [arrivo, arrivo+durata] non cade in una fascia di apertura.
                                           # Solo in Itinerary.tappe_escluse, mai tra le stops
+    TAGLIATA_SOSPESA = "tagliata_sospesa" # la tappa esce in adattamento perché la sua esperienza è
+                                          # sospesa (ExperienceNode.sospesa=True: esiste ma in questo
+                                          # periodo non si può fare). Solo tappe con candidato reale;
+                                          # le stub (fluttuanti, eventi promossi) non hanno `sospesa`.
+                                          # In tappe_escluse, reason "Tolta: in questo periodo il luogo è chiuso."
 
 class ItineraryStop(BaseModel):
     experience_id: str
@@ -405,7 +410,7 @@ class ItineraryStop(BaseModel):
 
 class TappaEsclusa(BaseModel):        # tappa tolta da un adattamento
     experience_id: str
-    esito: EsitoAdattamento           # solo TAGLIATA_STANCHEZZA, TAGLIATA_TETTO_GIORNATA o TAGLIATA_ORARIO (validatore)
+    esito: EsitoAdattamento           # solo TAGLIATA_STANCHEZZA, TAGLIATA_TETTO_GIORNATA, TAGLIATA_ORARIO o TAGLIATA_SOSPESA (validatore)
     reason: str                       # in italiano, min 1 carattere (spiegabilità obbligatoria)
 
 class Itinerary(BaseModel):
@@ -413,7 +418,7 @@ class Itinerary(BaseModel):
     stops: list[ItineraryStop]
     generated_at: datetime
     adattato_da_segnale: bool = False # True se e solo se l'ULTIMO adattamento ha almeno una tappa
-                                      # SOSTITUITA o TAGLIATA (stanchezza, tetto o orario). Una tappa
+                                      # SOSTITUITA o TAGLIATA (stanchezza, tetto, orario o sospesa). Una tappa
                                       # MANTENUTA_SENZA_ALTERNATIVA NON lo accende (l'app lo mostra
                                       # come badge "Riscritta"): quel caso è portato da
                                       # esito_adattamento e da una frase nel reason.
@@ -726,7 +731,11 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   `experience_engine.rules.passa_filtri_statici`: un'esperienza sospesa è esclusa SEMPRE, sia in
   composizione sia in sostituzione (adattamento), indipendentemente da giorno, ora e
   `orari_apertura` (che dicono QUANDO è aperta, non SE è fattibile nel periodo). Mai un input
-  dello scoring. Lettura da Neo4j: proprietà assente -> `False`; valore non booleano -> errore
+  dello scoring. Le tappe MANTENUTE in adattamento ripassano lo stesso controllo, nel passo che
+  ricontrolla ogni tappa rimasta (quello di `TAGLIATA_ORARIO`): una tappa con candidato reale la
+  cui esperienza è sospesa esce con `EsitoAdattamento.TAGLIATA_SOSPESA` in `tappe_escluse`
+  (reason "Tolta: in questo periodo il luogo è chiuso."). Le tappe stub (fluttuanti, eventi
+  promossi) non hanno `sospesa` e non sono toccate. Lettura da Neo4j: proprietà assente -> `False`; valore non booleano -> errore
   (fail-closed, come gli orari).
 - `SegnaleFluttuante.non_commerciale` è OBBLIGATORIO, nessun default (vincolo di contratto:
   campo richiesto, non `bool = False`/`bool = True`): chi genera un segnale fluttuante deve
