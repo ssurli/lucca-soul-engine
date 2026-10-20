@@ -2659,6 +2659,14 @@ senza ulteriore taratura.
 - **In demo il recommender quasi certamente non agisce**: l'app non invia eventi (`POST /events`),
   quindi sotto la soglia di massa 20 l'ordinamento è quello di `calcola_score`. Non verificato su
   Neon.
+- **La penalità dipende anche dall'insieme dei candidati.** L'esposizione si misura sui candidati
+  presenti: aggiungere esperienze sposta il gating anche dei luoghi non toccati. Con i dati reali
+  (4 esperienze nuove) `score_fn_calda` del golden cambia in 521 chiavi su 770 preesistenti: 31 per
+  i temi riscritti del mercato, 490 su 14 esperienze per il solo effetto delle candidate nuove
+  (verificato: senza le 4 nuove nell'insieme restano le 31). `calcola_score` cambia solo nelle 31.
+- **Manca un criterio di uscita misurabile.** "Da riprogettare dopo la demo" non dice quando la
+  correzione è sostituita: va fissato prima che il provvisorio diventi permanente (rilievo
+  dell'ethics-guardian).
 
 ## Ondata 1b-2: una tappa per luogo (APERTO)
 
@@ -2721,6 +2729,18 @@ committente (19–20/10/2026), sito del Comune di Lucca, Puccini Museum.
   sostituite dalle coordinate.
 - **Mercatini dell'Anfiteatro non modellati**: sono eventi, non esperienze. `exp-mercato-anfiteatro`
   è stata riscritta come visita all'ovale (stesso id, per non lasciare un nodo orfano su Aura).
+- **Tappe all'aperto dopo il buio nei casi demo** (golden, commit C): con il sabato 12/12 sereno e
+  la pioggia alle 15:00, 6 tappe all'aperto finiscono dopo le 16:30 in 3 casi su 10 (bici sulle
+  Mura alle 16:25 e 17:35, facciata di San Michele alle 17:20, piazza Napoleone alle 18:30 e 18:35,
+  Anfiteatro alle 19:30). Sono esperienze senza fascia: il motore non le esclude. Erano 6 in 3 casi
+  anche con i dati precedenti. Bici sulle Mura dopo il tramonto resta discutibile.
+- **Villa Guinigi non è più sostituto nei casi demo** (0 volte; 1 con i dati precedenti): la fascia
+  12:00–18:00 mar–sab la esclude all'ora delle sostituzioni simulate.
+- **La preferenza di tema non è più esercitata dal golden**: nel caso
+  `adapt-profilo|con-bambini|mura-affollate` nessun sostituto con temi in comune è ammissibile con i
+  dati reali (prezzo, orari del lunedì, luogo occupato), e l'asserzione del golden è stata
+  generalizzata. La preferenza resta coperta dai test unitari
+  (`test_sostituzione_costo_tema.py`).
 - **Archi `EVOCA` rimasti su Aura**: l'export genera per ogni esperienza la cancellazione degli archi
   `EVOCA` verso temi non più dichiarati (decisione D1). Altri archi tolti dal seed (`VICINO`,
   `LEGATO_A`) resterebbero su Aura: oggi nessuno è stato tolto.

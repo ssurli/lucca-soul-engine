@@ -142,6 +142,71 @@ di un'altra tappa rimasta; tipo (c) = slittamento o budget conseguente ad (a)/(b
   Effetto sulla liuteria: `exp-laboratorio-liuteria` compare in 25 dei 42 compose prima,
   in 9 dopo.
 
+OTTAVA modifica autorizzata (2026-10-20, ondata 1b-2, commit C; rigenerazione AUTORIZZATA
+dal committente), in `lucca_itinerari.json` E in `lucca_punteggi.json`. Motivo: i dati del
+commit B (dati reali invernali di Lucca) cambiano il seed: 17 luoghi (+ San Francesco e Real
+Collegio, con i loro `vicino` e un `legato_a`), 26 esperienze (+ interno di San Michele,
+interno di San Frediano, chiesa e chiostro di San Francesco, chiostro del Real Collegio),
+`orari_apertura` invernali di 9 esperienze, `prezzo_eur` di 7, Torre delle Ore
+(`exp-meccanismo-torre-ore`) con `sospesa=True`, `exp-mercato-anfiteatro` riscritta (titolo e
+temi). Le RICHIESTE dei 78 casi preesistenti sono identiche (verificato per confronto con
+`git show HEAD:...`); cambia l'`atteso` di 60 casi su 78 (compose 33 su 42; adapt 12 su 16,
+adapt-budget 11 su 16, adapt-profilo 4 su 4), 18 restano identici.
+  ATTRIBUZIONE degli itinerari, verificata da script e non dedotta. Metodo: il dataset di
+  HEAD~1 (prima di B) con UNA categoria di B alla volta applicata (valori del seed attuale),
+  replay delle stesse richieste e confronto con l'`atteso` precedente. Controlli: senza
+  categorie i 78 `atteso` precedenti sono riprodotti ESATTAMENTE (0 differenze); con tutte e
+  cinque il dataset coincide col seed attuale (60 differenze, quelle del golden nuovo).
+  Cause = categorie che, applicate da sole, cambiano il caso. Causa UNICA, 36 casi: orario 19,
+  luogo/esperienza nuova 10, prezzo 5, esperienza riscritta (mercato) 2. Cause COMBINATE, 24
+  casi (nessuno senza causa: per ciascuno almeno una categoria da sola lo cambia). In tutto:
+  orario 40 casi, luogo/esperienza nuova 22, prezzo 16, sospensione 10, mercato 9.
+  [orario] adapt-budget|{con-bambini,onnivoro}|stanchezza; adapt|con-bambini|stanchezza;
+  adapt|onnivoro|{affollamento-moderato,affollamento-oltre-soglia,pioggia,stanchezza};
+  compose|accessibile|{caldo,stanchezza}; compose|con-bambini|{affollamento,caldo,sereno,
+  stanchezza,visti}; compose|contemplativo|{affollamento,caldo,sereno,stanchezza,visti}.
+  [nuovo] compose|ama-arte|{affollamento,pioggia,sereno,stanchezza,visti};
+  compose|curioso|{affollamento,pioggia,sereno}; compose|poco-tempo|{caldo,pioggia}.
+  [prezzo] adapt-budget|accessibile|pioggia; adapt-budget|con-bambini|{affollamento-moderato,
+  pioggia}; adapt-profilo|accessibile|pioggia; adapt|con-bambini|affollamento-moderato
+  (un sostituto "prima" piu' caro della tappa tolta ora e' escluso).
+  [mercato] adapt-budget|curioso|{affollamento-moderato,affollamento-oltre-soglia}.
+  [orario+prezzo] adapt-budget|con-bambini|affollamento-oltre-soglia;
+  adapt-profilo|con-bambini|mura-affollate; adapt|accessibile|pioggia;
+  adapt|con-bambini|{affollamento-oltre-soglia,pioggia};
+  adapt|curioso|{affollamento-moderato,affollamento-oltre-soglia,pioggia}.
+  [orario+nuovo] compose|ama-arte|caldo; compose|curioso|{caldo,stanchezza,visti}.
+  [orario+sospensione+nuovo+mercato] compose|onnivoro|{affollamento,caldo,pioggia,sereno,
+  stanchezza}. [orario+sospensione+nuovo] compose|onnivoro|visti.
+  [sospensione+nuovo] compose|contemplativo|pioggia.
+  [orario+mercato] adapt-budget|onnivoro|affollamento-moderato.
+  [orario+prezzo+mercato] adapt-budget|onnivoro|affollamento-oltre-soglia.
+  [orario+sospensione] adapt-budget|onnivoro|pioggia.
+  [prezzo+sospensione] adapt-profilo|no-bambini|pioggia.
+  [prezzo+sospensione+nuovo] adapt-profilo|pioggia|tappa-gratuita.
+  I casi `adapt*` partono da itinerari gia' composti: cambiano perche' un sostituto e' piu'
+  caro (prezzo), chiuso all'arrivo (orario), sospeso (Torre delle Ore), nuovo (interni al
+  chiuso) o riscritto (mercato), oppure per slittamento/budget conseguente.
+  PUNTEGGI. Chiavi: 770 -> 910 per ciascuna delle 3 funzioni. Chiavi NUOVE: 140 per funzione
+  = le 4 esperienze nuove x 7 profili x 5 segnali (35 ciascuna); nessun'altra. Chiavi CAMBIATE
+  nelle 22 esperienze preesistenti: `calcola_score` e `score_fn_fredda` 31, tutte di
+  `exp-mercato-anfiteatro` (temi riscritti, max |diff| 0.0225); prezzi, orari e sospensione
+  non sono letti da `calcola_score` (verificato: 0 chiavi cambiate applicandoli da soli).
+  `score_fn_calda` 521 = le stesse 31 + 490 su 14 esperienze preesistenti (35 ciascuna):
+  causa le 4 candidate nuove nell'insieme dei candidati (gating di esposizione della Cand. 1,
+  `ranking.py`); verificato: con i dati B ma l'insieme dei candidati SENZA le 4 nuove restano
+  solo le 31 chiavi del mercato.
+  CASI NUOVI, 13 (richieste nuove, `atteso` dal codice attuale, a freddo):
+  `demo|<profilo>|sereno-10` per i 7 profili di `lucca_punteggi.json` (accessibile, ama-arte,
+  con-bambini, contemplativo, curioso, onnivoro, poco-tempo), sabato 12/12/2026 ore 10:00,
+  sereno; `demo|{curioso,con-bambini,contemplativo}|pioggia-15` (tipo adapt): itinerario
+  composto alle 15:00 di sabato 12/12/2026 con meteo sereno e adattato alle 15:00 con meteo
+  pioggia, profilo nell'AdaptRequest; `feriale|{curioso,contemplativo,con-bambini}|sereno-10`,
+  mercoledi' 9/12/2026 ore 10:00. Il giorno e l'ora sono quelli del `Signal` (`data`, `ora`),
+  non l'orologio (`get_adesso` resta fisso). Le proprieta' dei casi sono asserite da
+  `test_golden_orari_rispettati`, `test_golden_nessuna_sospesa` e
+  `test_golden_pioggia_sostituti_non_piu_cari`, su TUTTI i casi.
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte
@@ -174,7 +239,7 @@ from __future__ import annotations
 
 import json
 import math
-from datetime import UTC, datetime, time
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any
 
@@ -203,7 +268,7 @@ FILE_PUNTEGGI = GOLDEN_DIR / "lucca_punteggi.json"
 
 ADESSO_FISSO = datetime(2026, 6, 15, 10, 0, 0, tzinfo=UTC)
 TOLLERANZA_ASSOLUTA = 1e-9
-ESPERIENZE_LUCCA = 22
+ESPERIENZE_LUCCA = 26
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +282,7 @@ def _h_fonte_candidati() -> Any:
 
 
 def _h_candidati_lucca() -> list[Any]:
-    """I 22 candidati di Lucca, con un contesto neutro (nessun luogo visto)."""
+    """I 26 candidati di Lucca, con un contesto neutro (nessun luogo visto)."""
     ctx = contracts.VisitorContext(
         person_id="golden-candidati",
         profile=contracts.EmotionalProfile(
@@ -383,6 +448,32 @@ def _esperienze_seed() -> dict[str, Any]:
     return {e.id: e for e in ESPERIENZE}
 
 
+def _sostituti_con_tema_ammissibili(
+    caso: dict[str, Any], tolta: str, arrivo: str, seed: dict[str, Any]
+) -> list[str]:
+    """Esperienze gratuite che condividono un tema con `tolta` e passano i vincoli
+    duri nel contesto della richiesta (non gia' in itinerario, luogo non occupato da
+    un'altra tappa, non sospese, accessibili se richiesto, luogo sotto la soglia di
+    adattamento 0.7, aperte per [arrivo, arrivo + durata] nel giorno della richiesta)."""
+    richiesta = caso["richiesta"]
+    originali = [s["experience_id"] for s in richiesta["itinerary"]["stops"]]
+    occupati = {seed[i].place_id for i in originali if i != tolta}
+    giorno = _giorno_della_richiesta(caso)
+    accessibile = bool(richiesta["profile"].get("accessibilita_richiesta"))
+    out: list[str] = []
+    for e in seed.values():
+        if not set(e.temi) & set(seed[tolta].temi) or e.id in originali or e.prezzo_eur:
+            continue
+        if e.sospesa or e.place_id in occupati or (accessibile and not e.accessibile):
+            continue
+        if richiesta["signal"]["affollamento"].get(e.place_id, 0.0) > 0.7:
+            continue
+        if _violazioni_orari([_tappa(e.id, arrivo, e.durata_min)], giorno, seed):
+            continue
+        out.append(e.id)
+    return out
+
+
 def test_golden_adapt_profilo_proprieta() -> None:
     """Sul golden (senza rieseguire il motore), la proprieta' dichiarata di ogni caso
     `adapt-profilo|...`, con prezzo/accessibile/temi dal seed di Lucca."""
@@ -391,7 +482,14 @@ def test_golden_adapt_profilo_proprieta() -> None:
 
     def sostituzioni(chiave: str) -> list[tuple[str, str]]:
         caso = casi[chiave]
-        originali = [s["experience_id"] for s in caso["richiesta"]["itinerary"]["stops"]]
+        # Le tappe tolte (chiuse all'arrivo ricalcolato, `tappe_escluse`) non hanno
+        # una tappa corrispondente: l'allineamento e' sulle tappe RIMASTE.
+        escluse = {t["experience_id"] for t in caso["atteso"]["tappe_escluse"]}
+        originali = [
+            s["experience_id"]
+            for s in caso["richiesta"]["itinerary"]["stops"]
+            if s["experience_id"] not in escluse
+        ]
         stops = caso["atteso"]["stops"]
         assert len(stops) == len(originali), chiave
         coppie = [
@@ -415,15 +513,30 @@ def test_golden_adapt_profilo_proprieta() -> None:
     assert [o for o, _ in coppie1] == ["exp-bici-mura"]
     for tolta, nuova in coppie1:
         assert gratuito(nuova), (k1, nuova)
-        assert set(seed[tolta].temi) & set(seed[nuova].temi), (k1, tolta, nuova)
+        if not set(seed[tolta].temi) & set(seed[nuova].temi):
+            # Il tema in comune e' una preferenza, non un filtro: un sostituto senza
+            # temi in comune e' corretto solo se nessun'esperienza con temi in comune
+            # era ammissibile (gratuita, aperta all'arrivo, luogo libero e non affollato).
+            arrivo = next(
+                s["arrivo"] for s in casi[k1]["atteso"]["stops"] if s["experience_id"] == nuova
+            )
+            assert not _sostituti_con_tema_ammissibili(casi[k1], tolta, arrivo, seed), (
+                k1, tolta, nuova,
+            )
 
-    # 2) pioggia su tappe all'aperto gratuite: ogni sostituto e' gratuito.
+    # 2) pioggia su tappe all'aperto: nessun sostituto costa piu' della tappa tolta (una
+    # tappa gratuita ha per sostituto una gratuita). Con i prezzi del commit B l'orto
+    # botanico per famiglie costa 6 EUR: la richiesta congelata non contiene piu' solo
+    # tappe gratuite, quindi la regola e' asserita nella forma generale (tolta gratuita
+    # => sostituto gratuito resta un caso particolare).
     k2 = "adapt-profilo|pioggia|tappa-gratuita"
     assert casi[k2]["richiesta"]["signal"]["meteo"] == "pioggia"
     coppie2 = sostituzioni(k2)
     for tolta, nuova in coppie2:
-        assert not seed[tolta].al_chiuso and gratuito(tolta), (k2, tolta)
-        assert gratuito(nuova), (k2, nuova)
+        assert not seed[tolta].al_chiuso, (k2, tolta)
+        assert _prezzo(seed[nuova]) <= _prezzo(seed[tolta]), (k2, tolta, nuova)
+        if gratuito(tolta):
+            assert gratuito(nuova), (k2, nuova)
 
     # 3) accessibilita' richiesta: ogni sostituto e' accessibile.
     k3 = "adapt-profilo|accessibile|pioggia"
@@ -437,6 +550,178 @@ def test_golden_adapt_profilo_proprieta() -> None:
     sostituzioni(k4)
     for s in casi[k4]["atteso"]["stops"]:
         assert "bambini" not in s["reason"].lower(), (k4, s["experience_id"], s["reason"])
+
+
+# ---------------------------------------------------------------------------
+# Proprieta' su TUTTI i casi (vecchi e nuovi), calcolate sull'ESITO REALE
+# (la risposta del BFF a cui si rigioca la richiesta), non sul JSON atteso.
+# ---------------------------------------------------------------------------
+
+
+def _risposta(client: TestClient, caso: dict[str, Any]) -> dict[str, Any]:
+    percorso = "/itinerary" if caso["tipo"] == "compose" else "/itinerary/adapt"
+    resp = client.post(percorso, json=caso["richiesta"])
+    assert resp.status_code == 200, resp.text
+    risposta: dict[str, Any] = resp.json()
+    return risposta
+
+
+def _giorno_della_richiesta(caso: dict[str, Any]) -> int:
+    """Giorno della settimana (0 = lunedi') del `Signal.data` della richiesta."""
+    return date.fromisoformat(caso["richiesta"]["signal"]["data"]).weekday()
+
+
+def _violazioni_orari(
+    stops: list[dict[str, Any]], giorno: int, seed: dict[str, Any]
+) -> list[str]:
+    """Tappe il cui intervallo [arrivo, arrivo + durata] non cade in UNA fascia
+    di `orari_apertura` del giorno. Stessa semantica di `rules.aperta_durante`
+    (e di `contracts.rientra_in_orario`): `apertura <= arrivo` e
+    `arrivo + durata <= chiusura`, in minuti dalla mezzanotte; nessuna fascia
+    dichiarata per l'esperienza = nessun vincolo."""
+    errori: list[str] = []
+    for s in stops:
+        esperienza = seed[s["experience_id"]]
+        if not esperienza.orari_apertura:
+            continue
+        inizio = _minuti_del_giorno(s["arrivo"])
+        fine = inizio + int(s["durata_min"])
+        if not any(
+            f.giorno_settimana == giorno
+            and f.apertura.hour * 60 + f.apertura.minute <= inizio
+            and fine <= f.chiusura.hour * 60 + f.chiusura.minute
+            for f in esperienza.orari_apertura
+        ):
+            errori.append(f"{s['experience_id']} arrivo {s['arrivo']} durata {s['durata_min']}")
+    return errori
+
+
+def _violazioni_sospese(stops: list[dict[str, Any]], seed: dict[str, Any]) -> list[str]:
+    return [s["experience_id"] for s in stops if seed[s["experience_id"]].sospesa]
+
+
+def _prezzo(esperienza: Any) -> float:
+    return float(esperienza.prezzo_eur or 0.0)
+
+
+def _violazioni_prezzo_pioggia(
+    caso: dict[str, Any], risposta: dict[str, Any], seed: dict[str, Any]
+) -> list[str]:
+    """Sostituti piu' cari della tappa tolta. Allineamento posizionale: le tappe
+    originali non finite in `tappe_escluse` corrispondono, nell'ordine, alle
+    tappe della risposta (una sostituzione tiene la posizione)."""
+    escluse = {t["experience_id"] for t in risposta["tappe_escluse"]}
+    originali = [
+        s["experience_id"]
+        for s in caso["richiesta"]["itinerary"]["stops"]
+        if s["experience_id"] not in escluse
+    ]
+    nuove = risposta["stops"]
+    assert len(originali) == len(nuove), "tappe originali e adattate non allineabili"
+    errori: list[str] = []
+    for tolta, s in zip(originali, nuove, strict=True):
+        if s["esito_adattamento"] != "sostituita":
+            continue
+        if _prezzo(seed[s["experience_id"]]) > _prezzo(seed[tolta]):
+            errori.append(f"{tolta} ({_prezzo(seed[tolta])}) -> {s['experience_id']}")
+    return errori
+
+
+def _casi_pioggia_adapt() -> list[str]:
+    if not FILE_ITINERARI.is_file():
+        return ["__golden_mancante__"]
+    casi = json.loads(FILE_ITINERARI.read_text(encoding="utf-8"))["casi"]
+    return sorted(
+        k for k, c in casi.items()
+        if c["tipo"] == "adapt" and c["richiesta"]["signal"]["meteo"] == "pioggia"
+    )
+
+
+@pytest.mark.parametrize("chiave", _id_casi())
+def test_golden_orari_rispettati(client: TestClient, chiave: str) -> None:
+    """(a) Nessuna tappa arriva fuori dalle fasce di apertura del giorno della richiesta."""
+    caso = _carica(FILE_ITINERARI)["casi"][chiave]
+    risposta = _risposta(client, caso)
+    errori = _violazioni_orari(risposta["stops"], _giorno_della_richiesta(caso), _esperienze_seed())
+    assert not errori, f"{chiave}: tappe fuori orario: {errori}"
+
+
+@pytest.mark.parametrize("chiave", _id_casi())
+def test_golden_nessuna_sospesa(client: TestClient, chiave: str) -> None:
+    """(b) Nessuna esperienza `sospesa=True` tra le tappe."""
+    caso = _carica(FILE_ITINERARI)["casi"][chiave]
+    risposta = _risposta(client, caso)
+    assert not _violazioni_sospese(risposta["stops"], _esperienze_seed()), chiave
+
+
+@pytest.mark.parametrize("chiave", _casi_pioggia_adapt())
+def test_golden_pioggia_sostituti_non_piu_cari(client: TestClient, chiave: str) -> None:
+    """(c) In ogni adattamento per pioggia del golden, nessun sostituto costa piu' della
+    tappa tolta (`prezzo_eur` None = 0). Gli altri casi non hanno sostituzioni per pioggia."""
+    caso = _carica(FILE_ITINERARI)["casi"][chiave]
+    assert caso["tipo"] == "adapt" and caso["richiesta"]["signal"]["meteo"] == "pioggia"
+    risposta = _risposta(client, caso)
+    errori = _violazioni_prezzo_pioggia(caso, risposta, _esperienze_seed())
+    assert not errori, f"{chiave}: sostituti piu' cari: {errori}"
+
+
+def test_golden_proprieta_non_vuote(client: TestClient) -> None:
+    """Le tre proprieta' sono ESERCITATE dal golden (nessuna asserzione vuota):
+    ci sono tappe con orari dichiarati, la Torre delle Ore e' sospesa nel seed e
+    candidata, e almeno una sostituzione per pioggia viene valutata."""
+    casi = _carica(FILE_ITINERARI)["casi"]
+    seed = _esperienze_seed()
+    assert seed["exp-meccanismo-torre-ore"].sospesa is True
+    assert "exp-meccanismo-torre-ore" in {c.experience.id for c in _h_candidati_lucca()}
+    con_orari = 0
+    for caso in casi.values():
+        con_orari += sum(
+            1 for s in _risposta(client, caso)["stops"] if seed[s["experience_id"]].orari_apertura
+        )
+    assert con_orari >= 50, con_orari
+    sostituzioni = 0
+    for chiave in _casi_pioggia_adapt():
+        risposta = _risposta(client, casi[chiave])
+        sostituzioni += sum(1 for s in risposta["stops"] if s["esito_adattamento"] == "sostituita")
+    assert sostituzioni >= 5, sostituzioni
+
+
+def _tappa(
+    experience_id: str, arrivo: str, durata: int, esito: str | None = None
+) -> dict[str, Any]:
+    return {
+        "experience_id": experience_id, "arrivo": arrivo, "durata_min": durata,
+        "esito_adattamento": esito,
+    }
+
+
+def test_le_guardie_delle_proprieta_scattano() -> None:
+    """Le tre funzioni di verifica FALLISCONO se la proprieta' e' rotta (doppio
+    negativo: l'asserzione non e' vuota)."""
+    seed = _esperienze_seed()
+    # (a) sabato 12/12/2026 (giorno 5): il Duomo apre 10:00, Casa Puccini chiude alle 17:00;
+    # il mercoledi' (giorno 2) l'Orto botanico e' chiuso.
+    assert not _violazioni_orari([_tappa("exp-duomo-volto-santo", "10:00:00", 35)], 5, seed)
+    assert _violazioni_orari([_tappa("exp-duomo-volto-santo", "09:30:00", 35)], 5, seed)
+    assert _violazioni_orari([_tappa("exp-casa-puccini-visita", "16:30:00", 60)], 5, seed)
+    assert _violazioni_orari([_tappa("exp-orto-botanico-silenzio", "12:00:00", 60)], 2, seed)
+    # (b)
+    assert _violazioni_sospese([_tappa("exp-meccanismo-torre-ore", "10:00:00", 35)], seed) == [
+        "exp-meccanismo-torre-ore"
+    ]
+    assert not _violazioni_sospese([_tappa("exp-duomo-volto-santo", "10:00:00", 35)], seed)
+    # (c) tolta gratuita (bici delle Mura) -> sostituto a pagamento (Casa Puccini, 9 EUR)
+    caso = {"richiesta": {"itinerary": {"stops": [{"experience_id": "exp-bici-mura"}]}}}
+    rotta = {
+        "stops": [_tappa("exp-casa-puccini-visita", "10:00:00", 60, "sostituita")],
+        "tappe_escluse": [],
+    }
+    assert _violazioni_prezzo_pioggia(caso, rotta, seed)
+    ok = {
+        "stops": [_tappa("exp-duomo-volto-santo", "10:00:00", 35, "sostituita")],
+        "tappe_escluse": [],
+    }
+    assert not _violazioni_prezzo_pioggia(caso, ok, seed)
 
 
 # ---------------------------------------------------------------------------

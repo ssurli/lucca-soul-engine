@@ -442,6 +442,11 @@ Blocchi in ordine: ognuno parte quando il precedente è chiuso. Ogni blocco segu
 2. **Titolo leggibile dell'esperienza** in `ItineraryStop` e `TappaEsclusa`, riempito dal grafo
    — voce "L'app non ha nomi leggibili delle tappe" in `docs/LIMITI.md`.
 3. **Ora adatta di un'esperienza** — voce "Il motore non conosce l'ora adatta di un'esperienza".
+   **Parziale (2026-10-20, ondata 1b-2):** con le fasce stimate del seed il tramonto compare solo
+   in fascia (16:10 in `compose|onnivoro|sereno`) e viene tolto con `tagliata_orario` fuori fascia
+   (6 casi del golden). Lo Struscio non compare mai come tappa nei 91 casi (escluso solo per tetto
+   o stanchezza), quindi i casi non dimostrano la sua fascia. Le esperienze all'aperto senza fascia
+   (Mura, piazze, Anfiteatro) entrano anche dopo il buio. **Resta APERTO.**
 4. **Sostituzione ammessa se il costo non peggiora** — voce "Sostituzione rifiutata quando
    l'itinerario supera già il limite".
 5. ~~**Orari verificati all'arrivo di ogni tappa**, prima di qualunque esercizio con orari reali —
