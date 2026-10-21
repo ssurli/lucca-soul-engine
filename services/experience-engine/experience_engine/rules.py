@@ -348,9 +348,13 @@ def segnali_rilevanti(
     ):
         segnali.append("caldo")
 
-    affollamento = signal.affollamento.get(esperienza.place_id, 0.0)
-    if affollamento < 0.3:
-        segnali.append("affollamento")  # RAG: "in questo momento è meno affollato"
+    # Nessuna affermazione senza un dato: "è meno affollato" solo se
+    # l'affollamento di QUESTO luogo è stato misurato ed è basso. Una chiave
+    # assente non vale mai come zero (diverso da `calcola_score`, dove
+    # l'assenza dà penalità 0 e non produce alcuna frase).
+    if esperienza.place_id in signal.affollamento:
+        if signal.affollamento[esperienza.place_id] < 0.3:
+            segnali.append("affollamento")  # RAG: "in questo momento è meno affollato"
 
     if signal.stanchezza >= SOGLIA_STANCHEZZA_ALTA and esperienza.durata_min <= 45:
         segnali.append("stanchezza")
