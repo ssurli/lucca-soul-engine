@@ -278,6 +278,29 @@ class GraphCandidate(BaseModel):
     # trasparente nel `reason`, mai input di scoring.
     attribuzione: str | None = None    # es. "Offerta da <bottega>, bottega di <mestiere>."
     # (+ " (esempio dimostrativo)" prima del punto finale se la bottega è fittizia)
+    # Campi di SOLO TESTO per il `reason` (ondata 2a, compito 4). NON sono input di
+    # scoring: `connessioni` resta l'unico alimentatore della sorpresa (numero di frasi)
+    # e il `reason` non la legge più; `calcola_score` non legge questi campi mai.
+    # Tutti con default (retrocompatibili).
+    place_articolo: str | None = None  # articolo del luogo, dato del seed: uno di ARTICOLI
+                                        # ("il","lo","la","l'","i","gli","le"); None = senza articolo
+    racconti: list[str] = []           # testi CON FONTE nel seed: prima i LEGATO_A del luogo
+                                        # (ordine: nome artista casefold), poi le frasi con fonte
+                                        # dei temi (ordine di `experience.temi`)
+    temi_etichette: list[str] = []     # `Tema.etichetta`, nell'ordine di `experience.temi`
+    vicinanza_nome: str | None = None  # luogo GIÀ VISITATO a cui questo è vicino (stessa
+                                        # condizione della frase "A … m da …, già visitato"
+                                        # di `connessioni`); i metri sono `distanza_m`
+    vicinanza_articolo: str | None = None  # uno di ARTICOLI o None (validato)
+
+# Regola dei motivi (ondata 2a, compito 4):
+# - `connessioni` alimenta SOLO il punteggio (sorpresa = numero di frasi). Il `reason`
+#   NON la legge: lo compongono `racconti`, `temi_etichette`, `vicinanza_*`, `place_articolo`,
+#   i dati dell'esperienza (al chiuso/all'aperto, prezzo) e i segnali misurati.
+# - Un legame LEGATO_A entra nel `reason` solo se nel seed ha un racconto con fonte;
+#   i racconti ISPIRATA_DA restano in `connessioni` (punteggio) ma fuori dai motivi.
+# - Grammatica: un luogo nominato con preposizione passa da `contracts.lingua`
+#   (`ARTICOLI`, `preposizione_articolata`, `con_luogo`), mai da forme scritte nel codice.
 
 class EventoPromosso(BaseModel):
     """Un `:Evento` PROMOSSO e ATTIVO nel Knowledge Graph (Fase 3): un pattern
@@ -782,6 +805,18 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 
 ## Changelog
 
+- **2026-10-21 — ondata 2a, motivi (compito 4).** Aggiunti a `GraphCandidate`, tutti con
+  default (retrocompatibili) e MAI input di scoring: `place_articolo`, `racconti`,
+  `temi_etichette`, `vicinanza_nome`, `vicinanza_articolo` (gli articoli validati contro
+  `ARTICOLI`). Nuovo modulo `contracts.lingua` (`ARTICOLI`, `preposizione_articolata`,
+  `con_luogo`, `con_articolo(articolo, nome)` per "presso " + articolo e nome senza preposizione:
+  `l'` senza spazio, `None` = nome invariato, articolo non valido = `ValueError`), esportato da `contracts`. `connessioni` invariato (testo, numero, ordine):
+  alimenta solo il punteggio, il `reason` non lo legge più (regola in §2). Nessun campo
+  rinominato o rimosso. Consumatori: `services/graph` (`SeedCandidateSource` e
+  `Neo4jCandidateSource` popolano i campi in modo identico; `Luogo.articolo`, `Tema.etichetta/
+  frase/fonte`, `RelazioneLegatoA.racconto/fonte`), `services/rag` (`compose_reason`),
+  `services/experience-engine` (motivo di fallback, frase di adattamento), `services/api`
+  (passaggio), `apps/lucca_soul_app` (nessun impatto: i campi non escono dal BFF).
 - **2026-10-21 — ondata 2a, titoli leggibili.** Aggiunto `ItineraryStop.titolo` e
   `TappaEsclusa.titolo`: `str | None = None`, `min_length=1` se presente, fonte
   `ExperienceNode.titolo`, scritto dall'Experience Engine. Retrocompatibile (AdaptRequest

@@ -56,7 +56,7 @@ from contracts import (
 from neo4j import Driver, GraphDatabase, Record
 
 from graph.attribuzione import testo_attribuzione
-from graph.connessioni import frasi_connessioni
+from graph.connessioni import etichette_temi, frasi_connessioni, racconti_con_fonte
 from graph.dataset import Artista, Bottega, DatasetCitta, Luogo, Tema
 from graph.errors import translate_driver_errors
 from graph.registro import dataset_attivo
@@ -99,8 +99,12 @@ class SeedCandidateSource:
         self._temi: dict[str, Tema] = {t.id: t for t in ds.temi}
 
         self._artisti_per_luogo: dict[str, list[str]] = {}
+        self._legati_per_luogo: dict[str, list[tuple[str, str | None, str | None]]] = {}
         for legato in ds.legato_a:
             self._artisti_per_luogo.setdefault(legato.luogo_id, []).append(legato.artista_id)
+            self._legati_per_luogo.setdefault(legato.luogo_id, []).append(
+                (self._artisti[legato.artista_id].nome, legato.racconto, legato.fonte)
+            )
 
         self._vicini: dict[str, list[tuple[str, int]]] = {}
         for vicino in ds.vicino:
@@ -144,6 +148,7 @@ class SeedCandidateSource:
                     "partner_abbonamento_attivo": self._abbonamento_attivo(esperienza.partner_id)
                 }
             )
+            vicinanza = self._vicinanza(luogo, riferimento)
             risultato.append(
                 GraphCandidate(
                     experience=esperienza_effettiva,
@@ -151,6 +156,17 @@ class SeedCandidateSource:
                     connessioni=self._connessioni(esperienza, luogo, riferimento),
                     distanza_m=self._distanza(esperienza.place_id, riferimento),
                     attribuzione=self._attribuzione(esperienza),
+                    place_articolo=luogo.articolo,
+                    racconti=racconti_con_fonte(
+                        legati=self._legati_per_luogo.get(luogo.id, []),
+                        temi_esperienza=esperienza.temi,
+                        frasi_temi={t.id: (t.frase, t.fonte) for t in self._temi.values()},
+                    ),
+                    temi_etichette=etichette_temi(
+                        esperienza.temi, {t.id: t.etichetta for t in self._temi.values()}
+                    ),
+                    vicinanza_nome=vicinanza[1].nome if vicinanza else None,
+                    vicinanza_articolo=vicinanza[1].articolo if vicinanza else None,
                 )
             )
         return risultato
@@ -184,12 +200,8 @@ class SeedCandidateSource:
                 if tema is not None:
                     temi_bottega.append((tema_id, tema.nome))
 
-        vicinanza: tuple[int, str] | None = None
-        if riferimento is not None and riferimento != luogo.id:
-            luogo_riferimento = self._luoghi.get(riferimento)
-            metri_vicino = [m for v, m in self._vicini.get(luogo.id, []) if v == riferimento]
-            if luogo_riferimento is not None and metri_vicino:
-                vicinanza = (min(metri_vicino), luogo_riferimento.nome)
+        trovata = self._vicinanza(luogo, riferimento)
+        vicinanza = (trovata[0], trovata[1].nome) if trovata else None
 
         return frasi_connessioni(
             luogo_nome=luogo.nome,
@@ -200,6 +212,18 @@ class SeedCandidateSource:
             temi_bottega=temi_bottega,
             riferimento=vicinanza,
         )
+
+    def _vicinanza(self, luogo: Luogo, riferimento: str | None) -> tuple[int, Luogo] | None:
+        """(metri, luogo già visitato) se `luogo` è VICINO al riferimento e non
+        coincide con esso: la condizione unica della frase "A … m da …, già
+        visitato" e dei campi `vicinanza_*`."""
+        if riferimento is None or riferimento == luogo.id:
+            return None
+        luogo_riferimento = self._luoghi.get(riferimento)
+        metri_vicino = [m for v, m in self._vicini.get(luogo.id, []) if v == riferimento]
+        if luogo_riferimento is None or not metri_vicino:
+            return None
+        return (min(metri_vicino), luogo_riferimento)
 
     def _attribuzione(self, esperienza: ExperienceNode) -> str | None:
         """Fatto commerciale trasparente ("chi offre l'esperienza"), separato
@@ -337,7 +361,8 @@ class Neo4jCandidateSource:
         # prossimità al luogo già visitato: testo e ORDINE sono imposti da
         # `graph.connessioni`, identici al seed per costruzione (la query non
         # garantisce alcun ordine nei `collect`).
-        nomi_temi = {t["id"]: t["nome"] for t in record["temi_evocati"] or [] if t and t["nome"]}
+        temi_grezzi = [t for t in record["temi_evocati"] or [] if t and t["nome"]]
+        nomi_temi = {t["id"]: t["nome"] for t in temi_grezzi}
         racconti = [
             (r["artista_id"], r["racconto"])
             for r in record["racconti_ispirazione"] or []
@@ -350,14 +375,13 @@ class Neo4jCandidateSource:
         ]
         metri = record["distanza_m"]
         nome_riferimento = record["riferimento_nome"]
-        vicinanza = (
-            (metri, nome_riferimento)
-            if metri is not None
-            and nome_riferimento
+        con_vicinanza = (
+            metri is not None
+            and bool(nome_riferimento)
             and vicino_a is not None
             and record["place_id"] != vicino_a
-            else None
         )
+        vicinanza = (metri, nome_riferimento) if con_vicinanza else None
         connessioni = frasi_connessioni(
             luogo_nome=record["place_nome"],
             artisti_nomi=[n for n in record["artisti_nomi"] or [] if n],
@@ -388,10 +412,33 @@ class Neo4jCandidateSource:
             if botteghe
             else None
         )
+        # Campi di SOLO TESTO per il motivo, costruiti dagli stessi helper del
+        # seed. Un grafo non ancora ricaricato (proprietà assenti) degrada:
+        # etichetta = nome con l'iniziale minuscola (come il default del
+        # dataset), nessun racconto, nessun articolo.
+        etichette = {
+            t["id"]: (t.get("etichetta") or t["nome"][:1].lower() + t["nome"][1:])
+            for t in temi_grezzi
+        }
+        frasi_temi = {t["id"]: (t.get("frase"), t.get("fonte")) for t in temi_grezzi}
+        legati = [
+            (g["nome"], g.get("racconto"), g.get("fonte"))
+            for g in record["legati_racconti"] or []
+            if g and g.get("nome")
+        ]
         return GraphCandidate(
             experience=esperienza,
             place_nome=record["place_nome"],
             connessioni=connessioni,
             distanza_m=record["distanza_m"],
             attribuzione=attribuzione,
+            place_articolo=record["place_articolo"],
+            racconti=racconti_con_fonte(
+                legati=legati,
+                temi_esperienza=list(record["temi"] or []),
+                frasi_temi=frasi_temi,
+            ),
+            temi_etichette=etichette_temi(list(record["temi"] or []), etichette),
+            vicinanza_nome=nome_riferimento if con_vicinanza else None,
+            vicinanza_articolo=record["riferimento_articolo"] if con_vicinanza else None,
         )

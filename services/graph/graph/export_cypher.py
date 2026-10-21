@@ -89,7 +89,7 @@ def _cypher_str_list(values: list[str]) -> str:
 _RELATION_TYPES_COMMENT = (
     "// Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li\n"
     "// richiede esplicitamente):\n"
-    "//   (:Artista)-[:LEGATO_A]->(:Luogo)\n"
+    "//   (:Artista)-[:LEGATO_A {racconto, fonte}]->(:Luogo)  -- racconto solo con fonte\n"
     "//   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;\n"
     "//     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale\n"
     "//     ('sempre esistiti', non una data vera — vedi il modulo dataset), un vero\n"
@@ -122,7 +122,8 @@ def build_schema() -> str:
 def _luogo_statement(luogo) -> str:
     return (
         f"MERGE (l:Luogo {{id: {_cypher_str(luogo.id)}}})\n"
-        f"SET l.nome = {_cypher_str(luogo.nome)}, l.categoria = {_cypher_str(luogo.categoria)};"
+        f"SET l.nome = {_cypher_str(luogo.nome)}, l.categoria = {_cypher_str(luogo.categoria)}, "
+        f"l.articolo = {_cypher_str_or_null(luogo.articolo)};"
     )
 
 
@@ -146,7 +147,10 @@ def _bottega_statement(bottega) -> str:
 def _tema_statement(tema) -> str:
     return (
         f"MERGE (t:Tema {{id: {_cypher_str(tema.id)}}})\n"
-        f"SET t.nome = {_cypher_str(tema.nome)};"
+        f"SET t.nome = {_cypher_str(tema.nome)}, "
+        f"t.etichetta = {_cypher_str(tema.etichetta)}, "
+        f"t.frase = {_cypher_str_or_null(tema.frase or None)}, "
+        f"t.fonte = {_cypher_str_or_null(tema.fonte or None)};"
     )
 
 
@@ -186,7 +190,11 @@ def _legato_a_statement(rel) -> str:
     return (
         f"MATCH (a:Artista {{id: {_cypher_str(rel.artista_id)}}}), "
         f"(l:Luogo {{id: {_cypher_str(rel.luogo_id)}}})\n"
-        f"MERGE (a)-[:LEGATO_A]->(l);"
+        f"MERGE (a)-[r:LEGATO_A]->(l)\n"
+        # SET anche quando assenti (NULL): un racconto tolto dal dataset sparisce
+        # da un grafo già caricato.
+        f"SET r.racconto = {_cypher_str_or_null(rel.racconto or None)}, "
+        f"r.fonte = {_cypher_str_or_null(rel.fonte or None)};"
     )
 
 

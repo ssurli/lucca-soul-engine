@@ -5,47 +5,47 @@
 
 // --- Nodi: Luogo -------------------------------------------------------
 MERGE (l:Luogo {id: 'mura-urbane'})
-SET l.nome = 'Mura di Lucca', l.categoria = 'mura';
+SET l.nome = 'Mura di Lucca', l.categoria = 'mura', l.articolo = 'le';
 MERGE (l:Luogo {id: 'piazza-anfiteatro'})
-SET l.nome = 'Piazza dell\'Anfiteatro', l.categoria = 'piazza';
+SET l.nome = 'Piazza dell\'Anfiteatro', l.categoria = 'piazza', l.articolo = 'la';
 MERGE (l:Luogo {id: 'torre-guinigi'})
-SET l.nome = 'Torre Guinigi', l.categoria = 'torre';
+SET l.nome = 'Torre Guinigi', l.categoria = 'torre', l.articolo = 'la';
 MERGE (l:Luogo {id: 'duomo-san-martino'})
-SET l.nome = 'Duomo di San Martino', l.categoria = 'chiesa';
+SET l.nome = 'Duomo di San Martino', l.categoria = 'chiesa', l.articolo = 'il';
 MERGE (l:Luogo {id: 'casa-puccini'})
-SET l.nome = 'Casa Natale di Giacomo Puccini', l.categoria = 'museo';
+SET l.nome = 'Casa Natale di Giacomo Puccini', l.categoria = 'museo', l.articolo = 'la';
 MERGE (l:Luogo {id: 'san-michele-in-foro'})
-SET l.nome = 'Chiesa di San Michele in Foro', l.categoria = 'chiesa';
+SET l.nome = 'Chiesa di San Michele in Foro', l.categoria = 'chiesa', l.articolo = 'la';
 MERGE (l:Luogo {id: 'orto-botanico'})
-SET l.nome = 'Orto Botanico di Lucca', l.categoria = 'giardino';
+SET l.nome = 'Orto Botanico di Lucca', l.categoria = 'giardino', l.articolo = 'l\'';
 MERGE (l:Luogo {id: 'teatro-del-giglio'})
-SET l.nome = 'Teatro del Giglio', l.categoria = 'teatro';
+SET l.nome = 'Teatro del Giglio', l.categoria = 'teatro', l.articolo = 'il';
 MERGE (l:Luogo {id: 'palazzo-pfanner'})
-SET l.nome = 'Palazzo Pfanner', l.categoria = 'giardino';
+SET l.nome = 'Palazzo Pfanner', l.categoria = 'giardino', l.articolo = 'il';
 MERGE (l:Luogo {id: 'san-frediano'})
-SET l.nome = 'Basilica di San Frediano', l.categoria = 'chiesa';
+SET l.nome = 'Basilica di San Frediano', l.categoria = 'chiesa', l.articolo = 'la';
 MERGE (l:Luogo {id: 'torre-delle-ore'})
-SET l.nome = 'Torre delle Ore', l.categoria = 'torre';
+SET l.nome = 'Torre delle Ore', l.categoria = 'torre', l.articolo = 'la';
 MERGE (l:Luogo {id: 'piazza-napoleone'})
-SET l.nome = 'Piazza Napoleone', l.categoria = 'piazza';
+SET l.nome = 'Piazza Napoleone', l.categoria = 'piazza', l.articolo = 'la';
 MERGE (l:Luogo {id: 'via-fillungo'})
-SET l.nome = 'Via Fillungo', l.categoria = 'via';
+SET l.nome = 'Via Fillungo', l.categoria = 'via', l.articolo = NULL;
 MERGE (l:Luogo {id: 'baluardo-san-paolino'})
-SET l.nome = 'Baluardo San Paolino', l.categoria = 'mura';
+SET l.nome = 'Baluardo San Paolino', l.categoria = 'mura', l.articolo = 'il';
 MERGE (l:Luogo {id: 'museo-nazionale-guinigi'})
-SET l.nome = 'Museo Nazionale di Villa Guinigi', l.categoria = 'museo';
+SET l.nome = 'Museo Nazionale di Villa Guinigi', l.categoria = 'museo', l.articolo = 'il';
 MERGE (l:Luogo {id: 'chiesa-san-francesco'})
-SET l.nome = 'Chiesa di San Francesco', l.categoria = 'chiesa';
+SET l.nome = 'Chiesa di San Francesco', l.categoria = 'chiesa', l.articolo = 'la';
 MERGE (l:Luogo {id: 'real-collegio'})
-SET l.nome = 'Real Collegio', l.categoria = 'chiostro';
+SET l.nome = 'Real Collegio', l.categoria = 'chiostro', l.articolo = 'il';
 MERGE (l:Luogo {id: 'museo-barsanti-matteucci'})
-SET l.nome = 'Museo Barsanti e Matteucci', l.categoria = 'museo';
+SET l.nome = 'Museo Barsanti e Matteucci', l.categoria = 'museo', l.articolo = 'il';
 MERGE (l:Luogo {id: 'via-del-fosso'})
-SET l.nome = 'Via del Fosso', l.categoria = 'via';
+SET l.nome = 'Via del Fosso', l.categoria = 'via', l.articolo = NULL;
 MERGE (l:Luogo {id: 'baluardo-santa-croce'})
-SET l.nome = 'Baluardo Santa Croce', l.categoria = 'mura';
+SET l.nome = 'Baluardo Santa Croce', l.categoria = 'mura', l.articolo = 'il';
 MERGE (l:Luogo {id: 'santi-giovanni-reparata'})
-SET l.nome = 'Chiesa dei Santi Giovanni e Reparata', l.categoria = 'chiesa';
+SET l.nome = 'Chiesa dei Santi Giovanni e Reparata', l.categoria = 'chiesa', l.articolo = 'la';
 
 // --- Nodi: Artista ------------------------------------------------------
 MERGE (a:Artista {id: 'artista-puccini'})
@@ -71,31 +71,31 @@ SET b.nome = 'Laboratorio di tessitura', b.mestiere = 'tessitura', b.place_id = 
 
 // --- Nodi: Tema -----------------------------------------------------------
 MERGE (t:Tema {id: 'verde'})
-SET t.nome = 'Verde e giardini';
+SET t.nome = 'Verde e giardini', t.etichetta = 'verde e giardini', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'panorama'})
-SET t.nome = 'Panorama';
+SET t.nome = 'Panorama', t.etichetta = 'panorama', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'storia'})
-SET t.nome = 'Storia';
+SET t.nome = 'Storia', t.etichetta = 'storia', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'medievale'})
-SET t.nome = 'Medievale';
+SET t.nome = 'Medievale', t.etichetta = 'medioevo', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'gastronomia'})
-SET t.nome = 'Gastronomia';
+SET t.nome = 'Gastronomia', t.etichetta = 'gastronomia', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'arte'})
-SET t.nome = 'Arte';
+SET t.nome = 'Arte', t.etichetta = 'arte', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'silenzio'})
-SET t.nome = 'Silenzio e contemplazione';
+SET t.nome = 'Silenzio e contemplazione', t.etichetta = 'silenzio e contemplazione', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'puccini'})
-SET t.nome = 'Giacomo Puccini e la musica';
+SET t.nome = 'Giacomo Puccini e la musica', t.etichetta = 'Giacomo Puccini e la musica', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'musica'})
-SET t.nome = 'Musica';
+SET t.nome = 'Musica', t.etichetta = 'musica', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'romanico'})
-SET t.nome = 'Romanico';
+SET t.nome = 'Romanico', t.etichetta = 'romanico', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'con-bambini'})
-SET t.nome = 'Adatto ai bambini';
+SET t.nome = 'Adatto ai bambini', t.etichetta = 'adatto ai bambini', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'artigianato'})
-SET t.nome = 'Artigianato';
+SET t.nome = 'Artigianato', t.etichetta = 'artigianato', t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'liuteria'})
-SET t.nome = 'Liuteria';
+SET t.nome = 'Liuteria', t.etichetta = 'liuteria', t.frase = NULL, t.fonte = NULL;
 
 // --- Nodi: Esperienza ---------------------------------------------------
 MERGE (e:Esperienza {id: 'exp-passeggiata-mura'})
@@ -737,21 +737,29 @@ SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 
 // --- Relazioni: LEGATO_A (Artista -> Luogo) ----------------------------
 MATCH (a:Artista {id: 'artista-puccini'}), (l:Luogo {id: 'casa-puccini'})
-MERGE (a)-[:LEGATO_A]->(l);
+MERGE (a)-[r:LEGATO_A]->(l)
+SET r.racconto = NULL, r.fonte = NULL;
 MATCH (a:Artista {id: 'artista-puccini'}), (l:Luogo {id: 'san-michele-in-foro'})
-MERGE (a)-[:LEGATO_A]->(l);
+MERGE (a)-[r:LEGATO_A]->(l)
+SET r.racconto = 'In questa chiesa il giovane Giacomo Puccini dava lezioni d\'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini.', r.fonte = 'italia.it, pagina "San Michele in Foro"';
 MATCH (a:Artista {id: 'artista-puccini'}), (l:Luogo {id: 'teatro-del-giglio'})
-MERGE (a)-[:LEGATO_A]->(l);
+MERGE (a)-[r:LEGATO_A]->(l)
+SET r.racconto = NULL, r.fonte = NULL;
 MATCH (a:Artista {id: 'artista-boccherini'}), (l:Luogo {id: 'san-michele-in-foro'})
-MERGE (a)-[:LEGATO_A]->(l);
+MERGE (a)-[r:LEGATO_A]->(l)
+SET r.racconto = NULL, r.fonte = NULL;
 MATCH (a:Artista {id: 'artista-boccherini'}), (l:Luogo {id: 'duomo-san-martino'})
-MERGE (a)-[:LEGATO_A]->(l);
+MERGE (a)-[r:LEGATO_A]->(l)
+SET r.racconto = 'Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale.', r.fonte = 'Ministero della Cultura, "Profilo Boccherini"; Puccini Museum, pagina "Cattedrale di S. Martino"';
 MATCH (a:Artista {id: 'artista-civitali'}), (l:Luogo {id: 'duomo-san-martino'})
-MERGE (a)-[:LEGATO_A]->(l);
+MERGE (a)-[r:LEGATO_A]->(l)
+SET r.racconto = NULL, r.fonte = NULL;
 MATCH (a:Artista {id: 'artista-catalani'}), (l:Luogo {id: 'teatro-del-giglio'})
-MERGE (a)-[:LEGATO_A]->(l);
+MERGE (a)-[r:LEGATO_A]->(l)
+SET r.racconto = NULL, r.fonte = NULL;
 MATCH (a:Artista {id: 'artista-boccherini'}), (l:Luogo {id: 'chiesa-san-francesco'})
-MERGE (a)-[:LEGATO_A]->(l);
+MERGE (a)-[r:LEGATO_A]->(l)
+SET r.racconto = NULL, r.fonte = NULL;
 
 // --- Relazioni: SI_SVOLGE_A (Esperienza -> Luogo), da place_id --------
 MATCH (e:Esperienza {id: 'exp-passeggiata-mura'}), (l:Luogo {id: 'mura-urbane'})

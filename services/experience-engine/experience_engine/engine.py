@@ -23,7 +23,7 @@ from collections.abc import Callable, Sequence
 from collections.abc import Set as AbstractSet
 from datetime import UTC, date, datetime, time, timedelta
 from functools import partial
-from typing import Literal
+from typing import Literal, Protocol
 
 from contracts import (
     EmotionalProfile,
@@ -37,6 +37,8 @@ from contracts import (
     TappaEsclusa,
     VisitorContext,
     VocabolarioTemi,
+    con_articolo,
+    con_luogo,
 )
 
 from .rules import (
@@ -62,9 +64,25 @@ from .rules import (
 
 __all__ = ["compose_itinerary", "adapt_itinerary", "ReasonFn", "AdaptReasonFn", "ScoreFn"]
 
-#: Firma della funzione che compone il `reason` di una tappa. Combacia con
-#: `rag.reasons.compose_reason(candidate, profile, segnali)`.
-ReasonFn = Callable[[GraphCandidate, EmotionalProfile, list[str]], str]
+class ReasonFn(Protocol):
+    """Firma della funzione che compone il `reason` di una tappa. Combacia con
+    `rag.reasons.compose_reason(candidate, profile, segnali, *, prima_tappa)`.
+
+    `prima_tappa` (keyword) è True SOLO per la prima tappa dell'itinerario
+    finale (arrivo più presto): lì, e solo lì, il motivo può aprire con la
+    frase del profilo, così il profilo compare al massimo una volta per
+    itinerario. False per ogni altra tappa e per i motivi dei sostituti."""
+
+    def __call__(
+        self,
+        candidate: GraphCandidate,
+        profile: EmotionalProfile,
+        segnali: list[str],
+        /,
+        *,
+        prima_tappa: bool,
+    ) -> str: ...
+
 
 #: Firma della funzione che riscrive il `reason` di una tappa sostituita.
 #: Combacia con `rag.reasons.adapt_reason(motivo, segnale)`.
@@ -86,25 +104,104 @@ ScoreFn = Callable[[GraphCandidate, EmotionalProfile, Signal], float]
 # ---------------------------------------------------------------------------
 
 
+#: Frasi dei segnali: STESSO testo di `rag.reasons` (il motore non importa
+#: `rag`; l'uguaglianza dei due testi è verificata da un test).
+_FRASI_SEGNALE_FALLBACK: dict[str, str] = {
+    "pioggia": "con la pioggia si sta al chiuso",
+    "sereno": "con il cielo sereno conviene stare all'aperto",
+    "caldo": "con questo caldo un luogo fresco si apprezza di più",
+    "freddo": "con il freddo un luogo al chiuso è più comodo",
+    "affollamento": "in questo momento è meno affollato",
+    "stanchezza": "è una tappa più breve, per non stancarti troppo",
+}
+
+
+def _frase_fallback(testo: str) -> str:
+    """Iniziale maiuscola e punto finale (nessun secondo punto se il testo
+    termina già con ".", "!" o "?")."""
+    t = testo.strip()
+    if not t:
+        return ""
+    t = t[:1].upper() + t[1:]
+    return t if t[-1] in ".!?" else t + "."
+
+
+def _tratto_dominante_fallback(profile: EmotionalProfile) -> str | None:
+    """Tratto più marcato del profilo (stessa regola di `rag.reasons`): prima
+    i vincoli espliciti (bambini, accessibilità), poi il tratto 0..1 più
+    lontano da 0.5; sotto 0.1 di scarto nessun tratto (mai inventato)."""
+    if profile.con_bambini:
+        return "è pensata anche per chi viaggia con bambini"
+    if profile.accessibilita_richiesta:
+        return "rispetta il bisogno di un percorso accessibile"
+    candidati: list[tuple[float, str]] = [
+        (
+            abs(profile.contemplazione - 0.5),
+            "cerchi silenzio e raccoglimento"
+            if profile.contemplazione >= 0.5
+            else "ami i luoghi vivi, con musica e movimento",
+        ),
+        (
+            abs(profile.arte - 0.5),
+            "ti lasci conquistare dalla bellezza"
+            if profile.arte >= 0.5
+            else "preferisci le storie che un luogo racconta",
+        ),
+        (
+            abs(profile.curiosita - 0.5),
+            "hai voglia di perderti e lasciarti sorprendere"
+            if profile.curiosita >= 0.5
+            else "preferisci un percorso chiaro, senza troppe sorprese",
+        ),
+    ]
+    candidati.sort(key=lambda c: c[0], reverse=True)
+    punteggio, frase = candidati[0]
+    if punteggio < 0.1:
+        return None
+    return frase
+
+
 def _fallback_reason(
-    candidate: GraphCandidate, profile: EmotionalProfile, segnali: list[str]
+    candidate: GraphCandidate,
+    profile: EmotionalProfile,
+    segnali: list[str],
+    /,
+    *,
+    prima_tappa: bool = True,
 ) -> str:
-    """`reason` minimo ma vero in italiano, se nessuna RAG è iniettata."""
-    parti: list[str] = []
-    if candidate.connessioni:
-        parti.append(candidate.connessioni[0].strip().rstrip("."))
+    """`reason` in italiano se nessuna RAG è iniettata: le stesse cinque frasi
+    (e lo stesso testo) di `rag.reasons.compose_reason`, in quest'ordine:
+    1. (solo `prima_tappa`) il tratto dominante del profilo;
+    2. il primo racconto con fonte, altrimenti "Temi: a, b.";
+    3. sempre "Al chiuso"/"All'aperto" (+ ", gratuita" se prezzo None o 0);
+    4. la vicinanza a un luogo già visitato;
+    5. la frase del primo segnale (già solo misurato).
+    Non legge `connessioni` (alimentano solo il punteggio). Mai vuoto."""
+    frasi: list[str] = []
+    if prima_tappa:
+        tratto = _tratto_dominante_fallback(profile)
+        if tratto:
+            frasi.append(_frase_fallback(tratto))
+    racconto = next((r for r in candidate.racconti if r.strip()), None)
+    if racconto:
+        frasi.append(_frase_fallback(racconto))
     else:
-        parti.append(f"{candidate.experience.titolo} a {candidate.place_nome}")
-    frasi_segnale = {
-        "pioggia": "con la pioggia si sta al chiuso",
-        "caldo": "con il caldo un luogo fresco si apprezza di più",
-        "affollamento": "in questo momento è meno affollato",
-        "stanchezza": "è una tappa breve, per non stancarti",
-    }
-    if segnali and segnali[0] in frasi_segnale:
-        parti.append(frasi_segnale[segnali[0]])
-    testo = "; ".join(parti)
-    return testo[:1].upper() + testo[1:] + "."
+        etichette = [e.strip() for e in candidate.temi_etichette if e.strip()]
+        if etichette:
+            frasi.append(f"Temi: {', '.join(etichette)}.")
+    esp = candidate.experience
+    dove = "Al chiuso" if esp.al_chiuso else "All'aperto"
+    if not esp.prezzo_eur:
+        dove += ", gratuita"
+    frasi.append(dove + ".")
+    if candidate.distanza_m is not None and candidate.vicinanza_nome:
+        luogo = con_luogo("da", candidate.vicinanza_articolo, candidate.vicinanza_nome)
+        frasi.append(f"A {candidate.distanza_m} m {luogo}, già visitato.")
+    if segnali and segnali[0].strip():
+        chiave = segnali[0].strip().lower()
+        frase_segnale = _FRASI_SEGNALE_FALLBACK.get(chiave, segnali[0].strip())
+        frasi.append(_frase_fallback(frase_segnale))
+    return " ".join(frasi)
 
 
 def _fallback_adapt_reason(motivo: str, segnale: str) -> str:
@@ -384,8 +481,9 @@ def _costruisci_stops(
     """Trasforma i candidati scelti in tappe con orari progressivi e `reason`.
 
     Ogni tappa DEVE avere un `reason` non vuoto (spiegabilità obbligatoria):
-    lo compone `reason_fn` a partire dalle connessioni del grafo e dai segnali
-    rilevanti per quella tappa.
+    lo compone `reason_fn` a partire dai campi di testo del candidato e dai
+    segnali rilevanti per quella tappa. `prima_tappa=True` SOLO per la prima
+    tappa (arrivo più presto): la frase del profilo compare una volta sola.
 
     Bagliore (`rules.frase_bagliore`): se `tracce_per_luogo` ha tracce per il
     `place_id` della tappa, il MOTORE aggiunge in modo deterministico una
@@ -409,7 +507,11 @@ def _costruisci_stops(
         if i > 0:
             orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
         segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
-        reason = reason_fn(cand, profile, segnali)
+        # Le tappe sono già nell'ordine FINALE (arrivi progressivi da
+        # `signal.ora`): la prima è quella che arriva più presto, l'unica che
+        # porta la frase del profilo. Le code (fluttuanti, eventi promossi)
+        # vengono dopo e non la portano mai.
+        reason = reason_fn(cand, profile, segnali, prima_tappa=i == 0)
         place_id = cand.experience.place_id
         if tracce_per_luogo and adesso is not None and place_id not in luoghi_con_frase:
             tracce = tracce_per_luogo.get(place_id)
@@ -468,12 +570,16 @@ def _minuti_usati_permanenti(selezionati: Sequence[GraphCandidate]) -> int:
     return totale
 
 
-def _reason_fluttuante(segnale: SegnaleFluttuante, place_nome: str) -> str:
+def _reason_fluttuante(
+    segnale: SegnaleFluttuante, place_nome: str, place_articolo: str | None = None
+) -> str:
     """`reason` sempre non vuoto (spiegabilità obbligatoria) per una tappa
     fluttuante: racconta COSA (la descrizione dichiarata dal segnale) e DOVE
-    (il nome del luogo, se noto tra i candidati; altrimenti il `place_id`
-    grezzo — mai un nome fabbricato)."""
-    return f"{segnale.descrizione} a {place_nome}: un'aggiunta per oggi, non era già in programma."
+    (il nome del luogo, se noto tra i candidati, con il suo articolo dal
+    dataset via `con_luogo`; altrimenti il `place_id` grezzo senza articolo
+    — mai un nome fabbricato)."""
+    dove = con_luogo("a", place_articolo, place_nome)
+    return f"{segnale.descrizione} {dove}: un'aggiunta per oggi, non era già in programma."
 
 
 def _aggiungi_tappe_fluttuanti(
@@ -514,6 +620,7 @@ def _aggiungi_tappe_fluttuanti(
         return stops, minuti_usati
 
     place_nomi = {c.experience.place_id: c.place_nome for c in candidates}
+    place_articoli = {c.experience.place_id: c.place_articolo for c in candidates}
 
     if stops:
         orario_corrente = _somma_minuti(stops[-1].arrivo, stops[-1].durata_min)
@@ -536,7 +643,9 @@ def _aggiungi_tappe_fluttuanti(
                 titolo=None,
                 arrivo=orario_corrente,
                 durata_min=DURATA_TAPPA_FLUTTUANTE_MIN,
-                reason=_reason_fluttuante(segnale, place_nome),
+                reason=_reason_fluttuante(
+                    segnale, place_nome, place_articoli.get(segnale.place_id)
+                ),
             )
         )
         orario_corrente = _somma_minuti(orario_corrente, DURATA_TAPPA_FLUTTUANTE_MIN)
@@ -623,7 +732,12 @@ def _cadenza_leggibile(cadenza_giorni: float) -> str:
     return f"circa ogni {giorni} giorni"
 
 
-def _reason_evento_promosso(evento: EventoPromosso, place_nome: str, data_visita: date) -> str:
+def _reason_evento_promosso(
+    evento: EventoPromosso,
+    place_nome: str,
+    data_visita: date,
+    place_articolo: str | None = None,
+) -> str:
     """`reason` sempre non vuoto, in italiano (spiegabilità obbligatoria) per
     una tappa generata da un `:Evento` promosso.
 
@@ -636,15 +750,20 @@ def _reason_evento_promosso(evento: EventoPromosso, place_nome: str, data_visita
     giorno_occorrenza_attesa`, lo STESSO calcolo della finestra, non un
     secondo) e la cadenza approssimata. Nessun orario (non lo abbiamo) e
     nessuna descrizione dell'evento (non sopravvive alla promozione): una
-    frase credibile e falsa sarebbe la peggiore forma di inspiegabilità."""
+    frase credibile e falsa sarebbe la peggiore forma di inspiegabilità.
+
+    Il luogo è nominato con il suo articolo dal dataset (`con_articolo`:
+    "Presso la Chiesa…"); luogo sconosciuto tra i candidati: `place_id`
+    grezzo, senza articolo."""
     giorno = giorno_occorrenza_attesa(evento.ultima_occorrenza, evento.cadenza_giorni, data_visita)
     quando = _giorno_relativo_it(giorno, data_visita)
     if giorno < data_visita:
         occorrenza = f"un'occorrenza era attesa {quando}"
     else:
         occorrenza = f"la prossima occorrenza è attesa {quando}"
+    luogo = con_articolo(place_articolo, place_nome)
     return (
-        f"Presso {place_nome} si ripete qualcosa legato a {temi_leggibili(evento.temi)}, "
+        f"Presso {luogo} si ripete qualcosa legato a {temi_leggibili(evento.temi)}, "
         f"osservato {_cadenza_leggibile(evento.cadenza_giorni)}: {occorrenza}. "
         "È una stima dalla regolarità osservata, non un appuntamento confermato, "
         "e non ne conosciamo l'orario."
@@ -705,6 +824,7 @@ def _aggiungi_tappe_eventi_promossi(
         return stops
 
     place_nomi = {c.experience.place_id: c.place_nome for c in candidates}
+    place_articoli = {c.experience.place_id: c.place_articolo for c in candidates}
 
     if stops:
         orario_corrente = _somma_minuti(stops[-1].arrivo, stops[-1].durata_min)
@@ -731,7 +851,9 @@ def _aggiungi_tappe_eventi_promossi(
                 titolo=None,
                 arrivo=orario_corrente,
                 durata_min=DURATA_TAPPA_EVENTO_MIN,
-                reason=_reason_evento_promosso(evento, place_nome, data_visita),
+                reason=_reason_evento_promosso(
+                    evento, place_nome, data_visita, place_articoli.get(evento.place_id)
+                ),
             )
         )
         orario_corrente = _somma_minuti(orario_corrente, DURATA_TAPPA_EVENTO_MIN)
@@ -1236,6 +1358,7 @@ def adapt_itinerary(
                 EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA,
                 motivo="pioggia" if piove_e_aperto else "affollamento",
                 luogo=cand.place_nome,
+                articolo=cand.place_articolo,
             )
             correnti[i] = _marca_reason(
                 cand,
@@ -1247,8 +1370,16 @@ def adapt_itinerary(
 
         usati.discard(e.id)
         usati.add(alt.experience.id)
-        motivo = alt.connessioni[0] if alt.connessioni else alt.experience.titolo
-        segnale = "la pioggia" if piove_e_aperto else f"l'affollamento a {cand.place_nome}"
+        # Motivo SPECIFICO del sostituto, composto come quello di una tappa
+        # non prima (mai la frase del profilo: compare al più una volta per
+        # itinerario, sulla prima tappa composta) e senza segnali (il segnale
+        # è già detto da "Sostituita per ..."). `connessioni` alimentano solo
+        # il punteggio, non il testo.
+        motivo = fn(alt, profilo_effettivo, [], prima_tappa=False)
+        if piove_e_aperto:
+            segnale = "la pioggia"
+        else:
+            segnale = "l'affollamento " + con_luogo("a", cand.place_articolo, cand.place_nome)
         alt_reason = adapt_fn(motivo, segnale)
         correnti[i] = _marca_reason(
             alt, alt_reason, EsitoAdattamento.SOSTITUITA, stop.experience_id
@@ -1349,7 +1480,9 @@ _FRASE_MANTENUTA_PIOGGIA = (
     "Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso "
     "e con il tempo a disposizione: la tappa resta in programma."
 )
-_PREFISSO_MANTENUTA_AFFOLLAMENTO = "C'è molta gente a "
+#: Il luogo segue il prefisso con la sua preposizione articolata
+#: (`con_luogo("a", articolo, nome)`: "alla Torre…", "all'Orto…", "a Via…").
+_PREFISSO_MANTENUTA_AFFOLLAMENTO = "C'è molta gente "
 _SUFFISSO_MANTENUTA_AFFOLLAMENTO = (
     ", ma non c'è un'alternativa più tranquilla compatibile con questo percorso "
     "e con il tempo a disposizione: la tappa resta in programma."
@@ -1364,12 +1497,21 @@ _FRASE_TAGLIATA_ORARIO = (
 )
 _FRASE_TAGLIATA_SOSPESA = "Tolta: in questo periodo il luogo è chiuso."
 
-#: Riconosce la frase di affollamento qualunque sia il luogo. Il luogo è
+#: Preposizioni che possono seguire il prefisso: "a" semplice (luogo senza
+#: articolo, e forma VECCHIA "C'è molta gente a <nome>" degli itinerari
+#: ricevuti) e le sue articolate (`contracts.preposizione_articolata`).
+_PREPOSIZIONI_A = ("a ", "al ", "allo ", "alla ", "all'", "ai ", "agli ", "alle ")
+
+#: Riconosce la frase di affollamento qualunque sia il luogo e la sua
+#: preposizione (vecchia "a <nome>" o con articolo "alla <nome>"). Il luogo è
 #: "temperato": non può contenere di nuovo il prefisso, così la corrispondenza
 #: parte dall'ultima occorrenza utile e non inghiotte testo del reason.
 _RE_MANTENUTA_AFFOLLAMENTO = re.compile(
     " ?"
     + re.escape(_PREFISSO_MANTENUTA_AFFOLLAMENTO)
+    + "(?:"
+    + "|".join(re.escape(p) for p in _PREPOSIZIONI_A)
+    + ")"
     + "(?:(?!"
     + re.escape(_PREFISSO_MANTENUTA_AFFOLLAMENTO)
     + ").)*?"
@@ -1383,13 +1525,15 @@ def _frase_esito(
     *,
     motivo: Literal["pioggia", "affollamento"] | None = None,
     luogo: str = "",
+    articolo: str | None = None,
 ) -> str | None:
     """Frase in italiano che racconta l'esito dell'adattamento di una tappa.
 
     UNICA funzione da cui nascono le frasi di esito, così campo e testo non
     possono divergere:
     - `MANTENUTA_SENZA_ALTERNATIVA`: frase della pioggia (anche se il luogo è
-      pure affollato) o dell'affollamento a `luogo`; va in coda al `reason`,
+      pure affollato) o dell'affollamento a `luogo` (con la preposizione
+      articolata dal suo `articolo`, `con_luogo`); va in coda al `reason`,
       prima della disclosure partner;
     - `TAGLIATA_STANCHEZZA` / `TAGLIATA_TETTO_GIORNATA` / `TAGLIATA_ORARIO` /
       `TAGLIATA_SOSPESA`: `reason` della `TappaEsclusa`;
@@ -1398,7 +1542,8 @@ def _frase_esito(
     if esito is EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA:
         if motivo == "pioggia":
             return _FRASE_MANTENUTA_PIOGGIA
-        return f"{_PREFISSO_MANTENUTA_AFFOLLAMENTO}{luogo}{_SUFFISSO_MANTENUTA_AFFOLLAMENTO}"
+        dove = con_luogo("a", articolo, luogo)
+        return f"{_PREFISSO_MANTENUTA_AFFOLLAMENTO}{dove}{_SUFFISSO_MANTENUTA_AFFOLLAMENTO}"
     if esito is EsitoAdattamento.TAGLIATA_STANCHEZZA:
         return _FRASE_TAGLIATA_STANCHEZZA
     if esito is EsitoAdattamento.TAGLIATA_TETTO_GIORNATA:
@@ -1716,7 +1861,9 @@ def _reason_finale(
     finale = _con_disclosure(reason, cand) if reason else ""
     if not finale:
         segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
-        finale = _con_disclosure(reason_fn(cand, profile, segnali), cand)
+        # `prima_tappa=False`: in adattamento la frase del profilo resta solo
+        # dove l'aveva già il `reason` ricevuto (al più una volta).
+        finale = _con_disclosure(reason_fn(cand, profile, segnali, prima_tappa=False), cand)
     return finale
 
 

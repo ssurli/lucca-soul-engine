@@ -47,6 +47,13 @@
 // default sicuro. Quando nessuna bottega offre l'esperienza, l'OPTIONAL MATCH
 // produce una entry con `nome` nullo: il consumer Python la scarta.
 //
+// Campi di SOLO TESTO per il motivo (ondata 2a, compito 4), mai input di
+// scoring: `l.articolo` / `riferimento_articolo` (grammatica del luogo),
+// `legati_racconti` (racconto + fonte di ogni LEGATO_A del luogo) e
+// `temi_evocati[].etichetta/frase/fonte`. Racconti e frasi entrano nel
+// `GraphCandidate` SOLO se hanno una fonte (filtro in
+// `graph.connessioni.racconti_con_fonte`). `connessioni` resta invariata.
+//
 // Parametri (tutti opzionali: `null` o lista vuota = nessun filtro):
 //   $temi         list[string]   id di Tema da cercare tra quelli evocati
 //   $al_chiuso    bool | null    filtro esatto su Esperienza.al_chiuso
@@ -71,7 +78,7 @@ WHERE ($temi IS NULL OR size($temi) = 0
             MATCH (l)-[v:VICINO]-(:Luogo {id: $vicino_a})
             WHERE $raggio_m IS NULL OR v.metri <= $raggio_m
           })
-OPTIONAL MATCH (art:Artista)-[:LEGATO_A]->(l)
+OPTIONAL MATCH (art:Artista)-[la:LEGATO_A]->(l)
 OPTIONAL MATCH (bot:Bottega)-[:OFFRE]->(e)
 OPTIONAL MATCH (e)-[:EVOCA]->(tema:Tema)
 OPTIONAL MATCH (bot)-[isp:ISPIRATA_DA]->(ispart:Artista)
@@ -80,13 +87,16 @@ OPTIONAL MATCH (l)-[vic:VICINO]-(rif:Luogo {id: $vicino_a})
 OPTIONAL MATCH (bp:Bottega {id: e.partner_id})-[:HA_ABBONAMENTO]->(partner:Partner)
 WITH e, l,
      collect(DISTINCT art.nome) AS artisti_nomi,
+     collect(DISTINCT {nome: art.nome, racconto: la.racconto, fonte: la.fonte}) AS legati_racconti,
      collect(DISTINCT {nome: bot.nome, mestiere: bot.mestiere,
                        fittizio: coalesce(bot.fittizio, true)}) AS botteghe,
-     collect(DISTINCT {id: tema.id, nome: tema.nome}) AS temi_evocati,
+     collect(DISTINCT {id: tema.id, nome: tema.nome, etichetta: tema.etichetta,
+                       frase: tema.frase, fonte: tema.fonte}) AS temi_evocati,
      collect(DISTINCT {artista_id: ispart.id, racconto: isp.racconto}) AS racconti_ispirazione,
      collect(DISTINCT {id: temab.id, nome: temab.nome}) AS temi_bottega,
      min(vic.metri) AS distanza_m,
      min(rif.nome) AS riferimento_nome,
+     min(rif.articolo) AS riferimento_articolo,
      collect(DISTINCT partner.abbonamento_attivo) AS abbonamenti_partner
 RETURN
   e.id AS id,
@@ -122,13 +132,16 @@ RETURN
   // (fail-closed). Il filtro duro è nell'Experience Engine, non qui.
   e.sospesa AS sospesa,
   l.nome AS place_nome,
+  l.articolo AS place_articolo,
   artisti_nomi,
+  legati_racconti,
   botteghe,
   temi_evocati,
   racconti_ispirazione,
   temi_bottega,
   distanza_m,
   riferimento_nome,
+  riferimento_articolo,
   CASE WHEN size(abbonamenti_partner) = 0 THEN true ELSE abbonamenti_partner[0] END
     AS partner_abbonamento_attivo
 ORDER BY e.id

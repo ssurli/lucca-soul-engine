@@ -5,7 +5,7 @@
 
 // Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li
 // richiede esplicitamente):
-//   (:Artista)-[:LEGATO_A]->(:Luogo)
+//   (:Artista)-[:LEGATO_A {racconto, fonte}]->(:Luogo)  -- racconto solo con fonte
 //   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;
 //     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale
 //     ('sempre esistiti', non una data vera — vedi il modulo dataset), un vero

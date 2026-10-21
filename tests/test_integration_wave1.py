@@ -271,9 +271,14 @@ def test_adapt_su_affollamento_riscrive_la_tappa_in_quel_luogo(client: Any) -> N
 # composto da `rag.reasons.compose_reason` (connettivi, articoli, verbi
 # tipici delle frasi generate). Non è un controllo linguistico completo:
 # è la rete di sicurezza minima contro un reason non tradotto o vuoto.
+#
+# Ondata 2a (compito 4): un reason senza racconto è composto da attributi
+# ("Temi: arte, storia. Al chiuso, gratuita."), senza connettivi: si
+# aggiungono le parole fisse di quel formato.
 PAROLE_ITALIANE_ATTESE = {
     "è", "e", "il", "la", "di", "a", "con", "per", "che", "un", "una",
     "questo", "questa", "tappa", "sei", "sono", "ha", "hai", "tuo", "tua",
+    "temi", "al", "all'", "chiuso", "aperto", "gratuita",
 }
 
 

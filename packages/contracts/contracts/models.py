@@ -19,6 +19,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from .lingua import ARTICOLI
+
 __all__ = [
     "EmotionalProfile",
     "Signal",
@@ -552,6 +554,34 @@ class GraphCandidate(ContractModel):
     # `reason`, mai input di scoring.
     attribuzione: str | None = None  # es. "Offerta da <bottega>, bottega di <mestiere>."
     # (+ " (esempio dimostrativo)" prima del punto finale se la bottega è fittizia)
+    # Campi di SOLO TESTO per il `reason` (ondata 2a, compito 4). NON sono
+    # input di scoring: `connessioni` resta l'unico alimentatore della
+    # sorpresa (numero di frasi) e il `reason` non la legge più; questi campi
+    # non sono mai letti da `calcola_score`. Tutti con default
+    # (retrocompatibili).
+    # Articolo determinativo del luogo, dato del seed (uno di `ARTICOLI`;
+    # None = nome senza articolo, es. una via).
+    place_articolo: str | None = None
+    # Racconti CON FONTE nel seed pertinenti a questa esperienza: prima quelli
+    # dei LEGATO_A del suo luogo (ordine: nome artista casefold), poi le frasi
+    # con fonte dei suoi temi (ordine di `experience.temi`).
+    racconti: list[str] = []
+    # Etichette leggibili dei temi (`Tema.etichetta`), nell'ordine di
+    # `experience.temi`.
+    temi_etichette: list[str] = []
+    # Luogo GIÀ VISITATO a cui questo è vicino (stessa condizione della frase
+    # "A … m da …, già visitato" di `connessioni`); i metri sono `distanza_m`.
+    vicinanza_nome: str | None = None
+    vicinanza_articolo: str | None = None
+
+    @field_validator("place_articolo", "vicinanza_articolo")
+    @classmethod
+    def _articolo_valido(cls, v: str | None) -> str | None:
+        if v is not None and v not in ARTICOLI:
+            raise ValueError(
+                f"articolo non valido: {v!r} (atteso None o uno di {ARTICOLI})"
+            )
+        return v
 
 
 class EventoPromosso(ContractModel):

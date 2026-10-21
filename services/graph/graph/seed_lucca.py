@@ -116,32 +116,38 @@ VICINO_EPOCA = _EPOCA
 # ---------------------------------------------------------------------------
 
 LUOGHI: list[Luogo] = [
-    Luogo("mura-urbane", "Mura di Lucca", "mura"),
-    Luogo("piazza-anfiteatro", "Piazza dell'Anfiteatro", "piazza"),
-    Luogo("torre-guinigi", "Torre Guinigi", "torre"),
-    Luogo("duomo-san-martino", "Duomo di San Martino", "chiesa"),
-    Luogo("casa-puccini", "Casa Natale di Giacomo Puccini", "museo"),
-    Luogo("san-michele-in-foro", "Chiesa di San Michele in Foro", "chiesa"),
-    Luogo("orto-botanico", "Orto Botanico di Lucca", "giardino"),
-    Luogo("teatro-del-giglio", "Teatro del Giglio", "teatro"),
-    Luogo("palazzo-pfanner", "Palazzo Pfanner", "giardino"),
-    Luogo("san-frediano", "Basilica di San Frediano", "chiesa"),
-    Luogo("torre-delle-ore", "Torre delle Ore", "torre"),
-    Luogo("piazza-napoleone", "Piazza Napoleone", "piazza"),
-    Luogo("via-fillungo", "Via Fillungo", "via"),
-    Luogo("baluardo-san-paolino", "Baluardo San Paolino", "mura"),
-    Luogo("museo-nazionale-guinigi", "Museo Nazionale di Villa Guinigi", "museo"),
+    Luogo("mura-urbane", "Mura di Lucca", "mura", articolo="le"),
+    Luogo("piazza-anfiteatro", "Piazza dell'Anfiteatro", "piazza", articolo="la"),
+    Luogo("torre-guinigi", "Torre Guinigi", "torre", articolo="la"),
+    Luogo("duomo-san-martino", "Duomo di San Martino", "chiesa", articolo="il"),
+    Luogo("casa-puccini", "Casa Natale di Giacomo Puccini", "museo", articolo="la"),
+    Luogo("san-michele-in-foro", "Chiesa di San Michele in Foro", "chiesa", articolo="la"),
+    Luogo("orto-botanico", "Orto Botanico di Lucca", "giardino", articolo="l'"),
+    Luogo("teatro-del-giglio", "Teatro del Giglio", "teatro", articolo="il"),
+    Luogo("palazzo-pfanner", "Palazzo Pfanner", "giardino", articolo="il"),
+    Luogo("san-frediano", "Basilica di San Frediano", "chiesa", articolo="la"),
+    Luogo("torre-delle-ore", "Torre delle Ore", "torre", articolo="la"),
+    Luogo("piazza-napoleone", "Piazza Napoleone", "piazza", articolo="la"),
+    Luogo("via-fillungo", "Via Fillungo", "via", articolo=None),
+    Luogo("baluardo-san-paolino", "Baluardo San Paolino", "mura", articolo="il"),
+    Luogo("museo-nazionale-guinigi", "Museo Nazionale di Villa Guinigi", "museo", articolo="il"),
     # `Luogo.categoria` è una stringa libera (nessuna lista chiusa, nessuna
     # logica la legge: solo scritta sul nodo); "chiesa" e "chiostro" sono i
     # termini più fedeli al luogo.
-    Luogo("chiesa-san-francesco", "Chiesa di San Francesco", "chiesa"),
-    Luogo("real-collegio", "Real Collegio", "chiostro"),
+    Luogo("chiesa-san-francesco", "Chiesa di San Francesco", "chiesa", articolo="la"),
+    Luogo("real-collegio", "Real Collegio", "chiostro", articolo="il"),
     # Ondata 1c (dati del committente).
-    Luogo("museo-barsanti-matteucci", "Museo Barsanti e Matteucci", "museo"),  # via Sant'Andrea 58
-    Luogo("via-del-fosso", "Via del Fosso", "via"),
+    # via Sant'Andrea 58
+    Luogo("museo-barsanti-matteucci", "Museo Barsanti e Matteucci", "museo", articolo="il"),
+    Luogo("via-del-fosso", "Via del Fosso", "via", articolo=None),
     # Angolo nord-ovest delle Mura, tra Porta San Donato e la Piattaforma San Frediano.
-    Luogo("baluardo-santa-croce", "Baluardo Santa Croce", "mura"),
-    Luogo("santi-giovanni-reparata", "Chiesa dei Santi Giovanni e Reparata", "chiesa"),
+    Luogo("baluardo-santa-croce", "Baluardo Santa Croce", "mura", articolo="il"),
+    Luogo(
+        "santi-giovanni-reparata",
+        "Chiesa dei Santi Giovanni e Reparata",
+        "chiesa",
+        articolo="la",
+    ),
 ]
 
 # ---------------------------------------------------------------------------
@@ -155,12 +161,34 @@ ARTISTI: list[Artista] = [
     Artista("artista-catalani", "Alfredo Catalani"),
 ]
 
+# `racconto` + `fonte` (solo due legami): l'unico testo narrativo del grafo che
+# può entrare nel motivo. Gli altri legami restano fatti senza racconto.
 LEGATO_A: list[RelazioneLegatoA] = [
     RelazioneLegatoA("artista-puccini", "casa-puccini"),
-    RelazioneLegatoA("artista-puccini", "san-michele-in-foro"),
+    RelazioneLegatoA(
+        "artista-puccini",
+        "san-michele-in-foro",
+        racconto=(
+            "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico "
+            "allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano "
+            "ancora musiche della famiglia Puccini."
+        ),
+        fonte='italia.it, pagina "San Michele in Foro"',
+    ),
     RelazioneLegatoA("artista-puccini", "teatro-del-giglio"),
     RelazioneLegatoA("artista-boccherini", "san-michele-in-foro"),
-    RelazioneLegatoA("artista-boccherini", "duomo-san-martino"),
+    RelazioneLegatoA(
+        "artista-boccherini",
+        "duomo-san-martino",
+        racconto=(
+            "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste "
+            "di Santa Croce, celebrate in questa cattedrale."
+        ),
+        fonte=(
+            'Ministero della Cultura, "Profilo Boccherini"; '
+            'Puccini Museum, pagina "Cattedrale di S. Martino"'
+        ),
+    ),
     RelazioneLegatoA("artista-civitali", "duomo-san-martino"),
     RelazioneLegatoA("artista-catalani", "teatro-del-giglio"),
     # Boccherini è sepolto in San Francesco (fonte: Comune di Lucca). Unico
@@ -193,19 +221,19 @@ BOTTEGHE: list[Bottega] = [
 # ---------------------------------------------------------------------------
 
 TEMI: list[Tema] = [
-    Tema("verde", "Verde e giardini"),
-    Tema("panorama", "Panorama"),
-    Tema("storia", "Storia"),
-    Tema("medievale", "Medievale"),
-    Tema("gastronomia", "Gastronomia"),
-    Tema("arte", "Arte"),
-    Tema("silenzio", "Silenzio e contemplazione"),
-    Tema("puccini", "Giacomo Puccini e la musica"),
-    Tema("musica", "Musica"),
-    Tema("romanico", "Romanico"),
-    Tema("con-bambini", "Adatto ai bambini"),
-    Tema("artigianato", "Artigianato"),
-    Tema("liuteria", "Liuteria"),
+    Tema("verde", "Verde e giardini", etichetta="verde e giardini"),
+    Tema("panorama", "Panorama", etichetta="panorama"),
+    Tema("storia", "Storia", etichetta="storia"),
+    Tema("medievale", "Medievale", etichetta="medioevo"),
+    Tema("gastronomia", "Gastronomia", etichetta="gastronomia"),
+    Tema("arte", "Arte", etichetta="arte"),
+    Tema("silenzio", "Silenzio e contemplazione", etichetta="silenzio e contemplazione"),
+    Tema("puccini", "Giacomo Puccini e la musica", etichetta="Giacomo Puccini e la musica"),
+    Tema("musica", "Musica", etichetta="musica"),
+    Tema("romanico", "Romanico", etichetta="romanico"),
+    Tema("con-bambini", "Adatto ai bambini", etichetta="adatto ai bambini"),
+    Tema("artigianato", "Artigianato", etichetta="artigianato"),
+    Tema("liuteria", "Liuteria", etichetta="liuteria"),
 ]
 
 # ---------------------------------------------------------------------------

@@ -15,7 +15,7 @@ ci sono: non è mai richiesto dai test.
 
 from __future__ import annotations
 
-from contracts import EmotionalProfile, GraphCandidate
+from contracts import EmotionalProfile, GraphCandidate, con_luogo
 
 __all__ = ["compose_reason", "adapt_reason", "enrich_with_llm"]
 
@@ -38,26 +38,18 @@ def _cap(s: str) -> str:
     return s[:1].upper() + s[1:] if s else s
 
 
-def _lower_first(s: str) -> str:
-    return s[:1].lower() + s[1:] if s else s
-
-
 def _pulisci(s: str) -> str:
     return s.strip().rstrip(".;,")
 
 
-def _e_o_ed(testo_seguente: str) -> str:
-    """Restituisce "ed" (d eufonica) se `testo_seguente` inizia per e/è,
-    altrimenti "e". Applicata in modo conservativo: solo davanti a e/è (es.
-    "ed è legato"), non davanti alle altre vocali (es. "e ami", "e hai
-    voglia" restano con "e")."""
-    t = testo_seguente.lstrip()
+def _frase(s: str) -> str:
+    """Iniziale maiuscola e punto finale (nessun secondo punto se il testo
+    termina già con ".", "!" o "?")."""
+    t = s.strip()
     if not t:
-        return "e"
-    primo = t[0].lower()
-    if primo in ("e", "è", "é"):
-        return "ed"
-    return "e"
+        return ""
+    t = _cap(t)
+    return t if t[-1] in ".!?" else t + "."
 
 
 def _frase_segnale(segnale: str) -> str | None:
@@ -113,53 +105,52 @@ def compose_reason(
     candidate: GraphCandidate,
     profile: EmotionalProfile,
     segnali: list[str] | None = None,
+    *,
+    prima_tappa: bool = True,
 ) -> str:
-    """Compone un `reason` in italiano (1-2 frasi) intrecciando:
-    (a) una connessione dal grafo (`candidate.connessioni`, se presente),
-    (b) il tratto del profilo che l'ha resa pertinente,
-    (c) l'eventuale segnale attivo (meteo, affollamento, stanchezza).
+    """Compone il `reason` in italiano: fino a cinque frasi, in quest'ordine,
+    unite da uno spazio.
 
-    Compone solo le parti disponibili: niente placeholder vuoti, niente
-    template robotici. Se nessuna parte è disponibile, ricade su una frase
-    minima ma comunque leggibile e vera (titolo + luogo)."""
-    parti: list[str] = []
+    1. (solo `prima_tappa`) il tratto dominante del profilo;
+    2. il primo racconto CON FONTE (`candidate.racconti`) oppure, in sua
+       assenza, "Temi: a, b." con le etichette dei temi;
+    3. sempre: "Al chiuso"/"All'aperto", ", gratuita" se prezzo None o 0;
+    4. la vicinanza a un luogo già visitato ("A 250 m dal Duomo ...");
+    5. la frase del primo segnale (già solo misurato dal motore).
 
-    if candidate.connessioni:
-        connessione = _pulisci(candidate.connessioni[0])
-        if connessione:
-            parti.append(connessione)
+    Non legge `candidate.connessioni` (alimentano solo il punteggio). La
+    frase 3 c'è sempre: il motivo non è mai vuoto."""
+    frasi: list[str] = []
 
-    tratto = _tratto_dominante(profile)
-    if tratto:
-        parti.append(tratto)
+    if prima_tappa:
+        tratto = _tratto_dominante(profile)
+        if tratto:
+            frasi.append(_frase(tratto))
+
+    racconto = next((r for r in candidate.racconti if r.strip()), None)
+    if racconto:
+        frasi.append(_frase(racconto))
+    else:
+        etichette = [e.strip() for e in candidate.temi_etichette if e.strip()]
+        if etichette:
+            frasi.append(f"Temi: {', '.join(etichette)}.")
+
+    esp = candidate.experience
+    dove = "Al chiuso" if esp.al_chiuso else "All'aperto"
+    if not esp.prezzo_eur:
+        dove += ", gratuita"
+    frasi.append(dove + ".")
+
+    if candidate.distanza_m is not None and candidate.vicinanza_nome:
+        luogo = con_luogo("da", candidate.vicinanza_articolo, candidate.vicinanza_nome)
+        frasi.append(f"A {candidate.distanza_m} m {luogo}, già visitato.")
 
     if segnali:
         frase_segnale = _frase_segnale(segnali[0])
         if frase_segnale:
-            parti.append(_pulisci(frase_segnale))
+            frasi.append(_frase(frase_segnale))
 
-    if not parti:
-        return (
-            f"{candidate.experience.titolo} è una tappa adatta al tuo percorso "
-            f"a {candidate.place_nome}."
-        )
-
-    if len(parti) == 1:
-        testo = parti[0]
-    elif len(parti) == 2:
-        congiunzione = _e_o_ed(parti[1])
-        testo = f"{parti[0]}, {congiunzione} {_lower_first(parti[1])}"
-    else:
-        congiunzione = _e_o_ed(parti[1])
-        testo = (
-            f"{parti[0]}, {congiunzione} {_lower_first(parti[1])}; "
-            f"inoltre, {_lower_first(parti[2])}"
-        )
-
-    testo = _cap(testo)
-    if not testo.endswith("."):
-        testo += "."
-    return testo
+    return " ".join(frasi)
 
 
 def adapt_reason(motivo: str, segnale: str) -> str:

@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from contracts import ExperienceNode, Partner, VocabolarioTemi
+from contracts import ARTICOLI, ExperienceNode, Partner, VocabolarioTemi
 
 # `VICINO` non porta uno storico reale: il seed non ha mai registrato QUANDO
 # un arco di prossimità fisica è stato scritto. Tutti gli archi dei dataset
@@ -32,11 +32,37 @@ from contracts import ExperienceNode, Partner, VocabolarioTemi
 VICINO_EPOCA_PREDEFINITA: datetime = datetime(2026, 1, 1, tzinfo=UTC)
 
 
+def _valida_testo_con_fonte(chi: str, testo: str | None, fonte: str | None) -> None:
+    """Testo narrativo e fonte vanno insieme: un testo senza fonte o una fonte
+    senza testo è un errore a import (vuoto/solo spazi = assente)."""
+    for valore in (testo, fonte):
+        if valore is not None and "\n" in valore:
+            # Il loader spezza il Cypher su ";\n": testi su una riga sola.
+            raise ValueError(f"{chi}: testo e fonte non possono contenere a-capo")
+    ha_testo = bool(testo and testo.strip())
+    ha_fonte = bool(fonte and fonte.strip())
+    if ha_testo != ha_fonte:
+        raise ValueError(
+            f"{chi}: testo e fonte vanno dichiarati insieme "
+            f"(testo={'sì' if ha_testo else 'no'}, fonte={'sì' if ha_fonte else 'no'})"
+        )
+
+
 @dataclass(frozen=True)
 class Luogo:
     id: str
     nome: str
     categoria: str  # "mura","piazza","chiesa","museo","giardino","torre","via","teatro"
+    # Articolo determinativo del nome (uno di `contracts.ARTICOLI`), dato di
+    # grammatica del dataset; None = nome senza articolo (es. una via).
+    articolo: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.articolo is not None and self.articolo not in ARTICOLI:
+            raise ValueError(
+                f"luogo {self.id!r}: articolo {self.articolo!r} non valido "
+                f"(atteso None o uno di {ARTICOLI})"
+            )
 
 
 @dataclass(frozen=True)
@@ -59,7 +85,19 @@ class Bottega:
 @dataclass(frozen=True)
 class Tema:
     id: str
-    nome: str  # etichetta leggibile, es. "Giacomo Puccini e la musica"
+    nome: str  # nome del tema, es. "Giacomo Puccini e la musica"
+    # Etichetta leggibile da inserire in una frase ("Temi: a, b."). Se omessa
+    # è il nome con l'iniziale minuscola; un dataset la dichiara esplicita.
+    etichetta: str = ""
+    # Frase narrativa del tema: ammessa SOLO con `fonte` (nessun testo senza
+    # fonte, nessuna fonte senza testo).
+    frase: str | None = None
+    fonte: str | None = None
+
+    def __post_init__(self) -> None:
+        if not self.etichetta:
+            object.__setattr__(self, "etichetta", self.nome[:1].lower() + self.nome[1:])
+        _valida_testo_con_fonte(f"tema {self.id!r}", self.frase, self.fonte)
 
 
 @dataclass(frozen=True)
@@ -88,6 +126,15 @@ class RelazioneLegatoA:
 
     artista_id: str
     luogo_id: str
+    # Racconto del legame: ammesso SOLO con `fonte`. Senza racconto il legame
+    # resta un fatto del grafo (alimenta `connessioni`) ma non entra nel motivo.
+    racconto: str | None = None
+    fonte: str | None = None
+
+    def __post_init__(self) -> None:
+        _valida_testo_con_fonte(
+            f"legato_a {self.artista_id!r}->{self.luogo_id!r}", self.racconto, self.fonte
+        )
 
 
 @dataclass(frozen=True)

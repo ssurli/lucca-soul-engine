@@ -2823,3 +2823,11 @@ Nota sul futuro campo `dimostrativo`: dovrà riusare la stessa esclusione dello 
 (`list_pending`, `list_curated`, `get_curated`), così Index, conteggio persone del gate k e
 dashboard lo escludono con un solo punto di filtro. Lo scarto esiste solo per i contributi non
 curati: i 4 ricordi demo, già curati, non sono scartabili con questo meccanismo.
+
+## Sorpresa contata sulle frasi di connessione (ondata 2a, compito 4)
+
+La sorpresa (`rules.py:299`) conta le frasi di connessione, non i legami del grafo; da ricalcolare
+sugli archi dopo la demo. Dall'ondata 2a `GraphCandidate.connessioni` alimenta SOLO il punteggio:
+il `reason` legge campi separati (`racconti` con fonte, `temi_etichette`, `place_articolo`,
+`vicinanza_*`), così cambiare i testi dei motivi non sposta le tappe. Finché la sorpresa resta
+sulle frasi, aggiungere o togliere una frase in `graph.connessioni` cambia il punteggio.

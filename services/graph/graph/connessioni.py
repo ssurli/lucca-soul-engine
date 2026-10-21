@@ -56,3 +56,44 @@ def frasi_connessioni(
         frasi.append(f"A {metri} m da {nome_riferimento}, già visitato.")
 
     return frasi
+
+
+# ---------------------------------------------------------------------------
+# Campi di SOLO TESTO per il motivo (`GraphCandidate.racconti`,
+# `temi_etichette`). Stesso principio di `frasi_connessioni`: un solo punto
+# di costruzione e di ordinamento per le due sorgenti. NON toccano
+# `connessioni` (che alimenta lo score): il motivo non la legge più.
+# ---------------------------------------------------------------------------
+
+
+def etichette_temi(temi_esperienza: Sequence[str], etichette: Mapping[str, str]) -> list[str]:
+    """Etichette leggibili dei temi, nell'ordine di `ExperienceNode.temi`
+    (un id senza etichetta viene saltato, come in `frasi_connessioni`)."""
+    return [etichette[t] for t in temi_esperienza if etichette.get(t)]
+
+
+def racconti_con_fonte(
+    *,
+    legati: Iterable[tuple[str, str | None, str | None]],
+    temi_esperienza: Sequence[str],
+    frasi_temi: Mapping[str, tuple[str | None, str | None]],
+) -> list[str]:
+    """Racconti CON FONTE pertinenti a un'esperienza: prima quelli dei
+    `LEGATO_A` del suo luogo (`legati`: (nome artista, racconto, fonte), ordine
+    nome casefold), poi le frasi dei suoi temi (`frasi_temi`: id ->
+    (frase, fonte), ordine di `ExperienceNode.temi`). Un testo senza fonte non
+    entra mai: la fonte è la condizione, non un'etichetta facoltativa."""
+    risultato: list[str] = []
+    con_fonte = {
+        (nome, racconto)
+        for nome, racconto, fonte in legati
+        if racconto and racconto.strip() and fonte and fonte.strip()
+    }
+    for _nome, racconto in sorted(con_fonte, key=lambda x: (x[0].casefold(), x[0], x[1])):
+        if racconto not in risultato:
+            risultato.append(racconto)
+    for tema_id in temi_esperienza:
+        frase, fonte = frasi_temi.get(tema_id, (None, None))
+        if frase and frase.strip() and fonte and fonte.strip() and frase not in risultato:
+            risultato.append(frase)
+    return risultato

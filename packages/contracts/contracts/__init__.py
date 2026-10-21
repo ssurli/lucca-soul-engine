@@ -4,6 +4,7 @@ Single source of truth (Pydantic v2), allineato a `docs/DATA_CONTRACTS.md`.
 Uso: `from contracts import Itinerary, VisitorContext, ...`
 """
 
+from .lingua import ARTICOLI, con_articolo, con_luogo, preposizione_articolata
 from .models import (
     AdaptRequest,
     BehaviorEvent,
@@ -43,6 +44,10 @@ from .models import (
 from .orari import codifica_fasce, decodifica_fasce
 
 __all__ = [
+    "ARTICOLI",
+    "con_articolo",
+    "con_luogo",
+    "preposizione_articolata",
     "codifica_fasce",
     "decodifica_fasce",
     "AdaptRequest",

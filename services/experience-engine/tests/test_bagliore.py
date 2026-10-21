@@ -248,7 +248,7 @@ class _Spia:
         self.chiamate: list[tuple] = []
         self.includi = includi
 
-    def __call__(self, cand, profile, segnali):
+    def __call__(self, cand, profile, segnali, *, prima_tappa=True):
         self.chiamate.append((cand, profile, tuple(segnali)))
         return f"Motivo di {cand.experience.id}." + (f" {self.includi}" if self.includi else "")
 

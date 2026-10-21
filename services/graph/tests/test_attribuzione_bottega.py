@@ -63,13 +63,16 @@ def _record(esp_id: str, botteghe: list[dict[str, Any]] | None = None) -> dict[s
         "orari_apertura": codifica_fasce(e.orari_apertura),
         "sospesa": e.sospesa,
         "place_nome": luogo.nome,
+        "place_articolo": luogo.articolo,
         "artisti_nomi": [],
+        "legati_racconti": [],
         "botteghe": botteghe,
         "temi_evocati": [],
         "racconti_ispirazione": [],
         "temi_bottega": [],
         "distanza_m": None,
         "riferimento_nome": None,
+        "riferimento_articolo": None,
         "partner_abbonamento_attivo": True,
     }
 

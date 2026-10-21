@@ -51,6 +51,11 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
     luogo = _LUOGHI[e.place_id]
     artisti = [_ARTISTI[r.artista_id].nome for r in DATASET.legato_a if r.luogo_id == luogo.id]
     bottega = _BOTTEGHE[e.partner_id] if e.partner_id else None
+    legati_racconti = [
+        {"nome": _ARTISTI[r.artista_id].nome, "racconto": r.racconto, "fonte": r.fonte}
+        for r in DATASET.legato_a
+        if r.luogo_id == luogo.id
+    ]
     racconti = [
         {"artista_id": r.artista_id, "racconto": r.racconto}
         for r in DATASET.bottega_ispirata_da
@@ -63,6 +68,7 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
     ]
     metri = None
     nome_rif = None
+    articolo_rif = None
     if vicino_a is not None:
         metri_v = [
             v.metri
@@ -72,6 +78,7 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
         if metri_v:
             metri = min(metri_v)
             nome_rif = _LUOGHI[vicino_a].nome
+            articolo_rif = _LUOGHI[vicino_a].articolo
     return {
         "id": e.id,
         "titolo": e.titolo,
@@ -87,19 +94,33 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
         "orari_apertura": codifica_fasce(e.orari_apertura),
         "sospesa": e.sospesa,
         "place_nome": luogo.nome,
+        "place_articolo": luogo.articolo,
         "artisti_nomi": _mescola(artisti, rng),
+        "legati_racconti": _mescola(legati_racconti, rng),
         "botteghe": (
             [{"nome": bottega.nome, "mestiere": bottega.mestiere, "fittizio": bottega.fittizio}]
             if bottega
             else [{"nome": None, "mestiere": None, "fittizio": True}]
         ),
         "temi_evocati": _mescola(
-            [{"id": t, "nome": _TEMI[t].nome} for t in e.temi if t in _TEMI], rng
+            [
+                {
+                    "id": t,
+                    "nome": _TEMI[t].nome,
+                    "etichetta": _TEMI[t].etichetta,
+                    "frase": _TEMI[t].frase,
+                    "fonte": _TEMI[t].fonte,
+                }
+                for t in e.temi
+                if t in _TEMI
+            ],
+            rng,
         ),
         "racconti_ispirazione": _mescola(racconti, rng),
         "temi_bottega": _mescola(temi_bottega, rng),
         "distanza_m": metri,
         "riferimento_nome": nome_rif,
+        "riferimento_articolo": articolo_rif,
         "partner_abbonamento_attivo": True,
     }
 
@@ -119,6 +140,12 @@ def test_connessioni_identiche_tra_seed_e_neo4j(visti: list[str], seed_casuale: 
         da_neo4j = Neo4jCandidateSource._to_candidate(record, vicino_a)  # type: ignore[arg-type]
         assert da_neo4j.connessioni == atteso.connessioni, esp_id
         assert da_neo4j.attribuzione == atteso.attribuzione, esp_id
+        # Campi di solo testo per il motivo (compito 4): identici tra le sorgenti.
+        assert da_neo4j.place_articolo == atteso.place_articolo, esp_id
+        assert da_neo4j.racconti == atteso.racconti, esp_id
+        assert da_neo4j.temi_etichette == atteso.temi_etichette, esp_id
+        assert da_neo4j.vicinanza_nome == atteso.vicinanza_nome, esp_id
+        assert da_neo4j.vicinanza_articolo == atteso.vicinanza_articolo, esp_id
 
 
 def test_gia_visitato_compare_su_entrambe_e_per_ultimo() -> None:
