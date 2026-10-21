@@ -11,6 +11,8 @@ Criteri:
   meccaniche), ne' di "exp-" (un id non si mostra mai) in `reason` ne' in `titolo`;
 - nessuna frase sull'affollamento senza un valore misurato: "affollat" e' ammesso solo
   se il `Signal` della richiesta ha almeno un `affollamento` (misurato);
+- nessuna frase sul prezzo: "gratuit" non compare mai (con `prezzo_eur` assente la
+  gratuita' non e' un fatto: il Duomo);
 - la frase del profilo (i tratti di `rag.reasons._tratto_dominante`) compare al massimo
   UNA volta in ogni itinerario.
 
@@ -47,7 +49,7 @@ from urban_memory import (  # noqa: E402
 
 FILE_ITINERARI = Path(__file__).parent / "golden" / "lucca_itinerari.json"
 ADESSO_FISSO = datetime(2026, 6, 15, 10, 0, 0, tzinfo=UTC)
-VIETATE = ("Evoca il tema", "è legato a", "exp-")
+VIETATE = ("Evoca il tema", "è legato a", "exp-", "gratuit")
 
 
 def _casi() -> dict[str, Any]:
@@ -138,6 +140,8 @@ def test_la_verifica_dei_testi_scatta() -> None:
         _verifica_testi("x", caso, [("a", "  ")])
     with pytest.raises(AssertionError):
         _verifica_testi("x", caso, [("a", "Vedi exp-duomo.")])
+    with pytest.raises(AssertionError):
+        _verifica_testi("x", caso, [("a", "All'aperto, gratuita.")])
     misurato: dict[str, Any] = {"richiesta": {"signal": {"affollamento": {"mura-urbane": 0.9}}}}
     _verifica_testi("x", misurato, [("a", "In questo momento è meno affollato.")])
     frase = next(iter(_frasi_profilo()))

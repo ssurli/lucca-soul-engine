@@ -148,6 +148,8 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
 - Nessun subagent esegue comandi contro Neon o Aura reali (verify, migrate, loader, link, audit o
   script ad hoc) senza autorizzazione esplicita nel brief. Le prove si fanno sui test o con DSN
   non raggiungibili.
+- `graph.loader` non ha `--help` e carica subito su Aura: Claude Code non lo lancia mai, con
+  nessun argomento.
 
 ### B. Trappole Windows/PowerShell (ambiente reale dell'utente)
 - Comandi per l'utente: PowerShell **completi**, mai segnaposto tipo `<...>` (in PS `<` è un

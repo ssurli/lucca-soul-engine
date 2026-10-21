@@ -9,7 +9,8 @@ credenziale, `adesso` fisso). Le richieste sono quelle del golden
 - nei testi composti dal codice attuale nessun residuo del formato vecchio
   ("è legato a", "Evoca il tema", "La bottega evoca"), nessun id `exp-`, e
   nessuna parola sull'affollamento ("affollat") se l'affollamento di quel luogo
-  non e' stato misurato nel segnale;
+  non e' stato misurato nel segnale; nessuna frase sul prezzo ("gratuit",
+  decisione del committente per l'ondata 2a);
 - la frase del profilo compare al massimo una volta per itinerario e solo
   sulla prima tappa (composizione); al massimo una volta dopo l'adattamento;
 - tappe, orari ed esiti (tutto tranne `reason` e `titolo`) sono identici
@@ -118,6 +119,8 @@ def _errori_testo(voce: dict[str, Any], misurati: set[str]) -> list[str]:
     errori = [f"{eid}: contiene {v!r}: {reason!r}" for v in VIETATE if v in reason]
     if "affollat" in reason.lower() and PLACE.get(eid) not in misurati:
         errori.append(f"{eid}: parla di affollamento senza valore misurato: {reason!r}")
+    if "gratuit" in reason.lower():
+        errori.append(f"{eid}: frase sul prezzo: {reason!r}")
     return errori
 
 
@@ -248,9 +251,10 @@ def test_le_guardie_scattano() -> None:
     """Doppio negativo: i controlli falliscono su testi rotti."""
     eid = next(iter(PLACE))
     rotta = {"experience_id": eid,
-             "reason": "Evoca il tema x. Giacomo è legato a y. exp-a. Meno affollato."}
-    assert len(_errori_testo(rotta, set())) == 4
-    assert len(_errori_testo(rotta, {PLACE[eid]})) == 3
+             "reason": "Evoca il tema x. Giacomo è legato a y. exp-a. Meno affollato. "
+                       "Al chiuso, gratuita."}
+    assert len(_errori_testo(rotta, set())) == 5
+    assert len(_errori_testo(rotta, {PLACE[eid]})) == 4
     doppio = [{"experience_id": "a", "reason": FRASI_PROFILO[0]},
               {"experience_id": "b", "reason": FRASI_PROFILO[2]}]
     assert len(_errori_profilo(doppio, solo_prima=True)) == 2

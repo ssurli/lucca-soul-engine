@@ -173,7 +173,7 @@ def _fallback_reason(
     (e lo stesso testo) di `rag.reasons.compose_reason`, in quest'ordine:
     1. (solo `prima_tappa`) il tratto dominante del profilo;
     2. il primo racconto con fonte, altrimenti "Temi: a, b.";
-    3. sempre "Al chiuso"/"All'aperto" (+ ", gratuita" se prezzo None o 0);
+    3. sempre e solo "Al chiuso."/"All'aperto." (nessuna frase sul prezzo);
     4. la vicinanza a un luogo già visitato;
     5. la frase del primo segnale (già solo misurato).
     Non legge `connessioni` (alimentano solo il punteggio). Mai vuoto."""
@@ -191,8 +191,6 @@ def _fallback_reason(
             frasi.append(f"Temi: {', '.join(etichette)}.")
     esp = candidate.experience
     dove = "Al chiuso" if esp.al_chiuso else "All'aperto"
-    if not esp.prezzo_eur:
-        dove += ", gratuita"
     frasi.append(dove + ".")
     if candidate.distanza_m is not None and candidate.vicinanza_nome:
         luogo = con_luogo("da", candidate.vicinanza_articolo, candidate.vicinanza_nome)

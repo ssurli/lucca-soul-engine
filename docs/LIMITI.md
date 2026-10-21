@@ -2831,3 +2831,13 @@ sugli archi dopo la demo. Dall'ondata 2a `GraphCandidate.connessioni` alimenta S
 il `reason` legge campi separati (`racconti` con fonte, `temi_etichette`, `place_articolo`,
 `vicinanza_*`), così cambiare i testi dei motivi non sposta le tappe. Finché la sorpresa resta
 sulle frasi, aggiungere o togliere una frase in `graph.connessioni` cambia il punteggio.
+
+## Il loader del grafo scrive subito su Aura (dopo la demo)
+
+`python -m graph.loader` non ha né `--help` né una prova a secco: qualunque argomento viene
+ignorato e il seed (`00_schema.cypher` + `01_seed_lucca.cypher`) viene caricato subito sul database
+di `NEO4J_URI`. Il 21/10 un `--help` lanciato per verificare il nome del comando ha caricato il seed
+del branch dell'ondata 2a su Aura (operazione idempotente, nessuna cancellazione). Dopo la demo il
+loader deve avere una prova a secco di default (cosa verrebbe eseguito, senza connettersi in
+scrittura) e scrivere solo con `--esegui`, come `scripts/scarta_contributo.py` e
+`scripts/carica_ricordi_demo.py`.

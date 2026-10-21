@@ -28,20 +28,20 @@ def _cand(*, al_chiuso: bool = False, prezzo: float | None = None, **kw: Any) ->
 def test_esempio_prima_tappa_etichette() -> None:
     c = _cand(temi_etichette=["verde e giardini"])
     assert compose_reason(c, CONTEMPLATIVO) == (
-        "Cerchi silenzio e raccoglimento. Temi: verde e giardini. All'aperto, gratuita."
+        "Cerchi silenzio e raccoglimento. Temi: verde e giardini. All'aperto."
     )
 
 
 def test_esempio_racconto_non_prima_tappa() -> None:
     c = _cand(al_chiuso=True, racconti=["In questa chiesa il giovane Giacomo Puccini …"])
     assert compose_reason(c, CONTEMPLATIVO, prima_tappa=False) == (
-        "In questa chiesa il giovane Giacomo Puccini …. Al chiuso, gratuita."
+        "In questa chiesa il giovane Giacomo Puccini …. Al chiuso."
     )
 
 
 def test_racconto_con_punto_non_ne_riceve_un_altro() -> None:
     c = _cand(racconti=["Un racconto."])
-    assert compose_reason(c, NEUTRO) == "Un racconto. All'aperto, gratuita."
+    assert compose_reason(c, NEUTRO) == "Un racconto. All'aperto."
 
 
 def test_racconto_vince_sulle_etichette() -> None:
@@ -53,26 +53,26 @@ def test_racconto_vince_sulle_etichette() -> None:
 
 def test_etichette_multiple() -> None:
     c = _cand(temi_etichette=["arte", "storia"])
-    assert compose_reason(c, NEUTRO) == "Temi: arte, storia. All'aperto, gratuita."
+    assert compose_reason(c, NEUTRO) == "Temi: arte, storia. All'aperto."
 
 
 def test_al_chiuso_e_all_aperto() -> None:
-    assert compose_reason(_cand(al_chiuso=True), NEUTRO) == "Al chiuso, gratuita."
-    assert compose_reason(_cand(al_chiuso=False), NEUTRO) == "All'aperto, gratuita."
+    assert compose_reason(_cand(al_chiuso=True), NEUTRO) == "Al chiuso."
+    assert compose_reason(_cand(al_chiuso=False), NEUTRO) == "All'aperto."
 
 
-def test_gratuita_con_prezzo_zero_assente_con_prezzo_positivo() -> None:
-    assert "gratuita" in compose_reason(_cand(prezzo=0), NEUTRO)
-    out = compose_reason(_cand(prezzo=8.0), NEUTRO)
-    assert out == "All'aperto."
-    assert "gratuita" not in out
+def test_nessuna_frase_sul_prezzo_qualunque_prezzo() -> None:
+    for prezzo in (None, 0, 8.0):
+        out = compose_reason(_cand(prezzo=prezzo), NEUTRO)
+        assert out == "All'aperto."
+        assert "gratuit" not in out
 
 
 def test_vicinanza_con_articoli() -> None:
     casi = [("il", "dal Duomo"), ("la", "dalla Duomo"), ("l'", "dall'Duomo"), (None, "da Duomo")]
     for art, atteso in casi:
         c = _cand(distanza_m=250, vicinanza_nome="Duomo", vicinanza_articolo=art)
-        assert compose_reason(c, NEUTRO) == f"All'aperto, gratuita. A 250 m {atteso}, già visitato."
+        assert compose_reason(c, NEUTRO) == f"All'aperto. A 250 m {atteso}, già visitato."
 
 
 def test_vicinanza_assente_senza_nome() -> None:
@@ -81,7 +81,7 @@ def test_vicinanza_assente_senza_nome() -> None:
 
 def test_segnale() -> None:
     out = compose_reason(_cand(), NEUTRO, ["pioggia"])
-    assert out == "All'aperto, gratuita. Con la pioggia si sta al chiuso."
+    assert out == "All'aperto. Con la pioggia si sta al chiuso."
     assert compose_reason(_cand(), NEUTRO, ["affollamento"]).endswith(
         "In questo momento è meno affollato."
     )

@@ -18,7 +18,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:35:00",
             "durata_min": 35,
-            "reason": "Sostituita per l'affollamento al Palazzo Pfanner. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento al Palazzo Pfanner. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -101,7 +101,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
             "durata_min": 35,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -191,14 +191,14 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
             "durata_min": 35,
-            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:45:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -372,7 +372,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:55:00",
             "durata_min": 20,
-            "reason": "Sostituita per l'affollamento all'Orto Botanico di Lucca. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento all'Orto Botanico di Lucca. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -467,7 +467,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -566,14 +566,14 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:30:00",
             "durata_min": 35,
-            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -767,7 +767,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Sostituita per l'affollamento alla Basilica di San Frediano. Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Sostituita per l'affollamento alla Basilica di San Frediano. Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -878,7 +878,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -996,7 +996,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -1248,7 +1248,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "12:45:00",
             "durata_min": 30,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -1464,7 +1464,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -1756,7 +1756,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "16:20:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           }
         ],
@@ -2185,14 +2185,14 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
             "durata_min": 35,
-            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:45:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -2284,7 +2284,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -2383,14 +2383,14 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
             "durata_min": 35,
-            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:45:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -2482,21 +2482,21 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:30:00",
             "durata_min": 30,
-            "reason": "Sostituita per la pioggia. Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-interno-san-michele",
             "arrivo": "11:10:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso.",
             "esito_adattamento": "sostituita"
           }
         ],
@@ -2588,7 +2588,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:35:00",
             "durata_min": 35,
-            "reason": "Sostituita per l'affollamento al Palazzo Pfanner. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento al Palazzo Pfanner. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -2664,7 +2664,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
             "durata_min": 35,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -2747,7 +2747,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
             "durata_min": 35,
-            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -2761,7 +2761,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "11:45:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           }
         ],
@@ -2914,7 +2914,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:55:00",
             "durata_min": 20,
-            "reason": "Sostituita per l'affollamento all'Orto Botanico di Lucca. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento all'Orto Botanico di Lucca. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -3001,7 +3001,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -3092,14 +3092,14 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:30:00",
             "durata_min": 35,
-            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -3277,7 +3277,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Sostituita per l'affollamento alla Basilica di San Frediano. Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Sostituita per l'affollamento alla Basilica di San Frediano. Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -3379,7 +3379,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -3488,7 +3488,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -4302,7 +4302,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "16:20:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           }
         ],
@@ -4805,7 +4805,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -4819,7 +4819,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "11:15:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -4876,7 +4876,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:40:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
@@ -4890,7 +4890,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "12:25:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -4929,7 +4929,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
             "durata_min": 35,
-            "reason": "Rispetta il bisogno di un percorso accessibile. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Rispetta il bisogno di un percorso accessibile. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -4943,7 +4943,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "11:45:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -4989,7 +4989,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -5003,7 +5003,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "11:15:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -5049,7 +5049,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -5063,7 +5063,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "11:15:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -5109,7 +5109,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
@@ -5123,7 +5123,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "11:09:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
@@ -5171,14 +5171,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -5242,7 +5242,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Ti lasci conquistare dalla bellezza. Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Ti lasci conquistare dalla bellezza. Temi: romanico, arte, medioevo. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
@@ -5256,7 +5256,7 @@
             "experience_id": "exp-interno-san-michele",
             "arrivo": "11:30:00",
             "durata_min": 20,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
@@ -5277,7 +5277,7 @@
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "13:40:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Temi: storia, verde e giardini. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           }
         ],
@@ -5316,7 +5316,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Ti lasci conquistare dalla bellezza. Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Ti lasci conquistare dalla bellezza. Temi: romanico, arte, medioevo. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -5330,7 +5330,7 @@
             "experience_id": "exp-interno-san-michele",
             "arrivo": "11:30:00",
             "durata_min": 20,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -5344,14 +5344,14 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "13:00:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-pfanner-dalle-mura",
             "arrivo": "13:45:00",
             "durata_min": 15,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5390,14 +5390,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -5457,14 +5457,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -5524,14 +5524,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:29:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
@@ -5559,7 +5559,7 @@
             "experience_id": "exp-via-del-fosso",
             "arrivo": "13:35:00",
             "durata_min": 20,
-            "reason": "Temi: silenzio e contemplazione, storia. All'aperto, gratuita. A 450 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: silenzio e contemplazione, storia. All'aperto. A 450 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           }
         ],
@@ -5600,21 +5600,21 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: storia. Al chiuso, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:30:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "11:05:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -5628,14 +5628,14 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "12:35:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "13:30:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita.",
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5678,21 +5678,21 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:55:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Temi: storia. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "11:25:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
@@ -5713,7 +5713,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "13:35:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5752,21 +5752,21 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:00:00",
             "durata_min": 20,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: storia. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: storia. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-bici-mura",
             "arrivo": "10:30:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "11:25:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -5780,14 +5780,14 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:55:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-pfanner-dalle-mura",
             "arrivo": "13:40:00",
             "durata_min": 15,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5826,21 +5826,21 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:55:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita.",
+            "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "11:25:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -5854,7 +5854,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "12:50:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -5900,21 +5900,21 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:55:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: storia. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "11:25:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -5928,7 +5928,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "12:40:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -5974,21 +5974,21 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "10:55:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita.",
+            "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "11:20:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
@@ -6002,7 +6002,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "12:39:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
@@ -6064,7 +6064,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "11:30:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -6078,14 +6078,14 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "12:55:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "13:30:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita.",
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -6142,7 +6142,7 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "11:30:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
@@ -6156,7 +6156,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "13:15:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           }
         ],
@@ -6195,7 +6195,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Cerchi silenzio e raccoglimento. Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Cerchi silenzio e raccoglimento. Temi: romanico, arte, medioevo. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6209,14 +6209,14 @@
             "experience_id": "exp-interno-san-michele",
             "arrivo": "11:30:00",
             "durata_min": 20,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:00:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6230,7 +6230,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "13:25:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Temi: storia. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -6283,14 +6283,14 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "11:30:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "12:25:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -6343,7 +6343,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:40:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -6357,21 +6357,21 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "12:05:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-bici-mura",
             "arrivo": "12:40:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "13:35:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: storia, verde e giardini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           }
         ],
@@ -6424,14 +6424,14 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "11:24:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "12:14:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
@@ -6445,7 +6445,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "13:33:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           }
         ],
@@ -6486,14 +6486,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6557,7 +6557,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Hai voglia di perderti e lasciarti sorprendere. Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Hai voglia di perderti e lasciarti sorprendere. Temi: romanico, arte, medioevo. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
@@ -6571,14 +6571,14 @@
             "experience_id": "exp-interno-san-michele",
             "arrivo": "11:30:00",
             "durata_min": 20,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:00:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
@@ -6592,7 +6592,7 @@
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "13:25:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Temi: storia, verde e giardini. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           }
         ],
@@ -6631,7 +6631,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Hai voglia di perderti e lasciarti sorprendere. Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Hai voglia di perderti e lasciarti sorprendere. Temi: romanico, arte, medioevo. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6645,14 +6645,14 @@
             "experience_id": "exp-interno-san-michele",
             "arrivo": "11:30:00",
             "durata_min": 20,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:00:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6666,7 +6666,7 @@
             "experience_id": "exp-pfanner-dalle-mura",
             "arrivo": "13:45:00",
             "durata_min": 15,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -6705,14 +6705,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6726,7 +6726,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:05:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6740,7 +6740,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "13:30:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -6779,14 +6779,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -6800,7 +6800,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:05:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -6814,7 +6814,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "13:30:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: storia, medioevo. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           }
         ],
@@ -6853,14 +6853,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:29:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
@@ -6874,7 +6874,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "11:59:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6929,14 +6929,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "È pensata anche per chi viaggia con bambini. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -6964,7 +6964,7 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "13:45:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -6978,35 +6978,35 @@
             "experience_id": "exp-tramonto-baluardo",
             "arrivo": "16:20:00",
             "durata_min": 30,
-            "reason": "Temi: panorama, silenzio e contemplazione, verde e giardini. All'aperto, gratuita.",
+            "reason": "Temi: panorama, silenzio e contemplazione, verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "17:00:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita.",
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
             "arrivo": "17:30:00",
             "durata_min": 20,
-            "reason": "Temi: silenzio e contemplazione, storia. All'aperto, gratuita.",
+            "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-struscio-fillungo",
             "arrivo": "18:00:00",
             "durata_min": 40,
-            "reason": "Temi: gastronomia, artigianato. All'aperto, gratuita.",
+            "reason": "Temi: gastronomia, artigianato. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "18:50:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita. In questo momento è meno affollato.",
+            "reason": "Temi: storia, medioevo. All'aperto. In questo momento è meno affollato.",
             "esito_adattamento": null
           }
         ],
@@ -7049,14 +7049,14 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:55:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
@@ -7077,7 +7077,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "13:05:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -7091,42 +7091,42 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "15:20:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-tramonto-baluardo",
             "arrivo": "16:05:00",
             "durata_min": 30,
-            "reason": "Temi: panorama, silenzio e contemplazione, verde e giardini. All'aperto, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Temi: panorama, silenzio e contemplazione, verde e giardini. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "16:45:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Temi: storia, verde e giardini. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
             "arrivo": "17:15:00",
             "durata_min": 20,
-            "reason": "Temi: silenzio e contemplazione, storia. All'aperto, gratuita.",
+            "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "17:45:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-struscio-fillungo",
             "arrivo": "18:25:00",
             "durata_min": 40,
-            "reason": "Temi: gastronomia, artigianato. All'aperto, gratuita.",
+            "reason": "Temi: gastronomia, artigianato. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -7165,7 +7165,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: romanico, arte, medioevo. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -7179,21 +7179,21 @@
             "experience_id": "exp-interno-san-michele",
             "arrivo": "11:30:00",
             "durata_min": 20,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-bici-mura",
             "arrivo": "12:00:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:55:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -7207,7 +7207,7 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "15:20:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Temi: storia. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -7221,28 +7221,28 @@
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "16:30:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita.",
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
             "arrivo": "17:00:00",
             "durata_min": 20,
-            "reason": "Temi: silenzio e contemplazione, storia. All'aperto, gratuita.",
+            "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "17:30:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-struscio-fillungo",
             "arrivo": "18:10:00",
             "durata_min": 40,
-            "reason": "Temi: gastronomia, artigianato. All'aperto, gratuita.",
+            "reason": "Temi: gastronomia, artigianato. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -7281,21 +7281,21 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:55:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "11:30:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -7316,7 +7316,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "13:40:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -7330,35 +7330,35 @@
             "experience_id": "exp-tramonto-baluardo",
             "arrivo": "16:05:00",
             "durata_min": 30,
-            "reason": "Temi: panorama, silenzio e contemplazione, verde e giardini. All'aperto, gratuita.",
+            "reason": "Temi: panorama, silenzio e contemplazione, verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "16:45:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita.",
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
             "arrivo": "17:15:00",
             "durata_min": 20,
-            "reason": "Temi: silenzio e contemplazione, storia. All'aperto, gratuita.",
+            "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "17:45:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-struscio-fillungo",
             "arrivo": "18:25:00",
             "durata_min": 40,
-            "reason": "Temi: gastronomia, artigianato. All'aperto, gratuita.",
+            "reason": "Temi: gastronomia, artigianato. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -7397,21 +7397,21 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:55:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "11:30:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -7432,14 +7432,14 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "13:40:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "14:25:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: storia. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
@@ -7460,28 +7460,28 @@
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "17:25:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: storia, verde e giardini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
             "arrivo": "17:55:00",
             "durata_min": 20,
-            "reason": "Temi: silenzio e contemplazione, storia. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: silenzio e contemplazione, storia. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "18:25:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: storia, medioevo. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-struscio-fillungo",
             "arrivo": "19:05:00",
             "durata_min": 40,
-            "reason": "Temi: gastronomia, artigianato. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Temi: gastronomia, artigianato. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           }
         ],
@@ -7520,21 +7520,21 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:50:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "11:19:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. A 250 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
@@ -7555,7 +7555,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "13:29:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -7576,28 +7576,28 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "16:38:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita.",
+            "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
             "arrivo": "17:04:00",
             "durata_min": 20,
-            "reason": "Temi: silenzio e contemplazione, storia. All'aperto, gratuita. A 450 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: silenzio e contemplazione, storia. All'aperto. A 450 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "17:34:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita.",
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-struscio-fillungo",
             "arrivo": "17:56:00",
             "durata_min": 40,
-            "reason": "Temi: gastronomia, artigianato. All'aperto, gratuita. A 150 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Temi: gastronomia, artigianato. All'aperto. A 150 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           }
         ],
@@ -7638,7 +7638,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -7681,7 +7681,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Ami i luoghi vivi, con musica e movimento. Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con questo caldo un luogo fresco si apprezza di più.",
+            "reason": "Ami i luoghi vivi, con musica e movimento. Temi: romanico, arte, medioevo. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           }
         ],
@@ -7720,7 +7720,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:00:00",
             "durata_min": 30,
-            "reason": "Ami i luoghi vivi, con musica e movimento. Temi: romanico, arte, medioevo. Al chiuso, gratuita. Con la pioggia si sta al chiuso.",
+            "reason": "Ami i luoghi vivi, con musica e movimento. Temi: romanico, arte, medioevo. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -7759,7 +7759,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -7798,7 +7798,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. È una tappa più breve, per non stancarti troppo.",
+            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           }
         ],
@@ -7837,7 +7837,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 350 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           }
         ],
@@ -7878,7 +7878,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Rispetta il bisogno di un percorso accessibile. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -7892,7 +7892,7 @@
             "experience_id": "exp-mosaico-san-frediano",
             "arrivo": "11:15:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto, gratuita.",
+            "reason": "Temi: arte, medioevo, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -7938,14 +7938,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Ti lasci conquistare dalla bellezza. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -8005,7 +8005,7 @@
             "experience_id": "exp-museo-barsanti-matteucci",
             "arrivo": "15:00:00",
             "durata_min": 45,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -8026,21 +8026,21 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "17:20:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita.",
+            "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "17:50:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita. Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso e con il tempo a disposizione: la tappa resta in programma.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso e con il tempo a disposizione: la tappa resta in programma.",
             "esito_adattamento": "mantenuta_senza_alternativa"
           },
           {
             "experience_id": "exp-chiesa-chiostro-san-francesco",
             "arrivo": "18:25:00",
             "durata_min": 30,
-            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso, gratuita.",
+            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
             "esito_adattamento": "non_toccata"
           }
         ],
@@ -8055,7 +8055,7 @@
               "titolo": "Giro in bicicletta sulle Mura",
               "arrivo": "15:00:00",
               "durata_min": 45,
-              "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita.",
+              "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto.",
               "esito_adattamento": null,
               "curiosita": []
             },
@@ -8082,7 +8082,7 @@
               "titolo": "La sortita sotterranea del Baluardo San Paolino",
               "arrivo": "17:20:00",
               "durata_min": 20,
-              "reason": "Temi: storia. Al chiuso, gratuita.",
+              "reason": "Temi: storia. Al chiuso.",
               "esito_adattamento": null,
               "curiosita": [
                 {
@@ -8097,7 +8097,7 @@
               "titolo": "La facciata scolpita di San Michele in Foro",
               "arrivo": "17:50:00",
               "durata_min": 25,
-              "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+              "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
               "esito_adattamento": null,
               "curiosita": [
                 {
@@ -8112,7 +8112,7 @@
               "titolo": "La chiesa di San Francesco e il suo chiostro",
               "arrivo": "18:25:00",
               "durata_min": 30,
-              "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso, gratuita.",
+              "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
               "esito_adattamento": null,
               "curiosita": []
             }
@@ -8153,7 +8153,7 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -8174,7 +8174,7 @@
             "experience_id": "exp-museo-barsanti-matteucci",
             "arrivo": "13:00:00",
             "durata_min": 45,
-            "reason": "Temi: storia. Al chiuso, gratuita.",
+            "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -8213,7 +8213,7 @@
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "15:00:00",
             "durata_min": 30,
-            "reason": "Sostituita per la pioggia. Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
@@ -8227,28 +8227,28 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "16:30:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-interno-san-michele",
             "arrivo": "17:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-chiesa-chiostro-san-francesco",
             "arrivo": "17:30:00",
             "durata_min": 30,
-            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso, gratuita.",
+            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-piazza-napoleone",
             "arrivo": "18:10:00",
             "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto, gratuita. Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso e con il tempo a disposizione: la tappa resta in programma.",
+            "reason": "Temi: storia, verde e giardini. All'aperto. Con la pioggia non c'è un'alternativa al coperto compatibile con questo percorso e con il tempo a disposizione: la tappa resta in programma.",
             "esito_adattamento": "mantenuta_senza_alternativa"
           }
         ],
@@ -8287,7 +8287,7 @@
               "titolo": "Giro in bicicletta sulle Mura",
               "arrivo": "16:30:00",
               "durata_min": 45,
-              "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+              "reason": "Temi: verde e giardini, panorama. All'aperto.",
               "esito_adattamento": null,
               "curiosita": []
             },
@@ -8296,7 +8296,7 @@
               "titolo": "La facciata scolpita di San Michele in Foro",
               "arrivo": "17:25:00",
               "durata_min": 25,
-              "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+              "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
               "esito_adattamento": null,
               "curiosita": [
                 {
@@ -8311,7 +8311,7 @@
               "titolo": "La chiesa di San Francesco e il suo chiostro",
               "arrivo": "18:00:00",
               "durata_min": 30,
-              "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso, gratuita.",
+              "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
               "esito_adattamento": null,
               "curiosita": []
             },
@@ -8320,7 +8320,7 @@
               "titolo": "La piazza granducale e i suoi platani",
               "arrivo": "18:40:00",
               "durata_min": 20,
-              "reason": "Temi: storia, verde e giardini. All'aperto, gratuita.",
+              "reason": "Temi: storia, verde e giardini. All'aperto.",
               "esito_adattamento": null,
               "curiosita": []
             }
@@ -8375,14 +8375,14 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "11:30:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "12:25:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -8428,14 +8428,14 @@
             "experience_id": "exp-interno-san-michele",
             "arrivo": "15:00:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "15:30:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": "non_toccata"
           },
           {
@@ -8449,21 +8449,21 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "17:00:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-chiesa-chiostro-san-francesco",
             "arrivo": "17:45:00",
             "durata_min": 30,
-            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso, gratuita.",
+            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "18:25:00",
             "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso, gratuita.",
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           }
         ],
@@ -8478,7 +8478,7 @@
               "titolo": "La facciata scolpita di San Michele in Foro",
               "arrivo": "15:00:00",
               "durata_min": 25,
-              "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+              "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
               "esito_adattamento": null,
               "curiosita": [
                 {
@@ -8493,7 +8493,7 @@
               "titolo": "La basilica di San Frediano e il fonte lustrale",
               "arrivo": "15:35:00",
               "durata_min": 30,
-              "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+              "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
               "esito_adattamento": null,
               "curiosita": [
                 {
@@ -8517,7 +8517,7 @@
               "titolo": "Il Volto Santo e il labirinto del Duomo",
               "arrivo": "17:05:00",
               "durata_min": 35,
-              "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+              "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
               "esito_adattamento": null,
               "curiosita": [
                 {
@@ -8532,7 +8532,7 @@
               "titolo": "La chiesa di San Francesco e il suo chiostro",
               "arrivo": "17:50:00",
               "durata_min": 30,
-              "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso, gratuita.",
+              "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
               "esito_adattamento": null,
               "curiosita": []
             },
@@ -8541,7 +8541,7 @@
               "titolo": "L'ovale dell'Anfiteatro romano",
               "arrivo": "18:30:00",
               "durata_min": 30,
-              "reason": "Temi: storia, medioevo. All'aperto, gratuita.",
+              "reason": "Temi: storia, medioevo. All'aperto.",
               "esito_adattamento": null,
               "curiosita": [
                 {
@@ -8588,14 +8588,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -8609,7 +8609,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:05:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -8623,7 +8623,7 @@
             "experience_id": "exp-chiesa-chiostro-san-francesco",
             "arrivo": "13:30:00",
             "durata_min": 30,
-            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso, gratuita.",
+            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -8662,21 +8662,21 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:55:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "11:30:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -8704,7 +8704,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "14:50:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -8718,7 +8718,7 @@
             "experience_id": "exp-chiesa-chiostro-san-francesco",
             "arrivo": "16:30:00",
             "durata_min": 30,
-            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso, gratuita.",
+            "reason": "Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -8739,21 +8739,21 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "19:20:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita.",
+            "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
             "arrivo": "19:50:00",
             "durata_min": 20,
-            "reason": "Temi: silenzio e contemplazione, storia. All'aperto, gratuita.",
+            "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "20:20:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -8792,7 +8792,7 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Ami i luoghi vivi, con musica e movimento. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -8831,7 +8831,7 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "10:00:00",
             "durata_min": 45,
-            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "È pensata anche per chi viaggia con bambini. Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -8852,14 +8852,14 @@
             "experience_id": "exp-sortita-san-paolino",
             "arrivo": "12:20:00",
             "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso, gratuita.",
+            "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "12:50:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -8919,14 +8919,14 @@
             "experience_id": "exp-bici-mura",
             "arrivo": "11:30:00",
             "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto, gratuita.",
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "12:25:00",
             "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
@@ -8972,14 +8972,14 @@
             "experience_id": "exp-facciata-san-michele",
             "arrivo": "10:00:00",
             "durata_min": 25,
-            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto, gratuita.",
+            "reason": "Hai voglia di perderti e lasciarti sorprendere. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
             "arrivo": "10:35:00",
             "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso, gratuita.",
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -8993,7 +8993,7 @@
             "experience_id": "exp-duomo-volto-santo",
             "arrivo": "12:05:00",
             "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso, gratuita.",
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": null
           },
           {
@@ -9007,7 +9007,7 @@
             "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "13:30:00",
             "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto, gratuita.",
+            "reason": "Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": null
           }
         ],

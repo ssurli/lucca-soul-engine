@@ -291,8 +291,16 @@ Cambia l'`atteso` di 83 casi su 91: 80 dei 88 casi a richiesta invariata (solo t
   Etichette dei temi: "adatto ai bambini" non e' un'etichetta mostrata
   (`Tema.mostra_etichetta=False`; connessioni e punteggi invariati) e l'etichetta del tema di
   Puccini e' "Giacomo Puccini": nessun reason di `Temi:` cita "bambini" per chi non li ha.
+  Nessuna frase sul prezzo (decisione del committente): la frase 3 dei motivi e' solo
+  "Al chiuso."/"All'aperto."; ", gratuita" compariva anche con `prezzo_eur` assente (falso,
+  p. es. il Duomo). Seed e prezzi invariati. Rispetto al golden di HEAD (1f4b157) cambiano 81
+  casi su 91 e SOLO per la rimozione di ", gratuita" nei reason (nuovo == HEAD con ", gratuita"
+  tolto, richieste dei 3 `pioggia-15` incluse, 91 casi su 91, tappe invariate). Rispetto a
+  main (f701b04) i conteggi della DECIMA restano 83 casi su 91 cambiati (80 degli 88 a richiesta
+  invariata, 8 identici, 0 differenze non testuali, + i 3 `pioggia-15`).
   CRITERI sui testi (asseriti da `test_golden_testi.py`): nessun "affollat" senza affollamento
-  misurato, nessun "Evoca il tema", "e' legato a" o "exp-" in `reason`/`titolo`, nessun `reason`
+  misurato, nessun "Evoca il tema", "e' legato a", "exp-" o "gratuit" in `reason`/`titolo`,
+  nessun `reason`
   vuoto, la frase del profilo (`rag.reasons._tratto_dominante`) al massimo una volta per
   itinerario. Sui casi `adapt`/`adapt-budget`/`adapt-profilo` (richiesta vecchia) le tappe non
   toccate CONSERVANO per contratto il `reason` della richiesta e le mantenute senza alternativa

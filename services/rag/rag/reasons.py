@@ -114,7 +114,9 @@ def compose_reason(
     1. (solo `prima_tappa`) il tratto dominante del profilo;
     2. il primo racconto CON FONTE (`candidate.racconti`) oppure, in sua
        assenza, "Temi: a, b." con le etichette dei temi;
-    3. sempre: "Al chiuso"/"All'aperto", ", gratuita" se prezzo None o 0;
+    3. sempre: "Al chiuso."/"All'aperto." (nessuna frase sul
+       prezzo, qualunque sia `prezzo_eur`: con None sarebbe un'affermazione
+       su un dato assente);
     4. la vicinanza a un luogo già visitato ("A 250 m dal Duomo ...");
     5. la frase del primo segnale (già solo misurato dal motore).
 
@@ -136,10 +138,7 @@ def compose_reason(
             frasi.append(f"Temi: {', '.join(etichette)}.")
 
     esp = candidate.experience
-    dove = "Al chiuso" if esp.al_chiuso else "All'aperto"
-    if not esp.prezzo_eur:
-        dove += ", gratuita"
-    frasi.append(dove + ".")
+    frasi.append("Al chiuso." if esp.al_chiuso else "All'aperto.")
 
     if candidate.distanza_m is not None and candidate.vicinanza_nome:
         luogo = con_luogo("da", candidate.vicinanza_articolo, candidate.vicinanza_nome)

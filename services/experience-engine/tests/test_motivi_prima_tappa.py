@@ -291,7 +291,7 @@ def test_sostituzione_per_affollamento_nomina_il_luogo_con_articolo() -> None:
     )
     assert it.stops[0].experience_id == "alt"
     assert it.stops[0].reason == (
-        "Sostituita per l'affollamento alla Torre di Prova. Temi: storia. Al chiuso, gratuita."
+        "Sostituita per l'affollamento alla Torre di Prova. Temi: storia. Al chiuso."
     )
 
 
