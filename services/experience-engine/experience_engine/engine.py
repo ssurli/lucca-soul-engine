@@ -424,6 +424,8 @@ def _costruisci_stops(
         stops.append(
             ItineraryStop(
                 experience_id=cand.experience.id,
+                # Titolo leggibile dal catalogo: l'app non mostra mai l'id.
+                titolo=cand.experience.titolo,
                 arrivo=orario,
                 durata_min=cand.experience.durata_min,
                 reason=reason,
@@ -528,6 +530,10 @@ def _aggiungi_tappe_fluttuanti(
         nuove_tappe.append(
             ItineraryStop(
                 experience_id=f"{_PREFISSO_TAPPA_FLUTTUANTE}{segnale.id}",
+                # Nessun `titolo`: `SegnaleFluttuante` non ne ha uno, e la sua
+                # `descrizione` apre gia' il `reason` (ripeterla non e' un
+                # titolo). L'app mostra un'etichetta generica, mai l'id.
+                titolo=None,
                 arrivo=orario_corrente,
                 durata_min=DURATA_TAPPA_FLUTTUANTE_MIN,
                 reason=_reason_fluttuante(segnale, place_nome),
@@ -719,6 +725,10 @@ def _aggiungi_tappe_eventi_promossi(
                 # `evento.id` DIRETTAMENTE, senza prefisso — vedi il commento
                 # in testa a questa sezione.
                 experience_id=evento.id,
+                # Nessun `titolo`: `EventoPromosso` non ha un campo narrativo
+                # (vedi il suo docstring) e un nome fabbricato qui sarebbe
+                # inventato. L'app mostra un'etichetta generica, mai l'id.
+                titolo=None,
                 arrivo=orario_corrente,
                 durata_min=DURATA_TAPPA_EVENTO_MIN,
                 reason=_reason_evento_promosso(evento, place_nome, data_visita),
@@ -1151,6 +1161,21 @@ def adapt_itinerary(
     usati = {s.experience_id for s in itinerary.stops}
     sostituite = False
 
+    # Titolo di una tappa (presente o esclusa) per `experience_id`: dal
+    # catalogo se il candidato e' noto (anche se la tappa ricevuta non ne
+    # aveva uno: itinerario vecchio); altrimenti quello ricevuto, anche None
+    # (stub: "non riscrivere al buio").
+    titoli_ricevuti: dict[str, str | None] = {
+        t.experience_id: t.titolo for t in itinerary.tappe_escluse
+    }
+    titoli_ricevuti.update({s.experience_id: s.titolo for s in itinerary.stops})
+
+    def titolo_di(experience_id: str) -> str | None:
+        noto = per_id.get(experience_id)
+        if noto is not None:
+            return noto.experience.titolo
+        return titoli_ricevuti.get(experience_id)
+
     # 1. Sostituzioni (pioggia / affollamento).
     for i, stop in enumerate(itinerary.stops):
         cand = per_id.get(stop.experience_id)
@@ -1236,14 +1261,16 @@ def adapt_itinerary(
     if signal.stanchezza > SOGLIA_STANCHEZZA_ALTA:
         tenuti = _taglia_per_stanchezza(itinerary, correnti)
         nuove_escluse.extend(
-            _escludi(c, EsitoAdattamento.TAGLIATA_STANCHEZZA) for c in correnti[len(tenuti):]
+            _escludi(c, EsitoAdattamento.TAGLIATA_STANCHEZZA, titolo_di)
+            for c in correnti[len(tenuti):]
         )
         correnti = tenuti
 
     # 3. Tetto della giornata, sugli arrivi ricalcolati da `signal.ora`.
     entro = _entro_la_giornata(correnti, minuti_mezzanotte)
     nuove_escluse.extend(
-        _escludi(c, EsitoAdattamento.TAGLIATA_TETTO_GIORNATA) for c in correnti[len(entro):]
+        _escludi(c, EsitoAdattamento.TAGLIATA_TETTO_GIORNATA, titolo_di)
+        for c in correnti[len(entro):]
     )
     correnti = entro
 
@@ -1257,7 +1284,7 @@ def adapt_itinerary(
         signal,
         arrivi_ricevuti=None if cambiato_prima else [s.arrivo for s in itinerary.stops],
     )
-    nuove_escluse.extend(_escludi(c, esito) for c, esito in tolte)
+    nuove_escluse.extend(_escludi(c, esito, titolo_di) for c, esito in tolte)
 
     # Un taglio per sospensione o per orario aggiunge una voce a
     # `nuove_escluse`, quindi accende `cambiato`.
@@ -1278,6 +1305,7 @@ def adapt_itinerary(
                         vocabolario=vocabolario,
                     ),
                     "esito_adattamento": c.esito_deciso,
+                    "titolo": _titolo_tappa(c),
                 }
             )
             for stop, c in zip(itinerary.stops, correnti, strict=True)
@@ -1290,7 +1318,9 @@ def adapt_itinerary(
         adattato_da_segnale=cambiato,
         tempo_disponibile_min=itinerary.tempo_disponibile_min,
         tempo_effettivo_min=itinerary.tempo_effettivo_min,
-        tappe_escluse=_unisci_escluse(itinerary.tappe_escluse, nuove_escluse, stops),
+        tappe_escluse=_unisci_escluse(
+            itinerary.tappe_escluse, nuove_escluse, stops, titolo_di
+        ),
     )
 
 
@@ -1410,13 +1440,28 @@ class _CandidatoConReason(GraphCandidate):
     #: Tappa ricevuta la cui esperienza non è tra i candidati: il suo `reason`
     #: resta intatto, disclosure compresa ("non riscrivere al buio").
     senza_candidato: bool = False
+    #: Solo per gli stub (`senza_candidato`): il `titolo` della tappa
+    #: ricevuta, conservato com'e' (anche None).
+    titolo_ricevuto: str | None = None
+
+
+def _titolo_tappa(cand: _CandidatoConReason) -> str | None:
+    """Titolo della tappa che `cand` occupa: dal catalogo
+    (`ExperienceNode.titolo`) se il candidato e' reale; per uno stub quello
+    ricevuto (il `titolo` dell'`ExperienceNode` fantasma e' l'id, mai da
+    mostrare)."""
+    if cand.senza_candidato:
+        return cand.titolo_ricevuto
+    return cand.experience.titolo
 
 
 def _marca_reason(
     cand: GraphCandidate, reason: str, esito: EsitoAdattamento, id_originale: str
 ) -> _CandidatoConReason:
     dati = cand.model_dump()
-    for campo in ("reason_deciso", "esito_deciso", "id_originale", "senza_candidato"):
+    for campo in (
+        "reason_deciso", "esito_deciso", "id_originale", "senza_candidato", "titolo_ricevuto"
+    ):
         dati.pop(campo, None)
     return _CandidatoConReason(
         **dati, reason_deciso=reason, esito_deciso=esito, id_originale=id_originale
@@ -1445,6 +1490,7 @@ def _stub_da_stop(stop: ItineraryStop, reason: str) -> _CandidatoConReason:
         esito_deciso=EsitoAdattamento.NON_TOCCATA,
         id_originale=stop.experience_id,
         senza_candidato=True,
+        titolo_ricevuto=stop.titolo,
     )
 
 
@@ -1595,27 +1641,37 @@ def _taglia_fuori_orario(
     return tenuti, tolte
 
 
-def _esclusa_canonica(experience_id: str, esito: EsitoAdattamento) -> TappaEsclusa:
+def _esclusa_canonica(
+    experience_id: str, esito: EsitoAdattamento, titolo: str | None
+) -> TappaEsclusa:
     """`TappaEsclusa` col `reason` del motore, ricavato SOLO dall'esito
-    (`_frase_esito`): nessun testo libero arrivato dal client sopravvive."""
+    (`_frase_esito`): nessun testo libero arrivato dal client sopravvive.
+    `titolo`: dal catalogo se l'esperienza e' nota, altrimenti quello
+    ricevuto (vedi `titolo_di` in `adapt_itinerary`)."""
     frase = _frase_esito(esito)
     if frase is None:
         raise ValueError(f"esito {esito.value!r} non è un esito di taglio")
-    return TappaEsclusa(experience_id=experience_id, esito=esito, reason=frase)
+    return TappaEsclusa(experience_id=experience_id, titolo=titolo, esito=esito, reason=frase)
 
 
-def _escludi(cand: _CandidatoConReason, esito: EsitoAdattamento) -> TappaEsclusa:
+def _escludi(
+    cand: _CandidatoConReason,
+    esito: EsitoAdattamento,
+    titolo_di: Callable[[str], str | None],
+) -> TappaEsclusa:
     """`TappaEsclusa` per una tappa tolta (stanchezza, tetto, sospensione,
     orario): in
     `tappe_escluse` finisce la tappa che il visitatore aveva
     (`id_originale`), non la sua eventuale sostituta."""
-    return _esclusa_canonica(cand.id_originale or cand.experience.id, esito)
+    experience_id = cand.id_originale or cand.experience.id
+    return _esclusa_canonica(experience_id, esito, titolo_di(experience_id))
 
 
 def _unisci_escluse(
     precedenti: list[TappaEsclusa],
     nuove: list[TappaEsclusa],
     stops: list[ItineraryStop],
+    titolo_di: Callable[[str], str | None],
 ) -> list[TappaEsclusa]:
     """Accumula le tappe escluse tra adattamenti: una sola voce per
     `experience_id`, vince la più recente (che va in fondo). Nessun tetto di
@@ -1630,7 +1686,9 @@ def _unisci_escluse(
     unite: dict[str, TappaEsclusa] = {}
     for tappa in [*precedenti, *nuove]:
         unite.pop(tappa.experience_id, None)
-        unite[tappa.experience_id] = _esclusa_canonica(tappa.experience_id, tappa.esito)
+        unite[tappa.experience_id] = _esclusa_canonica(
+            tappa.experience_id, tappa.esito, titolo_di(tappa.experience_id)
+        )
     presenti = {s.experience_id for s in stops}
     return [t for t in unite.values() if t.experience_id not in presenti]
 
@@ -1686,6 +1744,7 @@ def _ricostruisci_stops(
         stops.append(
             ItineraryStop(
                 experience_id=cand.experience.id,
+                titolo=_titolo_tappa(cand),
                 arrivo=orario,
                 durata_min=cand.experience.durata_min,
                 reason=reason,

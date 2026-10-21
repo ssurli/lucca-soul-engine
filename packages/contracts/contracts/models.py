@@ -740,6 +740,10 @@ _ESITI_TAGLIO = frozenset(
 
 class ItineraryStop(ContractModel):
     experience_id: str
+    # Titolo leggibile della tappa, dal catalogo (ExperienceNode.titolo), scritto
+    # dall'Experience Engine. Opzionale per retrocompatibilita': itinerari senza
+    # titolo (golden, app vecchie) restano validi. L'app non mostra mai l'id.
+    titolo: str | None = Field(default=None, min_length=1)
     arrivo: time
     durata_min: int = Field(ge=0)
     reason: str = Field(min_length=1)  # SPIEGABILITÀ OBBLIGATORIA, in italiano
@@ -763,6 +767,8 @@ class TappaEsclusa(ContractModel):
     """Tappa tolta da un adattamento (stanchezza, tetto della giornata, orario, sospesa)."""
 
     experience_id: str
+    # Titolo leggibile dal catalogo (ExperienceNode.titolo); stessa regola di ItineraryStop.titolo.
+    titolo: str | None = Field(default=None, min_length=1)
     esito: EsitoAdattamento
     reason: str = Field(min_length=1)  # SPIEGABILITÀ OBBLIGATORIA, in italiano
 

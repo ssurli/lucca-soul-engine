@@ -400,6 +400,11 @@ class EsitoAdattamento(str, Enum):
 
 class ItineraryStop(BaseModel):
     experience_id: str
+    titolo: str | None = None         # titolo leggibile, dal catalogo (ExperienceNode.titolo), scritto
+                                      # dall'Experience Engine; min 1 carattere se presente. Opzionale
+                                      # (retrocompatibilità: golden e app vecchie senza titolo restano
+                                      # validi). L'app mostra il titolo: l'id NON compare mai
+                                      # nell'interfaccia; se assente usa un'etichetta generica, mai l'id
     arrivo: time
     durata_min: int
     reason: str                       # SPIEGABILITÀ OBBLIGATORIA, in italiano (min 1 carattere)
@@ -410,6 +415,8 @@ class ItineraryStop(BaseModel):
 
 class TappaEsclusa(BaseModel):        # tappa tolta da un adattamento
     experience_id: str
+    titolo: str | None = None         # come ItineraryStop.titolo (fonte: catalogo; assente -> etichetta
+                                      # generica nell'app, mai l'id; min 1 carattere se presente)
     esito: EsitoAdattamento           # solo TAGLIATA_STANCHEZZA, TAGLIATA_TETTO_GIORNATA, TAGLIATA_ORARIO o TAGLIATA_SOSPESA (validatore)
     reason: str                       # in italiano, min 1 carattere (spiegabilità obbligatoria)
 
@@ -775,6 +782,12 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 
 ## Changelog
 
+- **2026-10-21 — ondata 2a, titoli leggibili.** Aggiunto `ItineraryStop.titolo` e
+  `TappaEsclusa.titolo`: `str | None = None`, `min_length=1` se presente, fonte
+  `ExperienceNode.titolo`, scritto dall'Experience Engine. Retrocompatibile (AdaptRequest
+  esistenti senza `titolo` restano valide). Nessun campo rinominato o rimosso. Consumatori:
+  `services/experience-engine` (scrittura), `services/api` (passaggio), `apps/lucca_soul_app`
+  (specchio Dart da allineare: mostra il titolo, mai l'id; se assente, etichetta generica).
 - **2026-10-19 — difetto j (adattamento e profilo).** Aggiunto `AdaptRequest.profile:
   EmotionalProfile | None = None` (retrocompatibile: senza `profile` il comportamento è
   invariato, profilo neutro e regola prudente per tappa). Nessun campo rinominato o rimosso.

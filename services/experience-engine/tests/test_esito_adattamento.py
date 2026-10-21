@@ -341,7 +341,7 @@ def test_tagliata_per_stanchezza_accende_adattato_e_va_in_tappe_escluse() -> Non
     assert [s.experience_id for s in r.stops] == ["t0", "t1"]  # 2/3 di 180 = 120
     assert r.tappe_escluse == [
         TappaEsclusa(
-            experience_id="t2", esito=EsitoAdattamento.TAGLIATA_STANCHEZZA,
+            experience_id="t2", titolo="Titolo t2", esito=EsitoAdattamento.TAGLIATA_STANCHEZZA,
             reason=FRASE_STANCHEZZA,
         )
     ]

@@ -163,14 +163,14 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
           ),
           if (itinerario.adattatoDaSegnale) _AdattatoBadge(strings: _strings),
           for (var i = 0; i < itinerario.stops.length; i++)
-            _StopCard(
+            StopCard(
               stop: itinerario.stops[i],
               evidenziata: _tappeEvidenziate.contains(i),
               strings: _strings,
               onLasciaRicordo: () => _lasciaRicordo(itinerario.stops[i]),
             ),
           if (itinerario.tappeEscluse.isNotEmpty)
-            _TappeEscluseNote(escluse: itinerario.tappeEscluse, strings: _strings),
+            TappeEscluseNote(escluse: itinerario.tappeEscluse, strings: _strings),
         ],
       ),
     );
@@ -178,11 +178,11 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
 }
 
 /// Note in fondo alla lista: le tappe tagliate dal motore, con il loro reason.
-class _TappeEscluseNote extends StatelessWidget {
+class TappeEscluseNote extends StatelessWidget {
   final List<TappaEsclusa> escluse;
   final AppStrings strings;
 
-  const _TappeEscluseNote({required this.escluse, required this.strings});
+  const TappeEscluseNote({super.key, required this.escluse, required this.strings});
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +197,7 @@ class _TappeEscluseNote extends StatelessWidget {
           for (final t in escluse)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(rigaTappaEsclusa(t), style: textTheme.bodySmall),
+              child: Text(rigaTappaEsclusa(t, strings), style: textTheme.bodySmall),
             ),
         ],
       ),
@@ -223,13 +223,14 @@ class _AdattatoBadge extends StatelessWidget {
   }
 }
 
-class _StopCard extends StatelessWidget {
+class StopCard extends StatelessWidget {
   final ItineraryStop stop;
   final bool evidenziata;
   final AppStrings strings;
   final VoidCallback onLasciaRicordo;
 
-  const _StopCard({
+  const StopCard({
+    super.key,
     required this.stop,
     required this.evidenziata,
     required this.strings,
@@ -273,8 +274,8 @@ class _StopCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              stop.experienceId,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline),
+              titoloTappa(stop.titolo, strings),
+              style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 12),
             // Il `reason` è il prodotto: sempre in evidenza, mai una nota a

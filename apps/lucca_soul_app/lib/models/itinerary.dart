@@ -13,6 +13,9 @@ class ItineraryStop {
   final int durataMin;
   final String reason;
 
+  /// Nome leggibile dal catalogo (opzionale nel contratto).
+  final String? titolo;
+
   /// Stringa grezza (non enum): un valore futuro del contratto sopravvive
   /// all'andata e ritorno. Sulla tappa: non_toccata, sostituita,
   /// mantenuta_senza_alternativa.
@@ -23,6 +26,7 @@ class ItineraryStop {
     required this.arrivo,
     required this.durataMin,
     required this.reason,
+    this.titolo,
     this.esitoAdattamento,
   });
 
@@ -32,6 +36,7 @@ class ItineraryStop {
       arrivo: TimeHms.parse(json['arrivo'] as String),
       durataMin: json['durata_min'] as int,
       reason: json['reason'] as String,
+      titolo: json['titolo'] as String?,
       esitoAdattamento: json['esito_adattamento'] as String?,
     );
   }
@@ -41,6 +46,7 @@ class ItineraryStop {
         'arrivo': arrivo.toJson(),
         'durata_min': durataMin,
         'reason': reason,
+        if (titolo != null) 'titolo': titolo,
         if (esitoAdattamento != null) 'esito_adattamento': esitoAdattamento,
       };
 }
@@ -51,11 +57,13 @@ class TappaEsclusa {
   final String experienceId;
   final String esito;
   final String reason;
+  final String? titolo;
 
   const TappaEsclusa({
     required this.experienceId,
     required this.esito,
     required this.reason,
+    this.titolo,
   });
 
   factory TappaEsclusa.fromJson(Map<String, dynamic> json) {
@@ -63,6 +71,7 @@ class TappaEsclusa {
       experienceId: json['experience_id'] as String,
       esito: json['esito'] as String,
       reason: json['reason'] as String,
+      titolo: json['titolo'] as String?,
     );
   }
 
@@ -70,6 +79,7 @@ class TappaEsclusa {
         'experience_id': experienceId,
         'esito': esito,
         'reason': reason,
+        if (titolo != null) 'titolo': titolo,
       };
 }
 
