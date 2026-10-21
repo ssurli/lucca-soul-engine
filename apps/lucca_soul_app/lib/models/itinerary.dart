@@ -5,6 +5,28 @@ import 'time_hms.dart';
 // `/itinerary/adapt` con `toJson()`: un campo letto ma non riemesso si perde
 // nell'andata e ritorno. Le chiavi con valore null non vengono emesse.
 
+/// `Curiosita.tipo` del contratto. Un valore sconosciuto (futuro) e' letto come
+/// `fatto`: mai come `leggenda`, che ha un'etichetta obbligatoria in UI.
+enum CuriosityKind { leggenda, fatto }
+
+/// Rispecchia `Curiosita` in `docs/DATA_CONTRACTS.md` §3. Una leggenda ha
+/// sempre un testo che inizia con "Si racconta".
+class Curiosita {
+  final String testo;
+  final CuriosityKind tipo;
+  final String fonte;
+
+  const Curiosita({required this.testo, required this.tipo, required this.fonte});
+
+  factory Curiosita.fromJson(Map<String, dynamic> json) => Curiosita(
+        testo: json['testo'] as String,
+        tipo: json['tipo'] == 'leggenda' ? CuriosityKind.leggenda : CuriosityKind.fatto,
+        fonte: json['fonte'] as String,
+      );
+
+  Map<String, dynamic> toJson() => {'testo': testo, 'tipo': tipo.name, 'fonte': fonte};
+}
+
 /// Rispecchia `ItineraryStop` in `docs/DATA_CONTRACTS.md` §3.
 /// `reason` è la spiegabilità obbligatoria: il prodotto, non una nota.
 class ItineraryStop {
@@ -21,6 +43,9 @@ class ItineraryStop {
   /// mantenuta_senza_alternativa.
   final String? esitoAdattamento;
 
+  /// Curiosita della tappa (contratto: default []).
+  final List<Curiosita> curiosita;
+
   const ItineraryStop({
     required this.experienceId,
     required this.arrivo,
@@ -28,6 +53,7 @@ class ItineraryStop {
     required this.reason,
     this.titolo,
     this.esitoAdattamento,
+    this.curiosita = const [],
   });
 
   factory ItineraryStop.fromJson(Map<String, dynamic> json) {
@@ -38,6 +64,9 @@ class ItineraryStop {
       reason: json['reason'] as String,
       titolo: json['titolo'] as String?,
       esitoAdattamento: json['esito_adattamento'] as String?,
+      curiosita: (json['curiosita'] as List<dynamic>? ?? const [])
+          .map((e) => Curiosita.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -48,6 +77,8 @@ class ItineraryStop {
         'reason': reason,
         if (titolo != null) 'titolo': titolo,
         if (esitoAdattamento != null) 'esito_adattamento': esitoAdattamento,
+        // Omessa se vuota (come tappe_escluse): il BFF ha default [].
+        if (curiosita.isNotEmpty) 'curiosita': curiosita.map((c) => c.toJson()).toList(),
       };
 }
 

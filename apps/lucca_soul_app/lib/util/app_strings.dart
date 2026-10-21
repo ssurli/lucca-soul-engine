@@ -38,6 +38,9 @@ class AppStrings {
   String get emptyStops => _isEn ? 'No stops yet.' : 'Ancora nessuna tappa.';
   String get excludedStopsTitle => _isEn ? 'Left out of today' : 'Rimaste fuori oggi';
   String get genericStop => _isEn ? 'Stop' : 'Tappa';
+  String get legendLabel => _isEn ? 'Legend' : 'Leggenda';
+  String get curiosityLabel => _isEn ? 'Did you know' : 'Curiosità';
+  String sourceLabel(String fonte) => _isEn ? 'Source: $fonte' : 'Fonte: $fonte';
   String get changedStop => _isEn ? 'Changed by the signal' : 'Cambiata dal segnale';
 
   // --- Urban Memory (Wave 2): conferimento contestuale --------------------

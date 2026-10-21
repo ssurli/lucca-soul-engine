@@ -62,7 +62,14 @@ from __future__ import annotations
 
 from datetime import time
 
-from contracts import ExperienceNode, FasciaApertura, Partner, VocabolarioTemi
+from contracts import (
+    Curiosita,
+    ExperienceNode,
+    FasciaApertura,
+    Partner,
+    TipoCuriosita,
+    VocabolarioTemi,
+)
 
 from graph.dataset import VICINO_EPOCA_PREDEFINITA as _EPOCA
 from graph.dataset import (
@@ -117,19 +124,131 @@ VICINO_EPOCA = _EPOCA
 
 LUOGHI: list[Luogo] = [
     Luogo("mura-urbane", "Mura di Lucca", "mura", articolo="le"),
-    Luogo("piazza-anfiteatro", "Piazza dell'Anfiteatro", "piazza", articolo="la"),
-    Luogo("torre-guinigi", "Torre Guinigi", "torre", articolo="la"),
-    Luogo("duomo-san-martino", "Duomo di San Martino", "chiesa", articolo="il"),
+    Luogo(
+        "piazza-anfiteatro",
+        "Piazza dell'Anfiteatro",
+        "piazza",
+        articolo="la",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Uno solo degli ingressi alla piazza ricalca un'antica porta "
+                    "dell'anfiteatro romano."
+                ),
+                tipo=TipoCuriosita.FATTO,
+                fonte="dato del committente",
+            ),
+        ),
+    ),
+    Luogo(
+        "torre-guinigi",
+        "Torre Guinigi",
+        "torre",
+        articolo="la",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Si racconta che il leccio in cima alla torre perse le foglie quando "
+                    "Paolo Guinigi fu catturato."
+                ),
+                tipo=TipoCuriosita.LEGGENDA,
+                fonte="dato del committente",
+            ),
+        ),
+    ),
+    Luogo(
+        "duomo-san-martino",
+        "Duomo di San Martino",
+        "chiesa",
+        articolo="il",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Sul pilastro del portico è inciso un labirinto, con un'iscrizione "
+                    "latina che richiama Dedalo e Teseo. Lo si legge come simbolo del "
+                    "cammino dell'anima verso la redenzione, lungo la Via Francigena."
+                ),
+                tipo=TipoCuriosita.FATTO,
+                fonte="dato del committente",
+            ),
+        ),
+    ),
     Luogo("casa-puccini", "Casa Natale di Giacomo Puccini", "museo", articolo="la"),
-    Luogo("san-michele-in-foro", "Chiesa di San Michele in Foro", "chiesa", articolo="la"),
-    Luogo("orto-botanico", "Orto Botanico di Lucca", "giardino", articolo="l'"),
+    Luogo(
+        "san-michele-in-foro",
+        "Chiesa di San Michele in Foro",
+        "chiesa",
+        articolo="la",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Si racconta che nell'anello al dito dell'arcangelo, in cima alla "
+                    "facciata, sia incastonato un grande smeraldo, visibile al tramonto da "
+                    "un punto preciso della piazza."
+                ),
+                tipo=TipoCuriosita.LEGGENDA,
+                fonte="Comune di Lucca, Mappa del centro storico 2024",
+            ),
+        ),
+    ),
+    Luogo(
+        "orto-botanico",
+        "Orto Botanico di Lucca",
+        "giardino",
+        articolo="l'",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Si racconta che nelle notti di luna piena il fantasma di Lucida Mansi "
+                    "attraversi le Mura su un cocchio, per poi sparire nel laghetto "
+                    "dell'Orto Botanico."
+                ),
+                tipo=TipoCuriosita.LEGGENDA,
+                fonte="Comune di Lucca, cartina \"Le Mura di Lucca\"",
+            ),
+        ),
+    ),
     Luogo("teatro-del-giglio", "Teatro del Giglio", "teatro", articolo="il"),
     Luogo("palazzo-pfanner", "Palazzo Pfanner", "giardino", articolo="il"),
-    Luogo("san-frediano", "Basilica di San Frediano", "chiesa", articolo="la"),
+    Luogo(
+        "san-frediano",
+        "Basilica di San Frediano",
+        "chiesa",
+        articolo="la",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Nel mosaico della facciata compare anche Giuda, che l'iconografia "
+                    "classica non metterebbe in questa scena. Alza la mano destra chiusa, "
+                    "con indice e mignolo tesi: il racconto popolare ci vede il gesto delle"
+                    " corna."
+                ),
+                tipo=TipoCuriosita.FATTO,
+                fonte="dato del committente",
+            ),
+        ),
+    ),
     Luogo("torre-delle-ore", "Torre delle Ore", "torre", articolo="la"),
     Luogo("piazza-napoleone", "Piazza Napoleone", "piazza", articolo="la"),
     Luogo("via-fillungo", "Via Fillungo", "via", articolo=None),
-    Luogo("baluardo-san-paolino", "Baluardo San Paolino", "mura", articolo="il"),
+    Luogo(
+        "baluardo-san-paolino",
+        "Baluardo San Paolino",
+        "mura",
+        articolo="il",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Si racconta che il 12 luglio 1664, festa di San Paolino, i cannoni "
+                    "delle Mura spararono per i festeggiamenti senza essere caricati a "
+                    "salve, e che solo l'intervento miracoloso del santo salvò la folla "
+                    "radunata sotto le Mura."
+                ),
+                tipo=TipoCuriosita.LEGGENDA,
+                fonte="Comune di Lucca, cartina \"Le Mura di Lucca\"",
+            ),
+        ),
+    ),
     Luogo("museo-nazionale-guinigi", "Museo Nazionale di Villa Guinigi", "museo", articolo="il"),
     # `Luogo.categoria` è una stringa libera (nessuna lista chiusa, nessuna
     # logica la legge: solo scritta sul nodo); "chiesa" e "chiostro" sono i

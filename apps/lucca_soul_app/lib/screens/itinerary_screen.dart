@@ -223,6 +223,35 @@ class _AdattatoBadge extends StatelessWidget {
   }
 }
 
+/// Una curiosita sotto il motivo. La leggenda porta sempre l'etichetta
+/// "Leggenda"; il fatto la etichetta "Curiosita'", mai "Leggenda".
+class CuriosityTile extends StatelessWidget {
+  final Curiosita curiosita;
+  final AppStrings strings;
+
+  const CuriosityTile({super.key, required this.curiosita, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final leggenda = curiosita.tipo == CuriosityKind.leggenda;
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            leggenda ? strings.legendLabel : strings.curiosityLabel,
+            style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          Text(curiosita.testo, style: theme.textTheme.bodyMedium),
+          Text(strings.sourceLabel(curiosita.fonte), style: theme.textTheme.bodySmall),
+        ],
+      ),
+    );
+  }
+}
+
 class StopCard extends StatelessWidget {
   final ItineraryStop stop;
   final bool evidenziata;
@@ -303,6 +332,7 @@ class StopCard extends StatelessWidget {
                 ],
               ),
             ),
+            for (final c in stop.curiosita) CuriosityTile(curiosita: c, strings: strings),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(

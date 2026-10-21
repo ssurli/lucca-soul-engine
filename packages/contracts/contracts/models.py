@@ -535,6 +535,36 @@ class ExperienceNode(ContractModel):
     sospesa: bool = False
 
 
+class TipoCuriosita(str, Enum):
+    """Natura di una curiosità: `LEGGENDA` (tramandata) o `FATTO` (documentato)."""
+
+    LEGGENDA = "leggenda"
+    FATTO = "fatto"
+
+
+class Curiosita(ContractModel):
+    """Curiosità di un luogo, dal seed. SOLO narrazione, mai input di scoring.
+
+    La `fonte` è obbligatoria. Una `leggenda` si presenta sempre come tale:
+    il `testo` inizia con "Si racconta".
+    """
+
+    testo: str = Field(min_length=1)
+    tipo: TipoCuriosita
+    fonte: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _leggenda_si_presenta_come_tale(self) -> Curiosita:
+        if self.tipo == TipoCuriosita.LEGGENDA and not self.testo.startswith(
+            "Si racconta"
+        ):
+            raise ValueError(
+                'una leggenda deve iniziare con "Si racconta": '
+                "la leggenda si presenta sempre come tale"
+            )
+        return self
+
+
 class GraphCandidate(ContractModel):
     """Candidato proposto dal grafo all'AI Experience Engine.
 
@@ -573,6 +603,10 @@ class GraphCandidate(ContractModel):
     # "A … m da …, già visitato" di `connessioni`); i metri sono `distanza_m`.
     vicinanza_nome: str | None = None
     vicinanza_articolo: str | None = None
+    # Curiosità del luogo dell'esperienza, dal seed. SOLO narrazione, MAI input
+    # di scoring (stesso principio di `attribuzione`): `calcola_score` non la
+    # legge; una guardia AST in experience-engine lo verifica.
+    curiosita: list[Curiosita] = []
 
     @field_validator("place_articolo", "vicinanza_articolo")
     @classmethod
@@ -779,6 +813,9 @@ class ItineraryStop(ContractModel):
     reason: str = Field(min_length=1)  # SPIEGABILITÀ OBBLIGATORIA, in italiano
     # None = itinerario mai adattato. Descrive SOLO l'ultimo segnale valutato.
     esito_adattamento: EsitoAdattamento | None = None
+    # Copiate dal candidato dall'Experience Engine. L'app le mostra sotto il
+    # motivo; una leggenda con l'etichetta "Leggenda". Mai input di scoring.
+    curiosita: list[Curiosita] = []
 
     @field_validator("esito_adattamento")
     @classmethod

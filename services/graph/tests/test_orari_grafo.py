@@ -55,6 +55,7 @@ def _record_da(e: ExperienceNode, orari: Any) -> dict[str, Any]:
         "alimenta_memoria": e.alimenta_memoria, "partner_id": None, "prezzo_eur": None,
         "prenotabile": False, "orari_apertura": orari, "sospesa": None, "place_nome": luogo.nome,
         "place_articolo": luogo.articolo, "legati_racconti": [], "riferimento_articolo": None,
+        "curiosita_testi": [], "curiosita_tipi": [], "curiosita_fonti": [],
         "artisti_nomi": [], "botteghe": [], "temi_evocati": [], "racconti_ispirazione": [],
         "temi_bottega": [], "distanza_m": None, "riferimento_nome": None,
         "partner_abbonamento_attivo": True,

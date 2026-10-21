@@ -292,6 +292,24 @@ class GraphCandidate(BaseModel):
                                         # condizione della frase "A … m da …, già visitato"
                                         # di `connessioni`); i metri sono `distanza_m`
     vicinanza_articolo: str | None = None  # uno di ARTICOLI o None (validato)
+    curiosita: list[Curiosita] = []    # curiosità del luogo, dal seed (ondata 2a, compito 5).
+                                        # SOLO narrazione, MAI input di scoring (come `attribuzione`):
+                                        # `calcola_score` non la legge; guardia AST in experience-engine
+
+class TipoCuriosita(str, Enum):
+    LEGGENDA = "leggenda"
+    FATTO = "fatto"
+
+class Curiosita(BaseModel):
+    testo: str                         # min 1 carattere
+    tipo: TipoCuriosita
+    fonte: str                         # min 1 carattere, OBBLIGATORIA
+    # Validatore: tipo == LEGGENDA => testo inizia con "Si racconta" (altrimenti ValueError):
+    # la leggenda si presenta sempre come tale.
+
+# Regola delle curiosità (ondata 2a, compito 5):
+# - leggenda -> il testo inizia con "Si racconta…"; fonte obbligatoria per ogni curiosità.
+# - Mai nello score: né `GraphCandidate.curiosita` né `ItineraryStop.curiosita` entrano in `calcola_score`.
 
 # Regola dei motivi (ondata 2a, compito 4):
 # - `connessioni` alimenta SOLO il punteggio (sorpresa = numero di frasi). Il `reason`
@@ -435,6 +453,9 @@ class ItineraryStop(BaseModel):
                                       # None = itinerario mai adattato; descrive SOLO l'ULTIMO
                                       # segnale valutato. TAGLIATA_* NON ammessi su una tappa
                                       # presente (validatore)
+    curiosita: list[Curiosita] = []   # copiate dal candidato dall'Experience Engine (§2). L'app le
+                                      # mostra sotto il motivo; una leggenda con l'etichetta
+                                      # "Leggenda". Mai input di scoring
 
 class TappaEsclusa(BaseModel):        # tappa tolta da un adattamento
     experience_id: str
@@ -805,6 +826,15 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 
 ## Changelog
 
+- **2026-10-21 — ondata 2a, curiosità (compito 5).** Aggiunti: `TipoCuriosita` (enum:
+  `leggenda`, `fatto`), `Curiosita(testo, tipo, fonte)` (`testo` e `fonte` min 1; una
+  `leggenda` deve avere `testo` che inizia con "Si racconta", altrimenti `ValueError`),
+  `GraphCandidate.curiosita` e `ItineraryStop.curiosita` (`list[Curiosita] = []`,
+  retrocompatibili). Mai input di scoring. Esportati da `contracts`. Nessun campo rinominato
+  o rimosso. Consumatori: `services/graph` (seed: popola le curiosità), `services/experience-engine`
+  (copia candidato -> tappa + guardia AST: `calcola_score` non legge `curiosita`),
+  `services/api` (passaggio), `apps/lucca_soul_app` (specchio Dart da allineare e
+  visualizzazione sotto il motivo, leggenda con l'etichetta "Leggenda").
 - **2026-10-21 — ondata 2a, motivi (compito 4).** Aggiunti a `GraphCandidate`, tutti con
   default (retrocompatibili) e MAI input di scoring: `place_articolo`, `racconti`,
   `temi_etichette`, `vicinanza_nome`, `vicinanza_articolo` (gli articoli validati contro

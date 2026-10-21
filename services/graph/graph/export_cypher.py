@@ -90,6 +90,8 @@ _RELATION_TYPES_COMMENT = (
     "// Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li\n"
     "// richiede esplicitamente):\n"
     "//   (:Artista)-[:LEGATO_A {racconto, fonte}]->(:Luogo)  -- racconto solo con fonte\n"
+    "//   (:Luogo {curiosita_testi, curiosita_tipi, curiosita_fonti})  -- liste parallele,\n"
+    "//     stesso indice = stessa curiosità; tipo 'leggenda' | 'fatto'; ogni testo ha la fonte\n"
     "//   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;\n"
     "//     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale\n"
     "//     ('sempre esistiti', non una data vera — vedi il modulo dataset), un vero\n"
@@ -123,7 +125,14 @@ def _luogo_statement(luogo) -> str:
     return (
         f"MERGE (l:Luogo {{id: {_cypher_str(luogo.id)}}})\n"
         f"SET l.nome = {_cypher_str(luogo.nome)}, l.categoria = {_cypher_str(luogo.categoria)}, "
-        f"l.articolo = {_cypher_str_or_null(luogo.articolo)};"
+        f"l.articolo = {_cypher_str_or_null(luogo.articolo)},\n"
+        # Curiosità del luogo come TRE liste parallele (stesso indice = stessa
+        # curiosità, ordine del seed), scritte SEMPRE, anche vuote: il `SET`
+        # sovrascrive, quindi una curiosità tolta dal dataset sparisce da un
+        # grafo già caricato (nessun nodo/arco orfano da pulire).
+        f"    l.curiosita_testi = {_cypher_str_list([c.testo for c in luogo.curiosita])},\n"
+        f"    l.curiosita_tipi = {_cypher_str_list([c.tipo.value for c in luogo.curiosita])},\n"
+        f"    l.curiosita_fonti = {_cypher_str_list([c.fonte for c in luogo.curiosita])};"
     )
 
 

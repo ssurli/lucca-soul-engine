@@ -5,47 +5,110 @@
 
 // --- Nodi: Luogo -------------------------------------------------------
 MERGE (l:Luogo {id: 'mura-urbane'})
-SET l.nome = 'Mura di Lucca', l.categoria = 'mura', l.articolo = 'le';
+SET l.nome = 'Mura di Lucca', l.categoria = 'mura', l.articolo = 'le',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'piazza-anfiteatro'})
-SET l.nome = 'Piazza dell\'Anfiteatro', l.categoria = 'piazza', l.articolo = 'la';
+SET l.nome = 'Piazza dell\'Anfiteatro', l.categoria = 'piazza', l.articolo = 'la',
+    l.curiosita_testi = ['Uno solo degli ingressi alla piazza ricalca un\'antica porta dell\'anfiteatro romano.'],
+    l.curiosita_tipi = ['fatto'],
+    l.curiosita_fonti = ['dato del committente'];
 MERGE (l:Luogo {id: 'torre-guinigi'})
-SET l.nome = 'Torre Guinigi', l.categoria = 'torre', l.articolo = 'la';
+SET l.nome = 'Torre Guinigi', l.categoria = 'torre', l.articolo = 'la',
+    l.curiosita_testi = ['Si racconta che il leccio in cima alla torre perse le foglie quando Paolo Guinigi fu catturato.'],
+    l.curiosita_tipi = ['leggenda'],
+    l.curiosita_fonti = ['dato del committente'];
 MERGE (l:Luogo {id: 'duomo-san-martino'})
-SET l.nome = 'Duomo di San Martino', l.categoria = 'chiesa', l.articolo = 'il';
+SET l.nome = 'Duomo di San Martino', l.categoria = 'chiesa', l.articolo = 'il',
+    l.curiosita_testi = ['Sul pilastro del portico è inciso un labirinto, con un\'iscrizione latina che richiama Dedalo e Teseo. Lo si legge come simbolo del cammino dell\'anima verso la redenzione, lungo la Via Francigena.'],
+    l.curiosita_tipi = ['fatto'],
+    l.curiosita_fonti = ['dato del committente'];
 MERGE (l:Luogo {id: 'casa-puccini'})
-SET l.nome = 'Casa Natale di Giacomo Puccini', l.categoria = 'museo', l.articolo = 'la';
+SET l.nome = 'Casa Natale di Giacomo Puccini', l.categoria = 'museo', l.articolo = 'la',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'san-michele-in-foro'})
-SET l.nome = 'Chiesa di San Michele in Foro', l.categoria = 'chiesa', l.articolo = 'la';
+SET l.nome = 'Chiesa di San Michele in Foro', l.categoria = 'chiesa', l.articolo = 'la',
+    l.curiosita_testi = ['Si racconta che nell\'anello al dito dell\'arcangelo, in cima alla facciata, sia incastonato un grande smeraldo, visibile al tramonto da un punto preciso della piazza.'],
+    l.curiosita_tipi = ['leggenda'],
+    l.curiosita_fonti = ['Comune di Lucca, Mappa del centro storico 2024'];
 MERGE (l:Luogo {id: 'orto-botanico'})
-SET l.nome = 'Orto Botanico di Lucca', l.categoria = 'giardino', l.articolo = 'l\'';
+SET l.nome = 'Orto Botanico di Lucca', l.categoria = 'giardino', l.articolo = 'l\'',
+    l.curiosita_testi = ['Si racconta che nelle notti di luna piena il fantasma di Lucida Mansi attraversi le Mura su un cocchio, per poi sparire nel laghetto dell\'Orto Botanico.'],
+    l.curiosita_tipi = ['leggenda'],
+    l.curiosita_fonti = ['Comune di Lucca, cartina "Le Mura di Lucca"'];
 MERGE (l:Luogo {id: 'teatro-del-giglio'})
-SET l.nome = 'Teatro del Giglio', l.categoria = 'teatro', l.articolo = 'il';
+SET l.nome = 'Teatro del Giglio', l.categoria = 'teatro', l.articolo = 'il',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'palazzo-pfanner'})
-SET l.nome = 'Palazzo Pfanner', l.categoria = 'giardino', l.articolo = 'il';
+SET l.nome = 'Palazzo Pfanner', l.categoria = 'giardino', l.articolo = 'il',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'san-frediano'})
-SET l.nome = 'Basilica di San Frediano', l.categoria = 'chiesa', l.articolo = 'la';
+SET l.nome = 'Basilica di San Frediano', l.categoria = 'chiesa', l.articolo = 'la',
+    l.curiosita_testi = ['Nel mosaico della facciata compare anche Giuda, che l\'iconografia classica non metterebbe in questa scena. Alza la mano destra chiusa, con indice e mignolo tesi: il racconto popolare ci vede il gesto delle corna.'],
+    l.curiosita_tipi = ['fatto'],
+    l.curiosita_fonti = ['dato del committente'];
 MERGE (l:Luogo {id: 'torre-delle-ore'})
-SET l.nome = 'Torre delle Ore', l.categoria = 'torre', l.articolo = 'la';
+SET l.nome = 'Torre delle Ore', l.categoria = 'torre', l.articolo = 'la',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'piazza-napoleone'})
-SET l.nome = 'Piazza Napoleone', l.categoria = 'piazza', l.articolo = 'la';
+SET l.nome = 'Piazza Napoleone', l.categoria = 'piazza', l.articolo = 'la',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'via-fillungo'})
-SET l.nome = 'Via Fillungo', l.categoria = 'via', l.articolo = NULL;
+SET l.nome = 'Via Fillungo', l.categoria = 'via', l.articolo = NULL,
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'baluardo-san-paolino'})
-SET l.nome = 'Baluardo San Paolino', l.categoria = 'mura', l.articolo = 'il';
+SET l.nome = 'Baluardo San Paolino', l.categoria = 'mura', l.articolo = 'il',
+    l.curiosita_testi = ['Si racconta che il 12 luglio 1664, festa di San Paolino, i cannoni delle Mura spararono per i festeggiamenti senza essere caricati a salve, e che solo l\'intervento miracoloso del santo salvò la folla radunata sotto le Mura.'],
+    l.curiosita_tipi = ['leggenda'],
+    l.curiosita_fonti = ['Comune di Lucca, cartina "Le Mura di Lucca"'];
 MERGE (l:Luogo {id: 'museo-nazionale-guinigi'})
-SET l.nome = 'Museo Nazionale di Villa Guinigi', l.categoria = 'museo', l.articolo = 'il';
+SET l.nome = 'Museo Nazionale di Villa Guinigi', l.categoria = 'museo', l.articolo = 'il',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'chiesa-san-francesco'})
-SET l.nome = 'Chiesa di San Francesco', l.categoria = 'chiesa', l.articolo = 'la';
+SET l.nome = 'Chiesa di San Francesco', l.categoria = 'chiesa', l.articolo = 'la',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'real-collegio'})
-SET l.nome = 'Real Collegio', l.categoria = 'chiostro', l.articolo = 'il';
+SET l.nome = 'Real Collegio', l.categoria = 'chiostro', l.articolo = 'il',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'museo-barsanti-matteucci'})
-SET l.nome = 'Museo Barsanti e Matteucci', l.categoria = 'museo', l.articolo = 'il';
+SET l.nome = 'Museo Barsanti e Matteucci', l.categoria = 'museo', l.articolo = 'il',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'via-del-fosso'})
-SET l.nome = 'Via del Fosso', l.categoria = 'via', l.articolo = NULL;
+SET l.nome = 'Via del Fosso', l.categoria = 'via', l.articolo = NULL,
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'baluardo-santa-croce'})
-SET l.nome = 'Baluardo Santa Croce', l.categoria = 'mura', l.articolo = 'il';
+SET l.nome = 'Baluardo Santa Croce', l.categoria = 'mura', l.articolo = 'il',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 MERGE (l:Luogo {id: 'santi-giovanni-reparata'})
-SET l.nome = 'Chiesa dei Santi Giovanni e Reparata', l.categoria = 'chiesa', l.articolo = 'la';
+SET l.nome = 'Chiesa dei Santi Giovanni e Reparata', l.categoria = 'chiesa', l.articolo = 'la',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [];
 
 // --- Nodi: Artista ------------------------------------------------------
 MERGE (a:Artista {id: 'artista-puccini'})

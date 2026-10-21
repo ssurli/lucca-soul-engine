@@ -54,6 +54,11 @@
 // `GraphCandidate` SOLO se hanno una fonte (filtro in
 // `graph.connessioni.racconti_con_fonte`). `connessioni` resta invariata.
 //
+// `curiosita_testi/tipi/fonti` (ondata 2a, compito 5): curiosità del LUOGO come
+// tre liste parallele (stesso indice = stessa curiosità, ordine del seed), SOLO
+// narrazione, mai input di scoring. Su un grafo caricato prima del campo mancano:
+// `coalesce` dà liste vuote (nessuna curiosità), mai un errore.
+//
 // Parametri (tutti opzionali: `null` o lista vuota = nessun filtro):
 //   $temi         list[string]   id di Tema da cercare tra quelli evocati
 //   $al_chiuso    bool | null    filtro esatto su Esperienza.al_chiuso
@@ -133,6 +138,9 @@ RETURN
   e.sospesa AS sospesa,
   l.nome AS place_nome,
   l.articolo AS place_articolo,
+  coalesce(l.curiosita_testi, []) AS curiosita_testi,
+  coalesce(l.curiosita_tipi, []) AS curiosita_tipi,
+  coalesce(l.curiosita_fonti, []) AS curiosita_fonti,
   artisti_nomi,
   legati_racconti,
   botteghe,

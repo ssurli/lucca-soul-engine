@@ -46,10 +46,12 @@ from pathlib import Path
 from typing import Protocol
 
 from contracts import (
+    Curiosita,
     ExperienceNode,
     FasciaApertura,
     GraphCandidate,
     Partner,
+    TipoCuriosita,
     VisitorContext,
     decodifica_fasce,
 )
@@ -167,6 +169,7 @@ class SeedCandidateSource:
                     ),
                     vicinanza_nome=vicinanza[1].nome if vicinanza else None,
                     vicinanza_articolo=vicinanza[1].articolo if vicinanza else None,
+                    curiosita=list(luogo.curiosita),
                 )
             )
         return risultato
@@ -266,6 +269,25 @@ def _sospesa_da_record(record: Record) -> bool:
             f"trovato {type(grezzo).__name__} {grezzo!r}"
         )
     return grezzo
+
+
+def _curiosita_da_record(record: Record) -> list[Curiosita]:
+    """Ricompone le curiosità dalle tre liste parallele del luogo, nell'ordine
+    del seed. Fail-closed: liste di lunghezza diversa, tipo ignoto o fonte
+    vuota sollevano ValueError (`Curiosita` valida tipo, fonte e "Si racconta"
+    delle leggende). Proprietà assenti (`None`, grafo non ricaricato) = nessuna."""
+    testi = record["curiosita_testi"] or []
+    tipi = record["curiosita_tipi"] or []
+    fonti = record["curiosita_fonti"] or []
+    if not (len(testi) == len(tipi) == len(fonti)):
+        raise ValueError(
+            f"curiosità del luogo {record['place_id']!r}: liste parallele di lunghezza "
+            f"diversa (testi={len(testi)}, tipi={len(tipi)}, fonti={len(fonti)})"
+        )
+    return [
+        Curiosita(testo=testo, tipo=TipoCuriosita(tipo), fonte=fonte)
+        for testo, tipo, fonte in zip(testi, tipi, fonti, strict=True)
+    ]
 
 
 def _fasce_da_record(record: Record) -> list[FasciaApertura]:
@@ -441,4 +463,5 @@ class Neo4jCandidateSource:
             temi_etichette=etichette_temi(list(record["temi"] or []), etichette),
             vicinanza_nome=nome_riferimento if con_vicinanza else None,
             vicinanza_articolo=record["riferimento_articolo"] if con_vicinanza else None,
+            curiosita=_curiosita_da_record(record),
         )

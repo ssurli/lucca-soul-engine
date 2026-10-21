@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from contracts import ARTICOLI, ExperienceNode, Partner, VocabolarioTemi
+from contracts import ARTICOLI, Curiosita, ExperienceNode, Partner, VocabolarioTemi
 
 # `VICINO` non porta uno storico reale: il seed non ha mai registrato QUANDO
 # un arco di prossimità fisica è stato scritto. Tutti gli archi dei dataset
@@ -56,6 +56,10 @@ class Luogo:
     # Articolo determinativo del nome (uno di `contracts.ARTICOLI`), dato di
     # grammatica del dataset; None = nome senza articolo (es. una via).
     articolo: str | None = None
+    # Curiosità del LUOGO (ogni esperienza in quel luogo le porta), nell'ordine
+    # del seed. Solo narrazione, mai input di scoring. Ognuna ha una fonte
+    # (obbligatoria nel contratto `contracts.Curiosita`).
+    curiosita: tuple[Curiosita, ...] = ()
 
     def __post_init__(self) -> None:
         if self.articolo is not None and self.articolo not in ARTICOLI:
@@ -63,6 +67,9 @@ class Luogo:
                 f"luogo {self.id!r}: articolo {self.articolo!r} non valido "
                 f"(atteso None o uno di {ARTICOLI})"
             )
+        for voce in self.curiosita:
+            # Stessa regola dei racconti: il loader spezza il Cypher su ";\n".
+            _valida_testo_con_fonte(f"curiosità del luogo {self.id!r}", voce.testo, voce.fonte)
 
 
 @dataclass(frozen=True)

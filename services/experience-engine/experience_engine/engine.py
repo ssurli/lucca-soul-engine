@@ -23,7 +23,7 @@ from collections.abc import Callable, Sequence
 from collections.abc import Set as AbstractSet
 from datetime import UTC, date, datetime, time, timedelta
 from functools import partial
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 from contracts import (
     EmotionalProfile,
@@ -528,6 +528,10 @@ def _costruisci_stops(
                 experience_id=cand.experience.id,
                 # Titolo leggibile dal catalogo: l'app non mostra mai l'id.
                 titolo=cand.experience.titolo,
+                # Curiosita' del luogo, dal seed: SOLO narrazione, l'app le
+                # mostra sotto il `reason` (che non le contiene). Mai lette
+                # dallo scoring (guardia AST in tests/test_scoring_non_legge_curiosita.py).
+                curiosita=cand.curiosita,
                 arrivo=orario,
                 durata_min=cand.experience.durata_min,
                 reason=reason,
@@ -641,6 +645,9 @@ def _aggiungi_tappe_fluttuanti(
                 # `descrizione` apre gia' il `reason` (ripeterla non e' un
                 # titolo). L'app mostra un'etichetta generica, mai l'id.
                 titolo=None,
+                # Nessuna curiosita': un segnale fluttuante non e' un luogo
+                # del catalogo con curiosita' nel seed.
+                curiosita=[],
                 arrivo=orario_corrente,
                 durata_min=DURATA_TAPPA_FLUTTUANTE_MIN,
                 reason=_reason_fluttuante(
@@ -849,6 +856,9 @@ def _aggiungi_tappe_eventi_promossi(
                 # (vedi il suo docstring) e un nome fabbricato qui sarebbe
                 # inventato. L'app mostra un'etichetta generica, mai l'id.
                 titolo=None,
+                # Nessuna curiosita': l'evento promosso non porta quelle del
+                # luogo (non e' un'esperienza del catalogo).
+                curiosita=[],
                 arrivo=orario_corrente,
                 durata_min=DURATA_TAPPA_EVENTO_MIN,
                 reason=_reason_evento_promosso(
@@ -1436,7 +1446,7 @@ def adapt_itinerary(
                         vocabolario=vocabolario,
                     ),
                     "esito_adattamento": c.esito_deciso,
-                    "titolo": _titolo_tappa(c),
+                    **_narrazione_tappa(c),
                 }
             )
             for stop, c in zip(itinerary.stops, correnti, strict=True)
@@ -1600,6 +1610,19 @@ def _titolo_tappa(cand: _CandidatoConReason) -> str | None:
     return cand.experience.titolo
 
 
+def _narrazione_tappa(cand: _CandidatoConReason) -> dict[str, Any]:
+    """Campi di SOLA narrazione della tappa che `cand` occupa (`titolo` e
+    curiosita' del luogo), per l'aggiornamento di una tappa ricevuta.
+
+    Le curiosita' vengono da `cand.curiosita`: per un candidato noto e' il
+    catalogo (vince sul client), per uno stub quelle ricevute (copiate da
+    `_stub_da_stop`). Sta in una funzione a parte perche' la guardia AST
+    (tests/test_scoring_non_legge_curiosita.py) ammette letture delle
+    curiosita' solo nei costruttori di tappe, mai in `adapt_itinerary` o nelle
+    funzioni che scelgono e ordinano."""
+    return {"titolo": _titolo_tappa(cand), "curiosita": list(cand.curiosita)}
+
+
 def _marca_reason(
     cand: GraphCandidate, reason: str, esito: EsitoAdattamento, id_originale: str
 ) -> _CandidatoConReason:
@@ -1636,6 +1659,11 @@ def _stub_da_stop(stop: ItineraryStop, reason: str) -> _CandidatoConReason:
         id_originale=stop.experience_id,
         senza_candidato=True,
         titolo_ricevuto=stop.titolo,
+        # Stub: si conservano le curiosita' ricevute ("non riscrivere al
+        # buio"), come il titolo. Per un candidato NOTO vince invece il
+        # catalogo (`_marca_reason` copia `cand.curiosita`): il client non
+        # puo' iniettare curiosita' sue in una tappa del catalogo.
+        curiosita=stop.curiosita,
     )
 
 
@@ -1892,6 +1920,7 @@ def _ricostruisci_stops(
             ItineraryStop(
                 experience_id=cand.experience.id,
                 titolo=_titolo_tappa(cand),
+                curiosita=cand.curiosita,
                 arrivo=orario,
                 durata_min=cand.experience.durata_min,
                 reason=reason,
