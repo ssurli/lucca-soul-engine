@@ -1,6 +1,7 @@
-# Stato del progetto — 2026-10-20
+# Stato del progetto — 2026-10-21
 
 `main`: ondata 1c inclusa (merge fast-forward di `feat/ondata1c-contenuti`, correzione `e36dfec`; CI verde).
+Ondata 2a su `feat/ondata2a-testi`, in attesa del merge del committente.
 I dettagli sono in `docs/LIMITI.md` e `docs/BUILD_PLAN.md`; questo file è solo il punto della
 situazione.
 
@@ -15,37 +16,37 @@ situazione.
   provvisoria del recommender (Cand. 1), orari e prezzi invernali reali, 2 luoghi e 4 esperienze
   nuove, golden con 13 casi demo e feriali.
 - **1c** (20/10): 4 luoghi e 6 esperienze nuove (21 luoghi, 32 esperienze), orari dimostrativi
-  delle botteghe, script dei 4 ricordi dimostrativi (non ancora eseguito).
+  delle botteghe, script dei 4 ricordi dimostrativi.
+- **21/10, committente**: seed ricaricato su Aura, ricordi dimostrativi eseguiti (4, agganciati,
+  2 persone distinte), prova "Piove" eseguita.
+- **2a** (21/10): scarto esplicito dei contributi non curati (mai DELETE), nessuna frase
+  sull'affollamento senza un valore misurato, titoli leggibili in app, motivi riscritti da campi
+  separati dalle connessioni (racconti con fonte, temi come etichette, articoli dei luoghi, profilo
+  solo sulla prima tappa), curiosità dei luoghi (mai nel punteggio), golden alla DECIMA modifica.
 
-## Da fare (committente), in quest'ordine
+## Da fare (committente), dopo il merge della 2a
 
-Comandi PowerShell completi nel report della 1c; tutti dalla radice del repo, su `main`.
+Comandi PowerShell completi nel report della 2a; tutti dalla radice del repo, su `main`.
 
-1. Ricarica del seed su Aura: `.venv\Scripts\python.exe -m graph.loader`.
-2. Controllo su Aura: 32 esperienze, 1 sospesa (`exp-meccanismo-torre-ore`), 21 luoghi.
-3. Prova a secco dei ricordi: `.venv\Scripts\python.exe scripts\carica_ricordi_demo.py`
-   (legge soltanto; si ferma se le persone distinte sarebbero 7 o più, o se un luogo manca su Aura).
-4. Scrittura dei ricordi: stesso comando con `--esegui`; se l'aggancio al grafo non riesce, rilanciarlo.
-5. Riavvio del BFF e prova "Piove" con il profilo curioso: app con
-   `--dart-define=DEMO_ISTANTE=2026-12-12T14:00:00Z` (le 15:00 di Lucca), onboarding da visitatore
-   curioso, poi il pulsante "Piove" premuto UNA volta (oggi i segnali si sommano). Criterio: nessuna
-   tappa all'aperto e nessuna bottega partner.
+1. Migrazione Neon (due colonne nuove, nessuna cancellazione): `.venv\Scripts\python.exe -m urban_memory.migrate`.
+2. Scarto del contributo di prova "demo inserimento" con `scripts\scarta_contributo.py` (elenco,
+   prova a secco, poi `--esegui`).
+3. Ricarica del seed su Aura (curiosità, racconti, articoli): `.venv\Scripts\python.exe -m graph.loader`.
+4. Riavvio del BFF (i `.cypher` sono letti una volta).
 
-## Prossima ondata: 2 (testi e app)
+## Prossima ondata: 2b (app)
 
-- Testi delle tappe e riscrittura dei motivi (difetto d).
-- Titoli leggibili delle esperienze in app (blocco 2 del Traguardo A).
+- Interruttori dei segnali nell'app (oggi i segnali si sommano).
 - Badge (tra cui "dimostrativo" per ricordi e botteghe fittizie).
-- Interruttori dei segnali nell'app.
-- Campo "curiosità" per le leggende (labirinto, smeraldo, Lucida Mansi, leccio dei Guinigi, ...):
-  testo della tappa che non entra mai nel punteggio.
+- Domanda su Firenze.
 
 ## Dopo l'ondata 2, verso la demo del 12/12/2026
 
 1. **Coordinate e mappa**: coordinate dei luoghi nel seed, distanze reali tra le tappe, link
    "Come arrivo qui" a Google Maps (a piedi, un link per tappa, nessuna chiave). Per
    `exp-pfanner-dalle-mura` il punto è sulle Mura, non il palazzo. Riferimento per il controllo:
-   la mappa ufficiale del centro storico 2024.
+   la mappa ufficiale del centro storico 2024. Nella stessa ondata dati, per ogni esperienza va
+   registrata la **pagina ufficiale degli orari** come fonte.
 2. **Ondata grafica**: direzione "C" (canvas "Lucca Soul — direzioni grafiche": caratteri del deck,
    accento mattone, mappa in alto, interruttori dei segnali con "Annulla"), logo delle Mura nella
    testata, icona e favicon dell'app (oggi quelle di Flutter). Miniature solo con foto di licenza
@@ -57,9 +58,15 @@ Comandi PowerShell completi nel report della 1c; tutti dalla radice del repo, su
 
 - **Modello del tempo**: orari con periodo di validità (stagioni), chiusure e aperture per data,
   tramonto calcolato dalle coordinate, stato dell'itinerario (tappe fatte / in corso / da fare);
-  `sospesa` sostituito da un periodo di chiusura.
+  `sospesa` sostituito da un periodo di chiusura. Orari estivi (per esempio la mostra di Santa
+  Croce, 10:00–18:30) ed eccezioni datate (Lucca Comics, Summer Festival, chiusure festive). Poi un
+  **controllo periodico degli orari** come attività programmata: confronta le pagine ufficiali con
+  il seed e produce solo un elenco di differenze da confermare; non scrive mai nel seed.
 - **Recommender**: riprogettazione dell'effetto gregge con un criterio di uscita misurabile.
-- **Ricordi**: campo `dimostrativo` escluso da ogni aggregazione dell'Index.
+- **Ricordi**: campo `dimostrativo` escluso da ogni aggregazione dell'Index, con la stessa
+  esclusione dello scarto (`scartato_il`).
+- **Sorpresa nel punteggio**: oggi conta le frasi di connessione, non i legami del grafo; da
+  ricalcolare sugli archi.
 - **Pioggia**: valutare di togliere, invece di mantenere, una tappa all'aperto senza alternativa.
 - **Contenuti rinviati**: Museo della Zecca, Cammino di San Josemaría (descritto in modo neutro),
   Domus Romana, Palazzo Mansi; botteghe reali solo come aderenti, con il loro consenso.

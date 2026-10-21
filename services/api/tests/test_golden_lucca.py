@@ -261,6 +261,44 @@ i dati vecchi. Cambia l'`atteso` di 69 casi su 91, 22 restano identici.
   san-michele-in-foro, teatro-del-giglio); verificato: con i dati 1c ma l'insieme dei
   candidati SENZA le 6 nuove restano 0 chiavi cambiate.
 
+DECIMA modifica autorizzata (2026-10-21, ondata 2a, testi; rigenerazione AUTORIZZATA dal
+committente), SOLO in `lucca_itinerari.json` (`lucca_punteggi.json` byte-identico, verificato
+con `cmp`: nessun punteggio e' stato toccato). Motivo: l'ondata 2a cambia SOLO i testi:
+nessuna frase sull'affollamento senza un valore misurato (6bd30b2), `titolo` leggibili sulle
+tappe (e62fd97), `reason` riscritti da campi separati dalle connessioni, senza "Evoca il
+tema" ne' "X e' legato a" (6c8ca15), curiosita' dei luoghi come racconto, mai nel punteggio
+(87f9b2f). Decisione del committente: le tappe non cambiano, il diff riguarda solo i testi.
+Cambia l'`atteso` di 83 casi su 91: 80 dei 88 casi a richiesta invariata (solo testo) e i 3
+`demo|{curioso,con-bambini,contemplativo}|pioggia-15`; 8 casi restano identici.
+  ATTRIBUZIONE, verificata da script e non dedotta. Per gli 88 casi con richiesta invariata,
+  tolti `reason` (tappe ed escluse) l'`atteso` nuovo coincide con il vecchio campo per campo
+  (esperienze, ordine, arrivo, durata, esito, budget, escluse): 80 cambiati, 0 differenze non
+  testuali, 8 identici.
+  I 3 `demo|...|pioggia-15` sono stati RIGENERATI ANCHE NELLA RICHIESTA (come nella OTTAVA:
+  sabato 12/12/2026, itinerario composto alle 15:00 con meteo sereno via `POST /itinerary`,
+  profilo e `person_id` del caso, poi adattato alle 15:00 con meteo pioggia, profilo
+  nell'AdaptRequest): l'itinerario congelato nella richiesta conteneva i testi vecchi, che
+  l'adattamento conserva per le tappe non toccate. Con la richiesta nuova le tappe cambiano
+  rispetto al vecchio `atteso`: con-bambini la composizione include la sortita di San Paolino
+  prima della facciata (e il mosaico di San Frediano esce), contemplativo composizione e
+  adattamento con le stesse tappe, curioso la composizione ha santi-giovanni-reparata e
+  mercato-anfiteatro al posto di bici-mura e Piazza Napoleone. La richiesta vecchia era
+  l'itinerario composto con i dati precedenti alla 1c (NONA modifica).
+  Verifica a parte (eseguita, non dedotta): composizione e adattamento di questi tre casi con
+  il codice PRECEDENTE all'ondata (f701b04) danno le stesse tappe, arrivi, durate ed esiti del
+  codice attuale: la differenza di tappe rispetto al vecchio `atteso` viene dalla richiesta
+  rigenerata, non dal codice dell'ondata.
+  Etichette dei temi: "adatto ai bambini" non e' un'etichetta mostrata
+  (`Tema.mostra_etichetta=False`; connessioni e punteggi invariati) e l'etichetta del tema di
+  Puccini e' "Giacomo Puccini": nessun reason di `Temi:` cita "bambini" per chi non li ha.
+  CRITERI sui testi (asseriti da `test_golden_testi.py`): nessun "affollat" senza affollamento
+  misurato, nessun "Evoca il tema", "e' legato a" o "exp-" in `reason`/`titolo`, nessun `reason`
+  vuoto, la frase del profilo (`rag.reasons._tratto_dominante`) al massimo una volta per
+  itinerario. Sui casi `adapt`/`adapt-budget`/`adapt-profilo` (richiesta vecchia) le tappe non
+  toccate CONSERVANO per contratto il `reason` della richiesta e le mantenute senza alternativa
+  lo conservano e vi aggiungono una frase: lo stesso criterio vale solo per i testi nuovi
+  (tappe sostituite ed escluse).
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte
