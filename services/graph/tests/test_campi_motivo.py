@@ -116,7 +116,7 @@ def test_articoli_di_lucca() -> None:
 
 
 def test_etichette_di_lucca() -> None:
-    assert {t.id: t.etichetta for t in DATASET.temi} == {
+    assert {t.id: t.etichetta for t in DATASET.temi if t.mostra_etichetta} == {
         "verde": "verde e giardini",
         "panorama": "panorama",
         "storia": "storia",
@@ -124,13 +124,21 @@ def test_etichette_di_lucca() -> None:
         "gastronomia": "gastronomia",
         "arte": "arte",
         "silenzio": "silenzio e contemplazione",
-        "puccini": "Giacomo Puccini e la musica",
+        "puccini": "Giacomo Puccini",
         "musica": "musica",
         "romanico": "romanico",
-        "con-bambini": "adatto ai bambini",
         "artigianato": "artigianato",
         "liuteria": "liuteria",
     }
+
+
+def test_tema_non_mostrato_e_nessuna_etichetta_con_bambini() -> None:
+    assert [t.id for t in DATASET.temi if not t.mostra_etichetta] == ["con-bambini"]
+    assert Tema("t", "Quiete").mostra_etichetta is True  # default: derivata e mostrata
+    candidati = SeedCandidateSource().candidates(_ctx([]))
+    assert candidati
+    for c in candidati:
+        assert not any("bambini" in e for e in c.temi_etichette), c.experience.id
 
 
 def test_nessun_tema_di_lucca_ha_una_frase() -> None:
@@ -179,9 +187,11 @@ def test_racconti_dei_candidati_solo_con_fonte() -> None:
 
 
 def test_etichette_nell_ordine_dei_temi_dell_esperienza() -> None:
-    etichette = {t.id: t.etichetta for t in DATASET.temi}
+    etichette = {t.id: t.etichetta for t in DATASET.temi if t.mostra_etichetta}
     for c in SeedCandidateSource().candidates(_ctx([])):
-        assert c.temi_etichette == [etichette[t] for t in c.experience.temi], c.experience.id
+        assert c.temi_etichette == [
+            etichette[t] for t in c.experience.temi if t in etichette
+        ], c.experience.id
         assert c.place_articolo == next(
             lg.articolo for lg in DATASET.luoghi if lg.id == c.experience.place_id
         )
@@ -248,7 +258,8 @@ def test_cypher_scrive_i_campi_nuovi_con_set_idempotente() -> None:
     testo = build_seed(DATASET)
     assert "l.articolo = 'l\\''" in testo  # orto-botanico
     assert "l.articolo = NULL" in testo  # le vie
-    assert "t.etichetta = 'medioevo'" in testo
+    assert "t.etichetta = 'medioevo', t.mostra_etichetta = true" in testo
+    assert "t.mostra_etichetta = false" in testo  # con-bambini
     assert "t.frase = NULL, t.fonte = NULL" in testo
     assert f"r.fonte = '{_FONTE_PUCCINI}'" in testo
     assert "MERGE (a)-[r:LEGATO_A]->(l)\nSET r.racconto = NULL, r.fonte = NULL;" in testo
@@ -265,6 +276,7 @@ def test_query_candidati_restituisce_i_dati_nuovi() -> None:
         "legati_racconti",
         "riferimento_articolo",
         "etichetta: tema.etichetta",
+        "mostra_etichetta: tema.mostra_etichetta",
         "frase: tema.frase",
         "fonte: tema.fonte",
         "racconto: la.racconto",

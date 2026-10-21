@@ -96,6 +96,11 @@ class Tema:
     # Etichetta leggibile da inserire in una frase ("Temi: a, b."). Se omessa
     # è il nome con l'iniziale minuscola; un dataset la dichiara esplicita.
     etichetta: str = ""
+    # Il tema entra nelle etichette dei motivi ("Temi: a, b.")? True di default.
+    # False = il tema resta nel grafo, nel vocabolario e nel punteggio ma NON si
+    # mostra come etichetta (es. un'idoneita' come "adatto ai bambini", non un
+    # tema da raccontare). Distinto da `etichetta` omessa (= derivata dal nome).
+    mostra_etichetta: bool = True
     # Frase narrativa del tema: ammessa SOLO con `fonte` (nessun testo senza
     # fonte, nessuna fonte senza testo).
     frase: str | None = None

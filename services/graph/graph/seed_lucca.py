@@ -347,10 +347,10 @@ TEMI: list[Tema] = [
     Tema("gastronomia", "Gastronomia", etichetta="gastronomia"),
     Tema("arte", "Arte", etichetta="arte"),
     Tema("silenzio", "Silenzio e contemplazione", etichetta="silenzio e contemplazione"),
-    Tema("puccini", "Giacomo Puccini e la musica", etichetta="Giacomo Puccini e la musica"),
+    Tema("puccini", "Giacomo Puccini e la musica", etichetta="Giacomo Puccini"),
     Tema("musica", "Musica", etichetta="musica"),
     Tema("romanico", "Romanico", etichetta="romanico"),
-    Tema("con-bambini", "Adatto ai bambini", etichetta="adatto ai bambini"),
+    Tema("con-bambini", "Adatto ai bambini", mostra_etichetta=False),
     Tema("artigianato", "Artigianato", etichetta="artigianato"),
     Tema("liuteria", "Liuteria", etichetta="liuteria"),
 ]

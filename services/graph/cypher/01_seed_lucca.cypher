@@ -134,31 +134,31 @@ SET b.nome = 'Laboratorio di tessitura', b.mestiere = 'tessitura', b.place_id = 
 
 // --- Nodi: Tema -----------------------------------------------------------
 MERGE (t:Tema {id: 'verde'})
-SET t.nome = 'Verde e giardini', t.etichetta = 'verde e giardini', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Verde e giardini', t.etichetta = 'verde e giardini', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'panorama'})
-SET t.nome = 'Panorama', t.etichetta = 'panorama', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Panorama', t.etichetta = 'panorama', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'storia'})
-SET t.nome = 'Storia', t.etichetta = 'storia', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Storia', t.etichetta = 'storia', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'medievale'})
-SET t.nome = 'Medievale', t.etichetta = 'medioevo', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Medievale', t.etichetta = 'medioevo', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'gastronomia'})
-SET t.nome = 'Gastronomia', t.etichetta = 'gastronomia', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Gastronomia', t.etichetta = 'gastronomia', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'arte'})
-SET t.nome = 'Arte', t.etichetta = 'arte', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Arte', t.etichetta = 'arte', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'silenzio'})
-SET t.nome = 'Silenzio e contemplazione', t.etichetta = 'silenzio e contemplazione', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Silenzio e contemplazione', t.etichetta = 'silenzio e contemplazione', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'puccini'})
-SET t.nome = 'Giacomo Puccini e la musica', t.etichetta = 'Giacomo Puccini e la musica', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Giacomo Puccini e la musica', t.etichetta = 'Giacomo Puccini', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'musica'})
-SET t.nome = 'Musica', t.etichetta = 'musica', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Musica', t.etichetta = 'musica', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'romanico'})
-SET t.nome = 'Romanico', t.etichetta = 'romanico', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Romanico', t.etichetta = 'romanico', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'con-bambini'})
-SET t.nome = 'Adatto ai bambini', t.etichetta = 'adatto ai bambini', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Adatto ai bambini', t.etichetta = 'adatto ai bambini', t.mostra_etichetta = false, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'artigianato'})
-SET t.nome = 'Artigianato', t.etichetta = 'artigianato', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Artigianato', t.etichetta = 'artigianato', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 MERGE (t:Tema {id: 'liuteria'})
-SET t.nome = 'Liuteria', t.etichetta = 'liuteria', t.frase = NULL, t.fonte = NULL;
+SET t.nome = 'Liuteria', t.etichetta = 'liuteria', t.mostra_etichetta = true, t.frase = NULL, t.fonte = NULL;
 
 // --- Nodi: Esperienza ---------------------------------------------------
 MERGE (e:Esperienza {id: 'exp-passeggiata-mura'})

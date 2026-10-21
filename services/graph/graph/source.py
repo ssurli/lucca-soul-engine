@@ -165,7 +165,8 @@ class SeedCandidateSource:
                         frasi_temi={t.id: (t.frase, t.fonte) for t in self._temi.values()},
                     ),
                     temi_etichette=etichette_temi(
-                        esperienza.temi, {t.id: t.etichetta for t in self._temi.values()}
+                        esperienza.temi,
+                        {t.id: t.etichetta for t in self._temi.values() if t.mostra_etichetta},
                     ),
                     vicinanza_nome=vicinanza[1].nome if vicinanza else None,
                     vicinanza_articolo=vicinanza[1].articolo if vicinanza else None,
@@ -441,6 +442,9 @@ class Neo4jCandidateSource:
         etichette = {
             t["id"]: (t.get("etichetta") or t["nome"][:1].lower() + t["nome"][1:])
             for t in temi_grezzi
+            # `mostra_etichetta` e' scritta esplicitamente dal seed; il ripiego
+            # vale solo se la proprieta' MANCA (grafo non ricaricato = mostrato).
+            if t.get("mostra_etichetta") is not False
         }
         frasi_temi = {t["id"]: (t.get("frase"), t.get("fonte")) for t in temi_grezzi}
         legati = [

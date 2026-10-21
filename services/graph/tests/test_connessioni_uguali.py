@@ -111,6 +111,7 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
                     "id": t,
                     "nome": _TEMI[t].nome,
                     "etichetta": _TEMI[t].etichetta,
+                    "mostra_etichetta": _TEMI[t].mostra_etichetta,
                     "frase": _TEMI[t].frase,
                     "fonte": _TEMI[t].fonte,
                 }

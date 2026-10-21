@@ -158,6 +158,7 @@ def _tema_statement(tema) -> str:
         f"MERGE (t:Tema {{id: {_cypher_str(tema.id)}}})\n"
         f"SET t.nome = {_cypher_str(tema.nome)}, "
         f"t.etichetta = {_cypher_str(tema.etichetta)}, "
+        f"t.mostra_etichetta = {_cypher_bool(tema.mostra_etichetta)}, "
         f"t.frase = {_cypher_str_or_null(tema.frase or None)}, "
         f"t.fonte = {_cypher_str_or_null(tema.fonte or None)};"
     )
