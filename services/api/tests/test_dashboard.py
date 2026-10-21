@@ -296,6 +296,26 @@ def test_dashboard_index_disponibile_sopra_soglia(monkeypatch: pytest.MonkeyPatc
     assert body["motivo_indisponibilita"] is None
 
 
+def test_dashboard_index_esclude_i_contributi_scartati(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Repository REALE in memoria: un contributo scartato (non curato) non
+    entra in `contributi_memoria` (l'Index somma list_pending()+list_curated())."""
+    from urban_memory import InMemoryMemoryRepository
+
+    repo = InMemoryMemoryRepository()
+    for m in _memorie_sopra_soglia():
+        repo.submit(m.model_copy(update={"curato": False}))
+    _forza_fonti(monkeypatch, eventi=_eventi_sopra_soglia())
+    monkeypatch.setattr(api_main, "get_memory_repository", lambda: repo)
+    client = TestClient(api_main.app)
+
+    prima = client.get("/dashboard/index", params={"periodo": "2026-07"}).json()
+    repo.scarta("m0", "fuori tema")
+    dopo = client.get("/dashboard/index", params={"periodo": "2026-07"}).json()
+
+    assert prima["index"]["contributi_memoria"] == N_PERSONE_SOPRA_SOGLIA
+    assert dopo["index"]["contributi_memoria"] == N_PERSONE_SOPRA_SOGLIA - 1
+
+
 def test_dashboard_index_non_disponibile_sotto_soglia(monkeypatch: pytest.MonkeyPatch) -> None:
     _forza_fonti(monkeypatch, eventi=_eventi_sotto_soglia())
     client = TestClient(api_main.app)

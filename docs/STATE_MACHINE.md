@@ -107,8 +107,14 @@
   frattempo spariti — segnala, non corregge.
 - **Cosa NON esiste, verificato per assenza**:
   - Nessun endpoint HTTP per curatela — solo `POST /memory` e `GET /memory/{place_id}`.
-  - Nessun rifiuto esplicito — solo `curato=True` o "resta pending per sempre",
-    indistinguibile da "nessuno l'ha ancora guardato".
+  - Scarto esplicito solo per i non curati; i curati restano senza rifiuto. Un contributo
+    NON curato può essere scartato con un motivo obbligatorio (`MemoryRepository.scarta`,
+    `scripts/scarta_contributo.py`, colonne `scartato_il`/`motivo_scarto` di
+    `sql/05_scarto_schema.sql`): mai DELETE, la riga resta; sparisce da `list_pending`,
+    `list_curated`, `get_curated` e quindi dall'Index; `get(id)` la restituisce ancora e
+    `curate` su uno scartato fallisce. Lo scarto di un curato non esiste (non c'è un "ritiro"
+    della pubblicazione): un curato che non va resta curato. Lo stato di scarto è interno al
+    repository, non è nel contratto `MemoryContribution`.
   - Nessuna creazione di nodi — la curatela blocca se un target manca, non offre "crealo".
   - Nessuna promozione — il concetto fluttuante→permanente non esiste in nessuna forma.
   - Nessun log della DECISIONE UMANA oltre lo stato booleano finale — non c'è "chi, quando,

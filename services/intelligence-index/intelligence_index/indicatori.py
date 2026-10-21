@@ -424,8 +424,9 @@ def contributi_memoria(
     l'unione di `MemoryRepository.list_pending()` (`curato=False`) e
     `list_curated()` (`curato=True`) — non serve un metodo dedicato sul
     repository, "tutti" è la composizione dei due che esistono già
-    (`curato` è un `bool`, i due insiemi sono mutuamente esclusivi e
-    coprono l'intero spazio: nessuno stato "rifiutato" separato). Il
+    (`curato` è un `bool`, i due insiemi sono mutuamente esclusivi). I
+    contributi SCARTATI (`MemoryRepository.scarta`, solo non curati) sono
+    esclusi a monte da entrambe le letture, quindi qui non contano. Il
     filtro per periodo su `creato_il` resta applicato dal chiamante
     (`intelligence_index.index.calcola_index`), qualunque sia l'insieme
     ricevuto.

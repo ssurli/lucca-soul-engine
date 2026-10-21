@@ -133,10 +133,15 @@ from .promozione_evento import (
     scrivi_evento_promosso,
 )
 from .repository import (
+    ContributoInesistente,
+    ContributoNonScartabile,
+    ContributoScartato,
     InMemoryMemoryRepository,
     MemoryRepository,
     MemoryStorageError,
+    MotivoScartoRichiesto,
     PostgresMemoryRepository,
+    ScartoError,
 )
 from .ricorrenza import (
     N_MINIMO_OCCORRENZE,
@@ -177,6 +182,11 @@ __all__ = [
     "InMemoryMemoryRepository",
     "PostgresMemoryRepository",
     "MemoryStorageError",
+    "ScartoError",
+    "ContributoInesistente",
+    "ContributoNonScartabile",
+    "ContributoScartato",
+    "MotivoScartoRichiesto",
     "UrbanMemoryError",
     "ConsentRequiredError",
     "LicenseRequiredError",

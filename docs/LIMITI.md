@@ -2817,3 +2817,9 @@ dal conteggio delle persone del gate k, dalle altre aggregazioni e dalla dashboa
 badge nell'app. Va introdotto **prima che le persone reali nel periodo del caricamento arrivino a 8**.
 Quando esiste, i 4 ricordi vanno marcati e la voce chiusa; in alternativa, se la demo non serve più,
 vanno rimossi con una procedura da definire (oggi non esiste un cestino per le memorie curate).
+
+Nota sul futuro campo `dimostrativo`: dovrà riusare la stessa esclusione dello scarto
+(`scartato_il IS NULL`, `services/urban-memory/urban_memory/repository.py`) nelle letture
+(`list_pending`, `list_curated`, `get_curated`), così Index, conteggio persone del gate k e
+dashboard lo escludono con un solo punto di filtro. Lo scarto esiste solo per i contributi non
+curati: i 4 ricordi demo, già curati, non sono scartabili con questo meccanismo.

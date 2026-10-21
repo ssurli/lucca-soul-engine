@@ -28,10 +28,22 @@ di un tentativo di aggancio al grafo, MAI la decisione di curatela in sé.
 Scritti SOLO da `urban_memory.service` (`curate_contribution` quando riceve
 un `linker`, `retry_link_contribution`) — invariante "curato tira aggancio",
 `docs/ENGINE_INVARIANTS.md` §11-B.
+
+Scarto esplicito (`scarta`, `sql/05_scarto_schema.sql`): un contributo NON
+curato può essere scartato con un motivo; mai un DELETE. Lo stato di scarto
+(`scartato_il`, `motivo_scarto`) vive nel repository, NON nel contratto
+`MemoryContribution`. Le letture di pubblicazione e di aggregazione
+(`list_pending`, `list_curated`, `get_curated`) escludono gli scartati, quindi
+li esclude anche l'Urban Intelligence Index che le somma. `list_aggancio_fallito`
+riguarda solo i curati e uno scartato non è mai curato: nessun filtro
+necessario. `get(id)` invece restituisce ANCHE gli scartati ("così com'è
+persistito": è un lookup per id, non una lettura di pubblicazione); `curate`
+su uno scartato fallisce con `ContributoScartato`.
 """
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -46,6 +58,11 @@ __all__ = [
     "InMemoryMemoryRepository",
     "PostgresMemoryRepository",
     "MemoryStorageError",
+    "ScartoError",
+    "ContributoInesistente",
+    "ContributoNonScartabile",
+    "ContributoScartato",
+    "MotivoScartoRichiesto",
 ]
 
 _COLUMNS = (
@@ -64,6 +81,33 @@ _COLUMNS = (
     "stato_aggancio",
 )
 _COLUMNS_SQL = ", ".join(_COLUMNS)
+
+
+class ScartoError(Exception):
+    """Base degli errori di dominio dello scarto/curatela sul repository."""
+
+
+class ContributoInesistente(ScartoError):
+    """Nessun contributo con quell'id."""
+
+
+class ContributoNonScartabile(ScartoError):
+    """Il contributo è già curato o già scartato: non si scarta."""
+
+
+class ContributoScartato(ScartoError):
+    """Il contributo è stato scartato: non si cura."""
+
+
+class MotivoScartoRichiesto(ScartoError, ValueError):
+    """Il motivo di scarto è obbligatorio e non può essere vuoto."""
+
+
+def _motivo_valido(motivo: str) -> str:
+    pulito = motivo.strip()
+    if not pulito:
+        raise MotivoScartoRichiesto("il motivo di scarto è obbligatorio e non può essere vuoto")
+    return pulito
 
 
 class MemoryRepository(Protocol):
@@ -125,6 +169,14 @@ class MemoryRepository(Protocol):
         stato di attesa recuperabile, mai un vicolo cieco."""
         ...
 
+    def scarta(self, memory_id: str, motivo: str) -> MemoryContribution:
+        """Scarta (mai DELETE) un contributo esistente, NON curato e non già
+        scartato; `motivo` obbligatorio (strip non vuoto, altrimenti
+        `MotivoScartoRichiesto`). Solleva `ContributoInesistente` se l'id non
+        esiste, `ContributoNonScartabile` se è curato o già scartato. Gli
+        scartati spariscono da `list_pending`/`list_curated`/`get_curated`."""
+        ...
+
 
 # ---------------------------------------------------------------------------
 # In-memory — percorso di test e di default finché DATABASE_URL non c'è
@@ -140,17 +192,22 @@ class InMemoryMemoryRepository:
 
     def __init__(self) -> None:
         self._store: dict[str, MemoryContribution] = {}
+        # Stato di scarto fuori dal contratto: id -> (scartato_il, motivo).
+        self._scartati: dict[str, tuple[datetime, str]] = {}
+
+    def _visibili(self) -> list[MemoryContribution]:
+        return [c for c in self._store.values() if c.id not in self._scartati]
 
     def submit(self, contribution: MemoryContribution) -> MemoryContribution:
         self._store[contribution.id] = contribution
         return contribution
 
     def get_curated(self, place_id: str) -> list[MemoryContribution]:
-        risultato = [c for c in self._store.values() if c.curato and place_id in c.riguarda]
+        risultato = [c for c in self._visibili() if c.curato and place_id in c.riguarda]
         return sorted(risultato, key=lambda c: (c.creato_il, c.id))
 
     def list_pending(self) -> list[MemoryContribution]:
-        risultato = [c for c in self._store.values() if not c.curato]
+        risultato = [c for c in self._visibili() if not c.curato]
         return sorted(risultato, key=lambda c: (c.creato_il, c.id))
 
     def curate(self, memory_id: str) -> MemoryContribution:
@@ -158,6 +215,8 @@ class InMemoryMemoryRepository:
             corrente = self._store[memory_id]
         except KeyError:
             raise KeyError(f"nessun contributo con id={memory_id!r}") from None
+        if memory_id in self._scartati:
+            raise ContributoScartato(f"il contributo id={memory_id!r} è stato scartato")
         aggiornato = corrente.model_copy(update={"curato": True})
         self._store[memory_id] = aggiornato
         return aggiornato
@@ -166,7 +225,7 @@ class InMemoryMemoryRepository:
         return self._store.get(memory_id)
 
     def list_curated(self) -> list[MemoryContribution]:
-        risultato = [c for c in self._store.values() if c.curato]
+        risultato = [c for c in self._visibili() if c.curato]
         return sorted(risultato, key=lambda c: (c.creato_il, c.id))
 
     def set_stato_aggancio(
@@ -187,6 +246,18 @@ class InMemoryMemoryRepository:
             if c.curato and c.stato_aggancio == MemoryLinkState.AGGANCIO_FALLITO
         ]
         return sorted(risultato, key=lambda c: (c.creato_il, c.id))
+
+    def scarta(self, memory_id: str, motivo: str) -> MemoryContribution:
+        _motivo_valido(motivo)
+        corrente = self._store.get(memory_id)
+        if corrente is None:
+            raise ContributoInesistente(f"nessun contributo con id={memory_id!r}")
+        if corrente.curato or memory_id in self._scartati:
+            raise ContributoNonScartabile(
+                f"il contributo id={memory_id!r} è curato o già scartato: non si scarta"
+            )
+        self._scartati[memory_id] = (datetime.now(UTC), motivo.strip())
+        return corrente
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +342,7 @@ class PostgresMemoryRepository:
     def get_curated(self, place_id: str) -> list[MemoryContribution]:
         query = (
             f"SELECT {_COLUMNS_SQL} FROM memory_contribution "
-            "WHERE curato = true AND %(place_id)s = ANY(riguarda) "
+            "WHERE curato = true AND scartato_il IS NULL AND %(place_id)s = ANY(riguarda) "
             "ORDER BY creato_il, id"
         )
         righe = self._select(query, {"place_id": place_id})
@@ -280,7 +351,7 @@ class PostgresMemoryRepository:
     def list_pending(self) -> list[MemoryContribution]:
         query = (
             f"SELECT {_COLUMNS_SQL} FROM memory_contribution "
-            "WHERE curato = false ORDER BY creato_il, id"
+            "WHERE curato = false AND scartato_il IS NULL ORDER BY creato_il, id"
         )
         righe = self._select(query, {})
         return [_from_row(riga) for riga in righe]
@@ -288,7 +359,7 @@ class PostgresMemoryRepository:
     def curate(self, memory_id: str) -> MemoryContribution:
         query = (
             f"UPDATE memory_contribution SET curato = true "
-            f"WHERE id = %(id)s RETURNING {_COLUMNS_SQL}"
+            f"WHERE id = %(id)s AND scartato_il IS NULL RETURNING {_COLUMNS_SQL}"
         )
         try:
             with psycopg.connect(self._dsn) as conn:
@@ -301,7 +372,10 @@ class PostgresMemoryRepository:
                 f"impossibile curare il contributo id={memory_id!r}: {exc}"
             ) from exc
         if riga is None:
-            raise KeyError(f"nessun contributo con id={memory_id!r}")
+            # Nessuna riga aggiornata: inesistente oppure scartato.
+            if self.get(memory_id) is None:
+                raise KeyError(f"nessun contributo con id={memory_id!r}")
+            raise ContributoScartato(f"il contributo id={memory_id!r} è stato scartato")
         return _from_row(riga)
 
     def get(self, memory_id: str) -> MemoryContribution | None:
@@ -314,7 +388,7 @@ class PostgresMemoryRepository:
     def list_curated(self) -> list[MemoryContribution]:
         query = (
             f"SELECT {_COLUMNS_SQL} FROM memory_contribution "
-            "WHERE curato = true ORDER BY creato_il, id"
+            "WHERE curato = true AND scartato_il IS NULL ORDER BY creato_il, id"
         )
         righe = self._select(query, {})
         return [_from_row(riga) for riga in righe]
@@ -347,6 +421,32 @@ class PostgresMemoryRepository:
         )
         righe = self._select(query, {"stato": MemoryLinkState.AGGANCIO_FALLITO.value})
         return [_from_row(riga) for riga in righe]
+
+    def scarta(self, memory_id: str, motivo: str) -> MemoryContribution:
+        pulito = _motivo_valido(motivo)
+        query = (
+            "UPDATE memory_contribution SET scartato_il = now(), "
+            "motivo_scarto = %(motivo)s "
+            "WHERE id = %(id)s AND curato = false AND scartato_il IS NULL "
+            f"RETURNING {_COLUMNS_SQL}"
+        )
+        try:
+            with psycopg.connect(self._dsn) as conn:
+                with conn.cursor(row_factory=dict_row) as cur:
+                    cur.execute(query, {"id": memory_id, "motivo": pulito})
+                    riga = cur.fetchone()
+                conn.commit()
+        except psycopg.Error as exc:
+            raise MemoryStorageError(
+                f"impossibile scartare il contributo id={memory_id!r}: {exc}"
+            ) from exc
+        if riga is None:
+            if self.get(memory_id) is None:
+                raise ContributoInesistente(f"nessun contributo con id={memory_id!r}")
+            raise ContributoNonScartabile(
+                f"il contributo id={memory_id!r} è curato o già scartato: non si scarta"
+            )
+        return _from_row(riga)
 
     # -- interno ------------------------------------------------------------
 

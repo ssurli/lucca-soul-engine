@@ -47,8 +47,10 @@ EVENTO_ID = evento_id_per_pattern("piazza-anfiteatro", ("arte", "musica"))
 
 
 def test_schema_promozione_raccolto_dalla_migrazione() -> None:
-    assert any(p.name == "04_promozione_schema.sql" for p in SCHEMA_PATHS)
-    sql = Path(SCHEMA_PATHS[-1]).read_text(encoding="utf-8")
+    # Per nome, non per posizione: dopo il 04 possono aggiungersi altri schemi (05 scarto).
+    promozione = [p for p in SCHEMA_PATHS if p.name == "04_promozione_schema.sql"]
+    assert promozione
+    sql = Path(promozione[0]).read_text(encoding="utf-8")
     assert "CREATE TABLE IF NOT EXISTS pattern_promosso" in sql
     codice = " ".join(r for r in sql.splitlines() if not r.lstrip().startswith("--"))
     assert "DROP" not in codice.upper()

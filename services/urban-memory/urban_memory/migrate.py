@@ -2,15 +2,20 @@
 
 Applica OGNI file `sql/*_schema.sql` — letto da file (single source of
 verità, non duplicato come stringa nel codice), rieseguibile da zero in un
-comando, come il seed del grafo (CLAUDE.md). Due schemi oggi, applicati IN
+comando, come il seed del grafo (CLAUDE.md). Gli schemi, applicati IN
 ORDINE (il prefisso numerico ne fissa l'ordine, `sorted()` su nomi di file):
 
 - `00_memory_schema.sql` — `memory_contribution` (Wave 2, la Urban Memory).
 - `01_fluttuante_schema.sql` — `segnale_fluttuante`/`traccia_luogo` (Fase 3,
   il canale fluttuante persistente e il suo ledger,
   `docs/PROMOZIONE_TRACCIA.md`).
+- `02_ricorrenza_schema.sql`, `03_freno_schema.sql`, `04_promozione_schema.sql`
+  — cestino, freno di emergenza, ledger delle promozioni (Fase 3).
+- `05_scarto_schema.sql` — `scartato_il`/`motivo_scarto` su
+  `memory_contribution` (scarto esplicito dei contributi NON curati, mai
+  DELETE; `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`).
 
-Un solo comando applica ENTRAMBI, in una connessione, in una transazione
+Un solo comando applica TUTTI, in una connessione, in una transazione
 sola (`conn.execute`/`conn.commit` una volta sola per tutti i file): non
 serve un comando `migrate` per schema, esattamente come prima di questo
 cambio non ne serviva uno per `00_memory_schema.sql` da solo.
