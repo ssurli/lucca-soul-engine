@@ -2490,6 +2490,8 @@ L'onboarding chiede "Hai già visto Firenze?" e il parser valorizza
 `services/*/` escluso il parser): la risposta non cambia l'itinerario. Al visitatore si chiede
 un dato che non usiamo.
 
+Aggiornamento: domanda nascosta nell'app (ondata 2b); da riattivare quando ha un effetto.
+
 ## L'app invia frasi da interpretare invece di codici (APERTO)
 
 **Trovato:** 2026-10-19 (ondata 1). **Non corretto.**

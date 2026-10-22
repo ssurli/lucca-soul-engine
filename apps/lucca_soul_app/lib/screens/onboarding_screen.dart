@@ -30,7 +30,7 @@ class OnboardingQuestion {
   });
 }
 
-/// Le sette domande della conversazione (`docs/DATA_CONTRACTS.md` §7,
+/// Tutte le domande note del contratto (`docs/DATA_CONTRACTS.md` §7,
 /// `domanda_id` allineati alla consegna di Wave 1). Non una guida a form:
 /// una conversazione breve, pensata per stare sotto i due minuti.
 const List<OnboardingQuestion> kOnboardingQuestions = [
@@ -96,6 +96,18 @@ const List<OnboardingQuestion> kOnboardingQuestions = [
   ),
 ];
 
+/// Domande che restano nel codice ma non vengono poste. `firenze` e' nascosta
+/// (ondata 2b): oggi non ha effetto sul punteggio (`docs/LIMITI.md`). Non
+/// inviandola, il parser del BFF usa il default `ha_gia_visto_firenze = false`.
+/// Da riattivare quando ha un effetto: basta toglierla da qui.
+const Set<String> kDomandeNascoste = {'firenze'};
+
+/// Le domande effettivamente mostrate (sei).
+final List<OnboardingQuestion> kDomandeVisibili = [
+  for (final d in kOnboardingQuestions)
+    if (!kDomandeNascoste.contains(d.domandaId)) d,
+];
+
 /// Le lingue in cui può svolgersi la conversazione. Scelta esplicita
 /// dell'utente prima che esista un `EmotionalProfile` (che a sua volta
 /// porta `lingue` per il resto dell'app).
@@ -125,14 +137,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _inviando = false;
   String? _erroreInvio;
 
-  bool get _completato => _risposte.length == kOnboardingQuestions.length;
+  bool get _completato => _risposte.length == kDomandeVisibili.length;
 
   void _scegli(OnboardingQuestion domanda, OnboardingOption opzione) {
     setState(() {
       _risposte[domanda.domandaId] = opzione.risposta;
       _erroreInvio = null;
     });
-    if (_stepCorrente < kOnboardingQuestions.length - 1) {
+    if (_stepCorrente < kDomandeVisibili.length - 1) {
       final prossimo = _stepCorrente + 1;
       _pageController.animateToPage(
         prossimo,
@@ -149,7 +161,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
     try {
       final request = OnboardingRequest(
-        risposte: kOnboardingQuestions
+        risposte: kDomandeVisibili
             .map((d) => OnboardingAnswer(domandaId: d.domandaId, risposta: _risposte[d.domandaId]!))
             .toList(),
         lingua: _lingua,
@@ -201,17 +213,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         child: Column(
           children: [
             LinearProgressIndicator(
-              value: (_stepCorrente + 1) / kOnboardingQuestions.length,
+              value: (_stepCorrente + 1) / kDomandeVisibili.length,
               minHeight: 4,
             ),
             Expanded(
               child: PageView.builder(
                 controller: _pageController,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: kOnboardingQuestions.length,
+                itemCount: kDomandeVisibili.length,
                 onPageChanged: (index) => setState(() => _stepCorrente = index),
                 itemBuilder: (context, index) {
-                  final domanda = kOnboardingQuestions[index];
+                  final domanda = kDomandeVisibili[index];
                   return _QuestionView(
                     domanda: domanda,
                     selezionata: _risposte[domanda.domandaId],
