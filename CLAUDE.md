@@ -145,6 +145,9 @@ Per ogni wave del `docs/BUILD_PLAN.md`:
 - "Verificato" significa **eseguito** contro il codice o l'infrastruttura reale, non dedotto.
   Dichiara sempre cosa NON hai potuto verificare.
 - Test esistenti modificati: elencali con il motivo. Mai modificarne uno solo per farlo passare.
+- Un agente non indebolisce un test o un'invariante (esclusioni, casi saltati, griglie ridotte,
+  soglie allentate) per far passare il codice: si ferma e riporta. Un indebolimento entra solo con
+  l'approvazione esplicita del committente, scritta nel commit.
 - Nessun subagent esegue comandi contro Neon o Aura reali (verify, migrate, loader, link, audit o
   script ad hoc) senza autorizzazione esplicita nel brief. Le prove si fanno sui test o con DSN
   non raggiungibili.
