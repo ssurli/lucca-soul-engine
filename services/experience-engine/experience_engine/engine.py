@@ -1801,7 +1801,22 @@ def _sostituzione_nel_budget(
 def _taglia_per_stanchezza(
     itinerary: Itinerary, correnti: list[_CandidatoConReason]
 ) -> list[_CandidatoConReason]:
-    """Mantiene le tappe di testa entro ~2/3 del tempo originale (prefisso).
+    """Mantiene le tappe di testa il cui tempo totale è il più vicino ai 2/3
+    del tempo originale (prefisso).
+
+    - `limite` = `int(2/3 * somma delle durate dell'itinerario RICEVUTO)`
+      (`itinerary.stops`, cioè PRIMA delle sostituzioni di questo adattamento);
+      il tempo è invece sommato sulle durate di `correnti`, cioè DOPO le
+      sostituzioni (una tappa sostituita conta con la durata del sostituto).
+      Solo durate di visita: i trasferimenti non entrano nel conto.
+    - Scorrendo in ordine, la tappa successiva si TIENE se il totale che la
+      include è strettamente più vicino al limite di quello che la esclude
+      (`|incl - limite| < |escl - limite|`); a parità di distanza si ESCLUDE.
+      Al primo escluso ci si ferma: il risultato è sempre un prefisso, mai si
+      salta una tappa per tenerne una successiva.
+    - Almeno una tappa resta sempre: se la prima da sola supera il limite
+      (anche di oltre il doppio, caso in cui la regola la escluderebbe) è
+      comunque tenuta, e solo lei.
 
     Le tappe di coda sono le meno affini (l'itinerario è ordinato per score in
     composizione): tagliarle riduce lo sforzo senza sacrificare il meglio."""
@@ -1810,11 +1825,11 @@ def _taglia_per_stanchezza(
     tenuti: list[_CandidatoConReason] = []
     tempo = 0
     for cand in correnti:
-        prossimo = tempo + cand.experience.durata_min
-        if tenuti and prossimo > limite:
+        incluso = tempo + cand.experience.durata_min
+        if abs(incluso - limite) >= abs(tempo - limite):
             break
         tenuti.append(cand)
-        tempo = prossimo
+        tempo = incluso
     return tenuti or correnti[:1]
 
 

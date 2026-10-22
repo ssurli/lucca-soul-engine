@@ -425,18 +425,18 @@ def test_stanchezza_poi_tetto_due_adattamenti_consecutivi() -> None:
     it = _itinerario([(f"t{i}", 60) for i in range(4)], budget=300)
     stanco = Signal(meteo="sereno", affollamento={}, stanchezza=0.9, ora=time(10, 0))
     uno = adapt_itinerary(it, stanco, cands, None, vocabolario=VOCABOLARIO)
-    # 2/3 di 240 = 160: t0, t1 (120), t2 porterebbe a 180.
-    assert [s.experience_id for s in uno.stops] == ["t0", "t1"]
+    # 2/3 di 240 = 160: con t2 il totale è 180 (distanza 20), senza è 120
+    # (distanza 40) -> t2 resta; t3 porterebbe a 240 (distanza 80) -> fuori.
+    assert [s.experience_id for s in uno.stops] == ["t0", "t1", "t2"]
     assert [(t.experience_id, t.esito) for t in uno.tappe_escluse] == [
-        ("t2", EsitoAdattamento.TAGLIATA_STANCHEZZA),
         ("t3", EsitoAdattamento.TAGLIATA_STANCHEZZA),
     ]
     tardi = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(23, 0))
     due = adapt_itinerary(uno, tardi, cands, None, vocabolario=VOCABOLARIO)
     assert [s.experience_id for s in due.stops] == ["t0"]
     assert [(t.experience_id, t.esito) for t in due.tappe_escluse] == [
-        ("t2", EsitoAdattamento.TAGLIATA_STANCHEZZA),
         ("t3", EsitoAdattamento.TAGLIATA_STANCHEZZA),
         ("t1", EsitoAdattamento.TAGLIATA_TETTO_GIORNATA),
+        ("t2", EsitoAdattamento.TAGLIATA_TETTO_GIORNATA),
     ]
     assert due.adattato_da_segnale is True
