@@ -34,33 +34,35 @@ situazione.
   Non fatti in 2b: fonte delle curiosità solo se pubblica (rimandata all'ondata dati, cambia il
   contratto) e badge "dimostrativo" per ricordi e botteghe fittizie (da ripianificare).
 
-## Prossima ondata: dati (coordinate)
+- **3** (22/10, dati): taglio per stanchezza al prefisso più vicino ai 2/3; messaggio "nessun
+  effetto" rispetto al risultato precedente; contratto aperto (`Punto`, `punti_arrivo`,
+  `punto_arrivo`, `fonte_pubblica`, `fonte_orari`); coordinate dei luoghi e punti di arrivo
+  (Mura, tramonto, Pfanner dalle Mura) rilevati dal committente; trasferimento reale tra tappe
+  consecutive (linea d'aria × 1,3); link "Come arrivo qui" a piedi (nessuno sulle botteghe);
+  fonte delle curiosità mostrata solo se pubblica; fonte degli orari per esperienza; 3 luoghi ed
+  esperienze nuove (Palazzo Bernardini, San Pietro Somaldi, parco giochi di Porta San Donato) con
+  6 archi VICINO, curiosità del ginkgo sull'Orto; casi `demo|` dalle risposte reali dell'app
+  (180 minuti; poco-tempo "Circa un'ora"); golden alla DODICESIMA modifica (cambiano le tappe).
 
-1. **Golden, casi `demo|` a 180 minuti** (primo compito). Oggi sono a 240, ma "Mezza giornata,
-   circa tre ore" è ciò che l'app manda e il parser traduce in 180: con 240 il golden non è
-   ottenibile dall'app. Si fa insieme alle distanze reali, perché tutte e due le modifiche
-   cambiano le tappe e così i casi demo si rileggono una volta sola. Nella stessa rilettura i
-   profili dei casi `demo|` vanno costruiti dalle risposte reali dell'onboarding passate per il
-   parser, non da valori scritti a mano (oggi 0,3 e 0,4 non sono ottenibili dall'app).
-2. **Fonte delle curiosità visibile solo se pubblica** (compito 5 della 2b, rimandato): campo
-   `fonte_pubblica: bool` nella curiosità, dato del seed e non stringa cercata nel codice, fuori
-   dal punteggio (guardia AST estesa); in app la riga «Fonte: …» solo per le fonti pubbliche.
-   Cambia il contratto e richiede la ricarica di Aura: si fa insieme alle coordinate.
-3. Coordinate e mappa (punto 1 della sezione seguente).
+## Da fare (committente), dopo il merge della 3
 
-## Dopo l'ondata 2, verso la demo del 12/12/2026
+1. Ricarica del seed su Aura: `.venv\Scripts\python.exe -m graph.loader`.
+2. Riavvio del BFF (i `.cypher` sono letti una volta).
+3. Prova in app: profilo curioso, mezza giornata, Piove più Sono stanco/a: attese 3 tappe, non 2;
+   il link "Come arrivo qui" porta all'ingresso giusto.
 
-1. **Coordinate e mappa**: coordinate dei luoghi nel seed, distanze reali tra le tappe, link
-   "Come arrivo qui" a Google Maps (a piedi, un link per tappa, nessuna chiave). Per
-   `exp-pfanner-dalle-mura` il punto è sulle Mura, non il palazzo. Riferimento per il controllo:
-   la mappa ufficiale del centro storico 2024. Nella stessa ondata dati, per ogni esperienza va
-   registrata la **pagina ufficiale degli orari** come fonte.
-2. **Ondata grafica**: direzione "C" (canvas "Lucca Soul — direzioni grafiche": caratteri del deck,
-   accento mattone, mappa in alto, interruttori dei segnali con "Annulla"), logo delle Mura nella
-   testata, icona e favicon dell'app (oggi quelle di Flutter). Miniature solo con foto di licenza
-   nota (proprie o Wikimedia Commons con credito).
-3. **Blocco del codice verso il 5/12**, poi prove con l'orologio fissato a sabato 12/12 (10:00 e
-   15:00) e Aura verificata RUNNING il giorno prima.
+## Prossima ondata: grafica (direzione C)
+
+1. **App servita dal BFF sulla stessa origine** (niente CORS): oggi l'app funziona solo in un
+   Chrome con `--disable-web-security`.
+2. Direzione "C" (canvas "Lucca Soul — direzioni grafiche": caratteri del deck, accento mattone,
+   mappa in alto, interruttori dei segnali con "Annulla"), logo delle Mura nella testata, icona e
+   favicon dell'app (oggi quelle di Flutter). Miniature solo con foto di licenza nota (proprie o
+   Wikimedia Commons con credito).
+3. Badge "dimostrativo" per ricordi e botteghe fittizie (rimasto dalla 2b, da ripianificare).
+
+Poi **blocco del codice verso il 5/12**, prove con l'orologio fissato a sabato 12/12 (10:00 e
+15:00) e Aura verificata RUNNING il giorno prima.
 
 ## Dopo la demo
 
@@ -78,6 +80,18 @@ situazione.
 - **Pioggia**: valutare di togliere, invece di mantenere, una tappa all'aperto senza alternativa.
 - **Contenuti rinviati**: Museo della Zecca, Cammino di San Josemaría (descritto in modo neutro),
   Domus Romana, Palazzo Mansi; botteghe reali solo come aderenti, con il loro consenso.
+- **Luoghi del territorio e degli eventi** (coordinate già fornite dal committente il 22/10, da
+  ricevere a parte): Palazzo Ducale, Ex Cavallerizza, Conservatorio Boccherini, San Romano, le
+  piazze San Francesco, San Frediano e Antelminelli, Villa Bottini, Giardino degli Osservanti,
+  Biblioteca Agorà, Biblioteca civica, Museo della Cattedrale, Santa Maria Foris Portam (Colonna
+  Mozza), Fontana della Pupporona, via del Bastardo, Chiesa di Santa Caterina (detta "delle
+  Sigaraie", davanti all'ex Manifattura Tabacchi: sconsacrata, apre solo per mostre, quindi luogo
+  di eventi e non esperienza). San Ponziano: visitabile solo su richiesta. Zecca e Palazzo Mansi:
+  rinviati. Esclusi per regola: esercizi commerciali reali (antiquari, ostello, locali), la Casa
+  Circondariale.
+- **Curiosità "lungo la strada" con un punto proprio**: oggi una curiosità è del luogo; per
+  esempio il ginkgo di via Elisa (43.84281287071769, 10.51120294952295) è registrato come curiosità
+  dell'Orto botanico.
 
 ## Voci aperte principali di `docs/LIMITI.md`
 

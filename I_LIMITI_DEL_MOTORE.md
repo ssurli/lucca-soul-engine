@@ -82,7 +82,10 @@ il curatore può crearlo». Richiede che un curatore esista (vedi Parte 2).
 l'Experience Engine li converte in minuti a piedi per comporre l'itinerario sul tempo disponibile.
 
 **Cosa NON è garantito:**
-- `Luogo` non ha lat/lon — **nessuna coordinata assoluta, in nessun punto del progetto**
+- dall'ondata 3 (22/10/2026) ogni luogo ha un punto (lat/lon, rilevato a mano dal committente) e
+  le esperienze delle Mura e del tramonto hanno punti di arrivo: servono SOLO al tempo di
+  trasferimento tra tappe e al link "Come arrivo qui", mai al punteggio; le botteghe
+  dimostrative non hanno punto (`docs/LIMITI.md`, ondata 3)
 - non si può chiedere «cosa c'è entro 300 metri» da un punto qualsiasi: si possono solo seguire
   archi esistenti (38 su 15 luoghi, una rete sparsa)
 - un'attività non può dichiarare un'area di servizio

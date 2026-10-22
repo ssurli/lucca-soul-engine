@@ -2855,3 +2855,48 @@ itinerario, sulla prima tappa; in adattamento solo se la prima tappa è sostitui
 (invariante del contratto). Per lo stesso invariante, nelle richieste vecchie del golden
 (`adapt|`, `adapt-budget|`) le tappe non toccate possono portare più di una frase del profilo:
 il controllo «al massimo una volta» vale sulle risposte a itinerari composti dal codice attuale.
+
+## Ondata 3: coordinate, distanze e fonti (APERTO)
+
+**Trovato/deciso:** 2026-10-22 (ondata 3).
+
+- **Coefficiente di percorso 1,3.** `distanza_m` tra due tappe = linea d'aria tra i punti × 1,3
+  (`contracts.punti.COEFFICIENTE_PERCORSO_PIEDI`), arrotondata ai 10 m: costante DICHIARATA per il
+  centro storico, non misurata. I minuti a piedi restano `ceil(metri / 80)`.
+- **Coordinate rilevate a mano** dal committente su Google Maps il 22/10/2026 (ingresso o punto di
+  sosta), non da una fonte geografica ufficiale. `mura-urbane` non ha un punto: valgono le 6 rampe
+  delle esperienze delle Mura e i 5 punti del tramonto.
+- **Botteghe senza punto** (decisione del committente: un indirizzo inventato porterebbe in un
+  negozio reale): nessun link "Come arrivo qui"; il trasferimento verso e da una bottega resta la
+  stima prudente di 10 minuti (`TEMPO_TRASFERIMENTO_DEFAULT_MIN`), come le tappe stub, che
+  conservano il `punto_arrivo` ricevuto ma non lo usano per le distanze.
+- **Frase «A … m da …, già visitato»:** usa la distanza dai punti, solo se esiste l'arco VICINO.
+  Se il luogo di riferimento o il candidato non hanno un punto (`mura-urbane`, botteghe) restano i
+  metri scritti a mano sull'arco VICINO. Archi e metri VICINO preesistenti invariati; i 6 archi dei
+  luoghi nuovi hanno metri calcolati dai punti.
+- **Seed in memoria e Neo4j divergono con `luoghi_gia_visti` non vuoto:** la query Neo4j
+  (`10_candidates.cypher`) restringe i candidati ai luoghi VICINO all'ultimo visitato, il seed in
+  memoria no; sul luogo stesso il seed dà `distanza_m=0`, Neo4j `None`. L'app manda oggi una lista
+  vuota: in demo non ha effetto.
+- **Sorpresa sulle frasi**: vedi la voce dell'ondata 2a; i 6 archi nuovi aggiungono una
+  connessione solo quando il vicino è già visitato (cambiano 4 casi `compose|…|visti`, nessun
+  caso `demo|`).
+- **Taglio per stanchezza prima del filtro orari:** il prefisso più vicino ai 2/3 è scelto prima di
+  togliere le tappe chiuse all'arrivo, quindi il tempo finale può scendere sotto i 2/3 (golden
+  `adapt|curioso|stanchezza`). Non corretto in questa ondata.
+- **Possibile bias verso i luoghi centrali** (rilievo di ethics-guardian, non bloccante): con il
+  trasferimento reale, la selezione greedy per score può saltare un candidato lontano che non
+  entra nel budget a favore di uno meno affine ma vicino. Prima il trasferimento era costante. Il
+  `reason` non dice perché un luogo lontano è stato scartato. Da misurare: `distribuzione_flussi`
+  prima e dopo l'ondata 3 sul seed attuale.
+- **Stanchezza e trasferimenti:** il taglio conta solo le durate di visita, non i trasferimenti, e
+  la regola "più vicino ai 2/3" può superare il limite fino a metà della tappa successiva (scelta
+  del committente: più vicino, non "mai oltre"). Un tetto (es. 3/4) o i trasferimenti nel conteggio
+  sono da valutare.
+- **Fonte degli orari:** il nome della fonte (es. "sito del Comune di Lucca",
+  "barsantiematteucci.it"), non l'URL della pagina: URL da fornire. 28 esperienze su 35 hanno solo
+  "dato del committente".
+- **Grafo non ricaricato:** finché Aura non ha il seed dell'ondata 3, la via Neo4j non ha punti
+  (trasferimento a 10 minuti, nessun link), `fonte_pubblica` False (fonte nascosta) e
+  `fonte_orari` None.
+
