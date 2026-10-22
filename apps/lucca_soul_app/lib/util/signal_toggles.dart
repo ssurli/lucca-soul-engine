@@ -59,15 +59,33 @@ AdaptRequest? richiestaDiAdattamento({
   );
 }
 
-/// Vero se l'adattamento non tocca il percorso: tutte le tappe
-/// `non_toccata`, stessi id nello stesso ordine dell'originale.
-bool adattamentoSenzaEffetto({required Itinerary originale, required Itinerary adattato}) {
-  final a = originale.stops;
-  final b = adattato.stops;
+/// Vero se il NUOVO risultato non cambia nulla rispetto al risultato
+/// PRECEDENTE al cambio dell'interruttore (quello che l'utente vedeva: l'originale
+/// se non c'era nessun interruttore acceso, altrimenti l'adattamento mostrato).
+///
+/// "Uguale" = stesse tappe (experience_id) nello stesso ordine, stesso esito
+/// per ciascuna, stesse tappe escluse (id + esito). Casi di bordo:
+/// - l'originale non ha esiti (`null`): vale come `non_toccata`, quindi
+///   originale -> adattamento tutto `non_toccata` con gli stessi id = senza effetto;
+/// - le tappe escluse sono gia' coperte dal confronto delle tappe (un'esclusione
+///   toglie una tappa), ma si confrontano comunque per non perdere un cambio
+///   visibile;
+/// - la nota si mostra solo se c'e' stata una richiesta: tornare all'originale
+///   (nessun interruttore acceso) non passa di qui e non mostra nulla.
+bool risultatoSenzaEffetto({required Itinerary precedente, required Itinerary nuovo}) {
+  String esito(ItineraryStop t) => t.esitoAdattamento ?? 'non_toccata';
+  final a = precedente.stops;
+  final b = nuovo.stops;
   if (a.length != b.length) return false;
   for (var i = 0; i < b.length; i++) {
-    if (b[i].esitoAdattamento != 'non_toccata') return false;
     if (a[i].experienceId != b[i].experienceId) return false;
+    if (esito(a[i]) != esito(b[i])) return false;
+  }
+  final ea = precedente.tappeEscluse;
+  final eb = nuovo.tappeEscluse;
+  if (ea.length != eb.length) return false;
+  for (var i = 0; i < eb.length; i++) {
+    if (ea[i].experienceId != eb[i].experienceId || ea[i].esito != eb[i].esito) return false;
   }
   return true;
 }

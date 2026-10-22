@@ -47,6 +47,9 @@ class _AdaptiveCardState extends State<AdaptiveCard> {
   /// Stato di cui l'itinerario mostrato e' il risultato (per il ripristino
   /// se l'ultima richiesta fallisce).
   SignalToggleState _statoMostrato = const SignalToggleState();
+  /// Risultato attualmente mostrato (null = l'originale): base del confronto
+  /// per la nota "nessun effetto".
+  Itinerary? _mostrato;
   int _sequenza = 0;
   bool _inCorso = false;
   bool _senzaEffetto = false;
@@ -72,6 +75,7 @@ class _AdaptiveCardState extends State<AdaptiveCard> {
         _inCorso = false;
         _senzaEffetto = false;
         _statoMostrato = stato;
+        _mostrato = null;
       });
       widget.onShown(widget.original);
       return;
@@ -83,7 +87,11 @@ class _AdaptiveCardState extends State<AdaptiveCard> {
       setState(() {
         _inCorso = false;
         _statoMostrato = stato;
-        _senzaEffetto = adattamentoSenzaEffetto(originale: widget.original, adattato: adattato);
+        _senzaEffetto = risultatoSenzaEffetto(
+          precedente: _mostrato ?? widget.original,
+          nuovo: adattato,
+        );
+        _mostrato = adattato;
       });
       widget.onShown(adattato);
     } on BffException catch (error) {

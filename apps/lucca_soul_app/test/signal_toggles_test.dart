@@ -97,18 +97,41 @@ void main() {
     });
   });
 
-  group('senza effetto', () {
-    test('tutte non_toccata, stessi id nello stesso ordine', () {
-      final ad = _it([_stop('a', 'non_toccata'), _stop('b', 'non_toccata')]);
-      expect(adattamentoSenzaEffetto(originale: _originale, adattato: ad), isTrue);
+  group('senza effetto (rispetto al risultato precedente)', () {
+    bool senza(Itinerary prec, List<ItineraryStop> nuovo) =>
+        risultatoSenzaEffetto(precedente: prec, nuovo: _it(nuovo));
+    final soloPioggia = _it([_stop('a', 'sostituita'), _stop('b', 'non_toccata')]);
+
+    test('dall originale, tutte non_toccata con gli stessi id: senza effetto', () {
+      expect(senza(_originale, [_stop('a', 'non_toccata'), _stop('b', 'non_toccata')]), isTrue);
     });
 
-    test('una sostituita, ordine diverso o mantenuta: ha effetto', () {
-      bool senza(List<ItineraryStop> s) =>
-          adattamentoSenzaEffetto(originale: _originale, adattato: _it(s));
-      expect(senza([_stop('a', 'non_toccata'), _stop('c', 'sostituita')]), isFalse);
-      expect(senza([_stop('b', 'non_toccata'), _stop('a', 'non_toccata')]), isFalse);
-      expect(senza([_stop('a', 'mantenuta_senza_alternativa'), _stop('b', 'non_toccata')]), isFalse);
+    test('dall originale, una sostituita, ordine diverso o mantenuta: ha effetto', () {
+      expect(senza(_originale, [_stop('a', 'non_toccata'), _stop('c', 'sostituita')]), isFalse);
+      expect(senza(_originale, [_stop('b', 'non_toccata'), _stop('a', 'non_toccata')]), isFalse);
+      expect(senza(_originale, [_stop('a', 'mantenuta_senza_alternativa'), _stop('b', 'non_toccata')]), isFalse);
+    });
+
+    test('con Piove acceso, Mura affollate non tocca nulla: stessi id, ordine ed esiti', () {
+      expect(senza(soloPioggia, [_stop('a', 'sostituita'), _stop('b', 'non_toccata')]), isTrue);
+    });
+
+    test('con Piove acceso, Sono stanco/a taglia tappe: ha effetto', () {
+      expect(senza(soloPioggia, [_stop('a', 'sostituita')]), isFalse);
+    });
+
+    test('cambio di esito a parita di id: ha effetto', () {
+      expect(senza(soloPioggia, [_stop('a', 'sostituita'), _stop('b', 'mantenuta_senza_alternativa')]), isFalse);
+    });
+
+    test('una tappa esclusa in piu cambia il risultato', () {
+      final nuovo = Itinerary(
+        personId: 'p',
+        stops: [_stop('a', 'sostituita'), _stop('b', 'non_toccata')],
+        generatedAt: DateTime.utc(2026, 1, 1),
+        tappeEscluse: const [TappaEsclusa(experienceId: 'x', esito: 'esclusa', reason: 'r')],
+      );
+      expect(risultatoSenzaEffetto(precedente: soloPioggia, nuovo: nuovo), isFalse);
     });
   });
 
@@ -189,6 +212,29 @@ void main() {
       await tester.tap(find.text('Mura affollate'));
       await tester.pumpAndSettle();
       expect(find.text('Questo cambiamento non tocca il tuo percorso di oggi.'), findsOneWidget);
+    });
+
+    testWidgets('con Piove acceso, Mura affollate che non cambia nulla: nota; Sono stanco/a che taglia: niente nota', (tester) async {
+      final pioggia = _it([_stop('a', 'sostituita'), _stop('b', 'non_toccata')]);
+      final taglio = _it([_stop('a', 'sostituita')]);
+      var n = 0;
+      await monta(tester, (_) async {
+        n++;
+        return http.Response(corpo(n == 3 ? taglio : pioggia), 200, headers: _json);
+      });
+      const nota = 'Questo cambiamento non tocca il tuo percorso di oggi.';
+      await tester.tap(find.text('Piove'));
+      await tester.pumpAndSettle();
+      expect(find.text(nota), findsNothing); // sostituita rispetto all'originale
+      await tester.tap(find.text('Mura affollate'));
+      await tester.pumpAndSettle();
+      expect(find.text(nota), findsOneWidget);
+      await tester.tap(find.text('Sono stanco/a'));
+      await tester.pumpAndSettle();
+      expect(find.text(nota), findsNothing);
+      await tester.tap(find.text('Torna al percorso iniziale')); // nessuna richiesta
+      await tester.pumpAndSettle();
+      expect(find.text(nota), findsNothing);
     });
 
     testWidgets('risposte fuori ordine: conta solo l\'ultimo stato richiesto', (tester) async {
