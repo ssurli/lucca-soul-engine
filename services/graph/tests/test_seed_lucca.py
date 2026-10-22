@@ -46,7 +46,7 @@ def test_esperienze_hanno_mix_accessibile() -> None:
     assert non_accessibili > 0
 
 
-def test_durate_variano_tra_15_e_90_minuti() -> None:
+def test_durate_variano_tra_10_e_90_minuti() -> None:
     durate = [e.durata_min for e in ESPERIENZE]
     assert min(durate) <= 30
     assert max(durate) >= 60
