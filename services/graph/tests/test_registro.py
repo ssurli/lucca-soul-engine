@@ -37,7 +37,7 @@ def test_predefinito_e_il_dataset_di_lucca() -> None:
 def test_dataset_di_lucca_espone_i_contenuti_e_l_id_memoria() -> None:
     ds = carica_dataset("lucca")
     assert ds.id_esempio_memoria == "liuteria-lucchese"
-    assert len(ds.luoghi) == 21
+    assert len(ds.luoghi) == 24
     assert ds.esperienze
 
 

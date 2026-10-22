@@ -11,7 +11,7 @@ from graph.seed_lucca import ARTISTI, BOTTEGHE, ESPERIENZE, LEGATO_A, LUOGHI, TE
 
 
 def test_almeno_dodici_luoghi() -> None:
-    assert 12 <= len(LUOGHI) <= 21
+    assert 12 <= len(LUOGHI) <= 24
 
 
 def test_cinque_botteghe() -> None:
@@ -50,7 +50,7 @@ def test_durate_variano_tra_15_e_90_minuti() -> None:
     durate = [e.durata_min for e in ESPERIENZE]
     assert min(durate) <= 30
     assert max(durate) >= 60
-    assert all(15 <= d <= 90 for d in durate)
+    assert all(10 <= d <= 90 for d in durate)
 
 
 def test_temi_diversi_tra_le_esperienze() -> None:

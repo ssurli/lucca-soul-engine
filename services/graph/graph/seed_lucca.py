@@ -120,7 +120,7 @@ VICINO_EPOCA = _EPOCA
 # sono ri-esportati qui per compatibilità.
 
 # ---------------------------------------------------------------------------
-# Luoghi — 21 luoghi reali di Lucca
+# Luoghi — 24 luoghi reali di Lucca
 # ---------------------------------------------------------------------------
 
 # Coordinate (`punto`): dato del committente, rilevato su Google Maps il 22/10/2026.
@@ -232,6 +232,17 @@ LUOGHI: list[Luogo] = [
                 tipo=TipoCuriosita.LEGGENDA,
                 fonte='Comune di Lucca, cartina "Le Mura di Lucca"',
                 fonte_pubblica=True,
+            ),
+            # Il ginkgo non e' un luogo ne' un'esperienza (decisione del committente).
+            Curiosita(
+                testo=(
+                    "A pochi passi dall'Orto, in via Elisa, davanti all'ingresso della "
+                    "Fondazione Ragghianti, cresce un ginkgo biloba: in autunno le sue foglie "
+                    "diventano d'oro."
+                ),
+                tipo=TipoCuriosita.FATTO,
+                fonte="dato del committente",
+                fonte_pubblica=False,
             ),
         ),
         punto=Punto(lat=43.84100710602395, lon=10.51019343794917),
@@ -365,6 +376,69 @@ LUOGHI: list[Luogo] = [
         "chiesa",
         articolo="la",
         punto=Punto(lat=43.84119039780105, lon=10.504274232740409),
+    ),
+    # Ondata 3 (dati del committente, 22/10/2026): punto = ingresso / punto di sosta.
+    Luogo(
+        "palazzo-bernardini",
+        "Palazzo Bernardini",
+        "palazzo",
+        articolo="il",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Guarda la finestra a destra del portone: lo stipite di pietra è curvo, "
+                    "piegato come se fosse di legno."
+                ),
+                tipo=TipoCuriosita.FATTO,
+                fonte="dato del committente",
+                fonte_pubblica=False,
+            ),
+            Curiosita(
+                testo=(
+                    "Si racconta che, per far posto al palazzo dei Bernardini, fu demolita una "
+                    "piccola chiesa che custodiva un'immagine miracolosa della Madonna, e che a "
+                    "convincere i committenti fosse stato il diavolo. Tolta la protezione del "
+                    "luogo sacro, il diavolo avrebbe toccato lo stipite della finestra e "
+                    "l'avrebbe torto come legno morbido, avvertendo che la pietra non sarebbe "
+                    "mai più tornata dritta."
+                ),
+                tipo=TipoCuriosita.LEGGENDA,
+                fonte="dato del committente",
+                fonte_pubblica=False,
+            ),
+        ),
+        punto=Punto(lat=43.84257809211349, lon=10.50566149655655),
+    ),
+    Luogo(
+        "san-pietro-somaldi",
+        "Chiesa di San Pietro Somaldi",
+        "chiesa",
+        articolo="la",
+        curiosita=(
+            Curiosita(
+                testo=(
+                    "Sulla facciata e sugli stipiti del portale principale si vedono tre solchi "
+                    "paralleli scavati nella pietra, simili a graffi di artigli."
+                ),
+                tipo=TipoCuriosita.FATTO,
+                fonte="dato del committente",
+                fonte_pubblica=False,
+            ),
+            Curiosita(
+                testo="Si racconta che siano le unghiate del diavolo.",
+                tipo=TipoCuriosita.LEGGENDA,
+                fonte="dato del committente",
+                fonte_pubblica=False,
+            ),
+        ),
+        punto=Punto(lat=43.84555613789234, lon=10.508002871124265),
+    ),
+    Luogo(
+        "parco-giochi-san-donato",
+        "Parco giochi di Porta San Donato",
+        "giardino",
+        articolo="il",
+        punto=Punto(lat=43.84458794966101, lon=10.497221545825257),
     ),
 ]
 
@@ -530,7 +604,7 @@ HA_ABBONAMENTO: list[RelazioneHaAbbonamento] = [
 ]
 
 # ---------------------------------------------------------------------------
-# Esperienze — 32 esperienze (>= 15 richieste), mix voluto di al_chiuso,
+# Esperienze — 35 esperienze (>= 15 richieste), mix voluto di al_chiuso,
 # accessibile, durata (20-90 min) e temi, per produrre itinerari DIVERSI a
 # seconda del profilo e riscritture credibili su pioggia/affollamento.
 #
@@ -1017,6 +1091,40 @@ ESPERIENZE: list[ExperienceNode] = [
         accessibile=False,
         prezzo_eur=4.0,
         orari_apertura=_fasce(_TUTTI, (10, 0), (18, 0)),
+    ),
+    # Tre esperienze all'aperto (ondata 3, dati del committente 22/10/2026). Gratuite
+    # (come le altre gratuite del seed: `prezzo_eur` omesso), senza partner,
+    # `accessibile=False` (non verificato), nessun vincolo orario noto (lista vuota).
+    # Il parco giochi e' "sempre aperto": nessuna fascia, come deciso dal committente.
+    ExperienceNode(
+        id="exp-finestra-bernardini",
+        fonte_orari=_FONTE_COMMITTENTE,
+        titolo="La finestra storta di Palazzo Bernardini",
+        place_id="palazzo-bernardini",
+        temi=["storia"],
+        durata_min=10,
+        al_chiuso=False,
+        accessibile=False,
+    ),
+    ExperienceNode(
+        id="exp-solchi-san-pietro-somaldi",
+        fonte_orari=_FONTE_COMMITTENTE,
+        titolo="I solchi sulla porta di San Pietro Somaldi",
+        place_id="san-pietro-somaldi",
+        temi=["storia", "romanico"],
+        durata_min=10,
+        al_chiuso=False,
+        accessibile=False,
+    ),
+    ExperienceNode(
+        id="exp-parco-giochi-san-donato",
+        fonte_orari=_FONTE_COMMITTENTE,
+        titolo="Il parco giochi di Porta San Donato",
+        place_id="parco-giochi-san-donato",
+        temi=["con-bambini", "verde"],
+        durata_min=45,
+        al_chiuso=False,
+        accessibile=False,
     ),
 ]
 

@@ -47,6 +47,10 @@ _LUOGHI_ATTESI: dict[str, tuple[float, float]] = {
     "via-del-fosso": (43.84529568253382, 10.509682371585473),
     "baluardo-santa-croce": (43.84569128378519, 10.497872636788552),
     "santi-giovanni-reparata": (43.84119039780105, 10.504274232740409),
+    # Ondata 3, compito 8 (dato del committente, 22/10/2026).
+    "palazzo-bernardini": (43.84257809211349, 10.50566149655655),
+    "san-pietro-somaldi": (43.84555613789234, 10.508002871124265),
+    "parco-giochi-san-donato": (43.84458794966101, 10.497221545825257),
 }
 
 _RAMPE: list[tuple[float, float]] = [

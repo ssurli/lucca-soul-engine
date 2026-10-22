@@ -54,10 +54,10 @@ SET l.nome = 'Chiesa di San Michele in Foro', l.categoria = 'chiesa', l.articolo
     l.lon = 10.502521515682991;
 MERGE (l:Luogo {id: 'orto-botanico'})
 SET l.nome = 'Orto Botanico di Lucca', l.categoria = 'giardino', l.articolo = 'l\'',
-    l.curiosita_testi = ['Si racconta che nelle notti di luna piena il fantasma di Lucida Mansi attraversi le Mura su un cocchio, per poi sparire nel laghetto dell\'Orto Botanico.'],
-    l.curiosita_tipi = ['leggenda'],
-    l.curiosita_fonti = ['Comune di Lucca, cartina "Le Mura di Lucca"'],
-    l.curiosita_fonti_pubbliche = [true],
+    l.curiosita_testi = ['Si racconta che nelle notti di luna piena il fantasma di Lucida Mansi attraversi le Mura su un cocchio, per poi sparire nel laghetto dell\'Orto Botanico.', 'A pochi passi dall\'Orto, in via Elisa, davanti all\'ingresso della Fondazione Ragghianti, cresce un ginkgo biloba: in autunno le sue foglie diventano d\'oro.'],
+    l.curiosita_tipi = ['leggenda', 'fatto'],
+    l.curiosita_fonti = ['Comune di Lucca, cartina "Le Mura di Lucca"', 'dato del committente'],
+    l.curiosita_fonti_pubbliche = [true, false],
     l.lat = 43.84100710602395,
     l.lon = 10.51019343794917;
 MERGE (l:Luogo {id: 'teatro-del-giglio'})
@@ -172,6 +172,30 @@ SET l.nome = 'Chiesa dei Santi Giovanni e Reparata', l.categoria = 'chiesa', l.a
     l.curiosita_fonti_pubbliche = [],
     l.lat = 43.84119039780105,
     l.lon = 10.504274232740409;
+MERGE (l:Luogo {id: 'palazzo-bernardini'})
+SET l.nome = 'Palazzo Bernardini', l.categoria = 'palazzo', l.articolo = 'il',
+    l.curiosita_testi = ['Guarda la finestra a destra del portone: lo stipite di pietra è curvo, piegato come se fosse di legno.', 'Si racconta che, per far posto al palazzo dei Bernardini, fu demolita una piccola chiesa che custodiva un\'immagine miracolosa della Madonna, e che a convincere i committenti fosse stato il diavolo. Tolta la protezione del luogo sacro, il diavolo avrebbe toccato lo stipite della finestra e l\'avrebbe torto come legno morbido, avvertendo che la pietra non sarebbe mai più tornata dritta.'],
+    l.curiosita_tipi = ['fatto', 'leggenda'],
+    l.curiosita_fonti = ['dato del committente', 'dato del committente'],
+    l.curiosita_fonti_pubbliche = [false, false],
+    l.lat = 43.84257809211349,
+    l.lon = 10.50566149655655;
+MERGE (l:Luogo {id: 'san-pietro-somaldi'})
+SET l.nome = 'Chiesa di San Pietro Somaldi', l.categoria = 'chiesa', l.articolo = 'la',
+    l.curiosita_testi = ['Sulla facciata e sugli stipiti del portale principale si vedono tre solchi paralleli scavati nella pietra, simili a graffi di artigli.', 'Si racconta che siano le unghiate del diavolo.'],
+    l.curiosita_tipi = ['fatto', 'leggenda'],
+    l.curiosita_fonti = ['dato del committente', 'dato del committente'],
+    l.curiosita_fonti_pubbliche = [false, false],
+    l.lat = 43.84555613789234,
+    l.lon = 10.508002871124265;
+MERGE (l:Luogo {id: 'parco-giochi-san-donato'})
+SET l.nome = 'Parco giochi di Porta San Donato', l.categoria = 'giardino', l.articolo = 'il',
+    l.curiosita_testi = [],
+    l.curiosita_tipi = [],
+    l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
+    l.lat = 43.84458794966101,
+    l.lon = 10.497221545825257;
 
 // --- Nodi: Artista ------------------------------------------------------
 MERGE (a:Artista {id: 'artista-puccini'})
@@ -736,6 +760,54 @@ SET e.titolo = 'La chiesa dei Santi Giovanni e Reparata e l\'area archeologica',
     e.punti_arrivo_lon = [],
     e.fonte_orari = 'museocattedralelucca.it, via committente',
     e.orari_apertura = ['0|10:00|18:00', '1|10:00|18:00', '2|10:00|18:00', '3|10:00|18:00', '4|10:00|18:00', '5|10:00|18:00', '6|10:00|18:00'];
+MERGE (e:Esperienza {id: 'exp-finestra-bernardini'})
+SET e.titolo = 'La finestra storta di Palazzo Bernardini',
+    e.place_id = 'palazzo-bernardini',
+    e.temi = ['storia'],
+    e.durata_min = 10,
+    e.al_chiuso = false,
+    e.accessibile = false,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = NULL,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.punti_arrivo_lat = [],
+    e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
+    e.orari_apertura = [];
+MERGE (e:Esperienza {id: 'exp-solchi-san-pietro-somaldi'})
+SET e.titolo = 'I solchi sulla porta di San Pietro Somaldi',
+    e.place_id = 'san-pietro-somaldi',
+    e.temi = ['storia', 'romanico'],
+    e.durata_min = 10,
+    e.al_chiuso = false,
+    e.accessibile = false,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = NULL,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.punti_arrivo_lat = [],
+    e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
+    e.orari_apertura = [];
+MERGE (e:Esperienza {id: 'exp-parco-giochi-san-donato'})
+SET e.titolo = 'Il parco giochi di Porta San Donato',
+    e.place_id = 'parco-giochi-san-donato',
+    e.temi = ['con-bambini', 'verde'],
+    e.durata_min = 45,
+    e.al_chiuso = false,
+    e.accessibile = false,
+    e.alimenta_memoria = false,
+    e.partner_id = NULL,
+    e.prezzo_eur = NULL,
+    e.prenotabile = false,
+    e.sospesa = false,
+    e.punti_arrivo_lat = [],
+    e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
+    e.orari_apertura = [];
 
 // --- Nodi: Partner (Wave 3a, marketplace) -------------------------------
 MERGE (p:Partner {id: 'partner-liuteria-lucchese'})
@@ -1048,6 +1120,12 @@ MATCH (e:Esperienza {id: 'exp-sotterraneo-santa-croce'}), (l:Luogo {id: 'baluard
 MERGE (e)-[:SI_SVOLGE_A]->(l);
 MATCH (e:Esperienza {id: 'exp-santi-giovanni-reparata'}), (l:Luogo {id: 'santi-giovanni-reparata'})
 MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-finestra-bernardini'}), (l:Luogo {id: 'palazzo-bernardini'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-solchi-san-pietro-somaldi'}), (l:Luogo {id: 'san-pietro-somaldi'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
+MATCH (e:Esperienza {id: 'exp-parco-giochi-san-donato'}), (l:Luogo {id: 'parco-giochi-san-donato'})
+MERGE (e)-[:SI_SVOLGE_A]->(l);
 
 // --- Relazioni: EVOCA (Esperienza -> Tema), da temi --------------------
 MATCH (e:Esperienza {id: 'exp-passeggiata-mura'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['verde', 'panorama', 'storia'] DELETE r;
@@ -1235,6 +1313,19 @@ MERGE (e)-[:EVOCA]->(t);
 MATCH (e:Esperienza {id: 'exp-santi-giovanni-reparata'}), (t:Tema {id: 'arte'})
 MERGE (e)-[:EVOCA]->(t);
 MATCH (e:Esperienza {id: 'exp-santi-giovanni-reparata'}), (t:Tema {id: 'romanico'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-finestra-bernardini'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['storia'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-finestra-bernardini'}), (t:Tema {id: 'storia'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-solchi-san-pietro-somaldi'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['storia', 'romanico'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-solchi-san-pietro-somaldi'}), (t:Tema {id: 'storia'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-solchi-san-pietro-somaldi'}), (t:Tema {id: 'romanico'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-parco-giochi-san-donato'})-[r:EVOCA]->(t:Tema) WHERE NOT t.id IN ['con-bambini', 'verde'] DELETE r;
+MATCH (e:Esperienza {id: 'exp-parco-giochi-san-donato'}), (t:Tema {id: 'con-bambini'})
+MERGE (e)-[:EVOCA]->(t);
+MATCH (e:Esperienza {id: 'exp-parco-giochi-san-donato'}), (t:Tema {id: 'verde'})
 MERGE (e)-[:EVOCA]->(t);
 
 // --- Relazioni: OFFRE (Bottega -> Esperienza), da partner_id -----------

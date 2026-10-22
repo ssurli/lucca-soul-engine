@@ -38,6 +38,12 @@ _RACCONTO_BOCCHERINI = (
 
 # sha256 di {visti: {esperienza: [connessioni, distanza_m]}} calcolato sul codice
 # PRIMA del compito 4, per [] e per ogni luogo come unico "già visitato".
+_LUOGHI_ONDATA3 = {"palazzo-bernardini", "san-pietro-somaldi", "parco-giochi-san-donato"}
+_ESPERIENZE_ONDATA3 = {
+    "exp-finestra-bernardini",
+    "exp-solchi-san-pietro-somaldi",
+    "exp-parco-giochi-san-donato",
+}
 _HASH_CONNESSIONI_A_HEAD = "c01d8229230616a906c874886458950842cc989dd85a5e875c44fc2565391cd9"
 
 
@@ -112,6 +118,8 @@ def test_articoli_di_lucca() -> None:
         "via-fillungo": None, "baluardo-san-paolino": "il", "museo-nazionale-guinigi": "il",
         "chiesa-san-francesco": "la", "real-collegio": "il", "museo-barsanti-matteucci": "il",
         "via-del-fosso": None, "baluardo-santa-croce": "il", "santi-giovanni-reparata": "la",
+        "palazzo-bernardini": "il", "san-pietro-somaldi": "la",
+        "parco-giochi-san-donato": "il",
     }  # fmt: skip
     assert {luogo.id: luogo.articolo for luogo in DATASET.luoghi} == atteso
 
@@ -242,11 +250,15 @@ def test_connessioni_e_distanze_invariate_rispetto_a_prima_del_compito_4() -> No
     vengono ora dai punti di arrivo; rimessi i metri VICINO
     (`_come_prima_dei_punti`) il dump deve dare ESATTAMENTE l'hash di prima:
     nient'altro è cambiato (numero di connessioni compreso)."""
+    # Ondata 3, compito 8: tre luoghi e tre esperienze nuove (senza VICINO ne'
+    # LEGATO_A) non fanno parte dell'hash congelato; per tutto il resto l'hash e'
+    # quello di prima, quindi nessuna connessione preesistente e' cambiata.
     fuori: dict[str, dict[str, list[object]]] = {}
-    for visti in [[], *[[lg.id] for lg in DATASET.luoghi]]:
+    for visti in [[], *[[lg.id] for lg in DATASET.luoghi if lg.id not in _LUOGHI_ONDATA3]]:
         fuori[",".join(visti)] = {
             c.experience.id: _come_prima_dei_punti(c, visti)
             for c in SeedCandidateSource().candidates(_ctx(visti))
+            if c.experience.id not in _ESPERIENZE_ONDATA3
         }
     dump = json.dumps(fuori, ensure_ascii=False, sort_keys=True).encode("utf-8")
     assert hashlib.sha256(dump).hexdigest() == _HASH_CONNESSIONI_A_HEAD

@@ -284,7 +284,9 @@ def test_coerenza_campo_frase_e_disclosure_ultima_sul_seed() -> None:
     ]
     visti: set[EsitoAdattamento] = set()
     for segnale in segnali:
-        for tempo in (90, 200, 400):
+        # 250 aggiunto (ondata 3, compito 8): con le tre esperienze all'aperto nuove, a 90/200/400
+        # min nessuna tappa resta piu' mantenuta; a 250 si' (non vacuo).
+        for tempo in (90, 200, 250, 400):
             r, cands = _adatta_seed(segnale, tempo)
             per_id = {c.experience.id: c for c in cands}
             for s in r.stops:

@@ -53,7 +53,15 @@ _ATTESE: dict[str, list[tuple[TipoCuriosita, str, str]]] = {
             "Si racconta che nelle notti di luna piena il fantasma di Lucida Mansi attraversi "
             "le Mura su un cocchio, per poi sparire nel laghetto dell'Orto Botanico.",
             _COMUNE_MURA,
-        )
+        ),
+        # Ondata 3, compito 8: in coda (decisione del committente: il ginkgo non e'
+        # ne' un luogo ne' un'esperienza).
+        (
+            TipoCuriosita.FATTO,
+            "A pochi passi dall'Orto, in via Elisa, davanti all'ingresso della Fondazione "
+            "Ragghianti, cresce un ginkgo biloba: in autunno le sue foglie diventano d'oro.",
+            _COMMITTENTE,
+        ),
     ],
     "torre-guinigi": [
         (
@@ -80,6 +88,36 @@ _ATTESE: dict[str, list[tuple[TipoCuriosita, str, str]]] = {
             _COMMITTENTE,
         )
     ],
+    "palazzo-bernardini": [
+        (
+            TipoCuriosita.FATTO,
+            "Guarda la finestra a destra del portone: lo stipite di pietra è curvo, piegato "
+            "come se fosse di legno.",
+            _COMMITTENTE,
+        ),
+        (
+            TipoCuriosita.LEGGENDA,
+            "Si racconta che, per far posto al palazzo dei Bernardini, fu demolita una piccola "
+            "chiesa che custodiva un'immagine miracolosa della Madonna, e che a convincere i "
+            "committenti fosse stato il diavolo. Tolta la protezione del luogo sacro, il "
+            "diavolo avrebbe toccato lo stipite della finestra e l'avrebbe torto come legno "
+            "morbido, avvertendo che la pietra non sarebbe mai più tornata dritta.",
+            _COMMITTENTE,
+        ),
+    ],
+    "san-pietro-somaldi": [
+        (
+            TipoCuriosita.FATTO,
+            "Sulla facciata e sugli stipiti del portale principale si vedono tre solchi "
+            "paralleli scavati nella pietra, simili a graffi di artigli.",
+            _COMMITTENTE,
+        ),
+        (
+            TipoCuriosita.LEGGENDA,
+            "Si racconta che siano le unghiate del diavolo.",
+            _COMMITTENTE,
+        ),
+    ],
     "baluardo-san-paolino": [
         (
             TipoCuriosita.LEGGENDA,
@@ -92,20 +130,20 @@ _ATTESE: dict[str, list[tuple[TipoCuriosita, str, str]]] = {
 }
 
 
-def test_sette_curiosita_esatte_sui_luoghi_giusti() -> None:
+def test_dodici_curiosita_esatte_sui_luoghi_giusti() -> None:
     trovate = {
         luogo.id: [(c.tipo, c.testo, c.fonte) for c in luogo.curiosita]
         for luogo in DATASET.luoghi
         if luogo.curiosita
     }
     assert trovate == _ATTESE
-    assert sum(len(v) for v in trovate.values()) == 7
+    assert sum(len(v) for v in trovate.values()) == 12
 
 
 def test_tipi_e_fonti() -> None:
     tutte = [c for luogo in DATASET.luoghi for c in luogo.curiosita]
-    assert sum(c.tipo == TipoCuriosita.LEGGENDA for c in tutte) == 4
-    assert sum(c.tipo == TipoCuriosita.FATTO for c in tutte) == 3
+    assert sum(c.tipo == TipoCuriosita.LEGGENDA for c in tutte) == 6
+    assert sum(c.tipo == TipoCuriosita.FATTO for c in tutte) == 6
     assert all(c.fonte.strip() for c in tutte)
 
 
@@ -246,7 +284,7 @@ def test_fonte_pubblica_dichiarata_esplicitamente_su_ogni_curiosita() -> None:
     """Il seed non si affida al default False del contratto: il campo e' nei
     `model_fields_set` di ogni curiosita' (cioe' scritto nel dataset)."""
     tutte = [c for luogo in DATASET.luoghi for c in luogo.curiosita]
-    assert len(tutte) == 7
+    assert len(tutte) == 12
     assert all("fonte_pubblica" in c.model_fields_set for c in tutte)
 
 
@@ -288,3 +326,22 @@ def test_seed_uguale_a_neo4j_sulle_fonti_pubbliche() -> None:
         assert [x.fonte_pubblica for x in da_neo4j.curiosita] == [
             x.fonte_pubblica for x in c.curiosita
         ], c.experience.id
+
+
+# Compito 8 (ondata 3): luoghi e curiosita' nuovi.
+def test_ginkgo_in_coda_alle_curiosita_dell_orto() -> None:
+    orto = next(luogo for luogo in DATASET.luoghi if luogo.id == "orto-botanico")
+    assert len(orto.curiosita) == 2
+    assert orto.curiosita[0].tipo == TipoCuriosita.LEGGENDA
+    ginkgo = orto.curiosita[-1]
+    assert ginkgo.tipo == TipoCuriosita.FATTO
+    assert ginkgo.fonte == _COMMITTENTE and ginkgo.fonte_pubblica is False
+    assert ginkgo.testo.startswith("A pochi passi dall'Orto, in via Elisa")
+
+
+def test_curiosita_nuove_senza_punto_e_virgola_ne_a_capo() -> None:
+    """Il loader spezza il Cypher su ';' + a-capo: nessun testo ne contiene."""
+    for luogo_id in ("palazzo-bernardini", "san-pietro-somaldi", "orto-botanico"):
+        luogo = next(lg for lg in DATASET.luoghi if lg.id == luogo_id)
+        for c in luogo.curiosita:
+            assert ";" not in c.testo and "\n" not in c.testo, luogo_id

@@ -2,14 +2,17 @@
 
 Caso reale: profilo curioso dalle risposte dell'app, mezza giornata (180 min),
 sabato 12/12/2026 alle 15:00; poi "Piove" + "Sono stanco/a" (pioggia,
-stanchezza 0.85). Itinerario ricevuto 25+30+40+35+20 = 150 min -> limite 100.
-Dopo la sostituzione della prima tappa (20 min) il tempo è 20, 50, 90, 125, 145:
-90 è più vicino a 100 di 125, quindi restano TRE tappe; quarta e quinta tagliate.
+stanchezza 0.85). Itinerario ricevuto 25+30+40+35+10 = 140 min -> limite 93.
+Dopo la sostituzione della prima tappa (20 min) il tempo è 20, 50, 90, 125, 135:
+90 è più vicino a 93 di 125, quindi restano TRE tappe; quarta e quinta tagliate.
 
 Ondata 3, compito 4: con i trasferimenti dai punti di arrivo (al posto della
 stima prudente di 10 min) nella mezza giornata entra una quinta tappa da 20
 min; prima l'itinerario ricevuto era 25+30+40+35 = 130 (limite 86) e veniva
 tagliata la sola quarta. Il caso resta "tre tappe tenute".
+
+Ondata 3, compito 8: con i tre luoghi nuovi la quinta tappa e' una da 10 min (prima
+20): itinerario 140 min, limite 93 (prima 150 e 100); stesso esito, tre tappe tenute.
 """
 
 from __future__ import annotations
@@ -79,8 +82,8 @@ def test_piove_e_stanco_tiene_tre_tappe(client: TestClient) -> None:
     it: dict[str, Any] = r.json()
     durate = [s["durata_min"] for s in it["stops"]]
     # Precondizione del caso: se il seed cambia, il caso va ripensato.
-    assert durate == [25, 30, 40, 35, 20]
-    assert int(sum(durate) * 2 / 3) == 100
+    assert durate == [25, 30, 40, 35, 10]
+    assert int(sum(durate) * 2 / 3) == 93
 
     r = client.post(
         "/itinerary/adapt",
