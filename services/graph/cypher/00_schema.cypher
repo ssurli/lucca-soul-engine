@@ -21,6 +21,8 @@
 //     datetime.now(UTC) per ogni arco scritto dopo il seed. Serve a congelare uno
 //     snapshot di connettività a un istante T (graph/topology.py,
 //     cypher/12_non_connected_pairs.cypher) per l'indicatore nuovi_percorsi.
+//   (:Esperienza {fonte_orari})  -- nome della fonte degli orari (testo; solo
+//     trasparenza, mai nel punteggio)
 //   (:Bottega)-[:OFFRE]->(:Esperienza)
 //   (:Esperienza)-[:SI_SVOLGE_A]->(:Luogo)
 //   (:Esperienza)-[:EVOCA]->(:Tema)

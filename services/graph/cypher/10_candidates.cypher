@@ -154,6 +154,9 @@ RETURN
   // `false`; un valore presente non booleano fa sollevare il consumer
   // (fail-closed). Il filtro duro è nell'Experience Engine, non qui.
   e.sospesa AS sospesa,
+  // `fonte_orari` (ondata 3, compito 7): nome della fonte degli orari, solo testo, mai input
+  // di scoring. Assente su un grafo non ricaricato: null nel record, None nel contratto.
+  e.fonte_orari AS fonte_orari,
   l.nome AS place_nome,
   l.articolo AS place_articolo,
   coalesce(l.curiosita_testi, []) AS curiosita_testi,

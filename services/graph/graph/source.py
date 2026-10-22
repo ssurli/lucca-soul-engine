@@ -434,6 +434,9 @@ class Neo4jCandidateSource:
             # aperto"). Solo `None` (proprietà assente) è `[]`.
             orari_apertura=_fasce_da_record(record),
             sospesa=_sospesa_da_record(record),
+            # Solo testo (nome della fonte degli orari); None su un grafo non
+            # ricaricato dopo l'introduzione della proprieta'. Mai nel punteggio.
+            fonte_orari=record["fonte_orari"],
             punti_arrivo=decodifica_punti(
                 record["punti_arrivo_lat"],
                 record["punti_arrivo_lon"],

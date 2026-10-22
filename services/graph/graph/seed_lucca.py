@@ -559,6 +559,16 @@ def _fasce(
     ]
 
 
+# Fonte degli orari (`ExperienceNode.fonte_orari`): il NOME della fonte come e'
+# citato nei commenti di questo seed, altrimenti "dato del committente". Solo
+# testo, mai nel punteggio. Le botteghe dimostrative (orari fittizi fissati dal
+# committente) e le esperienze senza fasce portano "dato del committente".
+_FONTE_COMMITTENTE = "dato del committente"
+_FONTE_COMUNE = "sito del Comune di Lucca"
+_FONTE_PUCCINI_MUSEUM = "Puccini Museum"
+_FONTE_BARSANTI = "barsantiematteucci.it, via committente"
+_FONTE_REPARATA = "museocattedralelucca.it, via committente"
+
 _TUTTI = [0, 1, 2, 3, 4, 5, 6]
 _LUN_SAB = [0, 1, 2, 3, 4, 5]
 # Orari DIMOSTRATIVI delle botteghe fittizie (fissati dal committente, non di
@@ -582,6 +592,7 @@ _PUNTI_RAMPE_MURA: list[Punto] = [
 ESPERIENZE: list[ExperienceNode] = [
     ExperienceNode(
         id="exp-passeggiata-mura",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Passeggiata sulle Mura rinascimentali",
         place_id="mura-urbane",
         temi=["verde", "panorama", "storia"],
@@ -593,6 +604,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-bici-mura",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Giro in bicicletta sulle Mura",
         place_id="mura-urbane",
         temi=["verde", "con-bambini", "panorama"],
@@ -605,6 +617,7 @@ ESPERIENZE: list[ExperienceNode] = [
         # Riscritta (stesso id): in piazza non c'è un mercato quotidiano; i
         # mercatini occasionali sono eventi, non esperienze. Nessun orario.
         id="exp-mercato-anfiteatro",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="L'ovale dell'Anfiteatro romano",
         place_id="piazza-anfiteatro",
         temi=["storia", "medievale"],
@@ -615,6 +628,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-salita-torre-guinigi",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Salita alla Torre Guinigi tra i lecci",
         place_id="torre-guinigi",
         temi=["panorama", "verde", "storia"],
@@ -627,6 +641,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-duomo-volto-santo",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Il Volto Santo e il labirinto del Duomo",
         place_id="duomo-san-martino",
         temi=["arte", "medievale", "silenzio"],
@@ -638,6 +653,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-casa-puccini-visita",
+        fonte_orari=_FONTE_PUCCINI_MUSEUM,
         titolo="Le stanze di Giacomo Puccini",
         place_id="casa-puccini",
         temi=["puccini", "musica", "storia"],
@@ -652,6 +668,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-concerto-giglio",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Un'aria all'opera del Giglio",
         place_id="teatro-del-giglio",
         temi=["puccini", "musica", "arte"],
@@ -662,6 +679,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-facciata-san-michele",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="La facciata scolpita di San Michele in Foro",
         place_id="san-michele-in-foro",
         temi=["arte", "medievale", "romanico"],
@@ -671,6 +689,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-orto-botanico-silenzio",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Un'ora di silenzio tra le piante secolari",
         place_id="orto-botanico",
         temi=["verde", "silenzio"],
@@ -684,6 +703,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-orto-botanico-bambini",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Caccia al tesoro botanica per famiglie",
         place_id="orto-botanico",
         temi=["con-bambini", "verde"],
@@ -696,6 +716,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-giardino-pfanner",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Il giardino barocco di Palazzo Pfanner",
         place_id="palazzo-pfanner",
         temi=["verde", "arte", "panorama"],
@@ -709,6 +730,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-mosaico-san-frediano",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Il mosaico dorato di San Frediano",
         place_id="san-frediano",
         temi=["arte", "medievale", "romanico"],
@@ -718,6 +740,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-meccanismo-torre-ore",
+        fonte_orari=_FONTE_COMUNE,
         titolo="Il meccanismo ottocentesco della Torre delle Ore",
         place_id="torre-delle-ore",
         temi=["storia", "panorama"],
@@ -731,6 +754,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-piazza-napoleone",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="La piazza granducale e i suoi platani",
         place_id="piazza-napoleone",
         temi=["storia", "verde"],
@@ -740,6 +764,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-struscio-fillungo",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Struscio serale in via Fillungo",
         place_id="via-fillungo",
         temi=["gastronomia", "artigianato"],
@@ -751,6 +776,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-tramonto-baluardo",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Tramonto dal Baluardo San Paolino",
         place_id="baluardo-san-paolino",
         temi=["panorama", "silenzio", "verde"],
@@ -773,6 +799,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-collezione-villa-guinigi",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="La collezione archeologica di Villa Guinigi",
         place_id="museo-nazionale-guinigi",
         temi=["arte", "storia"],
@@ -786,6 +813,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-laboratorio-liuteria",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Un violino nasce: laboratorio del liutaio",
         place_id="san-michele-in-foro",
         temi=["liuteria", "artigianato", "musica"],
@@ -805,6 +833,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-decorazione-ceramica",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Decora la tua ciotola: bottega di ceramica",
         place_id="via-fillungo",
         temi=["artigianato", "con-bambini"],
@@ -817,6 +846,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-torchio-stamperia",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Una pagina al torchio: la stamperia storica",
         place_id="piazza-anfiteatro",
         temi=["artigianato", "storia"],
@@ -828,6 +858,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-buccellato-pasticceria",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Il buccellato: il dolce di Lucca",
         place_id="piazza-napoleone",
         temi=["gastronomia", "con-bambini"],
@@ -845,6 +876,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-telaio-tessitura",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Il telaio a mano: tessitura lucchese",
         place_id="san-frediano",
         temi=["artigianato", "silenzio"],
@@ -860,6 +892,7 @@ ESPERIENZE: list[ExperienceNode] = [
     # promette. Orari: dati del committente (19-20/10/2026).
     ExperienceNode(
         id="exp-interno-san-michele",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="L'interno di San Michele in Foro",
         place_id="san-michele-in-foro",
         temi=["romanico", "arte"],
@@ -870,6 +903,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-interno-san-frediano",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="La basilica di San Frediano e il fonte lustrale",
         place_id="san-frediano",
         temi=["romanico", "arte", "medievale"],
@@ -884,6 +918,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-chiesa-chiostro-san-francesco",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="La chiesa di San Francesco e il suo chiostro",
         place_id="chiesa-san-francesco",
         temi=["musica", "silenzio", "storia"],
@@ -894,6 +929,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ),
     ExperienceNode(
         id="exp-chiostro-real-collegio",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Il chiostro del Real Collegio",
         place_id="real-collegio",
         temi=["silenzio", "storia"],
@@ -909,6 +945,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ExperienceNode(
         # Nessuna fascia: accesso 24 ore su 24.
         id="exp-sortita-san-paolino",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="La sortita sotterranea del Baluardo San Paolino",
         place_id="baluardo-san-paolino",
         temi=["storia", "con-bambini"],
@@ -919,6 +956,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ExperienceNode(
         # Ven, sab, dom 11:00-17:00. Accessibilità non verificata.
         id="exp-museo-barsanti-matteucci",
+        fonte_orari=_FONTE_BARSANTI,
         titolo="Il motore a scoppio di Barsanti e Matteucci",
         place_id="museo-barsanti-matteucci",
         temi=["storia", "con-bambini"],
@@ -931,6 +969,7 @@ ESPERIENZE: list[ExperienceNode] = [
         # Stesso luogo del giardino: la regola "una tappa per luogo" le rende
         # alternative. Tutti i giorni 08:00-17:00.
         id="exp-pfanner-dalle-mura",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Il giardino Pfanner visto dalle Mura",
         place_id="palazzo-pfanner",
         temi=["verde", "panorama"],
@@ -945,6 +984,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ExperienceNode(
         # Nessuna fascia: illuminata la sera.
         id="exp-via-del-fosso",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo="Via del Fosso: il canale e i ponticelli",
         place_id="via-del-fosso",
         temi=["silenzio", "storia"],
@@ -956,6 +996,7 @@ ESPERIENZE: list[ExperienceNode] = [
         # Tutti i giorni 10:00-16:00 (il sito del Comune riporta 16:30: tenuto
         # il più restrittivo). Accessibilità non verificata.
         id="exp-sotterraneo-santa-croce",
+        fonte_orari=_FONTE_COMMITTENTE,
         titolo='Il sotterraneo del Baluardo Santa Croce e la mostra "Ri-conoscere le Mura"',
         place_id="baluardo-santa-croce",
         temi=["storia"],
@@ -967,6 +1008,7 @@ ESPERIENZE: list[ExperienceNode] = [
     ExperienceNode(
         # Tutti i giorni 10:00-18:00.
         id="exp-santi-giovanni-reparata",
+        fonte_orari=_FONTE_REPARATA,
         titolo="La chiesa dei Santi Giovanni e Reparata e l'area archeologica",
         place_id="santi-giovanni-reparata",
         temi=["storia", "arte", "romanico"],

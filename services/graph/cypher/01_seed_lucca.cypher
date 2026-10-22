@@ -238,6 +238,7 @@ SET e.titolo = 'Passeggiata sulle Mura rinascimentali',
     e.sospesa = false,
     e.punti_arrivo_lat = [43.83975799648603, 43.84807404345435, 43.841277451100694, 43.842315738273435, 43.84552607610066, 43.83882258921756],
     e.punti_arrivo_lon = [10.506535046223485, 10.507089236931973, 10.496706879150684, 10.497113013689594, 10.514030908363878, 10.501625645596407],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-bici-mura'})
 SET e.titolo = 'Giro in bicicletta sulle Mura',
@@ -253,6 +254,7 @@ SET e.titolo = 'Giro in bicicletta sulle Mura',
     e.sospesa = false,
     e.punti_arrivo_lat = [43.83975799648603, 43.84807404345435, 43.841277451100694, 43.842315738273435, 43.84552607610066, 43.83882258921756],
     e.punti_arrivo_lon = [10.506535046223485, 10.507089236931973, 10.496706879150684, 10.497113013689594, 10.514030908363878, 10.501625645596407],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-mercato-anfiteatro'})
 SET e.titolo = 'L\'ovale dell\'Anfiteatro romano',
@@ -268,6 +270,7 @@ SET e.titolo = 'L\'ovale dell\'Anfiteatro romano',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-salita-torre-guinigi'})
 SET e.titolo = 'Salita alla Torre Guinigi tra i lecci',
@@ -283,6 +286,7 @@ SET e.titolo = 'Salita alla Torre Guinigi tra i lecci',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|09:30|16:30', '1|09:30|16:30', '2|09:30|16:30', '3|09:30|16:30', '4|09:30|16:30', '5|09:30|16:30', '6|09:30|16:30'];
 MERGE (e:Esperienza {id: 'exp-duomo-volto-santo'})
 SET e.titolo = 'Il Volto Santo e il labirinto del Duomo',
@@ -298,6 +302,7 @@ SET e.titolo = 'Il Volto Santo e il labirinto del Duomo',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|10:00|18:00', '1|10:00|18:00', '2|10:00|18:00', '3|10:00|18:00', '4|10:00|18:00', '5|10:00|18:00', '6|12:00|18:00'];
 MERGE (e:Esperienza {id: 'exp-casa-puccini-visita'})
 SET e.titolo = 'Le stanze di Giacomo Puccini',
@@ -313,6 +318,7 @@ SET e.titolo = 'Le stanze di Giacomo Puccini',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'Puccini Museum',
     e.orari_apertura = ['0|10:00|14:00', '2|10:00|14:00', '3|10:00|14:00', '4|10:00|17:00', '5|10:00|17:00', '6|10:00|17:00'];
 MERGE (e:Esperienza {id: 'exp-concerto-giglio'})
 SET e.titolo = 'Un\'aria all\'opera del Giglio',
@@ -328,6 +334,7 @@ SET e.titolo = 'Un\'aria all\'opera del Giglio',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-facciata-san-michele'})
 SET e.titolo = 'La facciata scolpita di San Michele in Foro',
@@ -343,6 +350,7 @@ SET e.titolo = 'La facciata scolpita di San Michele in Foro',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-orto-botanico-silenzio'})
 SET e.titolo = 'Un\'ora di silenzio tra le piante secolari',
@@ -358,6 +366,7 @@ SET e.titolo = 'Un\'ora di silenzio tra le piante secolari',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['4|11:00|16:00', '5|11:00|16:00', '6|11:00|16:00'];
 MERGE (e:Esperienza {id: 'exp-orto-botanico-bambini'})
 SET e.titolo = 'Caccia al tesoro botanica per famiglie',
@@ -373,6 +382,7 @@ SET e.titolo = 'Caccia al tesoro botanica per famiglie',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['4|11:00|16:00', '5|11:00|16:00', '6|11:00|16:00'];
 MERGE (e:Esperienza {id: 'exp-giardino-pfanner'})
 SET e.titolo = 'Il giardino barocco di Palazzo Pfanner',
@@ -388,6 +398,7 @@ SET e.titolo = 'Il giardino barocco di Palazzo Pfanner',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|08:00|16:30', '1|08:00|16:30', '2|08:00|16:30', '3|08:00|16:30', '4|08:00|16:30', '5|08:00|16:30', '6|08:00|16:30'];
 MERGE (e:Esperienza {id: 'exp-mosaico-san-frediano'})
 SET e.titolo = 'Il mosaico dorato di San Frediano',
@@ -403,6 +414,7 @@ SET e.titolo = 'Il mosaico dorato di San Frediano',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-meccanismo-torre-ore'})
 SET e.titolo = 'Il meccanismo ottocentesco della Torre delle Ore',
@@ -418,6 +430,7 @@ SET e.titolo = 'Il meccanismo ottocentesco della Torre delle Ore',
     e.sospesa = true,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'sito del Comune di Lucca',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-piazza-napoleone'})
 SET e.titolo = 'La piazza granducale e i suoi platani',
@@ -433,6 +446,7 @@ SET e.titolo = 'La piazza granducale e i suoi platani',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-struscio-fillungo'})
 SET e.titolo = 'Struscio serale in via Fillungo',
@@ -448,6 +462,7 @@ SET e.titolo = 'Struscio serale in via Fillungo',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|17:30|21:00', '1|17:30|21:00', '2|17:30|21:00', '3|17:30|21:00', '4|17:30|21:00', '5|17:30|21:00', '6|17:30|21:00'];
 MERGE (e:Esperienza {id: 'exp-tramonto-baluardo'})
 SET e.titolo = 'Tramonto dal Baluardo San Paolino',
@@ -463,6 +478,7 @@ SET e.titolo = 'Tramonto dal Baluardo San Paolino',
     e.sospesa = false,
     e.punti_arrivo_lat = [43.84668153219125, 43.84060703195673, 43.84260326710044, 43.84750898171982, 43.848580906193554],
     e.punti_arrivo_lon = [10.502592655389329, 10.496914055249684, 10.513896040654814, 10.513950290731266, 10.508889574921993],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|16:00|17:00', '1|16:00|17:00', '2|16:00|17:00', '3|16:00|17:00', '4|16:00|17:00', '5|16:00|17:00', '6|16:00|17:00'];
 MERGE (e:Esperienza {id: 'exp-collezione-villa-guinigi'})
 SET e.titolo = 'La collezione archeologica di Villa Guinigi',
@@ -478,6 +494,7 @@ SET e.titolo = 'La collezione archeologica di Villa Guinigi',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['1|12:00|18:00', '2|12:00|18:00', '3|12:00|18:00', '4|12:00|18:00', '5|12:00|18:00'];
 MERGE (e:Esperienza {id: 'exp-laboratorio-liuteria'})
 SET e.titolo = 'Un violino nasce: laboratorio del liutaio',
@@ -493,6 +510,7 @@ SET e.titolo = 'Un violino nasce: laboratorio del liutaio',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['1|09:30|12:30', '2|09:30|12:30', '3|09:30|12:30', '4|09:30|12:30', '5|09:30|12:30', '1|15:30|19:00', '2|15:30|19:00', '3|15:30|19:00', '4|15:30|19:00', '5|15:30|19:00'];
 MERGE (e:Esperienza {id: 'exp-decorazione-ceramica'})
 SET e.titolo = 'Decora la tua ciotola: bottega di ceramica',
@@ -508,6 +526,7 @@ SET e.titolo = 'Decora la tua ciotola: bottega di ceramica',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['1|09:30|12:30', '2|09:30|12:30', '3|09:30|12:30', '4|09:30|12:30', '5|09:30|12:30', '1|15:30|19:00', '2|15:30|19:00', '3|15:30|19:00', '4|15:30|19:00', '5|15:30|19:00'];
 MERGE (e:Esperienza {id: 'exp-torchio-stamperia'})
 SET e.titolo = 'Una pagina al torchio: la stamperia storica',
@@ -523,6 +542,7 @@ SET e.titolo = 'Una pagina al torchio: la stamperia storica',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['1|09:30|12:30', '2|09:30|12:30', '3|09:30|12:30', '4|09:30|12:30', '5|09:30|12:30', '1|15:30|19:00', '2|15:30|19:00', '3|15:30|19:00', '4|15:30|19:00', '5|15:30|19:00'];
 MERGE (e:Esperienza {id: 'exp-buccellato-pasticceria'})
 SET e.titolo = 'Il buccellato: il dolce di Lucca',
@@ -538,6 +558,7 @@ SET e.titolo = 'Il buccellato: il dolce di Lucca',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['1|08:00|13:00', '2|08:00|13:00', '3|08:00|13:00', '4|08:00|13:00', '5|08:00|13:00', '6|08:00|13:00', '1|15:30|19:30', '2|15:30|19:30', '3|15:30|19:30', '4|15:30|19:30', '5|15:30|19:30', '6|15:30|19:30'];
 MERGE (e:Esperienza {id: 'exp-telaio-tessitura'})
 SET e.titolo = 'Il telaio a mano: tessitura lucchese',
@@ -553,6 +574,7 @@ SET e.titolo = 'Il telaio a mano: tessitura lucchese',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['1|09:30|12:30', '2|09:30|12:30', '3|09:30|12:30', '4|09:30|12:30', '5|09:30|12:30', '1|15:30|19:00', '2|15:30|19:00', '3|15:30|19:00', '4|15:30|19:00', '5|15:30|19:00'];
 MERGE (e:Esperienza {id: 'exp-interno-san-michele'})
 SET e.titolo = 'L\'interno di San Michele in Foro',
@@ -568,6 +590,7 @@ SET e.titolo = 'L\'interno di San Michele in Foro',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|07:40|12:00', '1|07:40|12:00', '2|07:40|12:00', '3|07:40|12:00', '4|07:40|12:00', '5|07:40|12:00', '0|15:00|17:30', '1|15:00|17:30', '2|15:00|17:30', '3|15:00|17:30', '4|15:00|17:30', '5|15:00|17:30'];
 MERGE (e:Esperienza {id: 'exp-interno-san-frediano'})
 SET e.titolo = 'La basilica di San Frediano e il fonte lustrale',
@@ -583,6 +606,7 @@ SET e.titolo = 'La basilica di San Frediano e il fonte lustrale',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|08:30|12:00', '1|08:30|12:00', '2|08:30|12:00', '3|08:30|12:00', '4|08:30|12:00', '5|08:30|12:00', '0|15:00|17:00', '1|15:00|17:00', '2|15:00|17:00', '3|15:00|17:00', '4|15:00|17:00', '5|15:00|17:00', '6|10:30|17:00'];
 MERGE (e:Esperienza {id: 'exp-chiesa-chiostro-san-francesco'})
 SET e.titolo = 'La chiesa di San Francesco e il suo chiostro',
@@ -598,6 +622,7 @@ SET e.titolo = 'La chiesa di San Francesco e il suo chiostro',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['5|10:00|19:00', '6|10:00|19:00'];
 MERGE (e:Esperienza {id: 'exp-chiostro-real-collegio'})
 SET e.titolo = 'Il chiostro del Real Collegio',
@@ -613,6 +638,7 @@ SET e.titolo = 'Il chiostro del Real Collegio',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|09:00|12:00', '1|09:00|12:00', '2|09:00|12:00', '3|09:00|12:00', '4|09:00|12:00'];
 MERGE (e:Esperienza {id: 'exp-sortita-san-paolino'})
 SET e.titolo = 'La sortita sotterranea del Baluardo San Paolino',
@@ -628,6 +654,7 @@ SET e.titolo = 'La sortita sotterranea del Baluardo San Paolino',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-museo-barsanti-matteucci'})
 SET e.titolo = 'Il motore a scoppio di Barsanti e Matteucci',
@@ -643,6 +670,7 @@ SET e.titolo = 'Il motore a scoppio di Barsanti e Matteucci',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'barsantiematteucci.it, via committente',
     e.orari_apertura = ['4|11:00|17:00', '5|11:00|17:00', '6|11:00|17:00'];
 MERGE (e:Esperienza {id: 'exp-pfanner-dalle-mura'})
 SET e.titolo = 'Il giardino Pfanner visto dalle Mura',
@@ -658,6 +686,7 @@ SET e.titolo = 'Il giardino Pfanner visto dalle Mura',
     e.sospesa = false,
     e.punti_arrivo_lat = [43.846610457117684],
     e.punti_arrivo_lon = [10.502497041284132],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|08:00|17:00', '1|08:00|17:00', '2|08:00|17:00', '3|08:00|17:00', '4|08:00|17:00', '5|08:00|17:00', '6|08:00|17:00'];
 MERGE (e:Esperienza {id: 'exp-via-del-fosso'})
 SET e.titolo = 'Via del Fosso: il canale e i ponticelli',
@@ -673,6 +702,7 @@ SET e.titolo = 'Via del Fosso: il canale e i ponticelli',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = [];
 MERGE (e:Esperienza {id: 'exp-sotterraneo-santa-croce'})
 SET e.titolo = 'Il sotterraneo del Baluardo Santa Croce e la mostra "Ri-conoscere le Mura"',
@@ -688,6 +718,7 @@ SET e.titolo = 'Il sotterraneo del Baluardo Santa Croce e la mostra "Ri-conoscer
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'dato del committente',
     e.orari_apertura = ['0|10:00|16:00', '1|10:00|16:00', '2|10:00|16:00', '3|10:00|16:00', '4|10:00|16:00', '5|10:00|16:00', '6|10:00|16:00'];
 MERGE (e:Esperienza {id: 'exp-santi-giovanni-reparata'})
 SET e.titolo = 'La chiesa dei Santi Giovanni e Reparata e l\'area archeologica',
@@ -703,6 +734,7 @@ SET e.titolo = 'La chiesa dei Santi Giovanni e Reparata e l\'area archeologica',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
+    e.fonte_orari = 'museocattedralelucca.it, via committente',
     e.orari_apertura = ['0|10:00|18:00', '1|10:00|18:00', '2|10:00|18:00', '3|10:00|18:00', '4|10:00|18:00', '5|10:00|18:00', '6|10:00|18:00'];
 
 // --- Nodi: Partner (Wave 3a, marketplace) -------------------------------

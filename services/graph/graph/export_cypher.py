@@ -114,6 +114,8 @@ _RELATION_TYPES_COMMENT = (
     "//     datetime.now(UTC) per ogni arco scritto dopo il seed. Serve a congelare uno\n"
     "//     snapshot di connettività a un istante T (graph/topology.py,\n"
     "//     cypher/12_non_connected_pairs.cypher) per l'indicatore nuovi_percorsi.\n"
+    "//   (:Esperienza {fonte_orari})  -- nome della fonte degli orari (testo; solo\n"
+    "//     trasparenza, mai nel punteggio)\n"
     "//   (:Bottega)-[:OFFRE]->(:Esperienza)\n"
     "//   (:Esperienza)-[:SI_SVOLGE_A]->(:Luogo)\n"
     "//   (:Esperienza)-[:EVOCA]->(:Tema)\n"
@@ -208,6 +210,9 @@ def _esperienza_statement(e: ExperienceNode) -> str:
         # SEMPRE, anche vuote. `repr(float)` e' il round-trip esatto.
         f"    e.punti_arrivo_lat = {_cypher_float_list(lat)},\n"
         f"    e.punti_arrivo_lon = {_cypher_float_list(lon)},\n"
+        # Fonte degli orari (testo, NULL se assente: il `SET` a NULL rimuove la
+        # proprieta'). Prima di `orari_apertura`, che chiude lo statement. Mai nel punteggio.
+        f"    e.fonte_orari = {_cypher_str_or_null(e.fonte_orari)},\n"
         # Scritta SEMPRE, anche vuota: il `SET` sovrascrive, quindi un orario
         # tolto dal dataset sparisce da un grafo già caricato (omettendola
         # resterebbe quello vecchio). Formato: `contracts.codifica_fasce`.
