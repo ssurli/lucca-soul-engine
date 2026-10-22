@@ -8,6 +8,7 @@ import '../models/person_kind.dart';
 import '../models/signal.dart';
 import '../models/visitor_context.dart';
 import '../util/app_strings.dart';
+import '../util/directions_link.dart';
 import '../util/excluded_stop_line.dart';
 import '../util/itinerary_diff.dart';
 import '../util/known_places.dart';
@@ -339,6 +340,15 @@ class StopCard extends StatelessWidget {
               ),
             ),
             for (final c in stop.curiosita) CuriosityTile(curiosita: c, strings: strings),
+            if (stop.puntoArrivo != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: () => apriInNuovaScheda(urlComeArrivo(stop.puntoArrivo)!),
+                  icon: const Icon(Icons.directions_walk, size: 18),
+                  label: Text(strings.howToArrive),
+                ),
+              ),
             Align(
               alignment: Alignment.centerRight,
               child: TextButton.icon(

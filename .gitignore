@@ -7,4 +7,5 @@ __pycache__/
 .ruff_cache/
 node_modules/
 .dart_tool/
+.flutter-plugins-dependencies
 build/

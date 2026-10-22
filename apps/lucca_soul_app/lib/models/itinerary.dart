@@ -27,6 +27,22 @@ class Curiosita {
   Map<String, dynamic> toJson() => {'testo': testo, 'tipo': tipo.name, 'fonte': fonte};
 }
 
+/// Rispecchia `Punto` del contratto: coordinata WGS84. I double sono tenuti
+/// com'e' (nessun arrotondamento): l'andata e ritorno JSON e' senza perdite.
+class Punto {
+  final double lat;
+  final double lon;
+
+  const Punto({required this.lat, required this.lon});
+
+  factory Punto.fromJson(Map<String, dynamic> json) => Punto(
+        lat: (json['lat'] as num).toDouble(),
+        lon: (json['lon'] as num).toDouble(),
+      );
+
+  Map<String, dynamic> toJson() => {'lat': lat, 'lon': lon};
+}
+
 /// Rispecchia `ItineraryStop` in `docs/DATA_CONTRACTS.md` §3.
 /// `reason` è la spiegabilità obbligatoria: il prodotto, non una nota.
 class ItineraryStop {
@@ -46,6 +62,10 @@ class ItineraryStop {
   /// Curiosita della tappa (contratto: default []).
   final List<Curiosita> curiosita;
 
+  /// Punto di arrivo scelto dall'Experience Engine. Null = nessun link
+  /// "Come arrivo qui" (es. botteghe dimostrative).
+  final Punto? puntoArrivo;
+
   const ItineraryStop({
     required this.experienceId,
     required this.arrivo,
@@ -54,6 +74,7 @@ class ItineraryStop {
     this.titolo,
     this.esitoAdattamento,
     this.curiosita = const [],
+    this.puntoArrivo,
   });
 
   factory ItineraryStop.fromJson(Map<String, dynamic> json) {
@@ -67,6 +88,9 @@ class ItineraryStop {
       curiosita: (json['curiosita'] as List<dynamic>? ?? const [])
           .map((e) => Curiosita.fromJson(e as Map<String, dynamic>))
           .toList(),
+      puntoArrivo: json['punto_arrivo'] == null
+          ? null
+          : Punto.fromJson(json['punto_arrivo'] as Map<String, dynamic>),
     );
   }
 
@@ -79,6 +103,7 @@ class ItineraryStop {
         if (esitoAdattamento != null) 'esito_adattamento': esitoAdattamento,
         // Omessa se vuota (come tappe_escluse): il BFF ha default [].
         if (curiosita.isNotEmpty) 'curiosita': curiosita.map((c) => c.toJson()).toList(),
+        if (puntoArrivo != null) 'punto_arrivo': puntoArrivo!.toJson(),
       };
 }
 

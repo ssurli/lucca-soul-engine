@@ -48,6 +48,7 @@ class AppStrings {
   String get noEffectNote => _isEn
       ? 'This change does not affect your plan for today.'
       : 'Questo cambiamento non tocca il tuo percorso di oggi.';
+  String get howToArrive => _isEn ? 'How to get here' : 'Come arrivo qui';
   String get changedStop => _isEn ? 'Changed by the signal' : 'Cambiata dal segnale';
 
   // --- Urban Memory (Wave 2): conferimento contestuale --------------------
