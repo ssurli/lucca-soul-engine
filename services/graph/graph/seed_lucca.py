@@ -640,8 +640,8 @@ def _fasce(
 _FONTE_COMMITTENTE = "dato del committente"
 _FONTE_COMUNE = "sito del Comune di Lucca"
 _FONTE_PUCCINI_MUSEUM = "Puccini Museum"
-_FONTE_BARSANTI = "barsantiematteucci.it, via committente"
-_FONTE_REPARATA = "museocattedralelucca.it, via committente"
+_FONTE_BARSANTI = "barsantiematteucci.it"
+_FONTE_REPARATA = "museocattedralelucca.it"
 
 _TUTTI = [0, 1, 2, 3, 4, 5, 6]
 _LUN_SAB = [0, 1, 2, 3, 4, 5]
@@ -1242,6 +1242,16 @@ VICINO: list[RelazioneVicino] = [
     RelazioneVicino("santi-giovanni-reparata", "casa-puccini", 250),
     RelazioneVicino("santi-giovanni-reparata", "teatro-del-giglio", 250),
     RelazioneVicino("santi-giovanni-reparata", "san-michele-in-foro", 300),
+    # Ondata 3 (compito 8): due archi per ciascuno dei 3 luoghi nuovi, verso i primi due
+    # vicini per distanza a piedi. Fonte: metri CALCOLATI dai punti del committente
+    # (22/10/2026) con `contracts.distanza_a_piedi_m` (linea d'aria x 1,3, arrotondata ai
+    # 10 m), non misurati. `creato_il` = epoca di default come gli altri archi del seed.
+    RelazioneVicino("palazzo-bernardini", "via-fillungo", 170),
+    RelazioneVicino("palazzo-bernardini", "torre-delle-ore", 200),
+    RelazioneVicino("san-pietro-somaldi", "via-del-fosso", 180),
+    RelazioneVicino("san-pietro-somaldi", "piazza-anfiteatro", 200),
+    RelazioneVicino("parco-giochi-san-donato", "baluardo-santa-croce", 170),
+    RelazioneVicino("parco-giochi-san-donato", "casa-puccini", 470),
 ]
 
 # ---------------------------------------------------------------------------

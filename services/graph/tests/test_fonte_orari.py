@@ -24,8 +24,8 @@ COMMITTENTE = "dato del committente"
 ATTESE: dict[str, str] = {
     "exp-casa-puccini-visita": "Puccini Museum",
     "exp-meccanismo-torre-ore": "sito del Comune di Lucca",
-    "exp-museo-barsanti-matteucci": "barsantiematteucci.it, via committente",
-    "exp-santi-giovanni-reparata": "museocattedralelucca.it, via committente",
+    "exp-museo-barsanti-matteucci": "barsantiematteucci.it",
+    "exp-santi-giovanni-reparata": "museocattedralelucca.it",
 }
 
 

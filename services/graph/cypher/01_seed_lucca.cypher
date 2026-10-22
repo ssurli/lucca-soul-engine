@@ -694,7 +694,7 @@ SET e.titolo = 'Il motore a scoppio di Barsanti e Matteucci',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
-    e.fonte_orari = 'barsantiematteucci.it, via committente',
+    e.fonte_orari = 'barsantiematteucci.it',
     e.orari_apertura = ['4|11:00|17:00', '5|11:00|17:00', '6|11:00|17:00'];
 MERGE (e:Esperienza {id: 'exp-pfanner-dalle-mura'})
 SET e.titolo = 'Il giardino Pfanner visto dalle Mura',
@@ -758,7 +758,7 @@ SET e.titolo = 'La chiesa dei Santi Giovanni e Reparata e l\'area archeologica',
     e.sospesa = false,
     e.punti_arrivo_lat = [],
     e.punti_arrivo_lon = [],
-    e.fonte_orari = 'museocattedralelucca.it, via committente',
+    e.fonte_orari = 'museocattedralelucca.it',
     e.orari_apertura = ['0|10:00|18:00', '1|10:00|18:00', '2|10:00|18:00', '3|10:00|18:00', '4|10:00|18:00', '5|10:00|18:00', '6|10:00|18:00'];
 MERGE (e:Esperienza {id: 'exp-finestra-bernardini'})
 SET e.titolo = 'La finestra storta di Palazzo Bernardini',
@@ -1028,6 +1028,24 @@ SET r.metri = 250, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 MATCH (a:Luogo {id: 'santi-giovanni-reparata'}), (b:Luogo {id: 'san-michele-in-foro'})
 MERGE (a)-[r:VICINO]->(b)
 SET r.metri = 300, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'palazzo-bernardini'}), (b:Luogo {id: 'via-fillungo'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 170, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'palazzo-bernardini'}), (b:Luogo {id: 'torre-delle-ore'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'san-pietro-somaldi'}), (b:Luogo {id: 'via-del-fosso'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 180, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'san-pietro-somaldi'}), (b:Luogo {id: 'piazza-anfiteatro'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 200, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'parco-giochi-san-donato'}), (b:Luogo {id: 'baluardo-santa-croce'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 170, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
+MATCH (a:Luogo {id: 'parco-giochi-san-donato'}), (b:Luogo {id: 'casa-puccini'})
+MERGE (a)-[r:VICINO]->(b)
+SET r.metri = 470, r.creato_il = datetime('2026-01-01T00:00:00+00:00');
 
 // --- Relazioni: LEGATO_A (Artista -> Luogo) ----------------------------
 MATCH (a:Artista {id: 'artista-puccini'}), (l:Luogo {id: 'casa-puccini'})

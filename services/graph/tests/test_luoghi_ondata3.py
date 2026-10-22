@@ -1,6 +1,6 @@
 """Compito 8 (ondata 3): tre luoghi e tre esperienze nuovi (dato del committente).
 
-Dati esatti, punto dei luoghi, nessun VICINO / LEGATO_A nuovo, Cypher committato
+Dati esatti, punto dei luoghi, 6 archi VICINO nuovi, nessun LEGATO_A nuovo, Cypher committato
 uguale al generato, mapping Neo4j (record finti) uguale al seed.
 """
 
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from contracts import TipoCuriosita
+from contracts import TipoCuriosita, distanza_a_piedi_m
 from graph.export_cypher import build_seed
 from graph.registro import dataset_attivo, file_seed_cypher
 from graph.seed_lucca import DATASET, LEGATO_A, VICINO
@@ -130,9 +130,33 @@ def test_curiosita_esatte_nell_ordine() -> None:
     assert _LUOGHI["parco-giochi-san-donato"].curiosita == ()
 
 
-def test_nessun_vicino_ne_legato_a_nuovo() -> None:
+def test_archi_vicino_nuovi_esatti_e_nessun_legato_a_nuovo() -> None:
+    """Due archi per luogo nuovo, verso i primi due vicini per distanza a piedi calcolata
+    dai punti (`distanza_a_piedi_m`); metri = quelli calcolati."""
     nuovi = set(_LUOGHI_ATTESI)
-    assert not [v for v in VICINO if {v.da_id, v.a_id} & nuovi]
+    attesi = {
+        ("palazzo-bernardini", "via-fillungo", 170),
+        ("palazzo-bernardini", "torre-delle-ore", 200),
+        ("san-pietro-somaldi", "via-del-fosso", 180),
+        ("san-pietro-somaldi", "piazza-anfiteatro", 200),
+        ("parco-giochi-san-donato", "baluardo-santa-croce", 170),
+        ("parco-giochi-san-donato", "casa-puccini", 470),
+    }
+    reali = [(v.da_id, v.a_id, v.metri) for v in VICINO if {v.da_id, v.a_id} & nuovi]
+    assert len(reali) == 6 and set(reali) == attesi
+    for da, a, metri in attesi:
+        pa, pb = _LUOGHI[da].punto, _LUOGHI[a].punto
+        assert pa is not None and pb is not None
+        assert distanza_a_piedi_m(pa, pb) == metri
+    for luogo in nuovi:
+        origine = _LUOGHI[luogo].punto
+        assert origine is not None
+        propri = sorted(
+            (distanza_a_piedi_m(origine, altro.punto), altro.id)
+            for altro in DATASET.luoghi
+            if altro.id != luogo and altro.punto is not None
+        )[:2]
+        assert {i for _, i in propri} == {a for da, a, _m in attesi if da == luogo}
     assert not [r for r in LEGATO_A if r.luogo_id in nuovi]
 
 

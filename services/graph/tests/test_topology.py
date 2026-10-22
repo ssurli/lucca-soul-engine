@@ -32,13 +32,6 @@ from graph.topology import (
 
 CANONICAL_MAX_HOPS = 3
 
-# Luoghi dell'ondata 3 (compito 8) SENZA archi VICINO per decisione del committente:
-# le invarianti di rete (>= 2 vicini, nessun isolato, una sola componente) valgono
-# per tutti gli altri; per questi tre vale l'assenza di VICINO (test dedicato).
-SENZA_VICINO_PER_DECISIONE = frozenset(
-    {"palazzo-bernardini", "san-pietro-somaldi", "parco-giochi-san-donato"}
-)
-
 EX_VICOLI_CIECHI = [
     "casa-puccini",
     "orto-botanico",
@@ -55,11 +48,7 @@ def test_densita_media_vicino_almeno_quattro() -> None:
 
 def test_nessun_luogo_con_meno_di_due_vicini() -> None:
     gradi = vicino_degree()
-    scarsi = {
-        place_id: grado
-        for place_id, grado in gradi.items()
-        if grado < 2 and place_id not in SENZA_VICINO_PER_DECISIONE
-    }
+    scarsi = {place_id: grado for place_id, grado in gradi.items() if grado < 2}
     assert not scarsi, f"luoghi con meno di 2 vicini: {scarsi}"
 
 
@@ -78,20 +67,7 @@ def test_ex_vicoli_ciechi_ora_hanno_almeno_due_vicini() -> None:
 def test_nessun_nodo_isolato_nella_rete_vicino() -> None:
     gradi = vicino_degree()
     for luogo in LUOGHI:
-        if luogo.id in SENZA_VICINO_PER_DECISIONE:
-            continue
         assert gradi.get(luogo.id, 0) > 0, f"{luogo.id} è isolato nella rete VICINO"
-
-
-def test_luoghi_dell_ondata_3_senza_vicino_per_decisione_del_committente() -> None:
-    from graph.seed_lucca import VICINO
-
-    gradi = vicino_degree()
-    ids = {luogo.id for luogo in LUOGHI}
-    assert SENZA_VICINO_PER_DECISIONE <= ids
-    for place_id in SENZA_VICINO_PER_DECISIONE:
-        assert gradi.get(place_id, 0) == 0, place_id
-        assert not [v for v in VICINO if place_id in (v.da_id, v.a_id)], place_id
 
 
 def test_tutti_i_luoghi_sono_in_una_singola_componente_connessa() -> None:
@@ -111,7 +87,7 @@ def test_tutti_i_luoghi_sono_in_una_singola_componente_connessa() -> None:
             if vicino not in visitati:
                 visitati.add(vicino)
                 coda.append(vicino)
-    tutti_i_luoghi = {luogo.id for luogo in LUOGHI} - SENZA_VICINO_PER_DECISIONE
+    tutti_i_luoghi = {luogo.id for luogo in LUOGHI}
     assert visitati == tutti_i_luoghi, f"luoghi non raggiungibili: {tutti_i_luoghi - visitati}"
 
 
