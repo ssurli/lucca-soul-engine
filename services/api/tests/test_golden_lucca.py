@@ -307,6 +307,20 @@ Cambia l'`atteso` di 83 casi su 91: 80 dei 88 casi a richiesta invariata (solo t
   lo conservano e vi aggiungono una frase: lo stesso criterio vale solo per i testi nuovi
   (tappe sostituite ed escluse).
 
+UNDICESIMA modifica autorizzata (2026-10-22, ondata 2b, compito 4; rigenerazione AUTORIZZATA
+dal committente), SOLO in `lucca_itinerari.json` (`lucca_punteggi.json` byte-identico,
+verificato con `git diff` e confronto: nessun punteggio toccato). Motivo: i testi dei motivi
+(9ae5185): la frase del profilo entra solo per tratti netti (>= 0,7 o <= 0,2) e, in
+adattamento, compare sulla prima tappa SOSTITUITA dopo "Sostituita per ...", al massimo una
+volta per itinerario. Le RICHIESTE dei 91 casi sono invariate; le tappe non cambiano (esperienze,
+ordine, arrivo, durata, esito, budget, escluse), cambiano solo i `reason`. Cambia l'`atteso` di
+12 casi su 91, sempre e solo la prima tappa: adapt-profilo|no-bambini|pioggia,
+adapt-profilo|pioggia|tappa-gratuita, compose|poco-tempo|{affollamento,caldo,pioggia,sereno,
+stanchezza,visti}, demo|{con-bambini,contemplativo,curioso}|pioggia-15, demo|poco-tempo|
+sereno-10; 79 restano identici. ATTRIBUZIONE verificata da script (non dedotta): rigiocate le
+richieste invariate sul BFF isolato, tolti i `reason` (tappe ed escluse) l'`atteso` nuovo
+coincide con il vecchio campo per campo: 12 cambiati, 0 differenze non testuali.
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte
