@@ -321,6 +321,59 @@ sereno-10; 79 restano identici. ATTRIBUZIONE verificata da script (non dedotta):
 richieste invariate sul BFF isolato, tolti i `reason` (tappe ed escluse) l'`atteso` nuovo
 coincide con il vecchio campo per campo: 12 cambiati, 0 differenze non testuali.
 
+DODICESIMA modifica autorizzata (2026-10-22, ondata 3; rigenerazione AUTORIZZATA dal
+committente; cambiano anche le tappe), in `lucca_itinerari.json` E in `lucca_punteggi.json`.
+Motivo: (1) il codice dell'ondata 3 cambia gli itinerari: 8198fdb (compito 1, taglio per
+stanchezza al prefisso piu' vicino ai 2/3), afdc223 (compito 4, trasferimento reale tra tappe
+dai punti di arrivo: gli arrivi non sono piu' a passo fisso), 7b5cf5f (compito 8, 3 luoghi e 3
+esperienze nuovi: finestra Bernardini, parco giochi di San Donato, solchi di San Pietro
+Somaldi; 24 luoghi e 35 esperienze in tutto) e 8aa734b (6 archi VICINO per quei luoghi);
+0f310ef, 02e4e96, 5b3641d, 9c20380, 4382cbb, 21c7263 non cambiano nessun caso (campi non
+confrontati dal golden: `punto_arrivo`, `fonte`, `fonte_orari`, ecc.; verificato, 0 differenze).
+(2) i 10 casi `demo|...` hanno PROFILI NUOVI: costruiti passando a
+`rag.onboarding.profile_from_answers` le risposte ESATTE dell'app (`kOnboardingQuestions`,
+`firenze` nascosta e non inviata), mai valori scritti a mano. Tempo "Mezza giornata, circa tre
+ore" (180 min) per tutti tranne poco-tempo ("Circa un'ora, poco tempo", 60 min: la risposta
+che definisce il profilo). Risposte (perdersi / silenzio_musica / bellezza_storie / bambini /
+accessibilita), tutte con il testo esatto dell'app:
+  curioso       "Sì, mi piace perdermi..." / Un mix / Un po' di bellezza e... / No / No
+  contemplativo "Un po', ma con qualche punto fermo" / Silenzio / Un po' di bellezza e... / No / No
+  ama-arte      "Un po', ma..." / Un mix / "La bellezza silenziosa dei luoghi" / No / No
+  con-bambini   "Un po', ma..." / Un mix / Un po' di bellezza e... / "Sì, sono con bambini" / No
+  accessibile   "Un po', ma..." / Un mix / Un po' di bellezza e... / No / "Sì, mi serve..."
+  onnivoro      "Sì, mi piace perdermi..." / Silenzio / La bellezza / "Sì, sono con bambini" / No
+  poco-tempo    "Un po', ma..." / Un mix / Un po' di bellezza e... / No / No (tempo 1 ora)
+Le richieste degli 81 casi non `demo|` sono IDENTICHE; i 10 `demo|` sono rigenerati nella
+richiesta (profilo completo come i `adapt-profilo|`; stessa forma di prima: compose sabato
+12/12/2026 ore 10:00 sereno; `pioggia-15` = itinerario composto via `POST /itinerary` alle
+15:00 con meteo sereno, poi adattato alle 15:00 con pioggia, profilo nell'AdaptRequest).
+Cambia l'`atteso` di 91 casi su 91 (81 non `demo|` + 10 `demo|`).
+  ATTRIBUZIONE, verificata da script e non dedotta. Metodo: le stesse richieste rigiocate sul
+BFF isolato con il codice di OGNI commit (f90b146 e i 10 commit dell'ondata, worktree
+temporanei poi rimossi). Controllo: a f90b146 i 91 `atteso` precedenti sono riprodotti
+ESATTAMENTE (0 differenze). Cause = commit in cui l'esito del caso cambia (incrementale).
+  Casi non `demo|` (81, richieste invariate; 409 tappe cambiate in tutto, contando le
+posizioni con id/arrivo/durata/esito diversi e la differenza di lunghezza): causa UNICA
+c4 46 casi (28 solo orari di arrivo, 18 anche tappe diverse), c8 5, c1 2; cause COMBINATE
+c4+c8 22, c4+c8+VICINO 3, c1+c4 2, c4+VICINO 1. In tutto: c1 4 casi, c4 74, c8 30, VICINO 4.
+Zero casi senza causa. I 4 casi VICINO sono tutti `compose|{ama-arte,curioso,onnivoro,poco-
+tempo}|visti` (gli archi VICINO contano solo con `luoghi_gia_visti` non vuoto: con la lista
+vuota non cambiano punteggi ne' casi `demo|`; riverificato: 0 casi `demo|` cambiati allo
+stadio 8aa734b e punteggi uguali tra 7b5cf5f e 8aa734b).
+  Casi `demo|` (10): la causa e' sempre i PROFILI NUOVI (la richiesta cambia, 10 su 10).
+Effetto del solo codice sulle richieste nuove (stessa richiesta rigiocata allo stadio
+precedente e dopo): c4 (trasferimento reale) in tutti e 10; c8 (esperienze nuove) in 6
+(ama-arte, con-bambini x2, curioso x2, onnivoro); c1 e VICINO in nessuno (nessuna stanchezza,
+nessun luogo gia' visto). Zero non attribuiti.
+  PUNTEGGI. Chiavi: 1120 -> 1225 per ciascuna delle 3 funzioni. Chiavi NUOVE: 105 per funzione
+= le 3 esperienze nuove x 7 profili x 5 segnali; nessuna tolta. Chiavi CAMBIATE nelle 32
+esperienze preesistenti: `calcola_score` e `score_fn_fredda` 0; `score_fn_calda` 595 = 17
+esperienze x 35 (max |diff| 0.0076). Causa: le 3 candidate nuove nell'insieme dei candidati
+(N luoghi 21 -> 24: cambia il gating di esposizione della Cand. 1, `ranking.py`); verificato:
+con i dati attuali ma l'insieme dei candidati SENZA le 3 nuove restano 0 chiavi cambiate.
+  CRITERI sui testi (asseriti da `test_golden_testi.py`, verificati su TUTTI i casi `demo|`):
+nessun "affollat", "e' legato a", "Evoca il tema", "gratuit", "exp-" in `reason`/`titolo`.
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte
@@ -382,7 +435,7 @@ FILE_PUNTEGGI = GOLDEN_DIR / "lucca_punteggi.json"
 
 ADESSO_FISSO = datetime(2026, 6, 15, 10, 0, 0, tzinfo=UTC)
 TOLLERANZA_ASSOLUTA = 1e-9
-ESPERIENZE_LUCCA = 32
+ESPERIENZE_LUCCA = 35
 
 
 # ---------------------------------------------------------------------------
@@ -396,7 +449,7 @@ def _h_fonte_candidati() -> Any:
 
 
 def _h_candidati_lucca() -> list[Any]:
-    """I 32 candidati di Lucca, con un contesto neutro (nessun luogo visto)."""
+    """I 35 candidati di Lucca, con un contesto neutro (nessun luogo visto)."""
     ctx = contracts.VisitorContext(
         person_id="golden-candidati",
         profile=contracts.EmotionalProfile(
