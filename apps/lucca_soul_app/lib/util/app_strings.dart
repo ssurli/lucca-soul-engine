@@ -41,6 +41,13 @@ class AppStrings {
   String get legendLabel => _isEn ? 'Legend' : 'Leggenda';
   String get curiosityLabel => _isEn ? 'Did you know' : 'Curiosità';
   String sourceLabel(String fonte) => _isEn ? 'Source: $fonte' : 'Fonte: $fonte';
+  String get keptNoAlternative =>
+      _isEn ? 'Stays in plan: no suitable alternative' : 'Resta in programma: nessuna alternativa adatta';
+  String get undoAction => _isEn ? 'Undo' : 'Annulla';
+  String get resetAction => _isEn ? 'Back to the original plan' : 'Torna al percorso iniziale';
+  String get noEffectNote => _isEn
+      ? 'This change does not affect your plan for today.'
+      : 'Questo cambiamento non tocca il tuo percorso di oggi.';
   String get changedStop => _isEn ? 'Changed by the signal' : 'Cambiata dal segnale';
 
   // --- Urban Memory (Wave 2): conferimento contestuale --------------------

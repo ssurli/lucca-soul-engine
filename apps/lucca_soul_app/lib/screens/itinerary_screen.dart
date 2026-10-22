@@ -37,7 +37,11 @@ class ItineraryScreen extends StatefulWidget {
 
 class _ItineraryScreenState extends State<ItineraryScreen> {
   late AppStrings _strings;
-  Signal _segnale = baselineSignal();
+  final Signal _segnale = baselineSignal();
+  /// L'itinerario di `POST /itinerary`, conservato per ogni adattamento.
+  Itinerary? _originale;
+
+  /// Quello mostrato: l'originale o l'ultimo adattamento.
   Itinerary? _itinerario;
   Set<int> _tappeEvidenziate = const {};
   bool _caricando = true;
@@ -64,6 +68,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
       );
       final itinerario = await widget.bffClient.itinerary(contesto);
       setState(() {
+        _originale = itinerario;
         _itinerario = itinerario;
         _tappeEvidenziate = const {};
       });
@@ -74,14 +79,10 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     }
   }
 
-  void _onAdattato(Itinerary nuovoItinerario, Signal nuovoSegnale) {
-    final precedente = _itinerario?.stops ?? const <ItineraryStop>[];
-    setState(() {
-      _tappeEvidenziate = tappeCambiate(prima: precedente, dopo: nuovoItinerario.stops);
-      _itinerario = nuovoItinerario;
-      _segnale = nuovoSegnale;
-    });
-  }
+  void _onMostrato(Itinerary mostrato) => setState(() {
+        _tappeEvidenziate = tappeCambiate(prima: _originale?.stops ?? const [], dopo: mostrato.stops);
+        _itinerario = mostrato;
+      });
 
   /// Apre il conferimento a Urban Memory, contestuale alla tappa appena
   /// vissuta: `esperienza_id` e i luoghi che "riguarda" sono passati dal
@@ -154,12 +155,12 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
         padding: const EdgeInsets.only(bottom: 24),
         children: [
           AdaptiveCard(
+            key: ObjectKey(_originale),
             bffClient: widget.bffClient,
-            itinerary: itinerario,
-            signal: _segnale,
+            original: _originale!,
             profile: widget.profile,
             strings: _strings,
-            onAdapted: _onAdattato,
+            onShown: _onMostrato,
           ),
           if (itinerario.adattatoDaSegnale) _AdattatoBadge(strings: _strings),
           for (var i = 0; i < itinerario.stops.length; i++)
@@ -255,6 +256,9 @@ class CuriosityTile extends StatelessWidget {
 class StopCard extends StatelessWidget {
   final ItineraryStop stop;
   final bool evidenziata;
+
+  /// La tappa resta in programma perché il motore non ha trovato alternative.
+  final bool mantenutaSenzaAlternativa;
   final AppStrings strings;
   final VoidCallback onLasciaRicordo;
 
@@ -262,6 +266,7 @@ class StopCard extends StatelessWidget {
     super.key,
     required this.stop,
     required this.evidenziata,
+    this.mantenutaSenzaAlternativa = false,
     required this.strings,
     required this.onLasciaRicordo,
   });
@@ -301,6 +306,11 @@ class StopCard extends StatelessWidget {
                   ),
               ],
             ),
+            if (mantenutaSenzaAlternativa)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(strings.keptNoAlternative, style: Theme.of(context).textTheme.labelMedium),
+              ),
             const SizedBox(height: 4),
             Text(
               titoloTappa(stop.titolo, strings),

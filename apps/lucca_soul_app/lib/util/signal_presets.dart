@@ -4,8 +4,8 @@ import '../models/signal.dart';
 /// Segnale di partenza per la generazione dell'itinerario: giornata serena,
 /// nessun affollamento noto, stanchezza minima. È il punto zero da cui la
 /// card adattiva della Wave 1 si scosta quando l'utente simula un evento.
-Signal baselineSignal() {
-  final t = Signal.orologio(); // una sola lettura: ora e data coerenti
+Signal baselineSignal([DateTime? now]) {
+  final t = Signal.orologio(now); // una sola lettura: ora e data coerenti
   return Signal(
     meteo: Meteo.sereno,
     affollamento: const {},
@@ -40,9 +40,9 @@ extension SimulatedSignalKindLabel on SimulatedSignalKind {
 const List<String> _luoghiTipicamenteAffollati = ['mura-urbane', 'piazza-anfiteatro'];
 
 /// Costruisce il nuovo `Signal` a partire da quello corrente, alterando
-/// solo la dimensione simulata dal bottone premuto.
-Signal buildSimulatedSignal(SimulatedSignalKind kind, Signal current) {
-  final t = Signal.orologio(); // una sola lettura per ora e data
+/// solo la dimensione simulata dal bottone premuto. `now` solo nei test.
+Signal buildSimulatedSignal(SimulatedSignalKind kind, Signal current, [DateTime? now]) {
+  final t = Signal.orologio(now); // una sola lettura per ora e data
   switch (kind) {
     case SimulatedSignalKind.pioggia:
       return current.copyWith(meteo: Meteo.pioggia, ora: t.ora, data: t.data, istante: t.istante);
@@ -54,4 +54,16 @@ Signal buildSimulatedSignal(SimulatedSignalKind kind, Signal current) {
     case SimulatedSignalKind.stanchezza:
       return current.copyWith(stanchezza: 0.85, ora: t.ora, data: t.data, istante: t.istante);
   }
+}
+
+/// Segnale COMBINATO di tutti gli interruttori accesi, sempre a partire da
+/// [baselineSignal]: ogni interruttore acceso applica la propria dimensione.
+/// Ora, data e istante vengono da UNA sola lettura dell'orologio.
+Signal segnaleCombinato(Set<SimulatedSignalKind> accesi, [DateTime? now]) {
+  final t = Signal.orologio(now);
+  var segnale = baselineSignal(t.istante);
+  for (final kind in SimulatedSignalKind.values) {
+    if (accesi.contains(kind)) segnale = buildSimulatedSignal(kind, segnale, t.istante);
+  }
+  return segnale;
 }

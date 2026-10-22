@@ -2,39 +2,39 @@ import 'package:flutter/material.dart';
 
 import '../api/bff_client.dart';
 import '../api/bff_exception.dart';
-import '../models/adapt_request.dart';
 import '../models/emotional_profile.dart';
 import '../models/itinerary.dart';
-import '../models/signal.dart';
 import '../util/app_strings.dart';
 import '../util/signal_presets.dart';
+import '../util/signal_toggles.dart';
 
-/// Card adattiva: tre bottoni di simulazione segnale (Wave 1) che chiamano
-/// `POST /itinerary/adapt` e restituiscono al chiamante il nuovo
-/// itinerario, già riscritto ("Piove → laboratorio al chiuso"; "Mura
-/// affollate → Villa Bottini").
+/// Card adattiva: tre interruttori di simulazione segnale (pioggia,
+/// affollamento, stanchezza). A ogni cambio parte dall'itinerario ORIGINALE
+/// e manda UNA sola richiesta `POST /itinerary/adapt` con il segnale
+/// combinato di tutti gli interruttori accesi. Se arrivano risposte fuori
+/// ordine conta solo quella dell'ultimo stato richiesto.
 ///
 /// Non decide nulla: mostra il risultato di ciò che l'Experience Engine ha
 /// deciso lato BFF, con il suo `reason` aggiornato.
 class AdaptiveCard extends StatefulWidget {
   final BffClient bffClient;
-  final Itinerary itinerary;
-  final Signal signal;
+
+  /// Itinerario di `POST /itinerary`, mai modificato: base di ogni adattamento.
+  final Itinerary original;
   final EmotionalProfile profile;
   final AppStrings strings;
 
-  /// Chiamato con il nuovo itinerario e il nuovo segnale dopo un adattamento
-  /// riuscito, così lo schermo genitore può evidenziare le tappe cambiate.
-  final void Function(Itinerary nuovoItinerario, Signal nuovoSegnale) onAdapted;
+  /// Chiamato con l'itinerario da mostrare (l'originale o l'ultimo
+  /// adattamento valido).
+  final void Function(Itinerary mostrato) onShown;
 
   const AdaptiveCard({
     super.key,
     required this.bffClient,
-    required this.itinerary,
-    required this.signal,
+    required this.original,
     required this.profile,
     required this.strings,
-    required this.onAdapted,
+    required this.onShown,
   });
 
   @override
@@ -42,23 +42,57 @@ class AdaptiveCard extends StatefulWidget {
 }
 
 class _AdaptiveCardState extends State<AdaptiveCard> {
-  SimulatedSignalKind? _inCorso;
+  SignalToggleState _stato = const SignalToggleState();
+
+  /// Stato di cui l'itinerario mostrato e' il risultato (per il ripristino
+  /// se l'ultima richiesta fallisce).
+  SignalToggleState _statoMostrato = const SignalToggleState();
+  int _sequenza = 0;
+  bool _inCorso = false;
+  bool _senzaEffetto = false;
   String? _errore;
 
-  Future<void> _simula(SimulatedSignalKind kind) async {
+  void _applica(SignalToggleState nuovo) {
     setState(() {
-      _inCorso = kind;
+      _stato = nuovo;
       _errore = null;
     });
+    _richiedi(nuovo);
+  }
+
+  Future<void> _richiedi(SignalToggleState stato) async {
+    final mia = ++_sequenza;
+    final richiesta = richiestaDiAdattamento(
+      accesi: stato.accesi,
+      originale: widget.original,
+      profilo: widget.profile,
+    );
+    if (richiesta == null) {
+      setState(() {
+        _inCorso = false;
+        _senzaEffetto = false;
+        _statoMostrato = stato;
+      });
+      widget.onShown(widget.original);
+      return;
+    }
+    setState(() => _inCorso = true);
     try {
-      final nuovoSegnale = buildSimulatedSignal(kind, widget.signal);
-      final richiesta = AdaptRequest(itinerary: widget.itinerary, signal: nuovoSegnale, profile: widget.profile);
-      final nuovoItinerario = await widget.bffClient.adaptItinerary(richiesta);
-      widget.onAdapted(nuovoItinerario, nuovoSegnale);
+      final adattato = await widget.bffClient.adaptItinerary(richiesta);
+      if (!mounted || mia != _sequenza) return; // risposta superata
+      setState(() {
+        _inCorso = false;
+        _statoMostrato = stato;
+        _senzaEffetto = adattamentoSenzaEffetto(originale: widget.original, adattato: adattato);
+      });
+      widget.onShown(adattato);
     } on BffException catch (error) {
-      setState(() => _errore = error.message);
-    } finally {
-      if (mounted) setState(() => _inCorso = null);
+      if (!mounted || mia != _sequenza) return;
+      setState(() {
+        _inCorso = false;
+        _errore = error.message;
+        _stato = _statoMostrato; // l'interruttore torna a rispecchiare ciò che si vede
+      });
     }
   }
 
@@ -99,20 +133,35 @@ class _AdaptiveCardState extends State<AdaptiveCard> {
               spacing: 8,
               runSpacing: 8,
               children: SimulatedSignalKind.values.map((kind) {
-                final inCorso = _inCorso == kind;
-                return OutlinedButton.icon(
-                  onPressed: _inCorso == null ? () => _simula(kind) : null,
-                  icon: inCorso
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(_iconaPer(kind)),
+                return FilterChip(
+                  selected: _stato.accesi.contains(kind),
+                  avatar: Icon(_iconaPer(kind)),
                   label: Text(_etichettaPer(kind)),
+                  onSelected: (_) => _applica(_stato.premi(kind)),
                 );
               }).toList(),
             ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                TextButton(
+                  onPressed: _stato.puoAnnullare ? () => _applica(_stato.annulla()) : null,
+                  child: Text(widget.strings.undoAction),
+                ),
+                TextButton(
+                  onPressed: _stato.nessunoAcceso ? null : () => _applica(_stato.tornaAlPercorsoIniziale()),
+                  child: Text(widget.strings.resetAction),
+                ),
+                if (_inCorso) const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+              ],
+            ),
+            if (_senzaEffetto && !_inCorso)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(widget.strings.noEffectNote),
+              ),
             if (_errore != null)
               Padding(
                 padding: const EdgeInsets.only(top: 8),
