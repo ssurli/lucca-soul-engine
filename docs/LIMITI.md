@@ -2843,3 +2843,15 @@ del branch dell'ondata 2a su Aura (operazione idempotente, nessuna cancellazione
 loader deve avere una prova a secco di default (cosa verrebbe eseguito, senza connettersi in
 scrittura) e scrivere solo con `--esegui`, come `scripts/scarta_contributo.py` e
 `scripts/carica_ricordi_demo.py`.
+
+## Frase del profilo assente se la prima tappa originale viene tagliata (ondata 2b)
+
+**Deciso:** 2026-10-22 (ondata 2b, compito 4).
+
+La frase del profilo compare solo per i tratti netti (>= 0,7 o <= 0,2), al massimo una volta per
+itinerario, sulla prima tappa; in adattamento solo se la prima tappa è sostituita (dopo
+«Sostituita per …»). Se la prima tappa originale viene tagliata, la nuova prima tappa
+(`non_toccata`) non porta la frase del profilo: una tappa non toccata conserva il suo `reason`
+(invariante del contratto). Per lo stesso invariante, nelle richieste vecchie del golden
+(`adapt|`, `adapt-budget|`) le tappe non toccate possono portare più di una frase del profilo:
+il controllo «al massimo una volta» vale sulle risposte a itinerari composti dal codice attuale.

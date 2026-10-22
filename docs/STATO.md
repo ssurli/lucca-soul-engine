@@ -1,7 +1,8 @@
-# Stato del progetto — 2026-10-21
+# Stato del progetto — 2026-10-22
 
 `main`: ondata 1c inclusa (merge fast-forward di `feat/ondata1c-contenuti`, correzione `e36dfec`; CI verde).
 Ondata 2a inclusa (merge fast-forward di `feat/ondata2a-testi`, `d9f6664`; CI verde).
+Ondata 2b chiusa su `feat/ondata2b-app`, in attesa del "merge" del committente.
 I dettagli sono in `docs/LIMITI.md` e `docs/BUILD_PLAN.md`; questo file è solo il punto della
 situazione.
 
@@ -24,21 +25,28 @@ situazione.
   separati dalle connessioni (racconti con fonte, temi come etichette, articoli dei luoghi, profilo
   solo sulla prima tappa), curiosità dei luoghi (mai nel punteggio), golden alla DECIMA modifica.
 
-## Da fare (committente), dopo il merge della 2a
+- **22/10, committente**: passi della 2a eseguiti: migrazione Neon, scarto del contributo di
+  prova, ricarica del seed su Aura, prova manuale dell'app.
+- **2b** (22/10, app): interruttori dei segnali (segnale combinato dall'itinerario originale,
+  "Annulla", "Torna al percorso iniziale"), badge "Cambiata" solo sulle tappe sostituite,
+  domanda su Firenze nascosta, frase del profilo solo per tratti netti (>= 0,7 o <= 0,2) e sulla
+  prima tappa sostituita, golden alla UNDICESIMA modifica (solo testi, tappe invariate).
+  Non fatti in 2b: fonte delle curiosità solo se pubblica (rimandata all'ondata dati, cambia il
+  contratto) e badge "dimostrativo" per ricordi e botteghe fittizie (da ripianificare).
 
-Comandi PowerShell completi nel report della 2a; tutti dalla radice del repo, su `main`.
+## Prossima ondata: dati (coordinate)
 
-1. Migrazione Neon (due colonne nuove, nessuna cancellazione): `.venv\Scripts\python.exe -m urban_memory.migrate`.
-2. Scarto del contributo di prova "demo inserimento" con `scripts\scarta_contributo.py` (elenco,
-   prova a secco, poi `--esegui`).
-3. Ricarica del seed su Aura (curiosità, racconti, articoli): `.venv\Scripts\python.exe -m graph.loader`.
-4. Riavvio del BFF (i `.cypher` sono letti una volta).
-
-## Prossima ondata: 2b (app)
-
-- Interruttori dei segnali nell'app (oggi i segnali si sommano).
-- Badge (tra cui "dimostrativo" per ricordi e botteghe fittizie).
-- Domanda su Firenze.
+1. **Golden, casi `demo|` a 180 minuti** (primo compito). Oggi sono a 240, ma "Mezza giornata,
+   circa tre ore" è ciò che l'app manda e il parser traduce in 180: con 240 il golden non è
+   ottenibile dall'app. Si fa insieme alle distanze reali, perché tutte e due le modifiche
+   cambiano le tappe e così i casi demo si rileggono una volta sola. Nella stessa rilettura i
+   profili dei casi `demo|` vanno costruiti dalle risposte reali dell'onboarding passate per il
+   parser, non da valori scritti a mano (oggi 0,3 e 0,4 non sono ottenibili dall'app).
+2. **Fonte delle curiosità visibile solo se pubblica** (compito 5 della 2b, rimandato): campo
+   `fonte_pubblica: bool` nella curiosità, dato del seed e non stringa cercata nel codice, fuori
+   dal punteggio (guardia AST estesa); in app la riga «Fonte: …» solo per le fonti pubbliche.
+   Cambia il contratto e richiede la ricarica di Aura: si fa insieme alle coordinate.
+3. Coordinate e mappa (punto 1 della sezione seguente).
 
 ## Dopo l'ondata 2, verso la demo del 12/12/2026
 
