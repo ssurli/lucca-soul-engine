@@ -183,6 +183,12 @@ class FasciaApertura(BaseModel):
     apertura: time
     chiusura: time                     # deve essere > apertura: niente turni a cavallo di mezzanotte
 
+class Punto(BaseModel):
+    """Punto sulla mappa (WGS84, gradi decimali). DATO DI POSIZIONE: non entra MAI nel
+    punteggio; serve solo al tempo di trasferimento e al link "Come arrivo qui". Nessuna PII."""
+    lat: float                         # -90..90 (validato)
+    lon: float                         # -180..180 (validato)
+
 class ExperienceNode(BaseModel):
     id: str
     titolo: str
@@ -229,6 +235,12 @@ class ExperienceNode(BaseModel):
     # `experience_engine.rules.passa_filtri_statici`), mai un input dello
     # scoring: `calcola_score` non lo legge.
     sospesa: bool = False
+    # Ondata 3. Punti di ARRIVO dell'esperienza: se presenti prevalgono sul punto del
+    # luogo. Default vuoto (retrocompatibile). Dato di posizione: mai nel punteggio.
+    punti_arrivo: list[Punto] = []
+    # Nome della fonte degli orari ("sito del Comune di Lucca", "dato del committente").
+    # Solo testo, mai nel punteggio. Il seed lo valorizza sempre; None = retrocompatibilità.
+    fonte_orari: str | None = None
 
 def rientra_in_orario(orari_apertura: list[FasciaApertura], giorno_settimana: int | None,
                       ora: time, *, durata_min: int = 0) -> bool: ...
@@ -295,6 +307,13 @@ class GraphCandidate(BaseModel):
     curiosita: list[Curiosita] = []    # curiosità del luogo, dal seed (ondata 2a, compito 5).
                                         # SOLO narrazione, MAI input di scoring (come `attribuzione`):
                                         # `calcola_score` non la legge; guardia AST in experience-engine
+    punti_arrivo: list[Punto] = []     # ondata 3. Punti di arrivo EFFETTIVI, già risolti dalla fonte:
+                                        # `experience.punti_arrivo` se presenti, altrimenti il punto del
+                                        # luogo, altrimenti vuoto; vuoto per partner fittizio (bottega
+                                        # dimostrativa: un indirizzo inventato porterebbe in un negozio
+                                        # reale). Il motore li usa per la distanza tra tappe consecutive
+                                        # (linea d'aria x 1,3, arrotondata ai 10 m) e il trasferimento;
+                                        # vuoto -> TEMPO_TRASFERIMENTO_DEFAULT_MIN. Mai nel punteggio
 
 class TipoCuriosita(str, Enum):
     LEGGENDA = "leggenda"
@@ -304,6 +323,11 @@ class Curiosita(BaseModel):
     testo: str                         # min 1 carattere
     tipo: TipoCuriosita
     fonte: str                         # min 1 carattere, OBBLIGATORIA
+    fonte_pubblica: bool = False       # ondata 3. True solo per fonti pubbliche (es. "Comune di Lucca, ...",
+                                       # italia.it); False per "dato del committente" -> l'app NON mostra la
+                                       # riga della fonte. Dato del seed, mai una stringa cercata nel codice;
+                                       # mai nel punteggio. Default False: il default NASCONDE la fonte
+                                       # (scelta prudente, retrocompatibile con richieste vecchie)
     # Validatore: tipo == LEGGENDA => testo inizia con "Si racconta" (altrimenti ValueError):
     # la leggenda si presenta sempre come tale.
 
@@ -456,6 +480,10 @@ class ItineraryStop(BaseModel):
     curiosita: list[Curiosita] = []   # copiate dal candidato dall'Experience Engine (§2). L'app le
                                       # mostra sotto il motivo; una leggenda con l'etichetta
                                       # "Leggenda". Mai input di scoring
+    punto_arrivo: Punto | None = None # ondata 3. Scelto dall'Experience Engine per "Come arrivo qui":
+                                      # il più vicino alla tappa precedente (prima tappa: il primo di
+                                      # `GraphCandidate.punti_arrivo`). None = nessun link (es. bottega).
+                                      # Il motore decide, l'app costruisce solo il link. Mai nel punteggio
 
 class TappaEsclusa(BaseModel):        # tappa tolta da un adattamento
     experience_id: str
@@ -825,6 +853,21 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   UNICO punto a partire dall'esito, così campo e testo non possono divergere.
 
 ## Changelog
+
+- **2026-10-22 — ondata 3, dati di posizione e fonti.** Aggiunti, tutti con default
+  (retrocompatibili) e MAI input di scoring: `Punto(lat, lon)` (lat -90..90, lon -180..180;
+  esportato da `contracts`), `ExperienceNode.punti_arrivo: list[Punto] = []`,
+  `ExperienceNode.fonte_orari: str | None = None`, `GraphCandidate.punti_arrivo: list[Punto] = []`
+  (effettivi, già risolti: esperienza > luogo > vuoto; vuoto per partner fittizio),
+  `ItineraryStop.punto_arrivo: Punto | None = None` (scelto dal motore),
+  `Curiosita.fonte_pubblica: bool = False` (il default nasconde la fonte). Nessun campo
+  rinominato o rimosso. Consumatori: `services/graph` (seed: punti, `fonte_orari`,
+  `fonte_pubblica`; Cypher; `Neo4jCandidateSource` risolve `punti_arrivo`),
+  `services/experience-engine` (distanza linea d'aria x 1,3 ai 10 m, trasferimento, scelta di
+  `punto_arrivo`; guardia: nessuno dei nuovi campi in `calcola_score`), `services/api`
+  (passaggio), `apps/lucca_soul_app` (specchio Dart; link "Come arrivo qui"; riga fonte solo
+  se `fonte_pubblica`). Nota: `I_LIMITI_DEL_MOTORE.md` afferma "nessuna coordinata assoluta":
+  da aggiornare.
 
 - **2026-10-21 — ondata 2a, curiosità (compito 5).** Aggiunti: `TipoCuriosita` (enum:
   `leggenda`, `fatto`), `Curiosita(testo, tipo, fonte)` (`testo` e `fonte` min 1; una

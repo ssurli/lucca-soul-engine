@@ -8,6 +8,11 @@
 //   (:Artista)-[:LEGATO_A {racconto, fonte}]->(:Luogo)  -- racconto solo con fonte
 //   (:Luogo {curiosita_testi, curiosita_tipi, curiosita_fonti})  -- liste parallele,
 //     stesso indice = stessa curiosità; tipo 'leggenda' | 'fatto'; ogni testo ha la fonte
+//   (:Luogo {lat, lon})  -- punto del luogo (WGS84, float a precisione piena), assenti
+//     se il luogo non ha un punto; (:Esperienza {punti_arrivo_lat, punti_arrivo_lon})
+//     -- liste parallele di float, stesso indice = stesso punto, ordine del seed (il
+//     primo e' quello della prima tappa), scritte SEMPRE anche vuote. Codifica e regola
+//     di risoluzione in graph/punti.py. DATO DI POSIZIONE: mai nel punteggio.
 //   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;
 //     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale
 //     ('sempre esistiti', non una data vera — vedi il modulo dataset), un vero

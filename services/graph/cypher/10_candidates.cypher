@@ -59,6 +59,13 @@
 // narrazione, mai input di scoring. Su un grafo caricato prima del campo mancano:
 // `coalesce` dà liste vuote (nessuna curiosità), mai un errore.
 //
+// `luogo_lat/luogo_lon` (punto del luogo) e `punti_arrivo_lat/lon` (liste parallele di
+// float dell'esperienza, ordine del seed) (ondata 3, compito 3): DATO DI POSIZIONE,
+// mai input di scoring. Codifica e regola di risoluzione (esperienza > luogo > vuoto;
+// vuoto con bottega fittizia) in `graph/punti.py`, applicata dal consumer Python.
+// Su un grafo caricato prima dei campi mancano: `coalesce` dà liste vuote, il luogo
+// resta senza punto.
+//
 // Parametri (tutti opzionali: `null` o lista vuota = nessun filtro):
 //   $temi         list[string]   id di Tema da cercare tra quelli evocati
 //   $al_chiuso    bool | null    filtro esatto su Esperienza.al_chiuso
@@ -142,6 +149,10 @@ RETURN
   coalesce(l.curiosita_testi, []) AS curiosita_testi,
   coalesce(l.curiosita_tipi, []) AS curiosita_tipi,
   coalesce(l.curiosita_fonti, []) AS curiosita_fonti,
+  l.lat AS luogo_lat,
+  l.lon AS luogo_lon,
+  coalesce(e.punti_arrivo_lat, []) AS punti_arrivo_lat,
+  coalesce(e.punti_arrivo_lon, []) AS punti_arrivo_lon,
   artisti_nomi,
   legati_racconti,
   botteghe,

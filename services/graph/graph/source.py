@@ -61,6 +61,7 @@ from graph.attribuzione import testo_attribuzione
 from graph.connessioni import etichette_temi, frasi_connessioni, racconti_con_fonte
 from graph.dataset import Artista, Bottega, DatasetCitta, Luogo, Tema
 from graph.errors import translate_driver_errors
+from graph.punti import decodifica_punti, punto_da_coordinate, risolvi_punti_arrivo
 from graph.registro import dataset_attivo
 
 _CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
@@ -171,6 +172,11 @@ class SeedCandidateSource:
                     vicinanza_nome=vicinanza[1].nome if vicinanza else None,
                     vicinanza_articolo=vicinanza[1].articolo if vicinanza else None,
                     curiosita=list(luogo.curiosita),
+                    punti_arrivo=risolvi_punti_arrivo(
+                        esperienza.punti_arrivo,
+                        luogo.punto,
+                        self._bottega_fittizia(esperienza.partner_id),
+                    ),
                 )
             )
         return risultato
@@ -190,6 +196,10 @@ class SeedCandidateSource:
         if partner is None:
             return True
         return partner.abbonamento_attivo
+
+    def _bottega_fittizia(self, bottega_id: str | None) -> bool:
+        bottega = self._botteghe.get(bottega_id) if bottega_id is not None else None
+        return bottega.fittizio if bottega is not None else False
 
     def _connessioni(
         self, esperienza: ExperienceNode, luogo: Luogo, riferimento: str | None
@@ -379,6 +389,11 @@ class Neo4jCandidateSource:
             # aperto"). Solo `None` (proprietà assente) è `[]`.
             orari_apertura=_fasce_da_record(record),
             sospesa=_sospesa_da_record(record),
+            punti_arrivo=decodifica_punti(
+                record["punti_arrivo_lat"],
+                record["punti_arrivo_lon"],
+                f"esperienza {record['id']!r}",
+            ),
         )
         # Fatti SEMANTICI (artisti, temi, `ISPIRATA_DA`, `EVOCA` della bottega) e
         # prossimità al luogo già visitato: testo e ORDINE sono imposti da
@@ -468,4 +483,14 @@ class Neo4jCandidateSource:
             vicinanza_nome=nome_riferimento if con_vicinanza else None,
             vicinanza_articolo=record["riferimento_articolo"] if con_vicinanza else None,
             curiosita=_curiosita_da_record(record),
+            punti_arrivo=risolvi_punti_arrivo(
+                esperienza.punti_arrivo,
+                punto_da_coordinate(
+                    record["luogo_lat"], record["luogo_lon"], f"luogo {record['place_id']!r}"
+                ),
+                # Stessa regola del seed: una bottega dimostrativa che offre
+                # l'esperienza azzera i punti (la query porta `fittizio` con
+                # default true; le entry senza nome sono gia' scartate).
+                any(bool(b.get("fittizio", True)) for b in botteghe),
+            ),
         )

@@ -27,6 +27,7 @@ from datetime import datetime
 from contracts import ExperienceNode, Partner, codifica_fasce
 
 from graph.dataset import DatasetCitta
+from graph.punti import codifica_punti
 from graph.registro import CYPHER_DIR, carica_dataset, dataset_attivo, file_seed_cypher
 
 SCHEMA_FILE = CYPHER_DIR / "00_schema.cypher"
@@ -86,12 +87,21 @@ def _cypher_str_list(values: list[str]) -> str:
     return "[" + ", ".join(_cypher_str(v) for v in values) + "]"
 
 
+def _cypher_float_list(values: list[float]) -> str:
+    return "[" + ", ".join(repr(v) for v in values) + "]"
+
+
 _RELATION_TYPES_COMMENT = (
     "// Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li\n"
     "// richiede esplicitamente):\n"
     "//   (:Artista)-[:LEGATO_A {racconto, fonte}]->(:Luogo)  -- racconto solo con fonte\n"
     "//   (:Luogo {curiosita_testi, curiosita_tipi, curiosita_fonti})  -- liste parallele,\n"
     "//     stesso indice = stessa curiosità; tipo 'leggenda' | 'fatto'; ogni testo ha la fonte\n"
+    "//   (:Luogo {lat, lon})  -- punto del luogo (WGS84, float a precisione piena), assenti\n"
+    "//     se il luogo non ha un punto; (:Esperienza {punti_arrivo_lat, punti_arrivo_lon})\n"
+    "//     -- liste parallele di float, stesso indice = stesso punto, ordine del seed (il\n"
+    "//     primo e' quello della prima tappa), scritte SEMPRE anche vuote. Codifica e regola\n"
+    "//     di risoluzione in graph/punti.py. DATO DI POSIZIONE: mai nel punteggio.\n"
     "//   (:Luogo)-[:VICINO {metri, creato_il}]->(:Luogo)   -- non orientata nel dominio;\n"
     "//     creato_il (Wave 4): VICINO_EPOCA per tutti gli archi del seed iniziale\n"
     "//     ('sempre esistiti', non una data vera — vedi il modulo dataset), un vero\n"
@@ -132,7 +142,11 @@ def _luogo_statement(luogo) -> str:
         # grafo già caricato (nessun nodo/arco orfano da pulire).
         f"    l.curiosita_testi = {_cypher_str_list([c.testo for c in luogo.curiosita])},\n"
         f"    l.curiosita_tipi = {_cypher_str_list([c.tipo.value for c in luogo.curiosita])},\n"
-        f"    l.curiosita_fonti = {_cypher_str_list([c.fonte for c in luogo.curiosita])};"
+        f"    l.curiosita_fonti = {_cypher_str_list([c.fonte for c in luogo.curiosita])},\n"
+        # Punto del luogo, scritto SEMPRE (NULL se assente: il `SET` a NULL
+        # rimuove la proprietà, quindi un punto tolto dal dataset sparisce).
+        f"    l.lat = {_cypher_number_or_null(luogo.punto.lat if luogo.punto else None)},\n"
+        f"    l.lon = {_cypher_number_or_null(luogo.punto.lon if luogo.punto else None)};"
     )
 
 
@@ -165,6 +179,7 @@ def _tema_statement(tema) -> str:
 
 
 def _esperienza_statement(e: ExperienceNode) -> str:
+    lat, lon = codifica_punti(e.punti_arrivo)
     return (
         f"MERGE (e:Esperienza {{id: {_cypher_str(e.id)}}})\n"
         f"SET e.titolo = {_cypher_str(e.titolo)},\n"
@@ -180,6 +195,10 @@ def _esperienza_statement(e: ExperienceNode) -> str:
         # Scritta SEMPRE (anche `false`): il `SET` sovrascrive, quindi una
         # sospensione tolta dal dataset torna `false` in un grafo già caricato.
         f"    e.sospesa = {_cypher_bool(e.sospesa)},\n"
+        # Punti di arrivo come liste parallele di float (`graph.punti`), scritte
+        # SEMPRE, anche vuote. `repr(float)` e' il round-trip esatto.
+        f"    e.punti_arrivo_lat = {_cypher_float_list(lat)},\n"
+        f"    e.punti_arrivo_lon = {_cypher_float_list(lon)},\n"
         # Scritta SEMPRE, anche vuota: il `SET` sovrascrive, quindi un orario
         # tolto dal dataset sparisce da un grafo già caricato (omettendola
         # resterebbe quello vecchio). Formato: `contracts.codifica_fasce`.
@@ -345,7 +364,7 @@ def build_seed(dataset: DatasetCitta | None = None) -> str:
         "// Artista->Luogo): lega una bottega al lavoro di un artista che ne ispira\n"
         "// il mestiere. `racconto` è la frase che rende esplicita la connessione.\n"
         "// È ciò che rende percorribile, per sole connessioni semantiche,\n"
-        "// \"Puccini -> ... -> liutaio -> violino\" (vedi graph/topology.py)."
+        '// "Puccini -> ... -> liutaio -> violino" (vedi graph/topology.py).'
     )
     for ispirata in ds.bottega_ispirata_da:
         parts.append(_ispirata_da_statement(ispirata))

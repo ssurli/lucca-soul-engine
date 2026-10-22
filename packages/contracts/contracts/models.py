@@ -30,6 +30,7 @@ __all__ = [
     "PersonKind",
     "VisitorContext",
     "FasciaApertura",
+    "Punto",
     "ExperienceNode",
     "GraphCandidate",
     "EventoPromosso",
@@ -490,6 +491,19 @@ def rientra_in_orario(
     )
 
 
+class Punto(ContractModel):
+    """Un punto sulla mappa (WGS84, gradi decimali).
+
+    DATO DI POSIZIONE: non entra MAI nel punteggio. Serve solo a due usi
+    operativi: il tempo di trasferimento tra tappe consecutive (calcolato
+    dall'Experience Engine) e il link "Come arrivo qui" dell'app. Nessuna PII:
+    è la posizione di un luogo della città, mai quella di una persona.
+    """
+
+    lat: float = Field(ge=-90, le=90)
+    lon: float = Field(ge=-180, le=180)
+
+
 class ExperienceNode(ContractModel):
     id: str
     titolo: str
@@ -533,6 +547,15 @@ class ExperienceNode(ContractModel):
     # (filtro duro in `experience_engine.rules.passa_filtri_statici`), mai
     # un input dello scoring: `calcola_score` non lo legge.
     sospesa: bool = False
+    # Uno o più punti di ARRIVO dell'esperienza (ondata 3): se presenti
+    # prevalgono sul punto del luogo. Default vuoto (retrocompatibile). DATO DI
+    # POSIZIONE: mai nel punteggio (`calcola_score` non lo legge); serve solo a
+    # trasferimento e "Come arrivo qui".
+    punti_arrivo: list[Punto] = []
+    # Nome della fonte degli orari (es. "sito del Comune", oppure
+    # "dato del committente"). Solo testo, MAI nel punteggio. Il seed lo
+    # valorizza sempre; None = retrocompatibilità (richieste/test esistenti).
+    fonte_orari: str | None = None
 
 
 class TipoCuriosita(str, Enum):
@@ -547,11 +570,19 @@ class Curiosita(ContractModel):
 
     La `fonte` è obbligatoria. Una `leggenda` si presenta sempre come tale:
     il `testo` inizia con "Si racconta".
+
+    `fonte_pubblica` (ondata 3): True solo per fonti pubbliche (es. il sito del
+    Comune, italia.it); False per "dato del committente" -> l'app non
+    mostra la riga della fonte. È un dato del seed, mai una stringa cercata nel
+    codice, e mai nel punteggio. Default False (retrocompatibilità: richieste
+    vecchie portano curiosità senza il campo; il default NASCONDE la fonte,
+    scelta prudente).
     """
 
     testo: str = Field(min_length=1)
     tipo: TipoCuriosita
     fonte: str = Field(min_length=1)
+    fonte_pubblica: bool = False
 
     @model_validator(mode="after")
     def _leggenda_si_presenta_come_tale(self) -> Curiosita:
@@ -607,6 +638,15 @@ class GraphCandidate(ContractModel):
     # di scoring (stesso principio di `attribuzione`): `calcola_score` non la
     # legge; una guardia AST in experience-engine lo verifica.
     curiosita: list[Curiosita] = []
+    # Punti di arrivo EFFETTIVI proposti dal grafo, già risolti dalla fonte: i
+    # `punti_arrivo` dell'esperienza se presenti, altrimenti il punto del luogo,
+    # altrimenti vuoto. Vuoto anche per le esperienze con partner fittizio
+    # (bottega dimostrativa: un indirizzo inventato porterebbe in un negozio
+    # reale). Il motore li usa per la distanza tra tappe consecutive (linea
+    # d'aria x 1,3, arrotondata ai 10 m) e per il trasferimento; vuoto -> stima
+    # prudente `TEMPO_TRASFERIMENTO_DEFAULT_MIN`. DATO DI POSIZIONE: mai nel
+    # punteggio.
+    punti_arrivo: list[Punto] = []
 
     @field_validator("place_articolo", "vicinanza_articolo")
     @classmethod
@@ -816,6 +856,11 @@ class ItineraryStop(ContractModel):
     # Copiate dal candidato dall'Experience Engine. L'app le mostra sotto il
     # motivo; una leggenda con l'etichetta "Leggenda". Mai input di scoring.
     curiosita: list[Curiosita] = []
+    # Punto scelto dall'Experience Engine per "Come arrivo qui": il più vicino
+    # alla tappa precedente (per la prima tappa, il primo di
+    # `GraphCandidate.punti_arrivo`). None = nessun link (es. bottega). Il
+    # motore decide, l'app costruisce solo il link. Mai nel punteggio.
+    punto_arrivo: Punto | None = None
 
     @field_validator("esito_adattamento")
     @classmethod

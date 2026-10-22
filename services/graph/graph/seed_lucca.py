@@ -67,6 +67,7 @@ from contracts import (
     ExperienceNode,
     FasciaApertura,
     Partner,
+    Punto,
     TipoCuriosita,
     VocabolarioTemi,
 )
@@ -122,6 +123,17 @@ VICINO_EPOCA = _EPOCA
 # Luoghi — 21 luoghi reali di Lucca
 # ---------------------------------------------------------------------------
 
+# Coordinate (`punto`): dato del committente, rilevato su Google Maps il 22/10/2026.
+# Il punto e' l'ingresso o il punto di sosta; note: duomo-san-martino portico;
+# san-michele-in-foro e san-frediano facciata; piazza-anfiteatro, piazza-napoleone
+# centro piazza; torre-guinigi ingresso oggi in via Guinigi 29; casa-puccini Corte San
+# Lorenzo; teatro-del-giglio piazza del Giglio; torre-delle-ore via Fillungo;
+# via-fillungo inizio, incrocio con via Santa Croce; baluardo-san-paolino ingresso della
+# sortita, via del Pallone; chiesa-san-francesco piazza San Francesco;
+# real-collegio ingresso del chiostro; via-del-fosso fontana, Madonna dello Stellario;
+# baluardo-santa-croce ingresso della mostra, da via delle Conce sotto il porticato
+# della Casermetta; gli altri ingresso. `mura-urbane` non ha un punto: valgono i
+# `punti_arrivo` delle esperienze.
 LUOGHI: list[Luogo] = [
     Luogo("mura-urbane", "Mura di Lucca", "mura", articolo="le"),
     Luogo(
@@ -139,6 +151,7 @@ LUOGHI: list[Luogo] = [
                 fonte="dato del committente",
             ),
         ),
+        punto=Punto(lat=43.8453750945062, lon=10.506130836198794),
     ),
     Luogo(
         "torre-guinigi",
@@ -155,6 +168,7 @@ LUOGHI: list[Luogo] = [
                 fonte="dato del committente",
             ),
         ),
+        punto=Punto(lat=43.84385893695291, lon=10.507472634710469),
     ),
     Luogo(
         "duomo-san-martino",
@@ -172,8 +186,15 @@ LUOGHI: list[Luogo] = [
                 fonte="dato del committente",
             ),
         ),
+        punto=Punto(lat=43.8407348442907, lon=10.50546424867784),
     ),
-    Luogo("casa-puccini", "Casa Natale di Giacomo Puccini", "museo", articolo="la"),
+    Luogo(
+        "casa-puccini",
+        "Casa Natale di Giacomo Puccini",
+        "museo",
+        articolo="la",
+        punto=Punto(lat=43.843207634585866, lon=10.501333062529884),
+    ),
     Luogo(
         "san-michele-in-foro",
         "Chiesa di San Michele in Foro",
@@ -190,6 +211,7 @@ LUOGHI: list[Luogo] = [
                 fonte="Comune di Lucca, Mappa del centro storico 2024",
             ),
         ),
+        punto=Punto(lat=43.843206920716746, lon=10.502521515682991),
     ),
     Luogo(
         "orto-botanico",
@@ -204,12 +226,25 @@ LUOGHI: list[Luogo] = [
                     "dell'Orto Botanico."
                 ),
                 tipo=TipoCuriosita.LEGGENDA,
-                fonte="Comune di Lucca, cartina \"Le Mura di Lucca\"",
+                fonte='Comune di Lucca, cartina "Le Mura di Lucca"',
             ),
         ),
+        punto=Punto(lat=43.84100710602395, lon=10.51019343794917),
     ),
-    Luogo("teatro-del-giglio", "Teatro del Giglio", "teatro", articolo="il"),
-    Luogo("palazzo-pfanner", "Palazzo Pfanner", "giardino", articolo="il"),
+    Luogo(
+        "teatro-del-giglio",
+        "Teatro del Giglio",
+        "teatro",
+        articolo="il",
+        punto=Punto(lat=43.84062952605113, lon=10.502840967928876),
+    ),
+    Luogo(
+        "palazzo-pfanner",
+        "Palazzo Pfanner",
+        "giardino",
+        articolo="il",
+        punto=Punto(lat=43.8455344278912, lon=10.503022099598914),
+    ),
     Luogo(
         "san-frediano",
         "Basilica di San Frediano",
@@ -227,10 +262,29 @@ LUOGHI: list[Luogo] = [
                 fonte="dato del committente",
             ),
         ),
+        punto=Punto(lat=43.84611439494372, lon=10.504828564629559),
     ),
-    Luogo("torre-delle-ore", "Torre delle Ore", "torre", articolo="la"),
-    Luogo("piazza-napoleone", "Piazza Napoleone", "piazza", articolo="la"),
-    Luogo("via-fillungo", "Via Fillungo", "via", articolo=None),
+    Luogo(
+        "torre-delle-ore",
+        "Torre delle Ore",
+        "torre",
+        articolo="la",
+        punto=Punto(lat=43.84341924030429, lon=10.504123087494012),
+    ),
+    Luogo(
+        "piazza-napoleone",
+        "Piazza Napoleone",
+        "piazza",
+        articolo="la",
+        punto=Punto(lat=43.841381710949506, lon=10.502460320754349),
+    ),
+    Luogo(
+        "via-fillungo",
+        "Via Fillungo",
+        "via",
+        articolo=None,
+        punto=Punto(lat=43.842686481849164, lon=10.504022332247528),
+    ),
     Luogo(
         "baluardo-san-paolino",
         "Baluardo San Paolino",
@@ -245,27 +299,65 @@ LUOGHI: list[Luogo] = [
                     "radunata sotto le Mura."
                 ),
                 tipo=TipoCuriosita.LEGGENDA,
-                fonte="Comune di Lucca, cartina \"Le Mura di Lucca\"",
+                fonte='Comune di Lucca, cartina "Le Mura di Lucca"',
             ),
         ),
+        punto=Punto(lat=43.840816169243126, lon=10.496989849819938),
     ),
-    Luogo("museo-nazionale-guinigi", "Museo Nazionale di Villa Guinigi", "museo", articolo="il"),
+    Luogo(
+        "museo-nazionale-guinigi",
+        "Museo Nazionale di Villa Guinigi",
+        "museo",
+        articolo="il",
+        punto=Punto(lat=43.84532590685096, lon=10.51227072450463),
+    ),
     # `Luogo.categoria` è una stringa libera (nessuna lista chiusa, nessuna
     # logica la legge: solo scritta sul nodo); "chiesa" e "chiostro" sono i
     # termini più fedeli al luogo.
-    Luogo("chiesa-san-francesco", "Chiesa di San Francesco", "chiesa", articolo="la"),
-    Luogo("real-collegio", "Real Collegio", "chiostro", articolo="il"),
+    Luogo(
+        "chiesa-san-francesco",
+        "Chiesa di San Francesco",
+        "chiesa",
+        articolo="la",
+        punto=Punto(lat=43.84544716682871, lon=10.510919717837515),
+    ),
+    Luogo(
+        "real-collegio",
+        "Real Collegio",
+        "chiostro",
+        articolo="il",
+        punto=Punto(lat=43.846454429687576, lon=10.503858387960499),
+    ),
     # Ondata 1c (dati del committente).
     # via Sant'Andrea 58
-    Luogo("museo-barsanti-matteucci", "Museo Barsanti e Matteucci", "museo", articolo="il"),
-    Luogo("via-del-fosso", "Via del Fosso", "via", articolo=None),
+    Luogo(
+        "museo-barsanti-matteucci",
+        "Museo Barsanti e Matteucci",
+        "museo",
+        articolo="il",
+        punto=Punto(lat=43.843638790269274, lon=10.507385090128256),
+    ),
+    Luogo(
+        "via-del-fosso",
+        "Via del Fosso",
+        "via",
+        articolo=None,
+        punto=Punto(lat=43.84529568253382, lon=10.509682371585473),
+    ),
     # Angolo nord-ovest delle Mura, tra Porta San Donato e la Piattaforma San Frediano.
-    Luogo("baluardo-santa-croce", "Baluardo Santa Croce", "mura", articolo="il"),
+    Luogo(
+        "baluardo-santa-croce",
+        "Baluardo Santa Croce",
+        "mura",
+        articolo="il",
+        punto=Punto(lat=43.84569128378519, lon=10.497872636788552),
+    ),
     Luogo(
         "santi-giovanni-reparata",
         "Chiesa dei Santi Giovanni e Reparata",
         "chiesa",
         articolo="la",
+        punto=Punto(lat=43.84119039780105, lon=10.504274232740409),
     ),
 ]
 
@@ -455,9 +547,7 @@ def _fasce(
 ) -> list[FasciaApertura]:
     """Una fascia [apertura, chiusura) per ciascun giorno (0 = lunedì)."""
     return [
-        FasciaApertura(
-            giorno_settimana=g, apertura=time(*apertura), chiusura=time(*chiusura)
-        )
+        FasciaApertura(giorno_settimana=g, apertura=time(*apertura), chiusura=time(*chiusura))
         for g in giorni
     ]
 
@@ -471,6 +561,17 @@ _ORARI_BOTTEGA_DEMO = _fasce([1, 2, 3, 4, 5], (9, 30), (12, 30)) + _fasce(
     [1, 2, 3, 4, 5], (15, 30), (19, 0)
 )
 
+# Rampe di accesso alle Mura (dato del committente, Google Maps 22/10/2026), per
+# `exp-passeggiata-mura` ed `exp-bici-mura`; il primo e' quello della prima tappa.
+_PUNTI_RAMPE_MURA: list[Punto] = [
+    Punto(lat=43.83975799648603, lon=10.506535046223485),  # Baluardo San Colombano
+    Punto(lat=43.84807404345435, lon=10.507089236931973),  # Porta Santa Maria
+    Punto(lat=43.841277451100694, lon=10.496706879150684),  # Baluardo San Paolino
+    Punto(lat=43.842315738273435, lon=10.497113013689594),  # Piazzale Verdi
+    Punto(lat=43.84552607610066, lon=10.514030908363878),  # Casa del Boia
+    Punto(lat=43.83882258921756, lon=10.501625645596407),  # Baluardo Santa Maria
+]
+
 ESPERIENZE: list[ExperienceNode] = [
     ExperienceNode(
         id="exp-passeggiata-mura",
@@ -481,6 +582,7 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=False,
         accessibile=True,
         alimenta_memoria=True,
+        punti_arrivo=_PUNTI_RAMPE_MURA,
     ),
     ExperienceNode(
         id="exp-bici-mura",
@@ -490,6 +592,7 @@ ESPERIENZE: list[ExperienceNode] = [
         durata_min=45,
         al_chiuso=False,
         accessibile=True,
+        punti_arrivo=_PUNTI_RAMPE_MURA,
     ),
     ExperienceNode(
         # Riscritta (stesso id): in piazza non c'è un mercato quotidiano; i
@@ -651,6 +754,15 @@ ESPERIENZE: list[ExperienceNode] = [
         # Tutti i giorni 16:00-17:00: il tramonto di dicembre (STIMA: ora del tramonto
         # arrotondata, non da una fonte pubblicata).
         orari_apertura=_fasce(_TUTTI, (16, 0), (17, 0)),
+        # Punti di arrivo (dato del committente, Google Maps 22/10/2026), il primo
+        # e' quello della prima tappa.
+        punti_arrivo=[
+            Punto(lat=43.84668153219125, lon=10.502592655389329),
+            Punto(lat=43.84060703195673, lon=10.496914055249684),
+            Punto(lat=43.84260326710044, lon=10.513896040654814),
+            Punto(lat=43.84750898171982, lon=10.513950290731266),
+            Punto(lat=43.848580906193554, lon=10.508889574921993),
+        ],
     ),
     ExperienceNode(
         id="exp-collezione-villa-guinigi",
@@ -819,6 +931,9 @@ ESPERIENZE: list[ExperienceNode] = [
         al_chiuso=False,
         accessibile=False,
         orari_apertura=_fasce(_TUTTI, (8, 0), (17, 0)),
+        # Sulle Mura, vicino alla Casermetta San Salvatore (dato del committente,
+        # Google Maps 22/10/2026): prevale sul punto del luogo (il giardino).
+        punti_arrivo=[Punto(lat=43.846610457117684, lon=10.502497041284132)],
     ),
     ExperienceNode(
         # Nessuna fascia: illuminata la sera.

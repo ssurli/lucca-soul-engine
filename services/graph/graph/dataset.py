@@ -20,7 +20,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from contracts import ARTICOLI, Curiosita, ExperienceNode, Partner, VocabolarioTemi
+from contracts import ARTICOLI, Curiosita, ExperienceNode, Partner, Punto, VocabolarioTemi
 
 # `VICINO` non porta uno storico reale: il seed non ha mai registrato QUANDO
 # un arco di prossimità fisica è stato scritto. Tutti gli archi dei dataset
@@ -60,8 +60,14 @@ class Luogo:
     # del seed. Solo narrazione, mai input di scoring. Ognuna ha una fonte
     # (obbligatoria nel contratto `contracts.Curiosita`).
     curiosita: tuple[Curiosita, ...] = ()
+    # Ingresso o punto di sosta del luogo (WGS84). None = nessun punto (es. le
+    # Mura, che valgono per `ExperienceNode.punti_arrivo`). DATO DI POSIZIONE:
+    # mai input di scoring. Validato dal contratto `contracts.Punto`.
+    punto: Punto | None = None
 
     def __post_init__(self) -> None:
+        if self.punto is not None and not isinstance(self.punto, Punto):
+            raise ValueError(f"luogo {self.id!r}: punto deve essere un contracts.Punto")
         if self.articolo is not None and self.articolo not in ARTICOLI:
             raise ValueError(
                 f"luogo {self.id!r}: articolo {self.articolo!r} non valido "
