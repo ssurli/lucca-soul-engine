@@ -2,7 +2,7 @@
 
 `main`: ondata 1c inclusa (merge fast-forward di `feat/ondata1c-contenuti`, correzione `e36dfec`; CI verde).
 Ondata 2a inclusa (merge fast-forward di `feat/ondata2a-testi`, `d9f6664`; CI verde).
-Ondata 2b chiusa su `feat/ondata2b-app`, in attesa del "merge" del committente.
+Ondata 2b inclusa (merge fast-forward di `feat/ondata2b-app`, `9be2259`; CI verde).
 I dettagli sono in `docs/LIMITI.md` e `docs/BUILD_PLAN.md`; questo file è solo il punto della
 situazione.
 
