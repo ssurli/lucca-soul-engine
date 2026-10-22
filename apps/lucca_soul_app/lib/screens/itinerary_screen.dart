@@ -243,7 +243,8 @@ class CuriosityTile extends StatelessWidget {
             style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           Text(curiosita.testo, style: theme.textTheme.bodyMedium),
-          Text(strings.sourceLabel(curiosita.fonte), style: theme.textTheme.bodySmall),
+          if (curiosita.fontePubblica)
+            Text(strings.sourceLabel(curiosita.fonte), style: theme.textTheme.bodySmall),
         ],
       ),
     );

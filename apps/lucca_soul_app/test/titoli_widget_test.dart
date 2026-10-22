@@ -62,11 +62,13 @@ void main() {
       testo: 'Si racconta che la torre sia nata da un patto.',
       tipo: CuriosityKind.leggenda,
       fonte: 'Tradizione orale',
+      fontePubblica: true,
     );
     const fatto = Curiosita(
       testo: 'Le Mura sono lunghe oltre quattro chilometri.',
       tipo: CuriosityKind.fatto,
       fonte: 'Archivio storico',
+      fontePubblica: true,
     );
 
     Future<void> pump(WidgetTester tester, List<Curiosita> c, [AppStrings? s]) => tester.pumpWidget(_app(
@@ -95,6 +97,29 @@ void main() {
       expect(find.text('Fonte: Archivio storico'), findsOneWidget);
     });
 
+    testWidgets('fonte non pubblica: riga Fonte nascosta', (tester) async {
+      const privata = Curiosita(
+        testo: 'Un fatto.',
+        tipo: CuriosityKind.fatto,
+        fonte: 'Dato del committente',
+      );
+      await pump(tester, [privata]);
+      expect(find.text('Un fatto.'), findsOneWidget);
+      expect(find.textContaining('Fonte:'), findsNothing);
+      expect(find.textContaining('Dato del committente'), findsNothing);
+    });
+
+    test('JSON senza fonte_pubblica -> false; round-trip lo preserva', () {
+      final senza = Curiosita.fromJson({'testo': 'x', 'tipo': 'fatto', 'fonte': 'f'});
+      expect(senza.fontePubblica, isFalse);
+      expect(senza.toJson()['fonte_pubblica'], isFalse);
+      final pub = Curiosita.fromJson(
+        {'testo': 'x', 'tipo': 'fatto', 'fonte': 'f', 'fonte_pubblica': true},
+      );
+      expect(pub.fontePubblica, isTrue);
+      expect(Curiosita.fromJson(pub.toJson()).fontePubblica, isTrue);
+    });
+
     testWidgets('senza curiosita: nessuna sezione', (tester) async {
       await pump(tester, const []);
       expect(find.text('Leggenda'), findsNothing);
@@ -115,8 +140,8 @@ void main() {
         'durata_min': 30,
         'reason': 'r',
         'curiosita': [
-          {'testo': leggenda.testo, 'tipo': 'leggenda', 'fonte': 'Tradizione orale'},
-          {'testo': fatto.testo, 'tipo': 'fatto', 'fonte': 'Archivio storico'},
+          {'testo': leggenda.testo, 'tipo': 'leggenda', 'fonte': 'Tradizione orale', 'fonte_pubblica': true},
+          {'testo': fatto.testo, 'tipo': 'fatto', 'fonte': 'Archivio storico', 'fonte_pubblica': true},
         ],
       };
       final s = ItineraryStop.fromJson(json);

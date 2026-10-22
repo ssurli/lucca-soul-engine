@@ -67,6 +67,7 @@ def _record(esp_id: str, botteghe: list[dict[str, Any]] | None = None) -> dict[s
         "curiosita_testi": [],
         "curiosita_tipi": [],
         "curiosita_fonti": [],
+        "curiosita_fonti_pubbliche": [],
         "luogo_lat": None,
         "luogo_lon": None,
         "punti_arrivo_lat": [],

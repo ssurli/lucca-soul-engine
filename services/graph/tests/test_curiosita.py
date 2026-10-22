@@ -157,8 +157,38 @@ def _record_con(extra: dict[str, Any]) -> Any:
 
 
 def test_neo4j_proprieta_assenti_sono_nessuna_curiosita() -> None:
-    record = _record_con({"curiosita_testi": None, "curiosita_tipi": None, "curiosita_fonti": None})
+    record = _record_con(
+        {
+            "curiosita_testi": None,
+            "curiosita_tipi": None,
+            "curiosita_fonti": None,
+            "curiosita_fonti_pubbliche": None,
+        }
+    )
     assert Neo4jCandidateSource._to_candidate(record).curiosita == []
+
+
+def test_neo4j_grafo_non_ricaricato_fonti_pubbliche_assenti_sono_false() -> None:
+    """Testi/tipi/fonti presenti ma la quarta lista assente: nessuna fonte pubblica."""
+    record = _record_con({"curiosita_fonti_pubbliche": None})
+    curiosita = Neo4jCandidateSource._to_candidate(record).curiosita
+    assert len(curiosita) == 1
+    assert all(c.fonte_pubblica is False for c in curiosita)
+
+
+def test_neo4j_fonti_pubbliche_di_lunghezza_diversa_solleva() -> None:
+    with pytest.raises(ValueError, match="lunghezza"):
+        Neo4jCandidateSource._to_candidate(_record_con({"curiosita_fonti_pubbliche": []}))
+    with pytest.raises(ValueError, match="lunghezza"):
+        Neo4jCandidateSource._to_candidate(
+            _record_con({"curiosita_fonti_pubbliche": [True, False]})
+        )
+
+
+@pytest.mark.parametrize("valore", [True, False])
+def test_neo4j_fonte_pubblica_letta_dal_record(valore: bool) -> None:
+    record = _record_con({"curiosita_fonti_pubbliche": [valore]})
+    assert Neo4jCandidateSource._to_candidate(record).curiosita[0].fonte_pubblica is valore
 
 
 def test_neo4j_liste_di_lunghezza_diversa_solleva() -> None:
@@ -182,8 +212,12 @@ def test_cypher_scrive_liste_parallele_con_set_anche_vuote() -> None:
     luoghi = [st for st in testo.split(";\n") if "MERGE (l:Luogo" in st]
     assert len(luoghi) == len(DATASET.luoghi)
     assert all("l.curiosita_testi = [" in st and "l.curiosita_fonti = [" in st for st in luoghi)
-    vuote = "l.curiosita_testi = [],\n    l.curiosita_tipi = [],\n    l.curiosita_fonti = []"
+    vuote = (
+        "l.curiosita_testi = [],\n    l.curiosita_tipi = [],\n    l.curiosita_fonti = [],\n"
+        "    l.curiosita_fonti_pubbliche = []"
+    )
     assert vuote in testo
+    assert all("l.curiosita_fonti_pubbliche = [" in st for st in luoghi)
     # Escape di apostrofi; le virgolette doppie restano intatte.
     assert "un\\'iscrizione latina" in testo
     assert "'Comune di Lucca, cartina \"Le Mura di Lucca\"'" in testo
@@ -191,5 +225,66 @@ def test_cypher_scrive_liste_parallele_con_set_anche_vuote() -> None:
 
 def test_query_candidati_restituisce_le_curiosita() -> None:
     q = (CYPHER_DIR / "10_candidates.cypher").read_text(encoding="utf-8")
-    for campo in ("curiosita_testi", "curiosita_tipi", "curiosita_fonti"):
+    for campo in (
+        "curiosita_testi",
+        "curiosita_tipi",
+        "curiosita_fonti",
+        "curiosita_fonti_pubbliche",
+    ):
         assert f"coalesce(l.{campo}, []) AS {campo}" in q
+
+
+# Compito 6 (ondata 3): la fonte e' visibile al pubblico solo se pubblica.
+_PUBBLICA_ATTESA: dict[str, bool] = {
+    _COMMITTENTE: False,
+    _COMUNE_MAPPA: True,
+    _COMUNE_MURA: True,
+}
+
+
+def test_fonte_pubblica_dichiarata_esplicitamente_su_ogni_curiosita() -> None:
+    """Il seed non si affida al default False del contratto: il campo e' nei
+    `model_fields_set` di ogni curiosita' (cioe' scritto nel dataset)."""
+    tutte = [c for luogo in DATASET.luoghi for c in luogo.curiosita]
+    assert len(tutte) == 7
+    assert all("fonte_pubblica" in c.model_fields_set for c in tutte)
+
+
+def test_fonte_pubblica_per_curiosita_dal_seed() -> None:
+    trovate = {
+        luogo.id: [(c.fonte, c.fonte_pubblica) for c in luogo.curiosita]
+        for luogo in DATASET.luoghi
+        if luogo.curiosita
+    }
+    attese = {
+        luogo_id: [(fonte, _PUBBLICA_ATTESA[fonte]) for _, _, fonte in voci]
+        for luogo_id, voci in _ATTESE.items()
+    }
+    assert trovate == attese
+    # Regola: True solo per "Comune di Lucca, ..." e italia.it.
+    for voci in trovate.values():
+        for fonte, pubblica in voci:
+            assert pubblica == (
+                fonte.startswith("Comune di Lucca, ") or fonte.startswith("italia.it")
+            )
+
+
+def test_cypher_round_trip_fonti_pubbliche() -> None:
+    """Il Cypher generato scrive per ogni luogo la lista di booleani del seed."""
+    testo = build_seed(DATASET)
+    for luogo in DATASET.luoghi:
+        valori = ", ".join("true" if c.fonte_pubblica else "false" for c in luogo.curiosita)
+        stmt = next(
+            st for st in testo.split(";\n") if f"MERGE (l:Luogo {{id: '{luogo.id}'}})" in st
+        )
+        assert f"l.curiosita_fonti_pubbliche = [{valori}]," in stmt, luogo.id
+
+
+def test_seed_uguale_a_neo4j_sulle_fonti_pubbliche() -> None:
+    rng = random.Random(3)
+    for c in SeedCandidateSource(DATASET).candidates(_ctx([])):
+        record: Any = _record(c.experience.id, None, rng)
+        da_neo4j = Neo4jCandidateSource._to_candidate(record, None)
+        assert [x.fonte_pubblica for x in da_neo4j.curiosita] == [
+            x.fonte_pubblica for x in c.curiosita
+        ], c.experience.id

@@ -58,6 +58,9 @@
 // tre liste parallele (stesso indice = stessa curiosità, ordine del seed), SOLO
 // narrazione, mai input di scoring. Su un grafo caricato prima del campo mancano:
 // `coalesce` dà liste vuote (nessuna curiosità), mai un errore.
+// `curiosita_fonti_pubbliche` (ondata 3, compito 6): quarta lista parallela di booleani
+// (la fonte e' mostrabile al pubblico); solo narrazione, mai input di scoring. Assente su
+// un grafo non ricaricato: nel consumer Python vale False (fail-closed, fonte non mostrata).
 //
 // `luogo_lat/luogo_lon` (punto del luogo) e `punti_arrivo_lat/lon` (liste parallele di
 // float dell'esperienza, ordine del seed) (ondata 3, compito 3): DATO DI POSIZIONE,
@@ -156,6 +159,7 @@ RETURN
   coalesce(l.curiosita_testi, []) AS curiosita_testi,
   coalesce(l.curiosita_tipi, []) AS curiosita_tipi,
   coalesce(l.curiosita_fonti, []) AS curiosita_fonti,
+  coalesce(l.curiosita_fonti_pubbliche, []) AS curiosita_fonti_pubbliche,
   l.lat AS luogo_lat,
   l.lon AS luogo_lon,
   coalesce(e.punti_arrivo_lat, []) AS punti_arrivo_lat,

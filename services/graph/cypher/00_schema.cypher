@@ -6,8 +6,10 @@
 // Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li
 // richiede esplicitamente):
 //   (:Artista)-[:LEGATO_A {racconto, fonte}]->(:Luogo)  -- racconto solo con fonte
-//   (:Luogo {curiosita_testi, curiosita_tipi, curiosita_fonti})  -- liste parallele,
-//     stesso indice = stessa curiosità; tipo 'leggenda' | 'fatto'; ogni testo ha la fonte
+//   (:Luogo {curiosita_testi, curiosita_tipi, curiosita_fonti,
+//     curiosita_fonti_pubbliche})  -- liste parallele, stesso indice = stessa curiosità;
+//     tipo 'leggenda' | 'fatto'; ogni testo ha la fonte; fonti_pubbliche = booleani
+//     (la fonte si puo' mostrare al pubblico); sola narrazione, mai nel punteggio
 //   (:Luogo {lat, lon})  -- punto del luogo (WGS84, float a precisione piena), assenti
 //     se il luogo non ha un punto; (:Esperienza {punti_arrivo_lat, punti_arrivo_lon})
 //     -- liste parallele di float, stesso indice = stesso punto, ordine del seed (il

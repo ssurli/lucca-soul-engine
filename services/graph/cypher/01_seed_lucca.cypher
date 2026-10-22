@@ -9,6 +9,7 @@ SET l.nome = 'Mura di Lucca', l.categoria = 'mura', l.articolo = 'le',
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = NULL,
     l.lon = NULL;
 MERGE (l:Luogo {id: 'piazza-anfiteatro'})
@@ -16,6 +17,7 @@ SET l.nome = 'Piazza dell\'Anfiteatro', l.categoria = 'piazza', l.articolo = 'la
     l.curiosita_testi = ['Uno solo degli ingressi alla piazza ricalca un\'antica porta dell\'anfiteatro romano.'],
     l.curiosita_tipi = ['fatto'],
     l.curiosita_fonti = ['dato del committente'],
+    l.curiosita_fonti_pubbliche = [false],
     l.lat = 43.8453750945062,
     l.lon = 10.506130836198794;
 MERGE (l:Luogo {id: 'torre-guinigi'})
@@ -23,6 +25,7 @@ SET l.nome = 'Torre Guinigi', l.categoria = 'torre', l.articolo = 'la',
     l.curiosita_testi = ['Si racconta che il leccio in cima alla torre perse le foglie quando Paolo Guinigi fu catturato.'],
     l.curiosita_tipi = ['leggenda'],
     l.curiosita_fonti = ['dato del committente'],
+    l.curiosita_fonti_pubbliche = [false],
     l.lat = 43.84385893695291,
     l.lon = 10.507472634710469;
 MERGE (l:Luogo {id: 'duomo-san-martino'})
@@ -30,6 +33,7 @@ SET l.nome = 'Duomo di San Martino', l.categoria = 'chiesa', l.articolo = 'il',
     l.curiosita_testi = ['Sul pilastro del portico è inciso un labirinto, con un\'iscrizione latina che richiama Dedalo e Teseo. Lo si legge come simbolo del cammino dell\'anima verso la redenzione, lungo la Via Francigena.'],
     l.curiosita_tipi = ['fatto'],
     l.curiosita_fonti = ['dato del committente'],
+    l.curiosita_fonti_pubbliche = [false],
     l.lat = 43.8407348442907,
     l.lon = 10.50546424867784;
 MERGE (l:Luogo {id: 'casa-puccini'})
@@ -37,6 +41,7 @@ SET l.nome = 'Casa Natale di Giacomo Puccini', l.categoria = 'museo', l.articolo
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.843207634585866,
     l.lon = 10.501333062529884;
 MERGE (l:Luogo {id: 'san-michele-in-foro'})
@@ -44,6 +49,7 @@ SET l.nome = 'Chiesa di San Michele in Foro', l.categoria = 'chiesa', l.articolo
     l.curiosita_testi = ['Si racconta che nell\'anello al dito dell\'arcangelo, in cima alla facciata, sia incastonato un grande smeraldo, visibile al tramonto da un punto preciso della piazza.'],
     l.curiosita_tipi = ['leggenda'],
     l.curiosita_fonti = ['Comune di Lucca, Mappa del centro storico 2024'],
+    l.curiosita_fonti_pubbliche = [true],
     l.lat = 43.843206920716746,
     l.lon = 10.502521515682991;
 MERGE (l:Luogo {id: 'orto-botanico'})
@@ -51,6 +57,7 @@ SET l.nome = 'Orto Botanico di Lucca', l.categoria = 'giardino', l.articolo = 'l
     l.curiosita_testi = ['Si racconta che nelle notti di luna piena il fantasma di Lucida Mansi attraversi le Mura su un cocchio, per poi sparire nel laghetto dell\'Orto Botanico.'],
     l.curiosita_tipi = ['leggenda'],
     l.curiosita_fonti = ['Comune di Lucca, cartina "Le Mura di Lucca"'],
+    l.curiosita_fonti_pubbliche = [true],
     l.lat = 43.84100710602395,
     l.lon = 10.51019343794917;
 MERGE (l:Luogo {id: 'teatro-del-giglio'})
@@ -58,6 +65,7 @@ SET l.nome = 'Teatro del Giglio', l.categoria = 'teatro', l.articolo = 'il',
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.84062952605113,
     l.lon = 10.502840967928876;
 MERGE (l:Luogo {id: 'palazzo-pfanner'})
@@ -65,6 +73,7 @@ SET l.nome = 'Palazzo Pfanner', l.categoria = 'giardino', l.articolo = 'il',
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.8455344278912,
     l.lon = 10.503022099598914;
 MERGE (l:Luogo {id: 'san-frediano'})
@@ -72,6 +81,7 @@ SET l.nome = 'Basilica di San Frediano', l.categoria = 'chiesa', l.articolo = 'l
     l.curiosita_testi = ['Nel mosaico della facciata compare anche Giuda, che l\'iconografia classica non metterebbe in questa scena. Alza la mano destra chiusa, con indice e mignolo tesi: il racconto popolare ci vede il gesto delle corna.'],
     l.curiosita_tipi = ['fatto'],
     l.curiosita_fonti = ['dato del committente'],
+    l.curiosita_fonti_pubbliche = [false],
     l.lat = 43.84611439494372,
     l.lon = 10.504828564629559;
 MERGE (l:Luogo {id: 'torre-delle-ore'})
@@ -79,6 +89,7 @@ SET l.nome = 'Torre delle Ore', l.categoria = 'torre', l.articolo = 'la',
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.84341924030429,
     l.lon = 10.504123087494012;
 MERGE (l:Luogo {id: 'piazza-napoleone'})
@@ -86,6 +97,7 @@ SET l.nome = 'Piazza Napoleone', l.categoria = 'piazza', l.articolo = 'la',
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.841381710949506,
     l.lon = 10.502460320754349;
 MERGE (l:Luogo {id: 'via-fillungo'})
@@ -93,6 +105,7 @@ SET l.nome = 'Via Fillungo', l.categoria = 'via', l.articolo = NULL,
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.842686481849164,
     l.lon = 10.504022332247528;
 MERGE (l:Luogo {id: 'baluardo-san-paolino'})
@@ -100,6 +113,7 @@ SET l.nome = 'Baluardo San Paolino', l.categoria = 'mura', l.articolo = 'il',
     l.curiosita_testi = ['Si racconta che il 12 luglio 1664, festa di San Paolino, i cannoni delle Mura spararono per i festeggiamenti senza essere caricati a salve, e che solo l\'intervento miracoloso del santo salvò la folla radunata sotto le Mura.'],
     l.curiosita_tipi = ['leggenda'],
     l.curiosita_fonti = ['Comune di Lucca, cartina "Le Mura di Lucca"'],
+    l.curiosita_fonti_pubbliche = [true],
     l.lat = 43.840816169243126,
     l.lon = 10.496989849819938;
 MERGE (l:Luogo {id: 'museo-nazionale-guinigi'})
@@ -107,6 +121,7 @@ SET l.nome = 'Museo Nazionale di Villa Guinigi', l.categoria = 'museo', l.artico
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.84532590685096,
     l.lon = 10.51227072450463;
 MERGE (l:Luogo {id: 'chiesa-san-francesco'})
@@ -114,6 +129,7 @@ SET l.nome = 'Chiesa di San Francesco', l.categoria = 'chiesa', l.articolo = 'la
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.84544716682871,
     l.lon = 10.510919717837515;
 MERGE (l:Luogo {id: 'real-collegio'})
@@ -121,6 +137,7 @@ SET l.nome = 'Real Collegio', l.categoria = 'chiostro', l.articolo = 'il',
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.846454429687576,
     l.lon = 10.503858387960499;
 MERGE (l:Luogo {id: 'museo-barsanti-matteucci'})
@@ -128,6 +145,7 @@ SET l.nome = 'Museo Barsanti e Matteucci', l.categoria = 'museo', l.articolo = '
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.843638790269274,
     l.lon = 10.507385090128256;
 MERGE (l:Luogo {id: 'via-del-fosso'})
@@ -135,6 +153,7 @@ SET l.nome = 'Via del Fosso', l.categoria = 'via', l.articolo = NULL,
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.84529568253382,
     l.lon = 10.509682371585473;
 MERGE (l:Luogo {id: 'baluardo-santa-croce'})
@@ -142,6 +161,7 @@ SET l.nome = 'Baluardo Santa Croce', l.categoria = 'mura', l.articolo = 'il',
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.84569128378519,
     l.lon = 10.497872636788552;
 MERGE (l:Luogo {id: 'santi-giovanni-reparata'})
@@ -149,6 +169,7 @@ SET l.nome = 'Chiesa dei Santi Giovanni e Reparata', l.categoria = 'chiesa', l.a
     l.curiosita_testi = [],
     l.curiosita_tipi = [],
     l.curiosita_fonti = [],
+    l.curiosita_fonti_pubbliche = [],
     l.lat = 43.84119039780105,
     l.lon = 10.504274232740409;
 

@@ -38,6 +38,15 @@ import pytest
 from experience_engine import engine, rules
 from recommender import ranking
 
+#: Marcatori che la guardia cerca in attributi, nomi e stringhe. `fonte_pubblica`
+#: (ondata 3, compito 6) e' un campo della curiosita': stesso divieto di scoring.
+MARCATORI = ("curiosita", "fonte_pubblica")
+
+
+def _marcato(testo: str) -> bool:
+    return any(m in testo.lower() for m in MARCATORI)
+
+
 #: Identificatori che contengono "curiosita" ma sono l'asse del PROFILO.
 NOMI_DEL_PROFILO = frozenset({"W_CURIOSITA"})
 
@@ -110,21 +119,21 @@ def letture_curiosita(radice: ast.AST) -> list[str]:
     profili = _parametri_profilo(radice)
     trovate: list[str] = []
     for nodo in ast.walk(radice):
-        if isinstance(nodo, ast.Attribute) and "curiosita" in nodo.attr.lower():
+        if isinstance(nodo, ast.Attribute) and _marcato(nodo.attr):
             ricevente_profilo = isinstance(nodo.value, ast.Name) and nodo.value.id in profili
             if not (nodo.attr == "curiosita" and ricevente_profilo):
                 trovate.append(ast.unparse(nodo))
-        elif isinstance(nodo, ast.Name) and "curiosita" in nodo.id.lower():
+        elif isinstance(nodo, ast.Name) and _marcato(nodo.id):
             if nodo.id not in NOMI_DEL_PROFILO:
                 trovate.append(nodo.id)
         elif (
             isinstance(nodo, ast.Constant)
             and isinstance(nodo.value, str)
             and id(nodo) not in docstring
-            and "curiosita" in nodo.value.lower()
+            and _marcato(nodo.value)
         ):
             trovate.append(repr(nodo.value))
-        elif isinstance(nodo, ast.alias) and "curiosita" in nodo.name.lower():
+        elif isinstance(nodo, ast.alias) and _marcato(nodo.name):
             trovate.append(f"import {nodo.name}")
     return trovate
 
@@ -224,6 +233,10 @@ def test_la_guardia_scatta_su_candidate_curiosita() -> None:
         "return isinstance(candidate.experience, Curiosita)",
         "return len(_curiosita_del_luogo(candidate))",
         "return any(c.fonte for c in candidate.curiosita)",
+        "return sum(c.fonte_pubblica for c in candidate.experience.extra)",
+        "return candidate.fonte_pubblica",
+        'return getattr(candidate, "fonte_pubblica")',
+        "return fonte_pubblica",
         # Ricevente di nome `profile` ma NON annotato: conservativo, scatta.
         "return profile.curiosita",
     ],

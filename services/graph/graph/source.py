@@ -322,21 +322,27 @@ def _sospesa_da_record(record: Record) -> bool:
 
 
 def _curiosita_da_record(record: Record) -> list[Curiosita]:
-    """Ricompone le curiosità dalle tre liste parallele del luogo, nell'ordine
+    """Ricompone le curiosità dalle quattro liste parallele del luogo, nell'ordine
     del seed. Fail-closed: liste di lunghezza diversa, tipo ignoto o fonte
     vuota sollevano ValueError (`Curiosita` valida tipo, fonte e "Si racconta"
     delle leggende). Proprietà assenti (`None`, grafo non ricaricato) = nessuna."""
     testi = record["curiosita_testi"] or []
     tipi = record["curiosita_tipi"] or []
     fonti = record["curiosita_fonti"] or []
-    if not (len(testi) == len(tipi) == len(fonti)):
+    pubbliche = record["curiosita_fonti_pubbliche"]
+    if pubbliche is None:
+        # Grafo non ricaricato dopo l'introduzione del campo: fail-closed, nessuna
+        # fonte e' considerata pubblica.
+        pubbliche = [False] * len(fonti)
+    if not (len(testi) == len(tipi) == len(fonti) == len(pubbliche)):
         raise ValueError(
             f"curiosità del luogo {record['place_id']!r}: liste parallele di lunghezza "
-            f"diversa (testi={len(testi)}, tipi={len(tipi)}, fonti={len(fonti)})"
+            f"diversa (testi={len(testi)}, tipi={len(tipi)}, fonti={len(fonti)}, "
+            f"fonti_pubbliche={len(pubbliche)})"
         )
     return [
-        Curiosita(testo=testo, tipo=TipoCuriosita(tipo), fonte=fonte)
-        for testo, tipo, fonte in zip(testi, tipi, fonti, strict=True)
+        Curiosita(testo=testo, tipo=TipoCuriosita(tipo), fonte=fonte, fonte_pubblica=pubblica)
+        for testo, tipo, fonte, pubblica in zip(testi, tipi, fonti, pubbliche, strict=True)
     ]
 
 

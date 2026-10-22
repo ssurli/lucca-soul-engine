@@ -16,15 +16,32 @@ class Curiosita {
   final CuriosityKind tipo;
   final String fonte;
 
-  const Curiosita({required this.testo, required this.tipo, required this.fonte});
+  /// True solo per fonti pubbliche; la UI mostra la riga della fonte SOLO se
+  /// true. Default false (assente = nascosta), come nel contratto.
+  final bool fontePubblica;
+
+  const Curiosita({
+    required this.testo,
+    required this.tipo,
+    required this.fonte,
+    this.fontePubblica = false,
+  });
 
   factory Curiosita.fromJson(Map<String, dynamic> json) => Curiosita(
         testo: json['testo'] as String,
         tipo: json['tipo'] == 'leggenda' ? CuriosityKind.leggenda : CuriosityKind.fatto,
         fonte: json['fonte'] as String,
+        fontePubblica: json['fonte_pubblica'] == true,
       );
 
-  Map<String, dynamic> toJson() => {'testo': testo, 'tipo': tipo.name, 'fonte': fonte};
+  // Sempre emesso (anche false): il round-trip verso /itinerary/adapt non
+  // perde il dato.
+  Map<String, dynamic> toJson() => {
+        'testo': testo,
+        'tipo': tipo.name,
+        'fonte': fonte,
+        'fonte_pubblica': fontePubblica,
+      };
 }
 
 /// Rispecchia `Punto` del contratto: coordinata WGS84. I double sono tenuti

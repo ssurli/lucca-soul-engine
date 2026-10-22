@@ -87,6 +87,10 @@ def _cypher_str_list(values: list[str]) -> str:
     return "[" + ", ".join(_cypher_str(v) for v in values) + "]"
 
 
+def _cypher_bool_list(values: list[bool]) -> str:
+    return "[" + ", ".join(_cypher_bool(v) for v in values) + "]"
+
+
 def _cypher_float_list(values: list[float]) -> str:
     return "[" + ", ".join(repr(v) for v in values) + "]"
 
@@ -95,8 +99,10 @@ _RELATION_TYPES_COMMENT = (
     "// Tipi di relazione del grafo (documentazione, nessun vincolo Neo4j li\n"
     "// richiede esplicitamente):\n"
     "//   (:Artista)-[:LEGATO_A {racconto, fonte}]->(:Luogo)  -- racconto solo con fonte\n"
-    "//   (:Luogo {curiosita_testi, curiosita_tipi, curiosita_fonti})  -- liste parallele,\n"
-    "//     stesso indice = stessa curiosità; tipo 'leggenda' | 'fatto'; ogni testo ha la fonte\n"
+    "//   (:Luogo {curiosita_testi, curiosita_tipi, curiosita_fonti,\n"
+    "//     curiosita_fonti_pubbliche})  -- liste parallele, stesso indice = stessa curiosità;\n"
+    "//     tipo 'leggenda' | 'fatto'; ogni testo ha la fonte; fonti_pubbliche = booleani\n"
+    "//     (la fonte si puo' mostrare al pubblico); sola narrazione, mai nel punteggio\n"
     "//   (:Luogo {lat, lon})  -- punto del luogo (WGS84, float a precisione piena), assenti\n"
     "//     se il luogo non ha un punto; (:Esperienza {punti_arrivo_lat, punti_arrivo_lon})\n"
     "//     -- liste parallele di float, stesso indice = stesso punto, ordine del seed (il\n"
@@ -143,6 +149,9 @@ def _luogo_statement(luogo) -> str:
         f"    l.curiosita_testi = {_cypher_str_list([c.testo for c in luogo.curiosita])},\n"
         f"    l.curiosita_tipi = {_cypher_str_list([c.tipo.value for c in luogo.curiosita])},\n"
         f"    l.curiosita_fonti = {_cypher_str_list([c.fonte for c in luogo.curiosita])},\n"
+        # Quarta lista parallela (booleani): la fonte e' mostrabile al pubblico?
+        f"    l.curiosita_fonti_pubbliche = "
+        f"{_cypher_bool_list([c.fonte_pubblica for c in luogo.curiosita])},\n"
         # Punto del luogo, scritto SEMPRE (NULL se assente: il `SET` a NULL
         # rimuove la proprietà, quindi un punto tolto dal dataset sparisce).
         f"    l.lat = {_cypher_number_or_null(luogo.punto.lat if luogo.punto else None)},\n"
