@@ -43,7 +43,6 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
 
   /// Quello mostrato: l'originale o l'ultimo adattamento.
   Itinerary? _itinerario;
-  Set<int> _tappeEvidenziate = const {};
   bool _caricando = true;
   String? _errore;
 
@@ -70,7 +69,6 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
       setState(() {
         _originale = itinerario;
         _itinerario = itinerario;
-        _tappeEvidenziate = const {};
       });
     } on BffException catch (error) {
       setState(() => _errore = error.message);
@@ -79,10 +77,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     }
   }
 
-  void _onMostrato(Itinerary mostrato) => setState(() {
-        _tappeEvidenziate = tappeCambiate(prima: _originale?.stops ?? const [], dopo: mostrato.stops);
-        _itinerario = mostrato;
-      });
+  void _onMostrato(Itinerary mostrato) => setState(() => _itinerario = mostrato);
 
   /// Apre il conferimento a Urban Memory, contestuale alla tappa appena
   /// vissuta: `esperienza_id` e i luoghi che "riguarda" sono passati dal
@@ -166,7 +161,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
           for (var i = 0; i < itinerario.stops.length; i++)
             StopCard(
               stop: itinerario.stops[i],
-              evidenziata: _tappeEvidenziate.contains(i),
+              evidenziata: tappaSostituita(itinerario.stops[i]),
+              mantenutaSenzaAlternativa: tappaMantenutaSenzaAlternativa(itinerario.stops[i]),
               strings: _strings,
               onLasciaRicordo: () => _lasciaRicordo(itinerario.stops[i]),
             ),

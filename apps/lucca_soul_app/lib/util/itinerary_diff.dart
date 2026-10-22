@@ -1,22 +1,21 @@
 import '../models/itinerary.dart';
 
-/// Confronta due liste di tappe e restituisce gli indici (nella lista
-/// `dopo`) che sono cambiati rispetto a `prima` — è così che la card
-/// adattiva sa quali tappe evidenziare dopo una riscrittura da segnale.
-///
-/// Logica pura, senza Flutter: testabile a riga di comando anche senza SDK.
-Set<int> tappeCambiate({required List<ItineraryStop> prima, required List<ItineraryStop> dopo}) {
-  final cambiate = <int>{};
-  for (var i = 0; i < dopo.length; i++) {
-    if (i >= prima.length) {
-      cambiate.add(i);
-      continue;
-    }
-    final a = prima[i];
-    final b = dopo[i];
-    if (a.experienceId != b.experienceId || a.arrivo != b.arrivo || a.reason != b.reason) {
-      cambiate.add(i);
-    }
-  }
-  return cambiate;
-}
+/// Esiti di `ItineraryStop.esitoAdattamento` che la UI distingue.
+const String kEsitoSostituita = 'sostituita';
+const String kEsitoMantenutaSenzaAlternativa = 'mantenuta_senza_alternativa';
+
+/// Una tappa e' evidenziata col badge "Cambiata" SOLO se il motore l'ha
+/// sostituita. Uno slittamento dell'arrivo o un `reason` diverso non contano:
+/// la decisione e' del motore (`esito_adattamento`), non un confronto locale.
+bool tappaSostituita(ItineraryStop stop) => stop.esitoAdattamento == kEsitoSostituita;
+
+/// La tappa resta in programma perche' il motore non ha trovato alternative.
+bool tappaMantenutaSenzaAlternativa(ItineraryStop stop) =>
+    stop.esitoAdattamento == kEsitoMantenutaSenzaAlternativa;
+
+/// Indici delle tappe da evidenziare con il badge "Cambiata".
+/// Logica pura, senza Flutter.
+Set<int> tappeSostituite(List<ItineraryStop> tappe) => {
+      for (var i = 0; i < tappe.length; i++)
+        if (tappaSostituita(tappe[i])) i,
+    };
