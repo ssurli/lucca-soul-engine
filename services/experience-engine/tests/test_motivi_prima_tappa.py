@@ -223,7 +223,13 @@ def test_dopo_adattamento_profilo_al_massimo_una_volta(
             assert all(s.reason.strip() for s in it.stops)
             for i, s in enumerate(it.stops):
                 if s.esito_adattamento is EsitoAdattamento.SOSTITUITA:
-                    assert _conta_profilo(s.reason) == 0, s.reason
+                    # Ondata 2b, compito 4: la sostituita PRIMA tappa porta la
+                    # frase del profilo dopo "Sostituita per ...", se il profilo
+                    # c'e' ed ha un flag o un tratto netto; nessun'altra la porta.
+                    attesa = int(i == 0 and prof is not None and profilo != "neutro")
+                    assert _conta_profilo(s.reason) == attesa, (i, prof is not None, s.reason)
+                    if attesa:
+                        assert s.reason.startswith("Sostituita per "), s.reason
                 if i > 0:
                     assert _conta_profilo(s.reason) == 0, (i, s.reason)
 
@@ -242,8 +248,11 @@ def test_motivo_del_sostituto_e_il_suo_non_la_connessione() -> None:
     assert sostituite, "il caso deve esercitare almeno una sostituzione"
     for s in sostituite:
         alt = per_id[s.experience_id]
+        # Ondata 2b, compito 4: il sostituto che risulta PRIMA tappa e'
+        # composto con `prima_tappa=True` (frase del profilo dopo "Sostituita").
+        prima = s.experience_id == it.stops[0].experience_id
         atteso = adapt_reason(
-            compose_reason(alt, ctx.profile, [], prima_tappa=False), "la pioggia"
+            compose_reason(alt, ctx.profile, [], prima_tappa=prima), "la pioggia"
         )
         assert s.reason.startswith(atteso), (s.reason, atteso)
         for connessione in alt.connessioni:

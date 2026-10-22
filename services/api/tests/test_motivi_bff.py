@@ -146,6 +146,21 @@ def _errori_profilo(stops: list[dict[str, Any]], *, solo_prima: bool) -> list[st
     return errori
 
 
+def _errori_profilo_sostituite(stops: list[dict[str, Any]]) -> list[str]:
+    """Ondata 2b, compito 4: una sostituita porta la frase del profilo solo se
+    e' la PRIMA tappa (al massimo una volta, dopo "Sostituita per ...")."""
+    errori: list[str] = []
+    for i, s in enumerate(stops):
+        if s["esito_adattamento"] != "sostituita":
+            continue
+        n = _conta_profilo(s["reason"])
+        if i > 0 and n:
+            errori.append(f"{s['experience_id']}: sostituita non prima con la frase del profilo")
+        elif n > 1:
+            errori.append(f"{s['experience_id']}: frase del profilo {n} volte")
+    return errori
+
+
 def _errori_risposta_nuova(risposta: dict[str, Any], misurati: set[str]) -> list[str]:
     errori = _errori_vuoti(risposta)
     for voce in [*risposta["stops"], *risposta["tappe_escluse"]]:
@@ -177,11 +192,13 @@ def test_motivi_dalle_richieste_del_golden(client: TestClient, chiave: str) -> N
             if s["esito_adattamento"] == "sostituita"
             for e in _errori_testo(s, misurati)
         ]
-        errori += [
-            f"{s['experience_id']}: sostituita con la frase del profilo"
-            for s in risposta["stops"]
-            if s["esito_adattamento"] == "sostituita" and _conta_profilo(s["reason"])
-        ]
+        errori += _errori_profilo_sostituite(risposta["stops"])
+        if chiave in DA_RIGENERARE:
+            # Richiesta composta dal codice attuale: al massimo una frase del
+            # profilo su TUTTE le stops. Non vale per le richieste vecchie
+            # (`adapt|`, `adapt-budget|`, `adapt-profilo|`): le loro tappe non
+            # toccate conservano per contratto il tratto ripetuto.
+            errori += _errori_profilo(risposta["stops"], solo_prima=False)
     assert not errori, (chiave, errori)
 
 
@@ -204,11 +221,7 @@ def test_motivi_dopo_adattamento_andata_e_ritorno(client: TestClient, chiave: st
             misurati = misurati_compose | set(segnale["affollamento"])
             errori = _errori_risposta_nuova(adattato, misurati)
             errori += _errori_profilo(adattato["stops"], solo_prima=False)
-            errori += [
-                f"{s['experience_id']}: sostituita con la frase del profilo"
-                for s in adattato["stops"]
-                if s["esito_adattamento"] == "sostituita" and _conta_profilo(s["reason"])
-            ]
+            errori += _errori_profilo_sostituite(adattato["stops"])
             assert not errori, (chiave, nome, profilo is not None, errori)
 
 

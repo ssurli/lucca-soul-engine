@@ -71,7 +71,9 @@ class ReasonFn(Protocol):
     `prima_tappa` (keyword) è True SOLO per la prima tappa dell'itinerario
     finale (arrivo più presto): lì, e solo lì, il motivo può aprire con la
     frase del profilo, così il profilo compare al massimo una volta per
-    itinerario. False per ogni altra tappa e per i motivi dei sostituti."""
+    itinerario. False per ogni altra tappa e per i motivi dei sostituti,
+    tranne il sostituto che in adattamento risulta PRIMA tappa
+    (`_con_frase_profilo`)."""
 
     def __call__(
         self,
@@ -126,39 +128,83 @@ def _frase_fallback(testo: str) -> str:
     return t if t[-1] in ".!?" else t + "."
 
 
+#: Soglie del tratto NETTO: STESSI valori di `rag.reasons` (verificato da un
+#: test). Un tratto 0..1 entra nel `reason` solo se >= 0.7 o <= 0.2, limiti
+#: inclusi con tolleranza in virgola mobile.
+_SOGLIA_TRATTO_ALTA_FALLBACK = 0.7
+_SOGLIA_TRATTO_BASSA_FALLBACK = 0.2
+_TOLLERANZA_TRATTO_FALLBACK = 1e-9
+
+
+def _tratto_netto_fallback(valore: float) -> bool:
+    return (
+        valore >= _SOGLIA_TRATTO_ALTA_FALLBACK - _TOLLERANZA_TRATTO_FALLBACK
+        or valore <= _SOGLIA_TRATTO_BASSA_FALLBACK + _TOLLERANZA_TRATTO_FALLBACK
+    )
+
+
 def _tratto_dominante_fallback(profile: EmotionalProfile) -> str | None:
     """Tratto più marcato del profilo (stessa regola di `rag.reasons`): prima
-    i vincoli espliciti (bambini, accessibilità), poi il tratto 0..1 più
-    lontano da 0.5; sotto 0.1 di scarto nessun tratto (mai inventato)."""
+    i vincoli espliciti (bambini, accessibilità), poi, tra i soli tratti 0..1
+    NETTI (>= 0.7 o <= 0.2, limiti inclusi), quello più lontano da 0.5, a
+    parità il primo nell'ordine contemplazione, arte, curiosità. Nessun
+    tratto netto: nessuna frase (mai inventata)."""
     if profile.con_bambini:
         return "è pensata anche per chi viaggia con bambini"
     if profile.accessibilita_richiesta:
         return "rispetta il bisogno di un percorso accessibile"
-    candidati: list[tuple[float, str]] = [
+    tratti: list[tuple[float, float, str]] = [
         (
+            profile.contemplazione,
             abs(profile.contemplazione - 0.5),
             "cerchi silenzio e raccoglimento"
             if profile.contemplazione >= 0.5
             else "ami i luoghi vivi, con musica e movimento",
         ),
         (
+            profile.arte,
             abs(profile.arte - 0.5),
             "ti lasci conquistare dalla bellezza"
             if profile.arte >= 0.5
             else "preferisci le storie che un luogo racconta",
         ),
         (
+            profile.curiosita,
             abs(profile.curiosita - 0.5),
             "hai voglia di perderti e lasciarti sorprendere"
             if profile.curiosita >= 0.5
             else "preferisci un percorso chiaro, senza troppe sorprese",
         ),
     ]
-    candidati.sort(key=lambda c: c[0], reverse=True)
-    punteggio, frase = candidati[0]
-    if punteggio < 0.1:
+    netti = [(scarto, frase) for valore, scarto, frase in tratti if _tratto_netto_fallback(valore)]
+    if not netti:
         return None
-    return frase
+    # `sort` è stabile anche con reverse=True: a parità resta l'ordine sopra.
+    netti.sort(key=lambda c: c[0], reverse=True)
+    return netti[0][1]
+
+
+#: TUTTE le frasi del profilo che `_tratto_dominante_fallback` (e, con lo
+#: stesso testo, `rag.reasons._tratto_dominante`) può produrre: servono a
+#: riconoscere una frase del profilo già presente in un `reason` ricevuto
+#: (`_con_frase_profilo`). Completezza verificata da un test.
+_FRASI_PROFILO_FALLBACK: tuple[str, ...] = (
+    "è pensata anche per chi viaggia con bambini",
+    "rispetta il bisogno di un percorso accessibile",
+    "cerchi silenzio e raccoglimento",
+    "ami i luoghi vivi, con musica e movimento",
+    "ti lasci conquistare dalla bellezza",
+    "preferisci le storie che un luogo racconta",
+    "hai voglia di perderti e lasciarti sorprendere",
+    "preferisci un percorso chiaro, senza troppe sorprese",
+)
+
+
+def _contiene_frase_profilo(reason: str) -> bool:
+    """Vero se `reason` contiene una qualunque frase del profilo (non solo
+    quella del profilo corrente), senza distinguere maiuscole e minuscole."""
+    testo = reason.lower()
+    return any(frase in testo for frase in _FRASI_PROFILO_FALLBACK)
 
 
 def _fallback_reason(
@@ -1379,10 +1425,10 @@ def adapt_itinerary(
         usati.discard(e.id)
         usati.add(alt.experience.id)
         # Motivo SPECIFICO del sostituto, composto come quello di una tappa
-        # non prima (mai la frase del profilo: compare al più una volta per
-        # itinerario, sulla prima tappa composta) e senza segnali (il segnale
-        # è già detto da "Sostituita per ..."). `connessioni` alimentano solo
-        # il punteggio, non il testo.
+        # non prima (la frase del profilo la aggiunge, al più una volta e
+        # solo se il sostituto risulta PRIMA tappa, `_con_frase_profilo` dopo
+        # i tagli) e senza segnali (il segnale è già detto da "Sostituita per
+        # ..."). `connessioni` alimentano solo il punteggio, non il testo.
         motivo = fn(alt, profilo_effettivo, [], prima_tappa=False)
         if piove_e_aperto:
             segnale = "la pioggia"
@@ -1390,7 +1436,8 @@ def adapt_itinerary(
             segnale = "l'affollamento " + con_luogo("a", cand.place_articolo, cand.place_nome)
         alt_reason = adapt_fn(motivo, segnale)
         correnti[i] = _marca_reason(
-            alt, alt_reason, EsitoAdattamento.SOSTITUITA, stop.experience_id
+            alt, alt_reason, EsitoAdattamento.SOSTITUITA, stop.experience_id,
+            segnale_sostituzione=segnale,
         )
         sostituite = True
 
@@ -1424,6 +1471,16 @@ def adapt_itinerary(
         arrivi_ricevuti=None if cambiato_prima else [s.arrivo for s in itinerary.stops],
     )
     nuove_escluse.extend(_escludi(c, esito, titolo_di) for c, esito in tolte)
+
+    # 5. Frase del profilo: al più una volta, sulla PRIMA tappa del risultato
+    # e solo se è SOSTITUITA (le non toccate e le mantenute conservano il
+    # `reason` ricevuto) e se nessun'altra tappa ne porta già una (es. reason
+    # ricevuti nel formato vecchio). Serve il profilo della richiesta: senza,
+    # nessuna frase.
+    if profile is not None and correnti:
+        correnti[0] = _con_frase_profilo(
+            correnti[0], profile, fn, adapt_fn, per_id, altre=correnti[1:]
+        )
 
     # Un taglio per sospensione o per orario aggiunge una voce a
     # `nuove_escluse`, quindi accende `cambiato`.
@@ -1596,6 +1653,10 @@ class _CandidatoConReason(GraphCandidate):
     #: Solo per gli stub (`senza_candidato`): il `titolo` della tappa
     #: ricevuta, conservato com'e' (anche None).
     titolo_ricevuto: str | None = None
+    #: Solo per le tappe `SOSTITUITA`: il segnale detto da "Sostituita per
+    #: ..." ("la pioggia", "l'affollamento alla ..."), per ricomporre il
+    #: `reason` con la frase del profilo (`_con_frase_profilo`).
+    segnale_sostituzione: str | None = None
 
 
 def _titolo_tappa(cand: _CandidatoConReason) -> str | None:
@@ -1622,16 +1683,72 @@ def _narrazione_tappa(cand: _CandidatoConReason) -> dict[str, Any]:
 
 
 def _marca_reason(
-    cand: GraphCandidate, reason: str, esito: EsitoAdattamento, id_originale: str
+    cand: GraphCandidate,
+    reason: str,
+    esito: EsitoAdattamento,
+    id_originale: str,
+    *,
+    segnale_sostituzione: str | None = None,
 ) -> _CandidatoConReason:
     dati = cand.model_dump()
     for campo in (
-        "reason_deciso", "esito_deciso", "id_originale", "senza_candidato", "titolo_ricevuto"
+        "reason_deciso", "esito_deciso", "id_originale", "senza_candidato", "titolo_ricevuto",
+        "segnale_sostituzione",
     ):
         dati.pop(campo, None)
     return _CandidatoConReason(
-        **dati, reason_deciso=reason, esito_deciso=esito, id_originale=id_originale
+        **dati, reason_deciso=reason, esito_deciso=esito, id_originale=id_originale,
+        segnale_sostituzione=segnale_sostituzione,
     )
+
+
+def _con_frase_profilo(
+    cand: _CandidatoConReason,
+    profile: EmotionalProfile,
+    reason_fn: ReasonFn,
+    adapt_fn: AdaptReasonFn,
+    per_id: dict[str, GraphCandidate],
+    *,
+    altre: Sequence[_CandidatoConReason],
+) -> _CandidatoConReason:
+    """Aggiunge la frase del profilo al `reason` della PRIMA tappa
+    dell'itinerario adattato, SOLO se quella tappa è `SOSTITUITA`:
+    "Sostituita per la pioggia. <Frase profilo>. <resto del motivo>.".
+
+    La frase la scrive `reason_fn` con `prima_tappa=True` (il motore non
+    conosce i testi della RAG): il motivo del sostituto è ricomposto così e
+    ripassato da `adapt_fn` con lo stesso segnale. Ogni altro esito è
+    restituito intatto: una `NON_TOCCATA` conserva il `reason` ricevuto
+    (invariante del contratto, anche se è diventata prima perché l'originale
+    è stata tagliata), una `MANTENUTA_SENZA_ALTERNATIVA` conserva il suo e
+    aggiunge solo la frase di esito. Profilo senza tratto netto né flag:
+    `reason_fn` non aggiunge nulla e il `reason` resta quello deciso. Se il
+    motivo senza frase la contenesse già, non la si ripete.
+
+    `altre`: le ALTRE tappe del risultato. Se una di esse porta già una
+    qualunque frase del profilo (`_contiene_frase_profilo`, anche di un altro
+    profilo: es. `reason` ricevuti nel formato vecchio, conservati per
+    contratto), non se ne aggiunge un'altra: al più una volta per itinerario."""
+    if (
+        cand.esito_deciso is not EsitoAdattamento.SOSTITUITA
+        or cand.senza_candidato
+        or cand.segnale_sostituzione is None
+        or any(_contiene_frase_profilo(a.reason_deciso or "") for a in altre)
+    ):
+        return cand
+    originale = per_id.get(cand.experience.id)
+    if originale is None:
+        return cand
+    motivo_con = reason_fn(originale, profile, [], prima_tappa=True)
+    motivo_senza = reason_fn(originale, profile, [], prima_tappa=False)
+    if motivo_con == motivo_senza:
+        return cand  # nessun tratto netto né flag: nessuna frase
+    if motivo_con.endswith(motivo_senza):
+        frase = motivo_con[: len(motivo_con) - len(motivo_senza)].strip()
+        if not frase or frase.lower() in motivo_senza.lower():
+            return cand  # la frase c'è già nel motivo: non si ripete
+    nuovo = adapt_fn(motivo_con, cand.segnale_sostituzione)
+    return cand.model_copy(update={"reason_deciso": nuovo})
 
 
 def _stub_da_stop(stop: ItineraryStop, reason: str) -> _CandidatoConReason:
@@ -1887,8 +2004,9 @@ def _reason_finale(
     finale = _con_disclosure(reason, cand) if reason else ""
     if not finale:
         segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
-        # `prima_tappa=False`: in adattamento la frase del profilo resta solo
-        # dove l'aveva già il `reason` ricevuto (al più una volta).
+        # `prima_tappa=False`: in adattamento la frase del profilo resta dove
+        # l'aveva già il `reason` ricevuto, o la aggiunge `_con_frase_profilo`
+        # alla prima tappa SOSTITUITA (al più una volta).
         finale = _con_disclosure(reason_fn(cand, profile, segnali, prima_tappa=False), cand)
     return finale
 

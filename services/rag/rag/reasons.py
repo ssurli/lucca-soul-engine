@@ -63,42 +63,66 @@ def _frase_segnale(segnale: str) -> str | None:
     return segnale.strip()
 
 
+#: Un tratto 0..1 è NETTO (e può entrare nel `reason`) solo se >= questa
+#: soglia o <= `_SOGLIA_TRATTO_BASSA`, limiti inclusi. Stessi valori in
+#: `experience_engine.engine` (verificato da un test).
+_SOGLIA_TRATTO_ALTA = 0.7
+_SOGLIA_TRATTO_BASSA = 0.2
+#: Tolleranza sui limiti: 0.7 e 0.2 restano inclusi anche se arrivano da un
+#: calcolo in virgola mobile (es. 0.1 * 7 = 0.7000000000000001, 1 - 0.8).
+_TOLLERANZA_TRATTO = 1e-9
+
+
+def _tratto_netto(valore: float) -> bool:
+    return (
+        valore >= _SOGLIA_TRATTO_ALTA - _TOLLERANZA_TRATTO
+        or valore <= _SOGLIA_TRATTO_BASSA + _TOLLERANZA_TRATTO
+    )
+
+
 def _tratto_dominante(profile: EmotionalProfile) -> str | None:
     """Sceglie il tratto del profilo più marcato, per intrecciarlo nel
     `reason`. I flag booleani (bambini, accessibilità) hanno priorità perché
-    sono vincoli espliciti, non sfumature; tra i tratti 0..1 vince quello più
-    lontano dal valore neutro (0.5). Un profilo troppo neutro non forza un
-    tratto inventato: ritorna `None`."""
+    sono vincoli espliciti, non sfumature. Un tratto 0..1 conta solo se è
+    NETTO: valore >= 0.7 oppure <= 0.2 (limiti inclusi, con tolleranza in
+    virgola mobile); tra i tratti netti vince quello più lontano dal valore
+    neutro (0.5), a parità il primo nell'ordine contemplazione, arte,
+    curiosità. Nessun tratto netto: ritorna `None` (un profilo sfumato, es.
+    curiosità 0.35 da "Un po'", non forza una frase inventata)."""
     if profile.con_bambini:
         return "è pensata anche per chi viaggia con bambini"
     if profile.accessibilita_richiesta:
         return "rispetta il bisogno di un percorso accessibile"
 
-    candidati: list[tuple[float, str]] = [
+    tratti: list[tuple[float, float, str]] = [
         (
+            profile.contemplazione,
             abs(profile.contemplazione - 0.5),
             "cerchi silenzio e raccoglimento"
             if profile.contemplazione >= 0.5
             else "ami i luoghi vivi, con musica e movimento",
         ),
         (
+            profile.arte,
             abs(profile.arte - 0.5),
             "ti lasci conquistare dalla bellezza"
             if profile.arte >= 0.5
             else "preferisci le storie che un luogo racconta",
         ),
         (
+            profile.curiosita,
             abs(profile.curiosita - 0.5),
             "hai voglia di perderti e lasciarti sorprendere"
             if profile.curiosita >= 0.5
             else "preferisci un percorso chiaro, senza troppe sorprese",
         ),
     ]
-    candidati.sort(key=lambda c: c[0], reverse=True)
-    punteggio, frase = candidati[0]
-    if punteggio < 0.1:
+    netti = [(scarto, frase) for valore, scarto, frase in tratti if _tratto_netto(valore)]
+    if not netti:
         return None
-    return frase
+    # `sort` è stabile anche con reverse=True: a parità resta l'ordine sopra.
+    netti.sort(key=lambda c: c[0], reverse=True)
+    return netti[0][1]
 
 
 def compose_reason(
