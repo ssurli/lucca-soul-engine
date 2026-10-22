@@ -32,6 +32,7 @@ from contracts import (
     GraphCandidate,
     Itinerary,
     ItineraryStop,
+    Punto,
     SegnaleFluttuante,
     Signal,
     TappaEsclusa,
@@ -39,6 +40,8 @@ from contracts import (
     VocabolarioTemi,
     con_articolo,
     con_luogo,
+    distanza_a_piedi_m,
+    punto_piu_vicino,
 )
 
 from .rules import (
@@ -293,6 +296,55 @@ def _minuti_alla_mezzanotte(ora: time) -> int:
     return MINUTI_GIORNATA - (ora.hour * 60 + ora.minute)
 
 
+# ---------------------------------------------------------------------------
+# Trasferimento tra tappe consecutive e punto di arrivo (ondata 3, compito 4).
+# UNICO punto della progressione: composizione, budget, arrivi, sostituzioni,
+# tetto della giornata e ricostruzione degli orari passano tutti di qui.
+# DATI DI POSIZIONE: decidono solo TEMPO (trasferimento) e il link "Come
+# arrivo qui", mai lo score né l'ordine per affinità.
+# ---------------------------------------------------------------------------
+
+
+def _passo(
+    cand: GraphCandidate, punto_precedente: Punto | None, *, prima: bool
+) -> tuple[int, Punto | None]:
+    """(minuti di trasferimento verso `cand`, punto di arrivo scelto per `cand`)
+    se `cand` segue una tappa il cui punto di arrivo è `punto_precedente`.
+
+    Punto di arrivo: prima tappa -> il primo di `cand.punti_arrivo`; tappe
+    successive -> il più vicino a `punto_precedente` (`contracts.
+    punto_piu_vicino`, a parità il primo); precedente senza punto (bottega,
+    stub) -> il primo della lista; `cand` senza punti -> `None`.
+
+    Trasferimento: 0 per la prima tappa; altrimenti
+    `stima_trasferimento_min(distanza_a_piedi_m(precedente, scelto))` se
+    entrambe hanno un punto, se no la stima prudente
+    `TEMPO_TRASFERIMENTO_DEFAULT_MIN`. Non legge `distanza_m` (che misura la
+    distanza dall'ultimo luogo GIÀ VISITATO, non dalla tappa precedente)."""
+    punti = cand.punti_arrivo
+    primo = punti[0] if punti else None
+    if prima:
+        return 0, primo
+    if punto_precedente is None or primo is None:
+        return TEMPO_TRASFERIMENTO_DEFAULT_MIN, primo
+    scelto = punto_piu_vicino(punto_precedente, punti) or primo
+    return stima_trasferimento_min(distanza_a_piedi_m(punto_precedente, scelto)), scelto
+
+
+def _progressione(tappe: Sequence[GraphCandidate]) -> list[tuple[int, Punto | None]]:
+    """`_passo` applicato in ordine: per ogni tappa (trasferimento dalla
+    precedente, punto di arrivo). Il trasferimento dipende dalla tappa
+    PRECEDENTE: cambiare una tappa cambia anche il trasferimento della
+    successiva."""
+    risultato: list[tuple[int, Punto | None]] = []
+    precedente: Punto | None = None
+    for i, cand in enumerate(tappe):
+        passo = _passo(cand, precedente, prima=i == 0)
+        risultato.append(passo)
+        precedente = passo[1]
+    return risultato
+
+
 def _tema_primario(candidate: GraphCandidate) -> str:
     temi = candidate.experience.temi
     return temi[0] if temi else ""
@@ -470,13 +522,16 @@ def _seleziona_tappe(
     luoghi_scelti: set[str] = set()
     tempo_usato = 0
     rimanenti = list(valutati)
+    # Punto di arrivo dell'ultima tappa scelta (`_passo`): il trasferimento
+    # di ogni candidato dipende da lì, non dallo score.
+    punto_ultimo: Punto | None = None
 
     while rimanenti:
         scelto_idx: int | None = None
         for idx, (score, cand) in enumerate(rimanenti):
             if cand.experience.place_id in luoghi_scelti:
                 continue  # una tappa per luogo: il luogo è già in itinerario
-            trasferimento = stima_trasferimento_min(cand.distanza_m) if selezionati else 0
+            trasferimento, _ = _passo(cand, punto_ultimo, prima=not selezionati)
             costo = cand.experience.durata_min + trasferimento
             if tempo_usato + costo > tempo_disponibile_min:
                 continue
@@ -504,7 +559,7 @@ def _seleziona_tappe(
             break
 
         _, cand = rimanenti.pop(scelto_idx)
-        trasferimento = stima_trasferimento_min(cand.distanza_m) if selezionati else 0
+        trasferimento, punto_ultimo = _passo(cand, punto_ultimo, prima=not selezionati)
         tempo_usato += cand.experience.durata_min + trasferimento
         luoghi_scelti.add(cand.experience.place_id)
         selezionati.append(cand)
@@ -547,9 +602,10 @@ def _costruisci_stops(
     stops: list[ItineraryStop] = []
     orario = signal.ora
     luoghi_con_frase: set[str] = set()
+    progressione = _progressione(selezionati)
     for i, cand in enumerate(selezionati):
-        if i > 0:
-            orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
+        trasferimento, punto_arrivo = progressione[i]
+        orario = _somma_minuti(orario, trasferimento)  # 0 per la prima tappa
         segnali = segnali_rilevanti(cand, signal, vocabolario=vocabolario)
         # Le tappe sono già nell'ordine FINALE (arrivi progressivi da
         # `signal.ora`): la prima è quella che arriva più presto, l'unica che
@@ -579,6 +635,8 @@ def _costruisci_stops(
                 arrivo=orario,
                 durata_min=cand.experience.durata_min,
                 reason=reason,
+                # Deciso dal motore (`_passo`); l'app costruisce solo il link.
+                punto_arrivo=punto_arrivo,
             )
         )
         orario = _somma_minuti(orario, cand.experience.durata_min)
@@ -603,19 +661,21 @@ _PREFISSO_TAPPA_FLUTTUANTE = "fluttuante-"
 
 def _minuti_usati_permanenti(selezionati: Sequence[GraphCandidate]) -> int:
     """Budget consumato dalle tappe permanenti scelte: SOMMA delle durate più
-    il trasferimento stimato (`stima_trasferimento_min`) per ogni tappa dopo
-    la prima — lo stesso identico conteggio di `_seleziona_tappe`. È anche il
-    costo con cui l'adattamento verifica una sostituzione contro il budget.
+    il trasferimento dalla tappa precedente (`_progressione`, 0 per la prima)
+    — lo stesso identico conteggio di `_seleziona_tappe`. È anche il costo con
+    cui l'adattamento verifica una sostituzione contro il budget: poiché il
+    trasferimento dipende dalla tappa precedente, una sostituzione cambia
+    anche quello della tappa successiva, ed è contato qui.
 
     È una somma, mai una differenza di orari: gli `arrivo` sono `time` senza
     data e oltre la mezzanotte ripartono da 00:00, quindi una differenza
     diventerebbe negativa e le tappe in coda sforerebbero il budget."""
-    totale = 0
-    for i, cand in enumerate(selezionati):
-        if i > 0:
-            totale += stima_trasferimento_min(cand.distanza_m)
-        totale += cand.experience.durata_min
-    return totale
+    return sum(
+        trasferimento + cand.experience.durata_min
+        for cand, (trasferimento, _) in zip(
+            selezionati, _progressione(selezionati), strict=True
+        )
+    )
 
 
 def _reason_fluttuante(
@@ -647,9 +707,9 @@ def _aggiungi_tappe_fluttuanti(
     EFFETTIVO (dichiarato troncato alla mezzanotte) che passa
     `compose_itinerary`: così nessuna tappa in coda finisce oltre le 24:00.
 
-    Ogni tappa fluttuante costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessuna
-    `distanza_m` nota per un segnale, stessa stima prudente già usata
-    altrove per una distanza sconosciuta) + `DURATA_TAPPA_FLUTTUANTE_MIN`
+    Ogni tappa fluttuante costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessun
+    punto di arrivo noto per un segnale, stessa stima prudente di `_passo`
+    per una tappa senza punto) e non ha `punto_arrivo` + `DURATA_TAPPA_FLUTTUANTE_MIN`
     (una tappa "breve" per definizione).
 
     `minuti_usati` è il budget già consumato da `stops`, come SOMMA di
@@ -840,9 +900,9 @@ def _aggiungi_tappe_eventi_promossi(
     `tempo_disponibile_min`, il budget EFFETTIVO (dichiarato troncato alla
     mezzanotte) che passa `compose_itinerary`.
 
-    Ogni tappa-evento costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessuna
-    `distanza_m` nota per un `:Evento`, stessa stima prudente già usata
-    altrove per una distanza sconosciuta) + `DURATA_TAPPA_EVENTO_MIN`.
+    Ogni tappa-evento costa `TEMPO_TRASFERIMENTO_DEFAULT_MIN` (nessun
+    punto di arrivo noto per un `:Evento`, stessa stima prudente di `_passo`
+    per una tappa senza punto) e non ha `punto_arrivo` + `DURATA_TAPPA_EVENTO_MIN`.
 
     `minuti_usati` (keyword-only, obbligatorio) è il budget già consumato da
     `stops` — tappe permanenti più eventuali tappe fluttuanti — come SOMMA
@@ -1492,7 +1552,8 @@ def adapt_itinerary(
         )
     else:
         # Nessuna tappa sostituita o tagliata: arrivi INVARIATI, cambiano
-        # solo reason ed esito (stessa lunghezza e stesso ordine).
+        # solo reason ed esito (stessa lunghezza e stesso ordine). Il punto di
+        # arrivo è ricalcolato dal catalogo (`_progressione`), come il titolo.
         stops = [
             stop.model_copy(
                 update={
@@ -1501,10 +1562,13 @@ def adapt_itinerary(
                         vocabolario=vocabolario,
                     ),
                     "esito_adattamento": c.esito_deciso,
+                    "punto_arrivo": _punto_in_uscita(c, punto),
                     **_narrazione_tappa(c),
                 }
             )
-            for stop, c in zip(itinerary.stops, correnti, strict=True)
+            for stop, c, (_, punto) in zip(
+                itinerary.stops, correnti, _progressione(correnti), strict=True
+            )
         ]
 
     return Itinerary(
@@ -1657,6 +1721,18 @@ class _CandidatoConReason(GraphCandidate):
     #: ..." ("la pioggia", "l'affollamento alla ..."), per ricomporre il
     #: `reason` con la frase del profilo (`_con_frase_profilo`).
     segnale_sostituzione: str | None = None
+    #: Solo per gli stub (`senza_candidato`): il `punto_arrivo` della tappa
+    #: ricevuta, conservato com'e' nella risposta ("non riscrivere al buio").
+    #: Non entra MAI nelle distanze: uno stub non ha `punti_arrivo`, quindi il
+    #: suo trasferimento (e quello della tappa dopo) resta la stima prudente.
+    punto_ricevuto: Punto | None = None
+
+
+def _punto_in_uscita(cand: _CandidatoConReason, punto: Punto | None) -> Punto | None:
+    """`punto_arrivo` della tappa restituita: quello scelto da `_progressione`
+    per un candidato reale (il catalogo vince sul client), quello ricevuto per
+    uno stub."""
+    return cand.punto_ricevuto if cand.senza_candidato else punto
 
 
 def _titolo_tappa(cand: _CandidatoConReason) -> str | None:
@@ -1693,7 +1769,7 @@ def _marca_reason(
     dati = cand.model_dump()
     for campo in (
         "reason_deciso", "esito_deciso", "id_originale", "senza_candidato", "titolo_ricevuto",
-        "segnale_sostituzione",
+        "segnale_sostituzione", "punto_ricevuto",
     ):
         dati.pop(campo, None)
     return _CandidatoConReason(
@@ -1779,6 +1855,7 @@ def _stub_da_stop(stop: ItineraryStop, reason: str) -> _CandidatoConReason:
         # catalogo (`_marca_reason` copia `cand.curiosita`): il client non
         # puo' iniettare curiosita' sue in una tappa del catalogo.
         curiosita=stop.curiosita,
+        punto_ricevuto=stop.punto_arrivo,
     )
 
 
@@ -1792,8 +1869,9 @@ def _sostituzione_nel_budget(
     """Vero se l'itinerario con `alternativa` al posto della tappa `indice`
     resta entro `limite` minuti. Costo = somma di durate e trasferimenti
     (`_minuti_usati_permanenti`, lo stesso conteggio della composizione),
-    mai differenze di orari. Legge solo durata e distanza: nessun partner,
-    nessun prezzo."""
+    mai differenze di orari: il trasferimento della tappa SUCCESSIVA è
+    ricalcolato dal punto di arrivo dell'alternativa. Legge solo durata e
+    punti di arrivo: nessun partner, nessun prezzo."""
     ipotesi = [*correnti[:indice], alternativa, *correnti[indice + 1 :]]
     return _minuti_usati_permanenti(ipotesi) <= limite
 
@@ -1856,7 +1934,8 @@ def _arrivo_in_posizione(
 ) -> time:
     """Arrivo di `candidato` se viene dopo `precedenti` in un itinerario che
     parte a `ora_partenza`: `ora_partenza + _minuti_usati_permanenti(precedenti)
-    + trasferimento(candidato)` (trasferimento 0 se è la prima tappa). È la
+    + trasferimento(candidato)` (trasferimento dal punto di arrivo dell'ultima
+    dei `precedenti`, `_passo`; 0 se è la prima tappa). È la
     STESSA progressione di `_ricostruisci_stops` e di `_costruisci_stops`:
     l'arrivo valutato dagli orari è quello che il visitatore vedrà.
 
@@ -1867,7 +1946,8 @@ def _arrivo_in_posizione(
     della giornata (passo 3 di `adapt_itinerary`)."""
     minuti = _minuti_usati_permanenti(precedenti)
     if precedenti:
-        minuti += stima_trasferimento_min(candidato.distanza_m)
+        punto_precedente = _progressione(precedenti)[-1][1]
+        minuti += _passo(candidato, punto_precedente, prima=False)[0]
     return _somma_minuti(ora_partenza, minuti)
 
 
@@ -2036,14 +2116,18 @@ def _ricostruisci_stops(
 ) -> list[ItineraryStop]:
     """Ricalcola orari progressivi da `signal.ora` conservando `reason` ed
     esito già decisi, e componendo via `reason_fn` un `reason` mancante.
+    Trasferimenti e punti di arrivo vengono da `_progressione`, come in
+    composizione: una tappa sostituita cambia anche il trasferimento e il
+    punto di arrivo della successiva.
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
     stops: list[ItineraryStop] = []
     orario = signal.ora
+    progressione = _progressione(correnti)
     for i, cand in enumerate(correnti):
-        if i > 0:
-            orario = _somma_minuti(orario, stima_trasferimento_min(cand.distanza_m))
+        trasferimento, punto_arrivo = progressione[i]
+        orario = _somma_minuti(orario, trasferimento)  # 0 per la prima tappa
         reason = _reason_finale(
             cand, cand.reason_deciso or "", profile, signal, reason_fn, vocabolario=vocabolario
         )
@@ -2056,6 +2140,7 @@ def _ricostruisci_stops(
                 durata_min=cand.experience.durata_min,
                 reason=reason,
                 esito_adattamento=cand.esito_deciso or EsitoAdattamento.NON_TOCCATA,
+                punto_arrivo=_punto_in_uscita(cand, punto_arrivo),
             )
         )
         orario = _somma_minuti(orario, cand.experience.durata_min)

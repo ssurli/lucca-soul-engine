@@ -25,6 +25,7 @@ from contracts import (
     GraphCandidate,
     Itinerary,
     ItineraryStop,
+    Punto,
     Signal,
     TappaEsclusa,
     VisitorContext,
@@ -49,6 +50,9 @@ TUTTO_IL_GIORNO = [
 ]
 
 
+_PUNTO_COMUNE = Punto(lat=43.84, lon=10.50)
+
+
 def _cand(
     id_: str,
     *,
@@ -66,7 +70,9 @@ def _cand(
         ),
         place_nome=f"Luogo {id_}",
         connessioni=['Evoca il tema "Arte".'],
-        distanza_m=0,
+        # Tutte le tappe nello STESSO punto di arrivo: distanza a piedi 0,
+        # trasferimento 0 (ondata 3, compito 4: il trasferimento viene dai punti).
+        punti_arrivo=[_PUNTO_COMUNE],
     )
 
 

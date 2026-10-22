@@ -30,6 +30,7 @@ from contracts import (
     GraphCandidate,
     Itinerary,
     ItineraryStop,
+    Punto,
     Signal,
     VisitorContext,
     VocabolarioTemi,
@@ -60,6 +61,9 @@ SERENO = Signal(meteo="sereno", affollamento={}, stanchezza=0.0, ora=time(9, 0))
 PIOGGIA = Signal(meteo="pioggia", affollamento={}, stanchezza=0.0, ora=time(9, 0))
 
 
+_PUNTO_COMUNE = Punto(lat=43.84, lon=10.50)
+
+
 def _cand(
     id_: str,
     luogo: str,
@@ -78,7 +82,9 @@ def _cand(
         ),
         place_nome=f"Luogo {luogo}",
         connessioni=[],
-        distanza_m=0,  # trasferimento 0: il budget conta solo le durate
+        # Tutte le tappe nello STESSO punto di arrivo: distanza a piedi 0,
+        # trasferimento 0 (ondata 3, compito 4: il trasferimento viene dai punti).
+        punti_arrivo=[_PUNTO_COMUNE],
     )
 
 

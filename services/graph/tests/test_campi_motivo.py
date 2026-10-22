@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import time
+from typing import Any
 
 import pytest
 from contracts import ARTICOLI, EmotionalProfile, Signal, VisitorContext
@@ -216,13 +217,35 @@ def test_senza_visti_nessuna_vicinanza() -> None:
         assert c.vicinanza_nome is None and c.vicinanza_articolo is None
 
 
+def _metri_vicino(place_id: str, visto: str) -> int:
+    return min(v.metri for v in DATASET.vicino if {v.da_id, v.a_id} == {place_id, visto})
+
+
+def _come_prima_dei_punti(c: Any, visti: list[str]) -> list[object]:
+    """`[connessioni, distanza_m]` con i metri dell'arco VICINO al posto di
+    quelli calcolati dai punti (ondata 3, compito 4: `graph.source.
+    metri_vicinanza`). Cambiano SOLO quei metri, solo con la vicinanza."""
+    if c.vicinanza_nome is None:
+        return [c.connessioni, c.distanza_m]
+    metri = _metri_vicino(c.experience.place_id, visti[-1])
+    frase_nuova = f"A {c.distanza_m} m da {c.vicinanza_nome}, già visitato."
+    frase_vecchia = f"A {metri} m da {c.vicinanza_nome}, già visitato."
+    assert c.connessioni[-1] == frase_nuova, c.experience.id
+    return [[*c.connessioni[:-1], frase_vecchia], metri]
+
+
 def test_connessioni_e_distanze_invariate_rispetto_a_prima_del_compito_4() -> None:
     """Testo, numero e ordine delle `connessioni` (e `distanza_m`) per tutti i
-    candidati, con e senza luoghi già visti: alimentano lo score."""
+    candidati, con e senza luoghi già visti: alimentano lo score.
+
+    Ondata 3, compito 4: i metri della frase "già visitato" (e `distanza_m`)
+    vengono ora dai punti di arrivo; rimessi i metri VICINO
+    (`_come_prima_dei_punti`) il dump deve dare ESATTAMENTE l'hash di prima:
+    nient'altro è cambiato (numero di connessioni compreso)."""
     fuori: dict[str, dict[str, list[object]]] = {}
     for visti in [[], *[[lg.id] for lg in DATASET.luoghi]]:
         fuori[",".join(visti)] = {
-            c.experience.id: [c.connessioni, c.distanza_m]
+            c.experience.id: _come_prima_dei_punti(c, visti)
             for c in SeedCandidateSource().candidates(_ctx(visti))
         }
     dump = json.dumps(fuori, ensure_ascii=False, sort_keys=True).encode("utf-8")

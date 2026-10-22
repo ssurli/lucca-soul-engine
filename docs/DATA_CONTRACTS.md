@@ -275,6 +275,17 @@ def rientra_in_orario(orari_apertura: list[FasciaApertura], giorno_settimana: in
 # Andata e ritorno esatto, ordine preservato: decodifica(codifica(x)) == x.
 # codifica_fasce rifiuta (ValueError) orari con secondi o fuso, non rappresentabili.
 
+# Distanze tra punti (packages/contracts/contracts/punti.py, esportate da `contracts`).
+# Funzioni pure; DATI DI POSIZIONE, MAI nel punteggio. Usi: tempo di trasferimento tra
+# tappe consecutive (Experience Engine), frase «A ... m da ..., già visitato» (grafo),
+# scelta di `ItineraryStop.punto_arrivo`. Unico modulo che conosce formula e coefficiente.
+#   COEFFICIENTE_PERCORSO_PIEDI: float = 1.3   # DICHIARATO, non misurato (docs/LIMITI.md)
+#   distanza_linea_aria_m(a: Punto, b: Punto) -> float   # emisenoverso, raggio 6_371_000 m
+#   distanza_a_piedi_m(a: Punto, b: Punto) -> int        # aria x 1.3, ai 10 m, round half up
+#                                                        # esplicito (floor(x/10+0.5)*10); 0 se coincidono
+#   punto_piu_vicino(riferimento: Punto, candidati: Sequence[Punto]) -> Punto | None
+#       # più vicino in linea d'aria; a parità il primo; None se la lista è vuota
+
 class GraphCandidate(BaseModel):
     """Ciò che il grafo PROPONE all'Experience Engine.
     Il grafo non decide: propone candidati e connessioni leggibili."""
@@ -868,6 +879,9 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   (passaggio), `apps/lucca_soul_app` (specchio Dart; link "Come arrivo qui"; riga fonte solo
   se `fonte_pubblica`). Nota: `I_LIMITI_DEL_MOTORE.md` afferma "nessuna coordinata assoluta":
   da aggiornare.
+  Stessa data, nuovo modulo `contracts/punti.py` (solo funzioni, nessun campo): `COEFFICIENTE_PERCORSO_PIEDI`
+  (1.3), `distanza_linea_aria_m`, `distanza_a_piedi_m`, `punto_piu_vicino`; esportati da `contracts`.
+  Consumatori: `services/experience-engine` (trasferimento, `punto_arrivo`), `services/graph` (frase distanza).
 
 - **2026-10-21 — ondata 2a, curiosità (compito 5).** Aggiunti: `TipoCuriosita` (enum:
   `leggenda`, `fatto`), `Curiosita(testo, tipo, fonte)` (`testo` e `fonte` min 1; una

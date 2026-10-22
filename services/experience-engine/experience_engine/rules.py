@@ -49,10 +49,12 @@ SOGLIA_AFFOLLAMENTO_ADATTAMENTO = 0.7
 #: della quantità di tappe.
 SOGLIA_STANCHEZZA_ALTA = 0.7
 
-#: Minuti di trasferimento stimati quando manca `distanza_m`.
+#: Minuti di trasferimento stimati quando una delle due tappe consecutive non
+#: ha un punto di arrivo (bottega dimostrativa, luogo senza coordinate, tappe
+#: fluttuanti ed eventi promossi): stima prudente.
 TEMPO_TRASFERIMENTO_DEFAULT_MIN = 10
 
-#: Velocità di cammino stimata (m/min) per convertire `distanza_m` in minuti.
+#: Velocità di cammino stimata (m/min) per convertire i metri a piedi in minuti.
 VELOCITA_CAMMINO_M_MIN = 80
 
 #: Durata (min) oltre la quale una tappa è considerata "lunga" ai fini del
@@ -113,11 +115,14 @@ W_STANCHEZZA = 0.15
 PENALITA_AFFOLLAMENTO = 0.40
 
 def stima_trasferimento_min(distanza_m: int | None) -> int:
-    """Minuti di trasferimento tra due tappe.
+    """Minuti di trasferimento per `distanza_m` metri a piedi.
 
-    Usa `distanza_m` se il grafo l'ha fornita (prossimità reale fra luoghi),
-    altrimenti una stima prudente costante. Serve al budget di tempo: un
-    itinerario che sfora il tempo disponibile non rispetta la persona."""
+    Il motore la chiama con la distanza a piedi tra i punti di arrivo di due
+    tappe CONSECUTIVE (`contracts.distanza_a_piedi_m`, in `engine._passo`);
+    `None` (distanza sconosciuta) dà la stima prudente costante. Non riceve
+    mai `GraphCandidate.distanza_m` (distanza dal luogo già visitato, solo
+    narrazione). Serve al budget di tempo: un itinerario che sfora il tempo
+    disponibile non rispetta la persona."""
     if distanza_m is None:
         return TEMPO_TRASFERIMENTO_DEFAULT_MIN
     if distanza_m <= 0:

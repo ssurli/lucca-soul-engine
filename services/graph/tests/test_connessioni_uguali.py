@@ -69,6 +69,9 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
     metri = None
     nome_rif = None
     articolo_rif = None
+    # Punto del luogo `$vicino_a`, null senza arco VICINO (come `riferimento_nome`).
+    lat_rif = None
+    lon_rif = None
     if vicino_a is not None:
         metri_v = [
             v.metri
@@ -79,6 +82,9 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
             metri = min(metri_v)
             nome_rif = _LUOGHI[vicino_a].nome
             articolo_rif = _LUOGHI[vicino_a].articolo
+            punto_rif = _LUOGHI[vicino_a].punto
+            lat_rif = punto_rif.lat if punto_rif else None
+            lon_rif = punto_rif.lon if punto_rif else None
     return {
         "id": e.id,
         "titolo": e.titolo,
@@ -129,6 +135,8 @@ def _record(esp_id: str, vicino_a: str | None, rng: random.Random) -> dict[str, 
         "distanza_m": metri,
         "riferimento_nome": nome_rif,
         "riferimento_articolo": articolo_rif,
+        "riferimento_lat": lat_rif,
+        "riferimento_lon": lon_rif,
         "partner_abbonamento_attivo": True,
     }
 

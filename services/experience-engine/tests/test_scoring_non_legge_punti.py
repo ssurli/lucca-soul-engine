@@ -9,12 +9,15 @@ a un partner) comprerebbe visibilita'.
 Perimetro: `experience_engine.rules` e `recommender.ranking` per intero, piu' le
 due funzioni di scoring vere ispezionate da sole (`rules.calcola_score` e la
 chiusura `_score` di `ranking.costruisci_score_fn`). Il modulo `engine` NON e'
-nel perimetro: il motore usera' i punti per il tempo di trasferimento (non per
-ordinare); la guardia sui suoi ordinamenti vive nel test dedicato al trasferimento.
+nel perimetro: il motore usa i punti per il tempo di trasferimento (non per
+ordinare); la guardia sui suoi ordinamenti vive in `test_trasferimento_punti.py`.
 
 Un riferimento e': attributo, nome, import o stringa (non docstring) che sia un
 identificatore di posizione (`punti_arrivo`, `punto`, `punto_arrivo`, `lat`,
-`lon`, `Punto`) o ne contenga il prefisso (`punti_arrivo*`, `punto_*`).
+`lon`, `Punto`) o ne contenga il prefisso (`punti_arrivo*`, `punto_*`), oppure
+una funzione o costante di distanza di `contracts.punti` (ondata 3, compito 4:
+`distanza_a_piedi_m`, `distanza_linea_aria_m`, `punto_piu_vicino`,
+`COEFFICIENTE_PERCORSO_PIEDI`).
 """
 
 from __future__ import annotations
@@ -29,7 +32,18 @@ from experience_engine import rules
 from recommender import ranking
 
 _ESATTI = frozenset({"punto", "punti", "lat", "lon", "lng", "latitudine", "longitudine"})
-_PREFISSI = ("punti_arrivo", "punto_", "luogo_lat", "luogo_lon")
+_PREFISSI = (
+    "punti_arrivo",
+    "punto_",
+    "luogo_lat",
+    "luogo_lon",
+    "riferimento_lat",
+    "riferimento_lon",
+    # Distanze tra punti (`contracts.punti`): `punto_piu_vicino` e' gia' `punto_`.
+    "distanza_a_piedi",
+    "distanza_linea_aria",
+    "coefficiente_percorso",
+)
 
 
 def _e_posizione(nome: str) -> bool:
@@ -112,6 +126,11 @@ def _letture(sorgente: str) -> list[str]:
         'return candidate.model_dump()["punti_arrivo"]',
         "return isinstance(x, Punto) or Punto",
         "return punto_arrivo",
+        "return distanza_a_piedi_m(a, b)",
+        "return contracts.distanza_linea_aria_m(a, b)",
+        "return punto_piu_vicino(a, candidate.x)",
+        "return COEFFICIENTE_PERCORSO_PIEDI * x",
+        "from contracts import distanza_a_piedi_m",
     ],
 )
 def test_la_guardia_scatta(corpo: str) -> None:

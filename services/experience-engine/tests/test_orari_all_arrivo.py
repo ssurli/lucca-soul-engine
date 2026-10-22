@@ -4,8 +4,9 @@ Il filtro non guarda piu' `signal.ora` ma l'istante in cui il visitatore
 ARRIVA alla tappa, e l'intero intervallo [arrivo, arrivo + durata] deve cadere
 in una fascia del giorno. Solo API pubbliche: `compose_itinerary` e
 `adapt_itinerary`. Esperienze costruite qui con `orari_apertura` espliciti;
-lunedi' 2026-06-15 (`LUNEDI`) rende noto il giorno. `distanza_m=0` azzera i
-trasferimenti, cosi' gli arrivi sono somme di durate.
+lunedi' 2026-06-15 (`LUNEDI`) rende noto il giorno. Tutte le tappe hanno lo
+stesso punto di arrivo (`_PUNTO_COMUNE`): trasferimenti nulli, cosi' gli arrivi
+sono somme di durate.
 
 Quattro gruppi:
 1. composizione: la tappa chiusa in uno slot salta, resta tra i rimanenti e
@@ -31,6 +32,7 @@ from contracts import (
     GraphCandidate,
     Itinerary,
     ItineraryStop,
+    Punto,
     Signal,
     VisitorContext,
     VocabolarioTemi,
@@ -70,6 +72,9 @@ def _orari(*fasce: tuple[str, str], giorno: int = 0) -> list[FasciaApertura]:
     ]
 
 
+_PUNTO_COMUNE = Punto(lat=43.84, lon=10.50)
+
+
 def _cand(
     id_: str,
     *,
@@ -86,7 +91,9 @@ def _cand(
         ),
         place_nome=f"Luogo {id_}",
         connessioni=['Evoca il tema "Arte".'],
-        distanza_m=0,
+        # Tutte le tappe nello STESSO punto di arrivo: distanza a piedi 0,
+        # trasferimento 0 (ondata 3, compito 4: il trasferimento viene dai punti).
+        punti_arrivo=[_PUNTO_COMUNE],
     )
 
 

@@ -42,6 +42,7 @@ Due implementazioni della stessa interfaccia (`CandidateSource`):
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Protocol
 
@@ -51,9 +52,12 @@ from contracts import (
     FasciaApertura,
     GraphCandidate,
     Partner,
+    Punto,
     TipoCuriosita,
     VisitorContext,
     decodifica_fasce,
+    distanza_a_piedi_m,
+    punto_piu_vicino,
 )
 from neo4j import Driver, GraphDatabase, Record
 
@@ -66,6 +70,28 @@ from graph.registro import dataset_attivo
 
 _CYPHER_DIR = Path(__file__).resolve().parent.parent / "cypher"
 CANDIDATES_QUERY_PATH = _CYPHER_DIR / "10_candidates.cypher"
+
+
+def metri_vicinanza(
+    metri_vicino: int, punto_riferimento: Punto | None, punti_arrivo: Sequence[Punto]
+) -> int:
+    """Metri della frase "A … m da …, già visitato" (e di `distanza_m`), da
+    chiamare SOLO quando esiste l'arco VICINO tra il luogo e il riferimento
+    (condizione invariata: archi e metri VICINO non si toccano).
+
+    Se il luogo di riferimento ha un punto e il candidato ha punti di arrivo:
+    `contracts.distanza_a_piedi_m(riferimento, punto_piu_vicino(riferimento,
+    punti_arrivo))`, la stessa stima a piedi che il motore usa per il
+    trasferimento. Altrimenti (riferimento senza punto, es. un luogo senza
+    coordinate; candidato senza punti, es. bottega dimostrativa) restano i
+    metri dell'arco VICINO. Unica regola per seed e Neo4j. DATO DI POSIZIONE:
+    solo narrazione, mai punteggio."""
+    if punto_riferimento is None:
+        return metri_vicino
+    vicino = punto_piu_vicino(punto_riferimento, punti_arrivo)
+    if vicino is None:
+        return metri_vicino
+    return distanza_a_piedi_m(punto_riferimento, vicino)
 
 
 class CandidateSource(Protocol):
@@ -151,13 +177,24 @@ class SeedCandidateSource:
                     "partner_abbonamento_attivo": self._abbonamento_attivo(esperienza.partner_id)
                 }
             )
-            vicinanza = self._vicinanza(luogo, riferimento)
+            punti_arrivo = risolvi_punti_arrivo(
+                esperienza.punti_arrivo,
+                luogo.punto,
+                self._bottega_fittizia(esperienza.partner_id),
+            )
+            vicinanza = self._vicinanza(luogo, riferimento, punti_arrivo)
             risultato.append(
                 GraphCandidate(
                     experience=esperienza_effettiva,
                     place_nome=luogo.nome,
-                    connessioni=self._connessioni(esperienza, luogo, riferimento),
-                    distanza_m=self._distanza(esperienza.place_id, riferimento),
+                    connessioni=self._connessioni(esperienza, luogo, vicinanza),
+                    # Con l'arco VICINO, gli stessi metri della frase; senza,
+                    # come prima (0 sul luogo stesso, altrimenti None).
+                    distanza_m=(
+                        vicinanza[0]
+                        if vicinanza
+                        else self._distanza(esperienza.place_id, riferimento)
+                    ),
                     attribuzione=self._attribuzione(esperienza),
                     place_articolo=luogo.articolo,
                     racconti=racconti_con_fonte(
@@ -172,11 +209,7 @@ class SeedCandidateSource:
                     vicinanza_nome=vicinanza[1].nome if vicinanza else None,
                     vicinanza_articolo=vicinanza[1].articolo if vicinanza else None,
                     curiosita=list(luogo.curiosita),
-                    punti_arrivo=risolvi_punti_arrivo(
-                        esperienza.punti_arrivo,
-                        luogo.punto,
-                        self._bottega_fittizia(esperienza.partner_id),
-                    ),
+                    punti_arrivo=punti_arrivo,
                 )
             )
         return risultato
@@ -202,7 +235,10 @@ class SeedCandidateSource:
         return bottega.fittizio if bottega is not None else False
 
     def _connessioni(
-        self, esperienza: ExperienceNode, luogo: Luogo, riferimento: str | None
+        self,
+        esperienza: ExperienceNode,
+        luogo: Luogo,
+        trovata: tuple[int, Luogo] | None,
     ) -> list[str]:
         artisti_nomi = [self._artisti[a].nome for a in self._artisti_per_luogo.get(luogo.id, [])]
         racconti: list[tuple[str, str]] = []
@@ -214,7 +250,6 @@ class SeedCandidateSource:
                 if tema is not None:
                     temi_bottega.append((tema_id, tema.nome))
 
-        trovata = self._vicinanza(luogo, riferimento)
         vicinanza = (trovata[0], trovata[1].nome) if trovata else None
 
         return frasi_connessioni(
@@ -227,17 +262,21 @@ class SeedCandidateSource:
             riferimento=vicinanza,
         )
 
-    def _vicinanza(self, luogo: Luogo, riferimento: str | None) -> tuple[int, Luogo] | None:
+    def _vicinanza(
+        self, luogo: Luogo, riferimento: str | None, punti_arrivo: Sequence[Punto]
+    ) -> tuple[int, Luogo] | None:
         """(metri, luogo già visitato) se `luogo` è VICINO al riferimento e non
         coincide con esso: la condizione unica della frase "A … m da …, già
-        visitato" e dei campi `vicinanza_*`."""
+        visitato" e dei campi `vicinanza_*`. I metri sono `metri_vicinanza`
+        (distanza a piedi dai punti, altrimenti quelli dell'arco VICINO)."""
         if riferimento is None or riferimento == luogo.id:
             return None
         luogo_riferimento = self._luoghi.get(riferimento)
         metri_vicino = [m for v, m in self._vicini.get(luogo.id, []) if v == riferimento]
         if luogo_riferimento is None or not metri_vicino:
             return None
-        return (min(metri_vicino), luogo_riferimento)
+        metri = metri_vicinanza(min(metri_vicino), luogo_riferimento.punto, punti_arrivo)
+        return (metri, luogo_riferimento)
 
     def _attribuzione(self, esperienza: ExperienceNode) -> str | None:
         """Fatto commerciale trasparente ("chi offre l'esperienza"), separato
@@ -411,15 +450,48 @@ class Neo4jCandidateSource:
             for t in record["temi_bottega"] or []
             if t and t["id"] and t["nome"]
         ]
-        metri = record["distanza_m"]
+        metri_vicino = record["distanza_m"]
         nome_riferimento = record["riferimento_nome"]
         con_vicinanza = (
-            metri is not None
+            metri_vicino is not None
             and bool(nome_riferimento)
             and vicino_a is not None
             and record["place_id"] != vicino_a
         )
-        vicinanza = (metri, nome_riferimento) if con_vicinanza else None
+        # `botteghe` serve gia' qui: decide i punti di arrivo (bottega
+        # dimostrativa -> nessun punto), da cui dipendono i metri della frase.
+        # Le entry hanno `nome` nullo quando l'OPTIONAL MATCH non trova
+        # bottega: si scartano. `fittizio` assente su un grafo non ricaricato
+        # e' gia' `true` (coalesce nella query). Piu' botteghe possibili: il
+        # `collect` non e' ordinato, quindi si sceglie in modo deterministico
+        # (nome casefold, poi nome) PRIMA di attribuire.
+        botteghe = sorted(
+            (b for b in (record["botteghe"] or []) if b and b.get("nome")),
+            key=lambda b: (b["nome"].casefold(), b["nome"]),
+        )
+        punti_arrivo = risolvi_punti_arrivo(
+            esperienza.punti_arrivo,
+            punto_da_coordinate(
+                record["luogo_lat"], record["luogo_lon"], f"luogo {record['place_id']!r}"
+            ),
+            # Stessa regola del seed: una bottega dimostrativa che offre
+            # l'esperienza azzera i punti (la query porta `fittizio` con
+            # default true; le entry senza nome sono gia' scartate).
+            any(bool(b.get("fittizio", True)) for b in botteghe),
+        )
+        metri: int | None = metri_vicino
+        vicinanza: tuple[int, str] | None = None
+        if con_vicinanza:
+            # Stessa regola del seed (`metri_vicinanza`), solo con l'arco VICINO.
+            metri_frase = metri_vicinanza(
+                metri_vicino,
+                punto_da_coordinate(
+                    record["riferimento_lat"], record["riferimento_lon"], f"luogo {vicino_a!r}"
+                ),
+                punti_arrivo,
+            )
+            metri = metri_frase
+            vicinanza = (metri_frase, nome_riferimento)
         connessioni = frasi_connessioni(
             luogo_nome=record["place_nome"],
             artisti_nomi=[n for n in record["artisti_nomi"] or [] if n],
@@ -432,15 +504,6 @@ class Neo4jCandidateSource:
         # `botteghe` NON entra in `connessioni` (contate nello score del
         # motore): alimenta solo `attribuzione`, fatto commerciale separato e
         # non conteggiato — "nessuno spazio è acquistabile".
-        # Le entry hanno `nome` nullo quando l'OPTIONAL MATCH non trova
-        # bottega: si scartano qui. `fittizio` assente su un grafo non
-        # ricaricato e' gia' `true` (coalesce nella query).
-        # Piu' botteghe possibili: il `collect` non e' ordinato, quindi si sceglie
-        # in modo deterministico (nome casefold, poi nome) PRIMA di attribuire.
-        botteghe = sorted(
-            (b for b in (record["botteghe"] or []) if b and b.get("nome")),
-            key=lambda b: (b["nome"].casefold(), b["nome"]),
-        )
         attribuzione = (
             testo_attribuzione(
                 botteghe[0]["nome"],
@@ -471,7 +534,7 @@ class Neo4jCandidateSource:
             experience=esperienza,
             place_nome=record["place_nome"],
             connessioni=connessioni,
-            distanza_m=record["distanza_m"],
+            distanza_m=metri,
             attribuzione=attribuzione,
             place_articolo=record["place_articolo"],
             racconti=racconti_con_fonte(
@@ -483,14 +546,5 @@ class Neo4jCandidateSource:
             vicinanza_nome=nome_riferimento if con_vicinanza else None,
             vicinanza_articolo=record["riferimento_articolo"] if con_vicinanza else None,
             curiosita=_curiosita_da_record(record),
-            punti_arrivo=risolvi_punti_arrivo(
-                esperienza.punti_arrivo,
-                punto_da_coordinate(
-                    record["luogo_lat"], record["luogo_lon"], f"luogo {record['place_id']!r}"
-                ),
-                # Stessa regola del seed: una bottega dimostrativa che offre
-                # l'esperienza azzera i punti (la query porta `fittizio` con
-                # default true; le entry senza nome sono gia' scartate).
-                any(bool(b.get("fittizio", True)) for b in botteghe),
-            ),
+            punti_arrivo=punti_arrivo,
         )

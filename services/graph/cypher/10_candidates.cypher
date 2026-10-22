@@ -66,6 +66,11 @@
 // Su un grafo caricato prima dei campi mancano: `coalesce` dà liste vuote, il luogo
 // resta senza punto.
 //
+// `riferimento_lat/lon` (ondata 3, compito 4): punto del luogo `$vicino_a`, null senza
+// arco VICINO (come `riferimento_nome`). Servono SOLO ai metri della frase "A N m da X,
+// già visitato." (`graph.source.metri_vicinanza`: distanza a piedi dai punti, altrimenti
+// i metri VICINO). Mai input di scoring.
+//
 // Parametri (tutti opzionali: `null` o lista vuota = nessun filtro):
 //   $temi         list[string]   id di Tema da cercare tra quelli evocati
 //   $al_chiuso    bool | null    filtro esatto su Esperienza.al_chiuso
@@ -110,6 +115,8 @@ WITH e, l,
      min(vic.metri) AS distanza_m,
      min(rif.nome) AS riferimento_nome,
      min(rif.articolo) AS riferimento_articolo,
+     min(rif.lat) AS riferimento_lat,
+     min(rif.lon) AS riferimento_lon,
      collect(DISTINCT partner.abbonamento_attivo) AS abbonamenti_partner
 RETURN
   e.id AS id,
@@ -162,6 +169,8 @@ RETURN
   distanza_m,
   riferimento_nome,
   riferimento_articolo,
+  riferimento_lat,
+  riferimento_lon,
   CASE WHEN size(abbonamenti_partner) = 0 THEN true ELSE abbonamenti_partner[0] END
     AS partner_abbonamento_attivo
 ORDER BY e.id
