@@ -19,6 +19,7 @@ import re
 from datetime import datetime, time
 
 from contracts import (
+    ARTICOLI,
     EmotionalProfile,
     EsitoAdattamento,
     ExperienceNode,
@@ -28,6 +29,8 @@ from contracts import (
     Signal,
     TappaEsclusa,
     VisitorContext,
+    con_luogo,
+    preposizione_articolata,
 )
 from experience_engine import adapt_itinerary, compose_itinerary
 from graph.seed_lucca import VOCABOLARIO
@@ -40,15 +43,33 @@ FRASE_PIOGGIA = (
 )
 
 
-def frase_affollamento(luogo: str) -> str:
+def frase_affollamento_dove(dove: str) -> str:
+    """`dove` è già preposizione + luogo, es. "alla Chiesa di …" o "a Piazza x"."""
     return (
-        f"C'è molta gente a {luogo}, ma non c'è un'alternativa più tranquilla compatibile "
+        f"C'è molta gente {dove}, ma non c'è un'alternativa più tranquilla compatibile "
         "con questo percorso e con il tempo a disposizione: la tappa resta in programma."
     )
 
 
+def frase_affollamento(luogo: str) -> str:
+    """Luogo senza articolo (candidati costruiti a mano): "a <luogo>"."""
+    return frase_affollamento_dove(f"a {luogo}")
+
+
+#: Il luogo segue "C'è molta gente " con la sua preposizione articolata
+#: (`contracts.con_luogo("a", articolo, nome)`, usata da `_frase_esito` in
+#: experience_engine/engine.py): "a Piazza x" senza articolo, ma sul seed
+#: "alla Chiesa di San Michele in Foro", "all'Orto…". Le forme ammesse vengono
+#: dal contratto (`ARTICOLI`), non da un elenco scritto qui.
+_PREPOSIZIONI_A = sorted(
+    {preposizione_articolata("a", None)}
+    | {preposizione_articolata("a", articolo) for articolo in ARTICOLI}
+)
 _RE_AFFOLLAMENTO = re.compile(
-    re.escape("C'è molta gente a ")
+    re.escape("C'è molta gente ")
+    + "(?:"
+    + "|".join(re.escape(p) if p.endswith("'") else re.escape(p + " ") for p in _PREPOSIZIONI_A)
+    + ")"
     + ".+?"
     + re.escape(
         ", ma non c'è un'alternativa più tranquilla compatibile con questo percorso "
@@ -283,10 +304,14 @@ def test_coerenza_campo_frase_e_disclosure_ultima_sul_seed() -> None:
         Signal(meteo="pioggia", affollamento=luoghi, stanchezza=0.0, ora=time(10, 0)),
     ]
     visti: set[EsitoAdattamento] = set()
+    visti_motivi: set[bool] = set()  # True: mantenuta per pioggia; False: per affollamento
     for segnale in segnali:
-        # 250 aggiunto (ondata 3, compito 8): con le tre esperienze all'aperto nuove, a 90/200/400
-        # min nessuna tappa resta piu' mantenuta; a 250 si' (non vacuo).
-        for tempo in (90, 200, 250, 400):
+        # 250 (ondata 3, compito 8): con le tre esperienze all'aperto nuove, a 90/200/400
+        # nessuna tappa resta piu' mantenuta; a 250 si' (con la pioggia), cosi' il test non e'
+        # vacuo. 600: l'unico budget della griglia in cui una tappa resta mantenuta per il SOLO
+        # affollamento (exp-facciata-san-michele, sereno + folla), con la frase "C'è molta
+        # gente alla Chiesa…": copre il ramo affollamento e la preposizione articolata.
+        for tempo in (90, 200, 250, 400, 600):
             r, cands = _adatta_seed(segnale, tempo)
             per_id = {c.experience.id: c for c in cands}
             for s in r.stops:
@@ -294,11 +319,24 @@ def test_coerenza_campo_frase_e_disclosure_ultima_sul_seed() -> None:
                 visti.add(s.esito_adattamento)
                 mantenuta = s.esito_adattamento is EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA
                 assert mantenuta == _ha_frase_mantenuta(s.reason), (s.experience_id, s.reason)
-                attribuzione = per_id[s.experience_id].attribuzione
+                cand = per_id[s.experience_id]
+                if mantenuta:
+                    # La frase esatta: pioggia se piove su una tappa all'aperto, altrimenti
+                    # affollamento con il luogo e la sua preposizione articolata.
+                    if segnale.meteo == "pioggia" and not cand.experience.al_chiuso:
+                        attesa = FRASE_PIOGGIA
+                    else:
+                        attesa = frase_affollamento_dove(
+                            con_luogo("a", cand.place_articolo, cand.place_nome)
+                        )
+                    assert attesa in s.reason, (s.experience_id, s.reason)
+                    visti_motivi.add(attesa == FRASE_PIOGGIA)
+                attribuzione = cand.attribuzione
                 if attribuzione:
                     assert s.reason.endswith(attribuzione.strip()), s.reason
     assert EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA in visti
     assert EsitoAdattamento.SOSTITUITA in visti
+    assert visti_motivi == {True, False}  # entrambe le frasi compaiono (non vacuo)
 
 
 # ---------------------------------------------------------------------------
