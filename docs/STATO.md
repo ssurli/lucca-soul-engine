@@ -49,7 +49,8 @@ situazione.
 
 1. Ricarica del seed su Aura: `.venv\Scripts\python.exe -m graph.loader`.
 2. Riavvio del BFF (i `.cypher` sono letti una volta).
-3. Prova in app: profilo curioso, mezza giornata, Piove più Sono stanco/a: attese 3 tappe, non 2;
+3. Prova in app: profilo curioso, mezza giornata, Piove più Sono stanco/a: attese 3 tappe, non 2
+   (dall'ondata 4, con le tappe riordinate per vicinanza, sono 4: si taglia solo il Duomo);
    il link "Come arrivo qui" porta all'ingresso giusto.
 
 ## Prossima ondata: grafica (direzione C)

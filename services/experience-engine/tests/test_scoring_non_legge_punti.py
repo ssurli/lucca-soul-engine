@@ -9,8 +9,10 @@ a un partner) comprerebbe visibilita'.
 Perimetro: `experience_engine.rules` e `recommender.ranking` per intero, piu' le
 due funzioni di scoring vere ispezionate da sole (`rules.calcola_score` e la
 chiusura `_score` di `ranking.costruisci_score_fn`). Il modulo `engine` NON e'
-nel perimetro: il motore usa i punti per il tempo di trasferimento (non per
-ordinare); la guardia sui suoi ordinamenti vive in `test_trasferimento_punti.py`.
+nel perimetro: il motore usa i punti per il tempo di trasferimento e, dopo la
+selezione, per l'ordine di visita delle tappe GIÀ SCELTE
+(`engine._riordina_per_vicinanza`, ondata 4) — mai per l'ordine per affinità;
+la guardia sui suoi ordinamenti vive in `test_trasferimento_punti.py`.
 
 Un riferimento e': attributo, nome, import o stringa (non docstring) che sia un
 identificatore di posizione (`punti_arrivo`, `punto`, `punto_arrivo`, `lat`,

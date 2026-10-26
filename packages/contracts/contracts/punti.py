@@ -5,7 +5,9 @@ DATI DI POSIZIONE: non entrano MAI nel punteggio. Usi ammessi:
 - tempo di trasferimento tra tappe consecutive (Experience Engine);
 - la frase «A ... m da ..., già visitato» (grafo);
 - la scelta di `ItineraryStop.punto_arrivo` (il punto d'arrivo più vicino
-  alla tappa precedente).
+  alla tappa precedente);
+- l'ordine di visita delle tappe GIÀ SCELTE (Experience Engine,
+  `_riordina_per_vicinanza`, ondata 4): mai quali tappe, né la prima.
 
 Questo è l'UNICO modulo che conosce la formula e il coefficiente: chi calcola
 distanze importa da qui, non le riscrive.

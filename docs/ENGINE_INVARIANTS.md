@@ -33,6 +33,9 @@ curatela. Vivono qui perché sono *verità di sistema*, non design di un compone
    (ondata 1b-2): un candidato il cui `place_id` è già tra le tappe scelte è saltato e non
    rientra più (prima il tetto era 2). Distribuzione dei flussi: due tappe nello stesso luogo
    concentrano le visite e non aggiungono esperienza. Le code (passi 5-6) non sono vincolate.
+3-bis. Riordino per vicinanza delle tappe GIÀ SCELTE → `_riordina_per_vicinanza` (ondata 4,
+   vedi §4-bis): stesso insieme, prima tappa ferma, cambia solo l'ordine di visita. Le code
+   (passi 5-6) e il budget che consumano si calcolano sull'ordine FINALE.
 4. `reason` obbligatorio per ogni tappa → `_costruisci_stops`.
 5. Segnali FLUTTUANTI pertinenti, solo in coda → `_aggiungi_tappe_fluttuanti`.
 6. `:Evento` PROMOSSI pertinenti E in finestra temporale, solo in coda →
@@ -121,7 +124,7 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 | Funzione | Definita in | Chiamata da |
 |---|---|---|
 | `contracts.rientra_in_orario` | `packages/contracts/contracts/models.py` | `rules.aperta_durante` (motore, con `durata_min=esperienza.durata_min`) · `marketplace.service.request_booking` (prenotazione, `durata_min=0`) |
-| `rules.aperta_durante` | `rules.py` | `rules.passa_filtri_duri` · `engine._seleziona_tappe` (composizione, all'arrivo di ogni slot) · `engine._taglia_fuori_orario` (adattamento, passo 4) |
+| `rules.aperta_durante` | `rules.py` | `rules.passa_filtri_duri` · `engine._seleziona_tappe` (composizione, all'arrivo di ogni slot) · `engine._ordine_ammesso` (riordino per vicinanza, all'arrivo nell'ordine candidato) · `engine._taglia_fuori_orario` (adattamento, passo 4) |
 | `rules.esperienza_sospesa` | `rules.py` | `rules.passa_filtri_statici` (filtro duro 1) · `engine._taglia_fuori_orario` (adattamento, passo 4: `tagliata_sospesa`) |
 | `rules.passa_filtri_statici` | `rules.py` | `rules.passa_filtri_duri` · `compose_itinerary` (pre-filtro prima dello scoring) |
 | `rules.passa_filtri_duri` | `rules.py` | `engine._migliore_alternativa` (adattamento, con `luoghi_gia_visti=[]` e `arrivo` del candidato nella posizione della tappa tolta) |
@@ -135,6 +138,48 @@ o `rules.py`, e questi sono **tutti** i chiamanti verificati oggi:
 Tre usi di "cosa significa aperto" (composizione, adattamento, prenotazione), un solo
 modello (`rientra_in_orario`); nel motore un solo wrapper (`aperta_durante`).
 
+## 4-bis. Coordinate: cosa decidono e cosa no (ondata 4)
+
+**Invariante:** le coordinate decidono il tempo di trasferimento, il link "Come arrivo qui"
+e l'ordine di visita delle tappe già scelte. Non decidono mai quali tappe, né la prima, né
+il punteggio.
+
+Usi dei punti (`GraphCandidate.punti_arrivo`, `contracts.distanza_a_piedi_m`,
+`contracts.punto_piu_vicino`), tutti e soli:
+
+- **tempo di trasferimento** tra tappe consecutive → `engine._passo` / `_progressione`
+  (composizione, budget, arrivi, adattamento, tetto della giornata);
+- **punto d'arrivo** della tappa (`ItineraryStop.punto_arrivo`, il link "Come arrivo qui")
+  → `engine._passo`;
+- **frase «A … m da …, già visitato»** (grafo, `distanza_m`) — solo testo;
+- **ordine di visita delle tappe GIÀ SCELTE** → `engine._riordina_per_vicinanza`, chiamata
+  SOLO da `compose_itinerary`, dopo `_seleziona_tappe` e prima di `_costruisci_stops`.
+
+Regola di `_riordina_per_vicinanza` (variante "b", approvata dal committente):
+
+- insieme delle tappe invariato; posizione 0 fissa (e con lei la frase del profilo); le tappe
+  senza punto d'arrivo (botteghe dimostrative) restano ferme; le altre si permutano negli
+  slot rimasti;
+- fino a 7 tappe mobili tutte le permutazioni (7! = 5040 al massimo); oltre, il solo ordine
+  del vicino più prossimo (stessa distanza e stesso punto di `_passo`; dopo una tappa senza
+  punto la distanza è indefinita e a parità vince l'ordine di oggi);
+- metri = somma di `distanza_a_piedi_m` tra tappe consecutive con entrambe un punto;
+- un ordine è ammesso solo se ogni tappa è aperta all'arrivo per tutta la visita
+  (`rules.aperta_durante`, arrivo come in `_costruisci_stops`), se rispetta il budget
+  EFFETTIVO (`_minuti_usati_permanenti`) e se i metri sono STRETTAMENTE minori dell'ordine
+  di oggi; vince il minimo dei metri, a parità la tupla delle posizioni originali
+  lessicograficamente minore; nessuno ammesso → ordine invariato;
+- non legge score, partner, prezzo, attribuzione, curiosità né fonti.
+
+Non la usano: `_seleziona_tappe` (che sceglie le tappe per affinità), lo scoring (§3,
+guardia AST `test_scoring_non_legge_punti.py`), l'adattamento (conserva le posizioni
+ricevute). Conseguenze accettate: la diversificazione dei temi tra tappe consecutive può non
+valere più dopo il riordino; le distanze sono stimate (linea d'aria × 1,3), non un percorso
+su strada; i minuti liberati o consumati dal riordino (entro il budget) possono far entrare o
+uscire una tappa fluttuante o un evento promosso in coda, perché `minuti_usati` si calcola
+sull'ordine finale: le tappe permanenti non cambiano; minimizzare i metri può spostare verso
+la fine (e verso orari più tardi) i luoghi più periferici dell'itinerario, senza toglierli.
+
 ## 5. Determinismo
 
 - `_ordina_per_score`/`_migliore_alternativa`: a parità di score, tie-break su
@@ -142,6 +187,8 @@ modello (`rientra_in_orario`); nel motore un solo wrapper (`aperta_durante`).
   la chiave è (condivide almeno un tema con la tappa tolta, score, `experience_id`): il tema
   viene prima dello score (difetto g, 2026-10-19).
 - `_seleziona_tappe`: composizione a budget deterministica dato lo stesso input.
+- `_riordina_per_vicinanza`: a parità di metri vince la tupla delle posizioni originali
+  lessicograficamente minore — ordine totale, nessuna dipendenza dall'ordine di iterazione.
 - `compose_itinerary`: stesso profilo + stesso segnale + stessi candidati → stesso
   itinerario, sempre. Profili diversi possono (devono) produrre itinerari diversi — è il
   criterio d'accettazione centrale di Wave 1.

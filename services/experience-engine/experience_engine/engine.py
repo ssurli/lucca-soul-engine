@@ -23,6 +23,7 @@ from collections.abc import Callable, Sequence
 from collections.abc import Set as AbstractSet
 from datetime import UTC, date, datetime, time, timedelta
 from functools import partial
+from itertools import permutations
 from typing import Any, Literal, Protocol
 
 from contracts import (
@@ -300,8 +301,9 @@ def _minuti_alla_mezzanotte(ora: time) -> int:
 # Trasferimento tra tappe consecutive e punto di arrivo (ondata 3, compito 4).
 # UNICO punto della progressione: composizione, budget, arrivi, sostituzioni,
 # tetto della giornata e ricostruzione degli orari passano tutti di qui.
-# DATI DI POSIZIONE: decidono solo TEMPO (trasferimento) e il link "Come
-# arrivo qui", mai lo score né l'ordine per affinità.
+# DATI DI POSIZIONE: decidono il TEMPO (trasferimento), il link "Come arrivo
+# qui" e l'ordine di visita delle tappe GIÀ SCELTE (`_riordina_per_vicinanza`).
+# Non decidono mai quali tappe, né la prima, né il punteggio.
 # ---------------------------------------------------------------------------
 
 
@@ -678,6 +680,178 @@ def _minuti_usati_permanenti(selezionati: Sequence[GraphCandidate]) -> int:
     )
 
 
+# ---------------------------------------------------------------------------
+# Riordino per vicinanza delle tappe GIÀ SCELTE (ondata 4, compito 1).
+# Le coordinate decidono il tempo di trasferimento, il link "Come arrivo qui"
+# e l'ordine di visita delle tappe già scelte. Non decidono mai quali tappe,
+# né la prima, né il punteggio.
+# ---------------------------------------------------------------------------
+
+#: Oltre questo numero di tappe mobili non si provano tutte le permutazioni
+#: (7! = 5040 al massimo) ma si usa il vicino più prossimo.
+MAX_TAPPE_MOBILI_PERMUTAZIONI = 7
+
+
+def _metri_ordine(progressione: Sequence[tuple[int, Punto | None]]) -> int:
+    """Metri a piedi stimati di un ordine: somma di `distanza_a_piedi_m` tra
+    tappe CONSECUTIVE che hanno entrambe un punto d'arrivo (i punti sono
+    quelli di `_progressione`). Una coppia con una tappa senza punto non
+    conta: la sua distanza è indefinita."""
+    metri = 0
+    for (_, precedente), (_, corrente) in zip(progressione, progressione[1:], strict=False):
+        if precedente is not None and corrente is not None:
+            metri += distanza_a_piedi_m(precedente, corrente)
+    return metri
+
+
+def _ordine_ammesso(
+    ordine: Sequence[GraphCandidate],
+    progressione: Sequence[tuple[int, Punto | None]],
+    *,
+    ora_partenza: time,
+    giorno_settimana: int | None,
+    tempo_disponibile_min: int,
+) -> bool:
+    """Vincoli (1) e (2) di `_riordina_per_vicinanza` su un ordine candidato:
+    budget EFFETTIVO rispettato (`_minuti_usati_permanenti`) e ogni tappa
+    aperta per tutta la visita all'ARRIVO calcolato esattamente come in
+    `_costruisci_stops` (`ora_partenza` + trasferimenti e durate precedenti
+    + trasferimento verso la tappa)."""
+    if _minuti_usati_permanenti(ordine) > tempo_disponibile_min:
+        return False
+    minuti = 0
+    for cand, (trasferimento, _) in zip(ordine, progressione, strict=True):
+        minuti += trasferimento
+        # Nessun riavvolgimento: `minuti` sta nel budget, già troncato alla
+        # mezzanotte da `compose_itinerary`.
+        arrivo = _somma_minuti(ora_partenza, minuti)
+        if not aperta_durante(cand.experience, giorno_settimana, arrivo):
+            return False
+        minuti += cand.experience.durata_min
+    return True
+
+
+def _vicino_piu_prossimo(
+    selezionati: Sequence[GraphCandidate], slot_mobili: Sequence[int]
+) -> list[int]:
+    """Ordine (come posizioni originali) del vicino più prossimo, per più di
+    `MAX_TAPPE_MOBILI_PERMUTAZIONI` tappe mobili: le posizioni fisse restano
+    dove sono; in ogni slot mobile, nell'ordine degli slot, va la tappa mobile
+    rimasta più vicina al punto d'arrivo della tappa precedente. Distanza e
+    punto sono quelli del trasferimento (`_passo`). Dopo una tappa senza punto
+    la distanza è indefinita: tutte pari. A parità vince la posizione
+    originale più bassa, cioè l'ordine di oggi."""
+    mobili_rimaste = list(slot_mobili)
+    slot = set(slot_mobili)
+    posizioni: list[int] = []
+    precedente: Punto | None = None
+    for i in range(len(selezionati)):
+        if i in slot:
+            valutate: list[tuple[int, int]] = []
+            for originale in mobili_rimaste:
+                _, punto = _passo(selezionati[originale], precedente, prima=False)
+                distanza = (
+                    distanza_a_piedi_m(precedente, punto)
+                    if precedente is not None and punto is not None
+                    else 0
+                )
+                valutate.append((distanza, originale))
+            # Tanti slot quante tappe mobili: `valutate` non è mai vuota.
+            scelta = min(valutate)[1]
+            mobili_rimaste.remove(scelta)
+        else:
+            scelta = i
+        posizioni.append(scelta)
+        _, precedente = _passo(selezionati[scelta], precedente, prima=i == 0)
+    return posizioni
+
+
+def _riordina_per_vicinanza(
+    selezionati: list[GraphCandidate],
+    *,
+    ora_partenza: time,
+    giorno_settimana: int | None,
+    tempo_disponibile_min: int,
+) -> list[GraphCandidate]:
+    """Riordina le tappe GIÀ SCELTE da `_seleziona_tappe` per ridurre i metri
+    a piedi. Funzione pura; la chiama solo `compose_itinerary`, DOPO
+    `_seleziona_tappe` e PRIMA di `_costruisci_stops`. `_seleziona_tappe` non
+    la chiama e l'adattamento non la usa (conserva le posizioni ricevute).
+
+    Invariante: le coordinate decidono il tempo di trasferimento, il link
+    "Come arrivo qui" e l'ordine di visita delle tappe già scelte. Non
+    decidono mai quali tappe, né la prima, né il punteggio.
+
+    Regola:
+    - l'INSIEME delle tappe non cambia, cambia solo l'ordine;
+    - la posizione 0 è fissa (la prima tappa resta quella scelta per
+      affinità, e con lei la frase del profilo); le tappe senza punto
+      d'arrivo (botteghe dimostrative) restano ferme nella loro posizione; le
+      altre ("mobili") si permutano negli slot rimasti;
+    - fino a `MAX_TAPPE_MOBILI_PERMUTAZIONI` (7) tappe mobili si provano
+      TUTTE le permutazioni (7! = 5040 al massimo); oltre, un solo ordine,
+      quello del vicino più prossimo (`_vicino_piu_prossimo`);
+    - metri di un ordine: `_metri_ordine` (tappe consecutive con entrambe un
+      punto d'arrivo, punti da `_progressione`);
+    - un ordine è AMMESSO solo se ogni tappa è aperta all'arrivo per tutta
+      la visita (`rules.aperta_durante`, arrivo come in `_costruisci_stops`),
+      se rispetta il budget EFFETTIVO (`_minuti_usati_permanenti(ordine) <=
+      tempo_disponibile_min`) e se i suoi metri sono STRETTAMENTE minori di
+      quelli dell'ordine di oggi;
+    - tra gli ammessi vince quello con meno metri; a parità quello più
+      vicino all'ordine di oggi, cioè la tupla delle posizioni originali
+      lessicograficamente minore. Nessuno ammesso: ordine di oggi invariato.
+
+    Non legge score, partner, prezzo, attribuzione, curiosità né fonti:
+    solo punti, durate e orari (`_passo`, `_progressione`, `aperta_durante`,
+    `_minuti_usati_permanenti`, `distanza_a_piedi_m`).
+
+    Conseguenze accettate: la diversificazione dei temi tra tappe
+    consecutive fatta da `_seleziona_tappe` può non valere più dopo il
+    riordino; le distanze sono stimate (linea d'aria x 1,3,
+    `contracts.distanza_a_piedi_m`), non un percorso su strada."""
+    progressione_oggi = _progressione(selezionati)
+    slot_mobili = [
+        i for i, (_, punto) in enumerate(progressione_oggi) if i > 0 and punto is not None
+    ]
+    if len(slot_mobili) < 2:
+        return list(selezionati)
+    metri_oggi = _metri_ordine(progressione_oggi)
+
+    if len(slot_mobili) <= MAX_TAPPE_MOBILI_PERMUTAZIONI:
+        candidati_posizioni: list[list[int]] = []
+        for permutazione in permutations(slot_mobili):
+            posizioni = list(range(len(selezionati)))
+            for slot, originale in zip(slot_mobili, permutazione, strict=True):
+                posizioni[slot] = originale
+            candidati_posizioni.append(posizioni)
+    else:
+        candidati_posizioni = [_vicino_piu_prossimo(selezionati, slot_mobili)]
+
+    migliore: tuple[int, tuple[int, ...]] | None = None
+    for posizioni in candidati_posizioni:
+        ordine = [selezionati[p] for p in posizioni]
+        progressione = _progressione(ordine)
+        metri = _metri_ordine(progressione)
+        if metri >= metri_oggi:
+            continue
+        chiave = (metri, tuple(posizioni))
+        if migliore is not None and chiave >= migliore:
+            continue
+        if not _ordine_ammesso(
+            ordine,
+            progressione,
+            ora_partenza=ora_partenza,
+            giorno_settimana=giorno_settimana,
+            tempo_disponibile_min=tempo_disponibile_min,
+        ):
+            continue
+        migliore = chiave
+    if migliore is None:
+        return list(selezionati)
+    return [selezionati[p] for p in migliore[1]]
+
+
 def _reason_fluttuante(
     segnale: SegnaleFluttuante, place_nome: str, place_articolo: str | None = None
 ) -> str:
@@ -1004,6 +1178,11 @@ def compose_itinerary(
          flussi, due tappe nello stesso luogo concentrano le visite e non
          aggiungono esperienza) e filtro duro 6 (orari,
          `rules.aperta_durante`) all'ARRIVO di ogni slot -> `_seleziona_tappe`
+      3-bis. riordino per vicinanza delle tappe GIÀ SCELTE (stesso insieme,
+         prima tappa ferma, solo se meno metri a piedi e ancora aperte e nel
+         budget) -> `_riordina_per_vicinanza`. Le coordinate decidono
+         l'ordine di visita delle tappe già scelte, mai quali tappe, né la
+         prima, né il punteggio
       4. `reason` obbligatorio per ogni tappa -> `_costruisci_stops`
       5. segnali FLUTTUANTI pertinenti, in CODA -> `_aggiungi_tappe_fluttuanti`
       6. eventi PROMOSSI pertinenti, in CODA -> `_aggiungi_tappe_eventi_promossi`
@@ -1094,6 +1273,13 @@ def compose_itinerary(
         ora_partenza=ctx.signal.ora,
         giorno_settimana=ctx.signal.giorno_settimana,
     )
+    # Passo 3-bis: stesso insieme, solo l'ordine di visita (prima tappa ferma).
+    selezionati = _riordina_per_vicinanza(
+        selezionati,
+        ora_partenza=ctx.signal.ora,
+        giorno_settimana=ctx.signal.giorno_settimana,
+        tempo_disponibile_min=budget_effettivo,
+    )
     if adesso is None and tracce_per_luogo:
         adesso = datetime.now(UTC)
     stops = _costruisci_stops(
@@ -1106,8 +1292,9 @@ def compose_itinerary(
         vocabolario=vocabolario,
     )
     # Budget già consumato: SOMMA di durate e trasferimenti (stesso conteggio
-    # di `_seleziona_tappe`), portata attraverso le due code — mai ricavata
-    # dagli orari, che oltre la mezzanotte ripartono da 00:00.
+    # di `_seleziona_tappe`), calcolata sull'ordine FINALE (dopo il riordino
+    # per vicinanza) e portata attraverso le due code — mai ricavata dagli
+    # orari, che oltre la mezzanotte ripartono da 00:00.
     minuti_usati = _minuti_usati_permanenti(selezionati)
     stops, minuti_usati = _aggiungi_tappe_fluttuanti(
         stops,

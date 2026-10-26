@@ -374,6 +374,39 @@ con i dati attuali ma l'insieme dei candidati SENZA le 3 nuove restano 0 chiavi 
   CRITERI sui testi (asseriti da `test_golden_testi.py`, verificati su TUTTI i casi `demo|`):
 nessun "affollat", "e' legato a", "Evoca il tema", "gratuit", "exp-" in `reason`/`titolo`.
 
+TREDICESIMA modifica autorizzata (2026-10-26, ondata 4, compito 1; rigenerazione AUTORIZZATA
+dal committente), SOLO in `lucca_itinerari.json` (`lucca_punteggi.json` byte-identico,
+verificato con `cmp`: nessun punteggio toccato). Motivo: riordino per vicinanza delle tappe
+GIA' SCELTE, `engine._riordina_per_vicinanza` (regola approvata: prima tappa e tappe senza
+punto ferme; fino a 7 tappe mobili tutte le permutazioni, sopra 7 il vicino piu' prossimo;
+ordine ammesso solo se tutte aperte all'arrivo per tutta la durata, budget effettivo
+rispettato e metri a piedi STRETTAMENTE minori; tra gli ammessi meno metri, a parita' le
+posizioni originali lessicograficamente minori). Solo composizione, mai adattamento: le
+coordinate decidono l'ordine di visita, mai quali tappe, ne' la prima, ne' il punteggio.
+Cambia l'`atteso` di 42 casi su 91: 39 composizioni (su 52: compose 42, demo `sereno-10` 7,
+feriale 3; 13 restano identiche) e i 3 `demo|{con-bambini,contemplativo,curioso}|pioggia-15`;
+49 restano identici. Le RICHIESTE di 88 casi sono identiche (verificato per confronto con
+la versione precedente del file); le richieste di tutti i 36 `adapt|`, `adapt-budget|`,
+`adapt-profilo|` sono congelate e il loro `atteso` e' identico (verificato: stesso `atteso`
+rigiocando la richiesta col codice nuovo).
+  ATTRIBUZIONE, verificata da script e non dedotta (le stesse richieste rigiocate con il
+codice nuovo e con `_riordina_per_vicinanza` sostituita dall'identita'). Controllo: con il
+riordino disattivato i 52 `atteso` delle composizioni sono riprodotti ESATTAMENTE dal golden
+precedente (0 differenze). Ogni differenza dei 39 casi cambiati e' solo ordine delle tappe e
+conseguenti arrivi: stesso insieme di tappe, stessa prima tappa, stessa durata e stesso
+`reason` di ogni tappa, stesso budget e stesse tappe escluse. Zero differenze non attribuite.
+I metri a piedi non aumentano mai (52 casi su 52); `test_riordino_vicinanza_golden.py` lo
+asserisce ricalcolandolo dal codice.
+  I 3 `demo|...|pioggia-15` sono stati RIGENERATI ANCHE NELLA RICHIESTA, con lo stesso
+procedimento della DECIMA e della DODICESIMA: itinerario composto alle 15:00 di sabato
+12/12/2026 con meteo sereno via `POST /itinerary` (profilo e `person_id` del caso, stessa
+richiesta di composizione dei `sereno-10` salvo l'ora), poi adattato alle 15:00 con meteo
+pioggia, profilo nell'AdaptRequest. L'itinerario congelato nella richiesta era composto con
+l'ordine di prima: con il riordino cambiano la composizione e quindi l'adattamento.
+Controllo (eseguito): composto con il riordino disattivato, l'itinerario riproduce
+ESATTAMENTE le tappe, gli arrivi e i `reason` della richiesta congelata precedente (3 casi su
+3); la richiesta precedente, rigiocata col codice nuovo, da' l'`atteso` precedente.
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte

@@ -12,7 +12,9 @@ Coordinate vere dal dataset di Lucca (`graph.seed_lucca.DATASET`): Duomo ->
 San Michele = 362 m in linea d'aria, 470 m a piedi, 6 minuti.
 
 In fondo la guardia AST sugli ORDINAMENTI del motore: le coordinate decidono
-tempo e link, mai l'ordine per affinità.
+tempo, link e l'ordine di visita delle tappe GIÀ SCELTE
+(`engine._riordina_per_vicinanza`, ondata 4), mai quali tappe, né la prima,
+né il punteggio, né l'ordine per affinità.
 """
 
 from __future__ import annotations
@@ -343,7 +345,9 @@ def test_tappe_fluttuanti_senza_punto_e_stima_prudente() -> None:
     assert _minuti(it.stops[1].arrivo) == _minuti(ORA) + 30 + TEMPO_TRASFERIMENTO_DEFAULT_MIN
 
 
-# --- Guardia AST: le coordinate non decidono l'ORDINE ---------------------------
+# --- Guardia AST: le coordinate non decidono l'ORDINE per affinità ------------
+# (score e alternative). L'ordine di visita delle tappe già scelte sì: lo
+# decide `engine._riordina_per_vicinanza` (ondata 4), fuori da questa guardia.
 
 
 def _chiavi_di_ordinamento(fn: Callable[..., object]) -> list[ast.AST]:

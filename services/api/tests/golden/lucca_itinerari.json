@@ -4809,31 +4809,31 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-piazza-napoleone",
+            "arrivo": "10:29:00",
+            "durata_min": 20,
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "10:53:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "10:30:00",
+            "arrivo": "11:48:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:03:00",
+            "arrivo": "12:21:00",
             "durata_min": 25,
             "reason": "Temi: arte, medioevo, romanico. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:35:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-piazza-napoleone",
-            "arrivo": "12:29:00",
-            "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -4880,24 +4880,24 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "10:40:00",
-            "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:22:00",
+            "arrivo": "10:35:00",
             "durata_min": 50,
             "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "12:14:00",
+            "arrivo": "11:27:00",
             "durata_min": 25,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "11:58:00",
+            "durata_min": 35,
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           }
         ],
@@ -4940,22 +4940,22 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "10:42:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso. Con la pioggia si sta al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "11:34:00",
+            "arrivo": "10:41:00",
             "durata_min": 25,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "11:08:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso. Con la pioggia si sta al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:04:00",
+            "arrivo": "12:03:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
@@ -5000,31 +5000,31 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-piazza-napoleone",
+            "arrivo": "10:29:00",
+            "durata_min": 20,
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "10:53:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "10:30:00",
+            "arrivo": "11:48:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:03:00",
+            "arrivo": "12:21:00",
             "durata_min": 25,
             "reason": "Temi: arte, medioevo, romanico. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:35:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-piazza-napoleone",
-            "arrivo": "12:29:00",
-            "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5067,31 +5067,31 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-piazza-napoleone",
+            "arrivo": "10:29:00",
+            "durata_min": 20,
+            "reason": "Temi: storia, verde e giardini. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "10:53:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "10:30:00",
+            "arrivo": "11:48:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:03:00",
+            "arrivo": "12:21:00",
             "durata_min": 25,
             "reason": "Temi: arte, medioevo, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:35:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-piazza-napoleone",
-            "arrivo": "12:29:00",
-            "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           }
         ],
@@ -5134,31 +5134,31 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-piazza-napoleone",
+            "arrivo": "10:29:00",
+            "durata_min": 20,
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "10:53:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "10:30:00",
+            "arrivo": "11:48:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:03:00",
+            "arrivo": "12:21:00",
             "durata_min": 25,
             "reason": "Temi: arte, medioevo, romanico. All'aperto. A 170 m dalla Piazza dell'Anfiteatro, già visitato.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:35:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-piazza-napoleone",
-            "arrivo": "12:29:00",
-            "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5203,45 +5203,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:56:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:51:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:28:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-finestra-bernardini",
-            "arrivo": "13:45:00",
+            "arrivo": "11:55:00",
             "durata_min": 10,
             "reason": "Temi: storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:09:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "12:55:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -5288,36 +5288,36 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "10:39:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
+            "experience_id": "exp-giardino-pfanner",
+            "arrivo": "10:33:00",
+            "durata_min": 30,
+            "reason": "Temi: verde e giardini, arte, panorama. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-michele",
-            "arrivo": "11:24:00",
+            "arrivo": "11:08:00",
             "durata_min": 20,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:46:00",
+            "arrivo": "11:30:00",
             "durata_min": 50,
             "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:41:00",
-            "durata_min": 30,
-            "reason": "Temi: verde e giardini, arte, panorama. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:26:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "13:21:00",
+            "arrivo": "13:08:00",
             "durata_min": 35,
             "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
@@ -5362,38 +5362,38 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "10:39:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso. Con la pioggia si sta al chiuso.",
+            "experience_id": "exp-giardino-pfanner",
+            "arrivo": "10:33:00",
+            "durata_min": 30,
+            "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-michele",
-            "arrivo": "11:24:00",
+            "arrivo": "11:08:00",
             "durata_min": 20,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:46:00",
+            "arrivo": "11:30:00",
             "durata_min": 50,
             "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "12:43:00",
-            "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:26:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-giardino-pfanner",
-            "arrivo": "13:28:00",
-            "durata_min": 30,
-            "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "13:08:00",
+            "durata_min": 35,
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -5436,45 +5436,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:56:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:51:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:28:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-finestra-bernardini",
-            "arrivo": "13:45:00",
+            "arrivo": "11:55:00",
             "durata_min": 10,
             "reason": "Temi: storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:09:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "12:55:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -5517,45 +5517,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:56:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:51:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:28:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-finestra-bernardini",
-            "arrivo": "13:45:00",
+            "arrivo": "11:55:00",
             "durata_min": 10,
             "reason": "Temi: storia. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:09:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "12:55:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -5598,45 +5598,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso. A 170 m dalla Piazza dell'Anfiteatro, già visitato.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:56:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:51:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. A 170 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:28:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto. A 200 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-finestra-bernardini",
-            "arrivo": "13:45:00",
+            "arrivo": "11:55:00",
             "durata_min": 10,
             "reason": "Temi: storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:09:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "12:55:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -5681,38 +5681,38 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-bici-mura",
+            "arrivo": "10:50:00",
+            "durata_min": 45,
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "10:52:00",
+            "arrivo": "11:38:00",
             "durata_min": 20,
             "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "11:21:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:51:00",
+            "arrivo": "12:08:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "12:40:00",
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "12:53:00",
             "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto.",
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-bici-mura",
-            "arrivo": "13:10:00",
-            "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto.",
+            "experience_id": "exp-mosaico-san-frediano",
+            "arrivo": "13:24:00",
+            "durata_min": 25,
+            "reason": "Temi: arte, medioevo, romanico. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5759,38 +5759,38 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-parco-giochi-san-donato",
-            "arrivo": "11:00:00",
-            "durata_min": 45,
-            "reason": "Temi: verde e giardini. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "11:52:00",
-            "durata_min": 20,
-            "reason": "Temi: storia. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:24:00",
-            "durata_min": 30,
-            "reason": "Temi: verde e giardini, arte, panorama. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "13:02:00",
+            "arrivo": "10:49:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-finestra-bernardini",
-            "arrivo": "13:46:00",
+            "arrivo": "11:33:00",
             "durata_min": 10,
             "reason": "Temi: storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-giardino-pfanner",
+            "arrivo": "11:50:00",
+            "durata_min": 30,
+            "reason": "Temi: verde e giardini, arte, panorama. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-parco-giochi-san-donato",
+            "arrivo": "12:28:00",
+            "durata_min": 45,
+            "reason": "Temi: verde e giardini. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-sortita-san-paolino",
+            "arrivo": "13:20:00",
+            "durata_min": 20,
+            "reason": "Temi: storia. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           }
         ],
@@ -5833,38 +5833,38 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-bici-mura",
-            "arrivo": "10:21:00",
-            "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "11:20:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso. Con la pioggia si sta al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:59:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso. Con la pioggia si sta al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-parco-giochi-san-donato",
-            "arrivo": "12:50:00",
+            "arrivo": "10:27:00",
             "durata_min": 45,
             "reason": "Temi: verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:23:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. Con la pioggia si sta al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:50:00",
+            "arrivo": "11:58:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:18:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso. Con la pioggia si sta al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-bici-mura",
+            "arrivo": "13:02:00",
+            "durata_min": 45,
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5907,38 +5907,38 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "10:49:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "11:34:00",
+            "durata_min": 25,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-pfanner-dalle-mura",
+            "arrivo": "12:06:00",
+            "durata_min": 15,
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-parco-giochi-san-donato",
-            "arrivo": "11:00:00",
+            "arrivo": "12:29:00",
             "durata_min": 45,
             "reason": "Temi: verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "11:52:00",
+            "arrivo": "13:21:00",
             "durata_min": 20,
             "reason": "Temi: storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "12:21:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "12:51:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-pfanner-dalle-mura",
-            "arrivo": "13:42:00",
-            "durata_min": 15,
-            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -5981,38 +5981,38 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "10:54:00",
+            "durata_min": 25,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-mosaico-san-frediano",
+            "arrivo": "11:25:00",
+            "durata_min": 25,
+            "reason": "Temi: arte, medioevo, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-giardino-pfanner",
+            "arrivo": "11:53:00",
+            "durata_min": 30,
+            "reason": "Temi: verde e giardini, arte, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-parco-giochi-san-donato",
-            "arrivo": "11:00:00",
+            "arrivo": "12:31:00",
             "durata_min": 45,
             "reason": "Temi: verde e giardini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "11:52:00",
+            "arrivo": "13:23:00",
             "durata_min": 20,
             "reason": "Temi: storia. Al chiuso. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "12:21:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:51:00",
-            "durata_min": 30,
-            "reason": "Temi: verde e giardini, arte, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "13:24:00",
-            "durata_min": 25,
-            "reason": "Temi: arte, medioevo, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           }
         ],
@@ -6055,38 +6055,38 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "10:49:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "11:34:00",
+            "durata_min": 25,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 490 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-pfanner-dalle-mura",
+            "arrivo": "12:06:00",
+            "durata_min": 15,
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-parco-giochi-san-donato",
-            "arrivo": "11:00:00",
+            "arrivo": "12:29:00",
             "durata_min": 45,
             "reason": "Temi: verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "11:52:00",
+            "arrivo": "13:21:00",
             "durata_min": 20,
             "reason": "Temi: storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "12:21:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 490 m dalla Piazza dell'Anfiteatro, già visitato.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "12:51:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-pfanner-dalle-mura",
-            "arrivo": "13:42:00",
-            "durata_min": 15,
-            "reason": "Temi: verde e giardini, panorama. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -6131,45 +6131,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-salita-torre-guinigi",
-            "arrivo": "10:37:00",
-            "durata_min": 40,
-            "reason": "Temi: panorama, verde e giardini, storia. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "11:24:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:54:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "12:43:00",
+            "arrivo": "10:33:00",
             "durata_min": 25,
             "reason": "Temi: arte, medioevo, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:13:00",
+            "arrivo": "11:03:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "13:26:00",
+            "arrivo": "11:16:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-salita-torre-guinigi",
+            "arrivo": "11:40:00",
+            "durata_min": 40,
+            "reason": "Temi: panorama, verde e giardini, storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:27:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "13:12:00",
+            "durata_min": 25,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -6230,22 +6230,22 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "12:14:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "12:56:00",
+            "arrivo": "12:13:00",
             "durata_min": 35,
             "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:50:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-piazza-napoleone",
-            "arrivo": "13:36:00",
+            "arrivo": "13:33:00",
             "durata_min": 20,
             "reason": "Temi: storia, verde e giardini. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
@@ -6290,36 +6290,36 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "10:39:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso. Con la pioggia si sta al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-interno-san-michele",
-            "arrivo": "11:24:00",
-            "durata_min": 20,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con la pioggia si sta al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "11:50:00",
-            "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:35:00",
+            "arrivo": "10:33:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-michele",
+            "arrivo": "11:08:00",
+            "durata_min": 20,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con la pioggia si sta al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "11:33:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso. Con la pioggia si sta al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "12:15:00",
+            "durata_min": 35,
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-salita-torre-guinigi",
-            "arrivo": "13:12:00",
+            "arrivo": "12:57:00",
             "durata_min": 40,
             "reason": "Temi: panorama, verde e giardini, storia. All'aperto.",
             "esito_adattamento": null
@@ -6364,36 +6364,36 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-salita-torre-guinigi",
-            "arrivo": "10:37:00",
-            "durata_min": 40,
-            "reason": "Temi: panorama, verde e giardini, storia. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-bici-mura",
-            "arrivo": "11:25:00",
-            "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "12:19:00",
+            "arrivo": "10:35:00",
             "durata_min": 25,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "12:49:00",
+            "arrivo": "11:05:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-bici-mura",
+            "arrivo": "11:49:00",
+            "durata_min": 45,
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-salita-torre-guinigi",
+            "arrivo": "12:42:00",
+            "durata_min": 40,
+            "reason": "Temi: panorama, verde e giardini, storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "13:40:00",
+            "arrivo": "13:26:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
             "esito_adattamento": null
@@ -6438,45 +6438,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "10:35:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-salita-torre-guinigi",
-            "arrivo": "11:07:00",
-            "durata_min": 40,
-            "reason": "Temi: panorama, verde e giardini, storia. All'aperto. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:53:00",
+            "arrivo": "10:33:00",
             "durata_min": 25,
             "reason": "Temi: arte, medioevo, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-bici-mura",
-            "arrivo": "12:23:00",
+            "arrivo": "11:03:00",
             "durata_min": 45,
             "reason": "Temi: verde e giardini, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:13:00",
+            "arrivo": "11:53:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "13:26:00",
+            "arrivo": "12:06:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-salita-torre-guinigi",
+            "arrivo": "12:30:00",
+            "durata_min": 40,
+            "reason": "Temi: panorama, verde e giardini, storia. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "13:17:00",
+            "durata_min": 25,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           }
         ],
@@ -6519,36 +6519,36 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-salita-torre-guinigi",
-            "arrivo": "10:37:00",
-            "durata_min": 40,
-            "reason": "Temi: panorama, verde e giardini, storia. All'aperto. A 260 m dalla Piazza dell'Anfiteatro, già visitato.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-bici-mura",
-            "arrivo": "11:25:00",
-            "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "12:19:00",
+            "arrivo": "10:35:00",
             "durata_min": 25,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto. A 490 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "12:49:00",
+            "arrivo": "11:05:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-bici-mura",
+            "arrivo": "11:49:00",
+            "durata_min": 45,
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-salita-torre-guinigi",
+            "arrivo": "12:42:00",
+            "durata_min": 40,
+            "reason": "Temi: panorama, verde e giardini, storia. All'aperto. A 260 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "13:40:00",
+            "arrivo": "13:26:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto. A 370 m dalla Piazza dell'Anfiteatro, già visitato.",
             "esito_adattamento": null
@@ -6595,45 +6595,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "11:58:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "12:33:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:33:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-finestra-bernardini",
-            "arrivo": "13:50:00",
+            "arrivo": "11:55:00",
             "durata_min": 10,
             "reason": "Temi: storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:09:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "12:55:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -6680,38 +6680,38 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "10:39:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-interno-san-michele",
-            "arrivo": "11:24:00",
-            "durata_min": 20,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "11:50:00",
-            "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:35:00",
+            "arrivo": "10:33:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-michele",
+            "arrivo": "11:08:00",
+            "durata_min": 20,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "13:10:00",
+            "arrivo": "11:30:00",
             "durata_min": 50,
             "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:26:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "13:08:00",
+            "durata_min": 35,
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con questo caldo un luogo fresco si apprezza di più.",
             "esito_adattamento": null
           }
         ],
@@ -6754,36 +6754,36 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "10:39:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso. Con la pioggia si sta al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-interno-san-michele",
-            "arrivo": "11:24:00",
+            "arrivo": "10:36:00",
             "durata_min": 20,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "11:50:00",
-            "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "12:32:00",
+            "arrivo": "10:58:00",
             "durata_min": 50,
             "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "11:54:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso. Con la pioggia si sta al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "12:36:00",
+            "durata_min": 35,
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. Con la pioggia si sta al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "13:30:00",
+            "arrivo": "13:22:00",
             "durata_min": 20,
             "reason": "Temi: storia. Al chiuso. Con la pioggia si sta al chiuso.",
             "esito_adattamento": null
@@ -6828,45 +6828,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "11:52:00",
-            "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:37:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:14:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "13:27:00",
+            "arrivo": "11:51:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "12:21:00",
+            "durata_min": 35,
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:58:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -6909,45 +6909,45 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-giardino-pfanner",
+            "arrivo": "10:30:00",
+            "durata_min": 30,
+            "reason": "Temi: verde e giardini, arte, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
+            "arrivo": "11:03:00",
             "durata_min": 30,
             "reason": "Temi: romanico, arte, medioevo. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-mercato-anfiteatro",
+            "arrivo": "11:36:00",
+            "durata_min": 30,
+            "reason": "Temi: storia, medioevo. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-solchi-san-pietro-somaldi",
+            "arrivo": "12:09:00",
+            "durata_min": 10,
+            "reason": "Temi: storia, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
+            "arrivo": "12:29:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "11:52:00",
+            "arrivo": "13:11:00",
             "durata_min": 35,
             "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "12:37:00",
-            "durata_min": 10,
-            "reason": "Temi: storia, romanico. All'aperto. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:54:00",
-            "durata_min": 30,
-            "reason": "Temi: verde e giardini, arte, panorama. All'aperto. È una tappa più breve, per non stancarti troppo.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-mercato-anfiteatro",
-            "arrivo": "13:28:00",
-            "durata_min": 30,
-            "reason": "Temi: storia, medioevo. All'aperto. È una tappa più breve, per non stancarti troppo.",
             "esito_adattamento": null
           }
         ],
@@ -6990,45 +6990,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso. A 170 m dalla Piazza dell'Anfiteatro, già visitato.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "11:52:00",
-            "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "12:37:00",
-            "durata_min": 10,
-            "reason": "Temi: storia, romanico. All'aperto. A 200 m dalla Piazza dell'Anfiteatro, già visitato.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:54:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso. A 170 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-solchi-san-pietro-somaldi",
+            "arrivo": "11:38:00",
+            "durata_min": 10,
+            "reason": "Temi: storia, romanico. All'aperto. A 200 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "13:33:00",
+            "arrivo": "11:51:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto. A 370 m dalla Piazza dell'Anfiteatro, già visitato.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "12:21:00",
+            "durata_min": 35,
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:58:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -8176,31 +8176,31 @@
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-piazza-napoleone",
+            "arrivo": "10:29:00",
+            "durata_min": 20,
+            "reason": "Temi: storia, verde e giardini. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "10:53:00",
+            "durata_min": 50,
+            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "10:30:00",
+            "arrivo": "11:48:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:03:00",
+            "arrivo": "12:21:00",
             "durata_min": 25,
             "reason": "Temi: arte, medioevo, romanico. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:35:00",
-            "durata_min": 50,
-            "reason": "Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-piazza-napoleone",
-            "arrivo": "12:29:00",
-            "durata_min": 20,
-            "reason": "Temi: storia, verde e giardini. All'aperto.",
             "esito_adattamento": null
           }
         ],
@@ -8247,31 +8247,31 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "11:58:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "12:35:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "11:58:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -8318,22 +8318,22 @@
             "esito_adattamento": "sostituita"
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "15:51:00",
+            "durata_min": 30,
+            "reason": "Sostituita per la pioggia. Temi: romanico, arte, medioevo. Al chiuso.",
+            "esito_adattamento": "sostituita"
+          },
+          {
             "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "16:00:00",
+            "arrivo": "16:35:00",
             "durata_min": 20,
             "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
-            "experience_id": "exp-interno-san-michele",
-            "arrivo": "16:29:00",
-            "durata_min": 20,
-            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso.",
-            "esito_adattamento": "sostituita"
-          },
-          {
             "experience_id": "exp-buccellato-pasticceria",
-            "arrivo": "16:59:00",
+            "arrivo": "17:05:00",
             "durata_min": 20,
             "reason": "Temi: gastronomia. Al chiuso. Offerta da Pasticceria (esempio dimostrativo).",
             "esito_adattamento": "non_toccata"
@@ -8359,22 +8359,9 @@
               }
             },
             {
-              "experience_id": "exp-parco-giochi-san-donato",
-              "titolo": "Il parco giochi di Porta San Donato",
-              "arrivo": "16:00:00",
-              "durata_min": 45,
-              "reason": "Temi: verde e giardini. All'aperto.",
-              "esito_adattamento": null,
-              "curiosita": [],
-              "punto_arrivo": {
-                "lat": 43.84458794966101,
-                "lon": 10.497221545825257
-              }
-            },
-            {
               "experience_id": "exp-facciata-san-michele",
               "titolo": "La facciata scolpita di San Michele in Foro",
-              "arrivo": "16:53:00",
+              "arrivo": "15:54:00",
               "durata_min": 25,
               "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
               "esito_adattamento": null,
@@ -8392,9 +8379,22 @@
               }
             },
             {
+              "experience_id": "exp-parco-giochi-san-donato",
+              "titolo": "Il parco giochi di Porta San Donato",
+              "arrivo": "16:27:00",
+              "durata_min": 45,
+              "reason": "Temi: verde e giardini. All'aperto.",
+              "esito_adattamento": null,
+              "curiosita": [],
+              "punto_arrivo": {
+                "lat": 43.84458794966101,
+                "lon": 10.497221545825257
+              }
+            },
+            {
               "experience_id": "exp-buccellato-pasticceria",
               "titolo": "Il buccellato: il dolce di Lucca",
-              "arrivo": "17:28:00",
+              "arrivo": "17:22:00",
               "durata_min": 20,
               "reason": "Temi: gastronomia. Al chiuso. Offerta da Pasticceria (esempio dimostrativo).",
               "esito_adattamento": null,
@@ -8402,7 +8402,7 @@
               "punto_arrivo": null
             }
           ],
-          "generated_at": "2026-10-22T17:06:45.645728",
+          "generated_at": "2026-10-26T09:45:56.611957",
           "adattato_da_segnale": false,
           "tempo_disponibile_min": 180,
           "tempo_effettivo_min": 180,
@@ -8446,22 +8446,22 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-parco-giochi-san-donato",
-            "arrivo": "11:00:00",
-            "durata_min": 45,
-            "reason": "Temi: verde e giardini. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "11:53:00",
+            "arrivo": "10:54:00",
             "durata_min": 25,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-parco-giochi-san-donato",
+            "arrivo": "11:27:00",
+            "durata_min": 45,
+            "reason": "Temi: verde e giardini. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-buccellato-pasticceria",
-            "arrivo": "12:28:00",
+            "arrivo": "12:22:00",
             "durata_min": 20,
             "reason": "Temi: gastronomia. Al chiuso. Offerta da Pasticceria (esempio dimostrativo).",
             "esito_adattamento": null
@@ -8503,36 +8503,36 @@
         "tempo_effettivo_min": 180,
         "stops": [
           {
-            "experience_id": "exp-sortita-san-paolino",
+            "experience_id": "exp-chiesa-chiostro-san-francesco",
             "arrivo": "15:00:00",
-            "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Cerchi silenzio e raccoglimento. Temi: storia. Al chiuso.",
-            "esito_adattamento": "sostituita"
-          },
-          {
-            "experience_id": "exp-interno-san-michele",
-            "arrivo": "15:29:00",
-            "durata_min": 20,
-            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso.",
+            "durata_min": 30,
+            "reason": "Sostituita per la pioggia. Cerchi silenzio e raccoglimento. Temi: musica, silenzio e contemplazione, storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-interno-san-frediano",
-            "arrivo": "15:55:00",
+            "arrivo": "15:38:00",
             "durata_min": 30,
             "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": "non_toccata"
           },
           {
+            "experience_id": "exp-interno-san-michele",
+            "arrivo": "16:14:00",
+            "durata_min": 20,
+            "reason": "Sostituita per la pioggia. In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. Al chiuso.",
+            "esito_adattamento": "sostituita"
+          },
+          {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "16:34:00",
+            "arrivo": "16:39:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "17:16:00",
+            "arrivo": "17:21:00",
             "durata_min": 35,
             "reason": "Sostituita per la pioggia. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
@@ -8558,29 +8558,9 @@
               }
             },
             {
-              "experience_id": "exp-facciata-san-michele",
-              "titolo": "La facciata scolpita di San Michele in Foro",
-              "arrivo": "15:35:00",
-              "durata_min": 25,
-              "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
-              "esito_adattamento": null,
-              "curiosita": [
-                {
-                  "testo": "Si racconta che nell'anello al dito dell'arcangelo, in cima alla facciata, sia incastonato un grande smeraldo, visibile al tramonto da un punto preciso della piazza.",
-                  "tipo": "leggenda",
-                  "fonte": "Comune di Lucca, Mappa del centro storico 2024",
-                  "fonte_pubblica": true
-                }
-              ],
-              "punto_arrivo": {
-                "lat": 43.843206920716746,
-                "lon": 10.502521515682991
-              }
-            },
-            {
               "experience_id": "exp-interno-san-frediano",
               "titolo": "La basilica di San Frediano e il fonte lustrale",
-              "arrivo": "16:06:00",
+              "arrivo": "15:33:00",
               "durata_min": 30,
               "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
               "esito_adattamento": null,
@@ -8598,9 +8578,29 @@
               }
             },
             {
+              "experience_id": "exp-facciata-san-michele",
+              "titolo": "La facciata scolpita di San Michele in Foro",
+              "arrivo": "16:09:00",
+              "durata_min": 25,
+              "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
+              "esito_adattamento": null,
+              "curiosita": [
+                {
+                  "testo": "Si racconta che nell'anello al dito dell'arcangelo, in cima alla facciata, sia incastonato un grande smeraldo, visibile al tramonto da un punto preciso della piazza.",
+                  "tipo": "leggenda",
+                  "fonte": "Comune di Lucca, Mappa del centro storico 2024",
+                  "fonte_pubblica": true
+                }
+              ],
+              "punto_arrivo": {
+                "lat": 43.843206920716746,
+                "lon": 10.502521515682991
+              }
+            },
+            {
               "experience_id": "exp-santi-giovanni-reparata",
               "titolo": "La chiesa dei Santi Giovanni e Reparata e l'area archeologica",
-              "arrivo": "16:45:00",
+              "arrivo": "16:39:00",
               "durata_min": 40,
               "reason": "Temi: storia, arte, romanico. Al chiuso.",
               "esito_adattamento": null,
@@ -8613,7 +8613,7 @@
             {
               "experience_id": "exp-via-del-fosso",
               "titolo": "Via del Fosso: il canale e i ponticelli",
-              "arrivo": "17:36:00",
+              "arrivo": "17:30:00",
               "durata_min": 20,
               "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
               "esito_adattamento": null,
@@ -8624,7 +8624,7 @@
               }
             }
           ],
-          "generated_at": "2026-10-22T17:06:45.673938",
+          "generated_at": "2026-10-26T09:45:56.653866",
           "adattato_da_segnale": false,
           "tempo_disponibile_min": 180,
           "tempo_effettivo_min": 180,
@@ -8668,29 +8668,29 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "10:35:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-interno-san-frediano",
-            "arrivo": "11:06:00",
+            "arrivo": "10:33:00",
             "durata_min": 30,
             "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "11:09:00",
+            "durata_min": 25,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:45:00",
+            "arrivo": "11:39:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "12:36:00",
+            "arrivo": "12:30:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
             "esito_adattamento": null
@@ -8746,25 +8746,25 @@
             "esito_adattamento": "non_toccata"
           },
           {
+            "experience_id": "exp-sortita-san-paolino",
+            "arrivo": "16:10:00",
+            "durata_min": 20,
+            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
+            "esito_adattamento": "sostituita"
+          },
+          {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "16:05:00",
+            "arrivo": "16:40:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "16:47:00",
+            "arrivo": "17:22:00",
             "durata_min": 35,
             "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "non_toccata"
-          },
-          {
-            "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "17:33:00",
-            "durata_min": 20,
-            "reason": "Sostituita per la pioggia. Temi: storia. Al chiuso.",
-            "esito_adattamento": "sostituita"
           }
         ],
         "tappe_escluse": []
@@ -8814,42 +8814,9 @@
               }
             },
             {
-              "experience_id": "exp-santi-giovanni-reparata",
-              "titolo": "La chiesa dei Santi Giovanni e Reparata e l'area archeologica",
-              "arrivo": "16:10:00",
-              "durata_min": 40,
-              "reason": "Temi: storia, arte, romanico. Al chiuso.",
-              "esito_adattamento": null,
-              "curiosita": [],
-              "punto_arrivo": {
-                "lat": 43.84119039780105,
-                "lon": 10.504274232740409
-              }
-            },
-            {
-              "experience_id": "exp-duomo-volto-santo",
-              "titolo": "Il Volto Santo e il labirinto del Duomo",
-              "arrivo": "16:52:00",
-              "durata_min": 35,
-              "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
-              "esito_adattamento": null,
-              "curiosita": [
-                {
-                  "testo": "Sul pilastro del portico è inciso un labirinto, con un'iscrizione latina che richiama Dedalo e Teseo. Lo si legge come simbolo del cammino dell'anima verso la redenzione, lungo la Via Francigena.",
-                  "tipo": "fatto",
-                  "fonte": "dato del committente",
-                  "fonte_pubblica": false
-                }
-              ],
-              "punto_arrivo": {
-                "lat": 43.8407348442907,
-                "lon": 10.50546424867784
-              }
-            },
-            {
               "experience_id": "exp-solchi-san-pietro-somaldi",
               "titolo": "I solchi sulla porta di San Pietro Somaldi",
-              "arrivo": "17:37:00",
+              "arrivo": "16:06:00",
               "durata_min": 10,
               "reason": "Temi: storia, romanico. All'aperto.",
               "esito_adattamento": null,
@@ -8871,9 +8838,42 @@
                 "lat": 43.84555613789234,
                 "lon": 10.508002871124265
               }
+            },
+            {
+              "experience_id": "exp-santi-giovanni-reparata",
+              "titolo": "La chiesa dei Santi Giovanni e Reparata e l'area archeologica",
+              "arrivo": "16:26:00",
+              "durata_min": 40,
+              "reason": "Temi: storia, arte, romanico. Al chiuso.",
+              "esito_adattamento": null,
+              "curiosita": [],
+              "punto_arrivo": {
+                "lat": 43.84119039780105,
+                "lon": 10.504274232740409
+              }
+            },
+            {
+              "experience_id": "exp-duomo-volto-santo",
+              "titolo": "Il Volto Santo e il labirinto del Duomo",
+              "arrivo": "17:08:00",
+              "durata_min": 35,
+              "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
+              "esito_adattamento": null,
+              "curiosita": [
+                {
+                  "testo": "Sul pilastro del portico è inciso un labirinto, con un'iscrizione latina che richiama Dedalo e Teseo. Lo si legge come simbolo del cammino dell'anima verso la redenzione, lungo la Via Francigena.",
+                  "tipo": "fatto",
+                  "fonte": "dato del committente",
+                  "fonte_pubblica": false
+                }
+              ],
+              "punto_arrivo": {
+                "lat": 43.8407348442907,
+                "lon": 10.50546424867784
+              }
             }
           ],
-          "generated_at": "2026-10-22T17:06:45.701141",
+          "generated_at": "2026-10-26T09:45:56.697462",
           "adattato_da_segnale": false,
           "tempo_disponibile_min": 180,
           "tempo_effettivo_min": 180,
@@ -8917,31 +8917,31 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "11:58:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "12:35:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "11:58:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -8988,31 +8988,31 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "10:54:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
+            "experience_id": "exp-finestra-bernardini",
+            "arrivo": "10:51:00",
+            "durata_min": 10,
+            "reason": "Temi: storia. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-interno-san-frediano",
-            "arrivo": "11:25:00",
+            "arrivo": "11:08:00",
             "durata_min": 30,
             "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "12:04:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "11:44:00",
+            "durata_min": 25,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-finestra-bernardini",
-            "arrivo": "12:48:00",
-            "durata_min": 10,
-            "reason": "Temi: storia. All'aperto.",
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:14:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           }
         ],
@@ -9109,36 +9109,36 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-parco-giochi-san-donato",
-            "arrivo": "11:00:00",
-            "durata_min": 45,
-            "reason": "Temi: verde e giardini. All'aperto.",
+            "experience_id": "exp-facciata-san-michele",
+            "arrivo": "10:54:00",
+            "durata_min": 25,
+            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-buccellato-pasticceria",
-            "arrivo": "11:55:00",
+            "arrivo": "11:29:00",
             "durata_min": 20,
             "reason": "Temi: gastronomia. Al chiuso. Offerta da Pasticceria (esempio dimostrativo).",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "12:25:00",
+            "arrivo": "11:59:00",
             "durata_min": 20,
             "reason": "Temi: storia. Al chiuso.",
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-facciata-san-michele",
-            "arrivo": "12:54:00",
-            "durata_min": 25,
-            "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
+            "experience_id": "exp-parco-giochi-san-donato",
+            "arrivo": "12:26:00",
+            "durata_min": 45,
+            "reason": "Temi: verde e giardini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "13:24:00",
+            "arrivo": "13:19:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
@@ -9183,36 +9183,36 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-salita-torre-guinigi",
-            "arrivo": "10:37:00",
-            "durata_min": 40,
-            "reason": "Temi: panorama, verde e giardini, storia. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-bici-mura",
-            "arrivo": "11:25:00",
-            "durata_min": 45,
-            "reason": "Temi: verde e giardini, panorama. All'aperto.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "12:19:00",
+            "arrivo": "10:35:00",
             "durata_min": 25,
             "reason": "In questa chiesa il giovane Giacomo Puccini dava lezioni d'organo al suo unico allievo, il sarto Carlo Della Nina; per la festa di San Michele vi si suonano ancora musiche della famiglia Puccini. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "12:49:00",
+            "arrivo": "11:05:00",
             "durata_min": 40,
             "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-bici-mura",
+            "arrivo": "11:49:00",
+            "durata_min": 45,
+            "reason": "Temi: verde e giardini, panorama. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-salita-torre-guinigi",
+            "arrivo": "12:42:00",
+            "durata_min": 40,
+            "reason": "Temi: panorama, verde e giardini, storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "13:40:00",
+            "arrivo": "13:26:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
             "esito_adattamento": null
@@ -9257,45 +9257,45 @@
             "esito_adattamento": null
           },
           {
-            "experience_id": "exp-interno-san-frediano",
-            "arrivo": "10:31:00",
-            "durata_min": 30,
-            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-santi-giovanni-reparata",
-            "arrivo": "11:10:00",
-            "durata_min": 40,
-            "reason": "Temi: storia, arte, romanico. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "11:52:00",
-            "durata_min": 35,
-            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
-            "esito_adattamento": null
-          },
-          {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:37:00",
+            "arrivo": "10:30:00",
             "durata_min": 30,
             "reason": "Temi: verde e giardini, arte, panorama. All'aperto.",
             "esito_adattamento": null
           },
           {
+            "experience_id": "exp-interno-san-frediano",
+            "arrivo": "11:03:00",
+            "durata_min": 30,
+            "reason": "Temi: romanico, arte, medioevo. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
             "experience_id": "exp-solchi-san-pietro-somaldi",
-            "arrivo": "13:14:00",
+            "arrivo": "11:38:00",
             "durata_min": 10,
             "reason": "Temi: storia, romanico. All'aperto.",
             "esito_adattamento": null
           },
           {
             "experience_id": "exp-via-del-fosso",
-            "arrivo": "13:27:00",
+            "arrivo": "11:51:00",
             "durata_min": 20,
             "reason": "Temi: silenzio e contemplazione, storia. All'aperto.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "12:21:00",
+            "durata_min": 35,
+            "reason": "Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
+            "esito_adattamento": null
+          },
+          {
+            "experience_id": "exp-santi-giovanni-reparata",
+            "arrivo": "12:58:00",
+            "durata_min": 40,
+            "reason": "Temi: storia, arte, romanico. Al chiuso.",
             "esito_adattamento": null
           }
         ],
