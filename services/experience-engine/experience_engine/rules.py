@@ -406,7 +406,21 @@ def segnali_fluttuanti_pertinenti(
     """Segnali fluttuanti pertinenti per QUESTO profilo, nell'ordine in cui
     sono arrivati (determinismo: nessun riordino inventato qui).
 
-    Due condizioni, ENTRAMBE necessarie:
+    ACCESSIBILITÀ — filtro duro, PRIMA di tutto: con
+    `profile.accessibilita_richiesta=True` la lista è VUOTA, sempre. Il
+    segnale non sa se il suo luogo è accessibile (`SegnaleFluttuante` non
+    porta `accessibile`, scelta di forma minimale): non potendo verificarlo,
+    la regola conservativa decisa dal committente è non proporre NESSUNA
+    tappa fluttuante a chi ha chiesto accessibilità — mai un "probabilmente
+    sì". È lo stesso vincolo che `passa_filtri_statici` applica alle
+    esperienze permanenti, portato sulla coda nel solo modo verificabile con
+    i dati che abbiamo. Applicato QUI, e non in `engine`, perché questa
+    funzione è l'unico ingresso della coda: un vincolo in un punto solo, puro
+    e testabile senza comporre un itinerario. L'accessibilità per segnale
+    (un campo dichiarato sul segnale) è rinviata a dopo la demo. Senza
+    `accessibilita_richiesta` il comportamento è invariato.
+
+    Altrimenti due condizioni, ENTRAMBE necessarie:
     1. `contracts.segnale_fluttuante_ammissibile` — filtro DURO, MAI
        un'eccezione: un segnale commerciale non è mai pertinente, qualunque
        sia la sua coerenza col profilo. Verificato PRIMA, non dopo: un
@@ -422,6 +436,8 @@ def segnali_fluttuanti_pertinenti(
 
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
+    if profile.accessibilita_richiesta:
+        return []
     return [
         segnale
         for segnale in eventi_attivi
@@ -545,6 +561,18 @@ def eventi_promossi_pertinenti(
     giorno che nessuno ha dichiarato. Parametro senza default, apposta: ogni
     chiamante deve dire esplicitamente quale data sta usando (anche `None`).
 
+    FAIL-CLOSED sull'accessibilità: con `profile.accessibilita_richiesta=True`
+    la lista è VUOTA, sempre. `EventoPromosso` non porta `accessibile` (né lo
+    porta il pattern di segnali fluttuanti da cui è stato promosso): non
+    sappiamo se il luogo, in quel momento, sia accessibile. Regola
+    conservativa decisa dal committente: nessun evento promosso a chi ha
+    chiesto accessibilità — lo stesso vincolo che `passa_filtri_statici`
+    applica alle esperienze permanenti, nel solo modo verificabile con i
+    dati che abbiamo. Qui e non in `engine` per la stessa ragione di
+    `segnali_fluttuanti_pertinenti`: unico ingresso della coda, puro,
+    testabile da solo. L'accessibilità per evento è rinviata a dopo la demo.
+    Senza `accessibilita_richiesta` il comportamento è invariato.
+
     Altrimenti DUE condizioni, entrambe necessarie:
     1. `_coerente_col_profilo` — un tema in comune con almeno una dimensione
        a cui il profilo tiene davvero (peso > 0). È ESATTAMENTE la stessa
@@ -580,7 +608,7 @@ def eventi_promossi_pertinenti(
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio.
     """
-    if data_visita is None:
+    if data_visita is None or profile.accessibilita_richiesta:
         return []
     return [
         evento

@@ -275,8 +275,14 @@ oltre le 24:00 è comunque tolta dal tetto della giornata (passo 3), prima del p
   un tema in comune con una dimensione di profilo > 0, **dopo**) — un segnale commerciale
   ma coerente col profilo è scartato allo stesso identico modo di uno commerciale e
   incoerente.
-- Nessun tetto al numero di tappe fluttuanti aggiungibili, nessun filtro di affollamento o
-  accessibilità applicato alla tappa fluttuante stessa (limiti dichiarati, non chiusi, in
+- **Accessibilità (ondata 4, compito 5-quater):** con `profile.accessibilita_richiesta=True`
+  `segnali_fluttuanti_pertinenti` restituisce una lista VUOTA, prima di ogni altra
+  condizione: nessuna tappa fluttuante per chi ha chiesto accessibilità. `SegnaleFluttuante`
+  non porta `accessibile`, quindi il luogo non è verificabile: regola conservativa decisa
+  dal committente. Accessibilità per segnale rinviata a dopo la demo. Senza
+  `accessibilita_richiesta`, comportamento invariato.
+- Nessun tetto al numero di tappe fluttuanti aggiungibili, nessun filtro di affollamento
+  applicato alla tappa fluttuante stessa (limiti dichiarati, non chiusi, in
   `docs/LIMITI.md`).
 
 ## 8-bis. `:Evento` promossi — vincoli del passo 6 (finestra temporale)
@@ -289,6 +295,14 @@ oltre le 24:00 è comunque tolta dal tetto della giornata (passo 3), prima del p
   proporzionale alla cadenza, mai fissa.
 - `Signal.data is None` → nessuna tappa-evento (fail-closed). Proiezione non
   rappresentabile come `date` → evento fuori finestra, mai un'eccezione.
+- `profile.accessibilita_richiesta=True` → nessuna tappa-evento (fail-closed,
+  `eventi_promossi_pertinenti` restituisce una lista vuota). `EventoPromosso` non porta
+  `accessibile`: stessa regola conservativa dei fluttuanti (§8), stessa motivazione.
+- Nessun filtro di affollamento sulla tappa-evento (stesso limite dei fluttuanti, §8;
+  dichiarato in `docs/LIMITI.md`).
+- `adapt_itinerary` non aggiunge mai tappe in coda ma mantiene come stub quelle già
+  ricevute, senza riapplicare l'accessibilità (vale anche per le fluttuanti; limite
+  dichiarato in `docs/LIMITI.md`).
 - Due condizioni, entrambe necessarie: `_coerente_col_profilo` E in finestra. Nessun
   filtro commerciale qui (il vaglio è a monte, alla radice del ledger e alla promozione
   umana — docstring di `eventi_promossi_pertinenti`).

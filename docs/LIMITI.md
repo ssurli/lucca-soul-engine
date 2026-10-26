@@ -798,10 +798,22 @@ un'esperienza permanente.
   consente, TUTTI i segnali pertinenti vengono aggiunti, in ordine di arrivo. Non è stato
   fabbricato un tetto arbitrario (es. "massimo 2 al giorno") senza un caso reale che ne mostri
   il bisogno — stesso principio già applicato altrove in questo file.
-- **Nessun filtro di affollamento/accessibilità sulla tappa fluttuante**: `SegnaleFluttuante`
-  non porta `accessibile`/`al_chiuso` (scelta di forma minimale, `docs/BUILD_PLAN.md`
-  documenta il perché): una tappa fluttuante può quindi essere aggiunta anche se il suo luogo
-  è affollato, e non è mai esclusa per un profilo che richiede accessibilità.
+- **Accessibilità sulle tappe in coda: chiusa in modo conservativo (ondata 4, compito
+  5-quater).** `SegnaleFluttuante` ed `EventoPromosso` non portano `accessibile`: il motore
+  non sa se il luogo è accessibile. Con `accessibilita_richiesta=True` NESSUNA tappa
+  fluttuante e NESSUN evento promosso entra in composizione
+  (`rules.segnali_fluttuanti_pertinenti` e `rules.eventi_promossi_pertinenti` restituiscono
+  una lista vuota). Il prezzo: chi chiede accessibilità non vede mai le aggiunte "accade ora"
+  né gli eventi ricorrenti, anche quando il luogo sarebbe accessibile. Chiuderlo davvero
+  richiede un campo `accessibile` sul segnale e sull'evento promosso, dopo la demo.
+  Resta un caso: `adapt_itinerary` non aggiunge mai code, ma MANTIENE come stub le tappe in
+  coda già presenti nell'itinerario ricevuto, senza riapplicare l'accessibilità; un itinerario
+  composto senza accessibilità e poi adattato con un profilo accessibile (o inviato così da un
+  client) conserva la sua coda. È la stessa classe di limite delle tappe permanenti mantenute.
+- **Nessun filtro di affollamento sulle tappe in coda** (fluttuanti ed eventi promossi): né
+  `SegnaleFluttuante` né `EventoPromosso` portano `al_chiuso`/affollamento (scelta di forma
+  minimale, `docs/BUILD_PLAN.md` documenta il perché): una tappa in coda può essere aggiunta
+  anche se il suo luogo è affollato. Questo buco resta aperto.
 
 ### Cosa servirebbe per chiudere questi buchi (proposte, NON implementate ora)
 
@@ -812,10 +824,11 @@ un'esperienza permanente.
    scritto per `POST /events` (autenticazione, un segnale minimo di presenza reale) — lo stesso
    canale d'ingresso irrisolto copre anche questo campo, non è un problema separato da
    risolvere due volte.
-3. **Tetto al numero di tappe fluttuanti** e **filtro di affollamento/accessibilità sulla tappa
-   fluttuante**: entrambi richiedono prima un caso reale (un pilota con più segnali attivi
-   contemporaneamente, o un profilo con accessibilità richiesta che incontra un segnale) che ne
-   mostri il bisogno concreto.
+3. **Tetto al numero di tappe fluttuanti** e **filtro di affollamento sulle tappe in coda**:
+   entrambi richiedono prima un caso reale (un pilota con più segnali attivi
+   contemporaneamente) che ne mostri il bisogno concreto. L'accessibilità sulle code è chiusa
+   in modo conservativo (voce sopra); l'accessibilità per singolo segnale/evento è rinviata a
+   dopo la demo.
 
 ### Decisione
 

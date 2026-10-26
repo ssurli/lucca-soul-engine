@@ -893,6 +893,9 @@ def _aggiungi_tappe_fluttuanti(
     `_aggiungi_tappe_eventi_promossi` (budget condiviso). `orario_corrente`
     riparte invece da `stops[-1]`: serve solo a dare l'`arrivo`.
 
+    Con `profile.accessibilita_richiesta=True` non aggiunge nulla: lo decide
+    `rules.segnali_fluttuanti_pertinenti` (lista vuota), non questa funzione.
+
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
     pertinenti = segnali_fluttuanti_pertinenti(
@@ -1100,6 +1103,9 @@ def _aggiungi_tappe_eventi_promossi(
     `None` — nessuna tappa-evento) e il giorno atteso raccontato nel
     `reason`. Nessun chiamante può ometterla senza accorgersene.
 
+    Con `profile.accessibilita_richiesta=True` non aggiunge nulla: lo decide
+    `rules.eventi_promossi_pertinenti` (lista vuota), non questa funzione.
+
     `vocabolario`: vocabolario dei temi della città, dato del dataset; il
     motore non ne ha uno proprio."""
     pertinenti = eventi_promossi_pertinenti(
@@ -1185,7 +1191,19 @@ def compose_itinerary(
          prima, né il punteggio
       4. `reason` obbligatorio per ogni tappa -> `_costruisci_stops`
       5. segnali FLUTTUANTI pertinenti, in CODA -> `_aggiungi_tappe_fluttuanti`
+         (nessuno se `profile.accessibilita_richiesta`: il segnale non sa se
+         il luogo è accessibile -> `rules.segnali_fluttuanti_pertinenti`)
       6. eventi PROMOSSI pertinenti, in CODA -> `_aggiungi_tappe_eventi_promossi`
+         (nessuno se `profile.accessibilita_richiesta`, stessa ragione ->
+         `rules.eventi_promossi_pertinenti`)
+
+    Accessibilità sulle code (passi 5-6): con `accessibilita_richiesta=True`
+    NESSUNA tappa fluttuante e NESSUN evento promosso entra nell'itinerario.
+    `SegnaleFluttuante` ed `EventoPromosso` non portano `accessibile`: non
+    potendo verificare il luogo, la regola è conservativa (decisa dal
+    committente), applicata nelle due funzioni di pertinenza di `rules.py`,
+    unico ingresso delle code. L'accessibilità per segnale/evento è rinviata
+    a dopo la demo. Senza `accessibilita_richiesta`, comportamento invariato.
 
     `score_fn` è INIETTABILE (Wave 3b): il recommender può fornire un ranking
     alternativo. È applicato DOPO i filtri duri statici, mai prima: riceve
