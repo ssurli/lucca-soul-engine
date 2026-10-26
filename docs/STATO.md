@@ -4,7 +4,7 @@
 Ondata 2a inclusa (merge fast-forward di `feat/ondata2a-testi`, `d9f6664`; CI verde).
 Ondata 2b inclusa (merge fast-forward di `feat/ondata2b-app`, `9be2259`; CI verde).
 Ondata 3 inclusa (merge fast-forward di `feat/ondata3-dati`, `b7f2f6f`; CI verde).
-Ondata 4 chiusa sul ramo `feat/ondata4-grafica` (`6e93b06`..`5be487d`); merge su `main` da fare.
+Ondata 4 inclusa in `main` (`6e93b06`..`effa9aa`, avanzamento veloce dal ramo `feat/ondata4-grafica`).
 I dettagli sono in `docs/LIMITI.md` e `docs/BUILD_PLAN.md`; questo file è solo il punto della
 situazione.
 
