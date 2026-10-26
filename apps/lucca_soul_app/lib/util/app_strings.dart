@@ -232,3 +232,7 @@ class AppStrings {
 /// Etichetta di accessibilità del logo delle Mura (testo prescritto dal
 /// committente, uguale in ogni lingua).
 const String kMuraLogoLabel = 'Le Mura di Lucca: dieci baluardi e una piattaforma';
+
+/// Identificativo dell'app per le richieste di tile (User-Agent di OSM). Sta
+/// qui perché il file è nell'allowlist della guardia città.
+const String kUserAgentPackage = 'lucca_soul_app';

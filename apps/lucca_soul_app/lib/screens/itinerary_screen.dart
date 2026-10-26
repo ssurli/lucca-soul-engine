@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' show TileProvider;
 
 import '../api/bff_client.dart';
 import '../api/bff_exception.dart';
@@ -18,6 +19,7 @@ import '../util/known_places.dart';
 import '../util/signal_presets.dart';
 import '../widgets/adaptive_card.dart';
 import '../widgets/colonna_centrata.dart';
+import '../widgets/mappa_itinerario.dart';
 import '../widgets/testata_giornata.dart';
 import '../widgets/memory_contribution_sheet.dart';
 
@@ -30,7 +32,11 @@ class ItineraryScreen extends StatefulWidget {
   final String personId;
   final EmotionalProfile profile;
 
+  /// Solo test: strato di tile finto (nessuna rete). Default: rete.
+  final TileProvider? tileProvider;
+
   const ItineraryScreen({
+    this.tileProvider,
     super.key,
     required this.bffClient,
     required this.personId,
@@ -168,6 +174,11 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
               child: ListView(
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
+                  MappaItinerario(
+                    tappe: itinerario.stops,
+                    tileProvider: widget.tileProvider,
+                    etichettaTappa: _strings.genericStop,
+                  ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                     child: Text(_strings.itineraryTitle,
