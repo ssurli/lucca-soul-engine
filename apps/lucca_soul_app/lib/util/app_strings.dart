@@ -207,6 +207,7 @@ class AppStrings {
       _isEn ? 'Urban Memory contributions' : 'Contributi alla Urban Memory';
 
   // --- Grafica (ondata 4): testata, riepilogo del cambio ----------------------
+  String photoBy(String autore) => _isEn ? 'Photo: $autore' : 'Foto: $autore';
   String get onFoot => _isEn ? 'on foot' : 'a piedi';
   String stopsCount(int n) => _isEn ? (n == 1 ? '1 stop' : '$n stops') : (n == 1 ? '1 tappa' : '$n tappe');
   String get backToOriginalSummary => _isEn ? 'Back to the original plan.' : 'Percorso iniziale ripristinato.';

@@ -27,6 +27,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/brand/mura_punti.json
+    # Foto delle tappe: solo dati (vedi README). Oggi la cartella contiene solo foto.json.
+    - assets/foto/
   # Caratteri incorporati (variabili, licenza OFL: vedi OFL.txt accanto a ciascun file).
   fonts:
     - family: Domine

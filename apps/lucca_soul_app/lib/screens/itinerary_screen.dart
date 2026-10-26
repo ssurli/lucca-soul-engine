@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_map/flutter_map.dart' show TileProvider;
 
 import '../api/bff_client.dart';
@@ -13,12 +14,14 @@ import '../theme/tokens.dart';
 import '../util/app_strings.dart';
 import '../util/clock.dart';
 import '../util/directions_link.dart';
+import '../util/foto_tappa.dart';
 import '../util/excluded_stop_line.dart';
 import '../util/itinerary_diff.dart';
 import '../util/known_places.dart';
 import '../util/signal_presets.dart';
 import '../widgets/adaptive_card.dart';
 import '../widgets/colonna_centrata.dart';
+import '../widgets/foto_tappa_widget.dart';
 import '../widgets/mappa_itinerario.dart';
 import '../widgets/testata_giornata.dart';
 import '../widgets/memory_contribution_sheet.dart';
@@ -35,8 +38,12 @@ class ItineraryScreen extends StatefulWidget {
   /// Solo test: strato di tile finto (nessuna rete). Default: rete.
   final TileProvider? tileProvider;
 
+  /// Solo test: foto delle tappe iniettate. Default: dal bundle dell'app.
+  final ArchivioFoto? archivioFoto;
+
   const ItineraryScreen({
     this.tileProvider,
+    this.archivioFoto,
     super.key,
     required this.bffClient,
     required this.personId,
@@ -56,6 +63,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
 
   /// Quello mostrato: l'originale o l'ultimo adattamento.
   Itinerary? _itinerario;
+  ArchivioFoto _foto = const ArchivioFoto();
   bool _caricando = true;
   String? _errore;
 
@@ -64,6 +72,12 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     super.initState();
     _strings = AppStrings.forLanguages(widget.profile.lingue);
     _caricaItinerario();
+    _caricaFoto();
+  }
+
+  Future<void> _caricaFoto() async {
+    final archivio = widget.archivioFoto ?? await ArchivioFoto.dalBundle(rootBundle);
+    if (mounted) setState(() => _foto = archivio);
   }
 
   Future<void> _caricaItinerario() async {
@@ -202,6 +216,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                           tappaMantenutaSenzaAlternativa(itinerario.stops[i]),
                       strings: _strings,
                       numero: i + 1,
+                      foto: _foto.per(itinerario.stops[i].experienceId),
                       onLasciaRicordo: () =>
                           _lasciaRicordo(itinerario.stops[i]),
                     ),
@@ -311,6 +326,9 @@ class StopCard extends StatelessWidget {
   /// Numero della tappa (1-based), nello stesso ordine della mappa. Null = senza cerchio.
   final int? numero;
 
+  /// Foto della tappa, se esiste (file + voce nel json). Null = card invariata.
+  final FotoTappa? foto;
+
   const StopCard({
     super.key,
     required this.stop,
@@ -319,6 +337,7 @@ class StopCard extends StatelessWidget {
     required this.strings,
     required this.onLasciaRicordo,
     this.numero,
+    this.foto,
   });
 
   @override
@@ -369,6 +388,8 @@ class StopCard extends StatelessWidget {
                     '${stop.arrivo.label} · ${stop.durataMin} ${strings.durationLabel}',
                     style: stileTesto(14, 700, Tk.testoSecondario),
                   ),
+                  if (foto != null)
+                    SezioneFoto(foto: foto!, titolo: titoloTappa(stop.titolo, strings), strings: strings),
                   const SizedBox(height: 10),
                   // Il `reason` è il prodotto: sempre in evidenza, mai una nota a
                   // piè di pagina.
