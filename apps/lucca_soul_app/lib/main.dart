@@ -9,7 +9,7 @@ import 'util/person_id.dart';
 
 void main() {
   try {
-    Orologio.inizializza(); // legge DEMO_ISTANTE, se definito
+    Orologio.inizializza(query: Uri.base.queryParameters); // DEMO_ISTANTE, ?istante= se DEMO
   } on FormatException catch (e) {
     // Una demo con l'orologio sbagliato in silenzio è peggio di un errore:
     // si ferma l'avvio e si mostra il motivo.

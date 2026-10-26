@@ -60,6 +60,10 @@ class Settings(BaseSettings):
     # silenzioso verso un'altra citta').
     city_seed: str | None = Field(default=None, alias="CITY_SEED")
 
+    # Cartella della build web dell'app (`flutter build web`), servita dal BFF
+    # sulla stessa origine. Assente o inesistente => nessun montaggio.
+    app_web_dir: str | None = Field(default=None, alias="APP_WEB_DIR")
+
 
 @lru_cache
 def get_settings() -> Settings:

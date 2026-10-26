@@ -22,6 +22,39 @@ DateTime parseDemoIstante(String raw) {
   return parsed.toUtc();
 }
 
+/// `--dart-define=DEMO=true` abilita `?istante=` nell'indirizzo.
+const bool _demoDefine = bool.fromEnvironment('DEMO');
+
+final RegExp _istanteIndirizzo =
+    RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z$');
+
+/// Sceglie l'istante all'apertura. Funzione pura. Precedenza:
+/// parametro `istante` dell'indirizzo (solo se `demo`) > `define`
+/// (DEMO_ISTANTE) > `null` (orologio del dispositivo).
+///
+/// Nell'indirizzo e' ammessa SOLO la forma con `Z`: un `+01:00` diventerebbe
+/// uno spazio. Valore non valido: `FormatException` (mai un default muto).
+/// Senza `demo` il parametro e' ignorato.
+DateTime? risolviIstanteDemo({
+  required bool demo,
+  required Map<String, String> query,
+  required String define,
+}) {
+  if (demo && query.containsKey('istante')) {
+    final raw = query['istante']!.trim();
+    final parsed = DateTime.tryParse(raw);
+    if (!_istanteIndirizzo.hasMatch(raw) || parsed == null) {
+      throw FormatException(
+        '?istante non valido: "${query['istante']}". Atteso ISO 8601 UTC '
+        'con Z, es. 2026-12-12T14:00:00Z',
+      );
+    }
+    return parsed.toUtc();
+  }
+  if (define.trim().isNotEmpty) return parseDemoIstante(define);
+  return null;
+}
+
 class Orologio {
   Orologio._();
 
@@ -32,13 +65,17 @@ class Orologio {
 
   /// Da chiamare all'avvio. Se `demo` è vuoto usa l'orologio del dispositivo;
   /// se non è parsabile lancia `FormatException` (l'app lo mostra a schermo).
-  static void inizializza({String demo = _demoIstanteDefine}) {
-    if (demo.trim().isEmpty) {
-      _sorgente = DateTime.now;
-      return;
-    }
-    final fisso = parseDemoIstante(demo);
-    _sorgente = () => fisso;
+  ///
+  /// `query` sono i parametri dell'indirizzo (in `main`: `Uri.base.queryParameters`);
+  /// contano solo con `DEMO=true` (vedi [risolviIstanteDemo]).
+  static void inizializza({
+    String demo = _demoIstanteDefine,
+    bool demoAttivo = _demoDefine,
+    Map<String, String> query = const {},
+  }) {
+    final fisso =
+        risolviIstanteDemo(demo: demoAttivo, query: query, define: demo);
+    _sorgente = fisso == null ? DateTime.now : () => fisso;
   }
 
   /// Solo per i test: sostituisce la sorgente (null = orologio del device).

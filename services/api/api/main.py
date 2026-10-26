@@ -129,6 +129,7 @@ from __future__ import annotations
 import logging
 import math
 from datetime import UTC, date, datetime, time
+from pathlib import Path
 from typing import Annotated
 
 import contracts
@@ -165,6 +166,8 @@ from pydantic import BaseModel
 from rag.onboarding import profile_from_answers
 from rag.reasons import adapt_reason, compose_reason
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.staticfiles import StaticFiles
+from starlette.types import Scope
 from urban_memory import (
     MemoryRepository,
     MemoryStorageError,
@@ -1112,3 +1115,35 @@ def _segnale_neutro_per_candidati() -> Signal:
 # in modo leggibile se la configurazione è malformata, ma nessuna variabile
 # è obbligatoria (vedi api/settings.py).
 get_settings()
+
+
+class AppWebStaticFiles(StaticFiles):
+    """File statici della build web dell'app con `Cache-Control: no-cache`:
+    il browser può tenere la copia ma deve rivalidarla a ogni uso, così dopo
+    un aggiornamento della build non serve una versione vecchia."""
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
+def monta_app_web(app: FastAPI, cartella: str | Path | None) -> bool:
+    """Monta la build web dell'app su `/` (`html=True`), stessa origine del BFF.
+
+    DEVE essere chiamata DOPO la registrazione di tutte le rotte: un mount su
+    `/` cattura ciò che le rotte precedenti non gestiscono (le rotte API hanno
+    la precedenza). Effetto noto: un `GET` su una rotta solo-POST risponde 404
+    invece di 405. Senza cartella o con cartella inesistente non monta nulla
+    e ritorna `False` (il BFF parte come senza app). Il percorso arriva
+    sempre dal chiamante (config `APP_WEB_DIR`), mai cablato qui."""
+    if not cartella:
+        return False
+    percorso = Path(cartella)
+    if not percorso.is_dir():
+        return False
+    app.mount("/", AppWebStaticFiles(directory=percorso, html=True), name="app-web")
+    return True
+
+
+monta_app_web(app, get_settings().app_web_dir)

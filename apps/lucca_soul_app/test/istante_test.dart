@@ -22,7 +22,10 @@ void main() {
         istante: t.istante,
       ).toJson();
       expect(j['istante'], endsWith('Z'));
-      expect(DateTime.parse(j['istante'] as String), DateTime.utc(2026, 12, 12, 9));
+      expect(
+        DateTime.parse(j['istante'] as String),
+        DateTime.utc(2026, 12, 12, 9),
+      );
       expect(j['ora'], isA<String>());
       expect(j['data'], isA<String>());
     });
@@ -64,9 +67,71 @@ void main() {
       expect(d.inSeconds, lessThan(5));
     });
 
-    test('non parsabile o senza fuso: FormatException, nessun default muto', () {
+    test('non parsabile o senza fuso: FormatException, nessun default muto',
+        () {
       expect(() => Orologio.inizializza(demo: 'domani'), throwsFormatException);
-      expect(() => Orologio.inizializza(demo: '2026-12-12T09:00:00'), throwsFormatException);
+      expect(
+        () => Orologio.inizializza(demo: '2026-12-12T09:00:00'),
+        throwsFormatException,
+      );
+    });
+  });
+
+  group('istante in apertura (DEMO + ?istante=)', () {
+    const param = {'istante': '2026-12-12T14:00:00Z'};
+    const define = '2026-12-12T09:00:00Z';
+
+    test('DEMO=true con parametro valido: usa il parametro', () {
+      expect(
+        risolviIstanteDemo(demo: true, query: param, define: define),
+        DateTime.utc(2026, 12, 12, 14),
+      );
+      Orologio.inizializza(demo: define, demoAttivo: true, query: param);
+      expect(Orologio.adesso(), DateTime.utc(2026, 12, 12, 14));
+    });
+
+    test('DEMO=false: il parametro viene ignorato', () {
+      expect(
+        risolviIstanteDemo(demo: false, query: param, define: define),
+        DateTime.utc(2026, 12, 12, 9),
+      );
+      expect(risolviIstanteDemo(demo: false, query: param, define: ''), isNull);
+      // anche se non valido
+      expect(
+        risolviIstanteDemo(demo: false, query: {'istante': 'x'}, define: ''),
+        isNull,
+      );
+    });
+
+    test('DEMO=true senza parametro: vale DEMO_ISTANTE, o il dispositivo', () {
+      expect(
+        risolviIstanteDemo(demo: true, query: const {}, define: define),
+        DateTime.utc(2026, 12, 12, 9),
+      );
+      expect(
+        risolviIstanteDemo(demo: true, query: const {}, define: ''),
+        isNull,
+      );
+    });
+
+    test('senza Z o malformato: FormatException', () {
+      for (final v in [
+        '2026-12-12T14:00:00',
+        '2026-12-12T14:00:00+01:00',
+        '2026-12-12T14:00:00 01:00',
+        'domani',
+        '',
+      ]) {
+        expect(
+          () => risolviIstanteDemo(
+            demo: true,
+            query: {'istante': v},
+            define: define,
+          ),
+          throwsFormatException,
+          reason: v,
+        );
+      }
     });
   });
 
@@ -74,7 +139,7 @@ void main() {
     test('tagliata_orario e valori ignoti sopravvivono al parsing', () {
       for (final esito in ['tagliata_orario', 'esito_dal_futuro']) {
         final t = TappaEsclusa.fromJson(
-            {'experience_id': 'x', 'esito': esito, 'reason': 'perché'},
+          {'experience_id': 'x', 'esito': esito, 'reason': 'perché'},
         );
         expect(t.esito, esito);
         expect(t.toJson()['esito'], esito);

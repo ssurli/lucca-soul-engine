@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 import '../models/adapt_request.dart';
@@ -17,6 +18,33 @@ import 'bff_exception.dart';
 /// `--dart-define=BFF_URL=http://host:porta`.
 const String kDefaultBffUrl = 'http://localhost:8000';
 
+/// Valore di `--dart-define=BFF_URL=...` (vuoto se non definito).
+const String _bffUrlDefine = String.fromEnvironment('BFF_URL');
+
+/// Sceglie l'indirizzo del BFF. Funzione pura.
+///
+/// - `define` non vuoto: vince (sviluppo, es. `flutter run -d chrome`).
+/// - altrimenti, sul web: la STESSA origine da cui l'app e' servita
+///   (schema, host e porta di `base`; i percorsi sono assoluti, `/itinerary`...).
+/// - altrimenti: [kDefaultBffUrl].
+Uri risolviBffUrl({
+  required String define,
+  required bool isWeb,
+  required Uri base,
+}) {
+  final d = define.trim();
+  if (d.isNotEmpty) return Uri.parse(d);
+  if (isWeb) {
+    return Uri(
+      scheme: base.scheme,
+      host: base.host,
+      port: base.hasPort ? base.port : null,
+      path: '/',
+    );
+  }
+  return Uri.parse(kDefaultBffUrl);
+}
+
 /// Client verso il BFF (`services/api`).
 ///
 /// L'app parla SOLO con il BFF: nessuna schermata o widget chiama Neo4j,
@@ -28,7 +56,7 @@ class BffClient {
 
   BffClient({Uri? baseUrl, http.Client? httpClient})
       : baseUrl = baseUrl ??
-            Uri.parse(const String.fromEnvironment('BFF_URL', defaultValue: kDefaultBffUrl)),
+            risolviBffUrl(define: _bffUrlDefine, isWeb: kIsWeb, base: Uri.base),
         _http = httpClient ?? http.Client();
 
   /// `POST /session/onboarding` — la conversazione produce un
@@ -57,7 +85,9 @@ class BffClient {
   /// rifiuta (4xx) un conferimento senza consenso esplicito o con licenza
   /// mancante: il messaggio (`detail`) del server arriva intatto nel
   /// `BffException`, così la UI mostra esattamente ciò che dice il BFF.
-  Future<MemoryContribution> submitMemory(MemoryContribution contribution) async {
+  Future<MemoryContribution> submitMemory(
+    MemoryContribution contribution,
+  ) async {
     final json = await _post('/memory', contribution.toJson());
     return MemoryContribution.fromJson(json);
   }
@@ -66,7 +96,9 @@ class BffClient {
   /// che riguardano un Luogo/Bottega/Artista del grafo.
   Future<List<MemoryContribution>> memoriesForPlace(String placeId) async {
     final list = await _getList('/memory/${Uri.encodeComponent(placeId)}');
-    return list.map((e) => MemoryContribution.fromJson(e as Map<String, dynamic>)).toList();
+    return list
+        .map((e) => MemoryContribution.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   /// `GET /dashboard/index?periodo=YYYY-MM` — l'Urban Intelligence Index del
@@ -95,7 +127,10 @@ class BffClient {
     return DashboardFlowsResponse.fromJson(json);
   }
 
-  Future<Map<String, dynamic>> _get(String path, Map<String, String> queryParams) async {
+  Future<Map<String, dynamic>> _get(
+    String path,
+    Map<String, String> queryParams,
+  ) async {
     final uri = baseUrl.resolve(path).replace(queryParameters: queryParams);
     late final http.Response response;
     try {
@@ -106,7 +141,8 @@ class BffClient {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw BffException(
-        _extractErrorDetail(response.bodyBytes) ?? 'Il BFF ha risposto con un errore',
+        _extractErrorDetail(response.bodyBytes) ??
+            'Il BFF ha risposto con un errore',
         statusCode: response.statusCode,
       );
     }
@@ -118,7 +154,10 @@ class BffClient {
     return decoded;
   }
 
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> _post(
+    String path,
+    Map<String, dynamic> body,
+  ) async {
     final uri = baseUrl.resolve(path);
     late final http.Response response;
     try {
@@ -135,7 +174,8 @@ class BffClient {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw BffException(
-        _extractErrorDetail(response.bodyBytes) ?? 'Il BFF ha risposto con un errore',
+        _extractErrorDetail(response.bodyBytes) ??
+            'Il BFF ha risposto con un errore',
         statusCode: response.statusCode,
       );
     }
@@ -158,7 +198,8 @@ class BffClient {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw BffException(
-        _extractErrorDetail(response.bodyBytes) ?? 'Il BFF ha risposto con un errore',
+        _extractErrorDetail(response.bodyBytes) ??
+            'Il BFF ha risposto con un errore',
         statusCode: response.statusCode,
       );
     }
