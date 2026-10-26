@@ -205,4 +205,30 @@ class AppStrings {
       _isEn ? 'Local activation' : 'Attivazione locale';
   String get indicatorContributiMemoriaLabel =>
       _isEn ? 'Urban Memory contributions' : 'Contributi alla Urban Memory';
+
+  // --- Grafica (ondata 4): testata, riepilogo del cambio ----------------------
+  String get onFoot => _isEn ? 'on foot' : 'a piedi';
+  String stopsCount(int n) => _isEn ? (n == 1 ? '1 stop' : '$n stops') : (n == 1 ? '1 tappa' : '$n tappe');
+  String get backToOriginalSummary => _isEn ? 'Back to the original plan.' : 'Percorso iniziale ripristinato.';
+  String get nothingChangedSummary => _isEn ? 'no stop changed' : 'nessuna tappa cambiata';
+  String changedStopsPart(int n) =>
+      _isEn ? (n == 1 ? '1 stop changed' : '$n stops changed') : (n == 1 ? '1 tappa cambiata' : '$n tappe cambiate');
+  String keptStopsPart(int n) =>
+      _isEn ? '$n stay${n == 1 ? 's' : ''} in plan' : (n == 1 ? '1 resta in programma' : '$n restano in programma');
+  String removedStopsPart(int n) =>
+      _isEn ? (n == 1 ? '1 stop left out' : '$n stops left out') : (n == 1 ? '1 tappa tolta' : '$n tappe tolte');
+
+  static const _giorniIt = ['lun', 'mar', 'mer', 'gio', 'ven', 'sab', 'dom'];
+  static const _giorniEn = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  static const _mesiIt = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+  static const _mesiEn = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  /// Data breve per la testata, es. "sab 12 dic" / "Sat 12 Dec".
+  String shortDate(DateTime d) => _isEn
+      ? '${_giorniEn[d.weekday - 1]} ${d.day} ${_mesiEn[d.month - 1]}'
+      : '${_giorniIt[d.weekday - 1]} ${d.day} ${_mesiIt[d.month - 1]}';
 }
+
+/// Etichetta di accessibilità del logo delle Mura (testo prescritto dal
+/// committente, uguale in ogni lingua).
+const String kMuraLogoLabel = 'Le Mura di Lucca: dieci baluardi e una piattaforma';

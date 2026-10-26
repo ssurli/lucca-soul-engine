@@ -7,13 +7,18 @@ import '../models/itinerary.dart';
 import '../models/person_kind.dart';
 import '../models/signal.dart';
 import '../models/visitor_context.dart';
+import '../theme/app_theme.dart';
+import '../theme/tokens.dart';
 import '../util/app_strings.dart';
+import '../util/clock.dart';
 import '../util/directions_link.dart';
 import '../util/excluded_stop_line.dart';
 import '../util/itinerary_diff.dart';
 import '../util/known_places.dart';
 import '../util/signal_presets.dart';
 import '../widgets/adaptive_card.dart';
+import '../widgets/colonna_centrata.dart';
+import '../widgets/testata_giornata.dart';
 import '../widgets/memory_contribution_sheet.dart';
 
 /// Schermata dell'itinerario: la giornata generata da `POST /itinerary`,
@@ -39,6 +44,7 @@ class ItineraryScreen extends StatefulWidget {
 class _ItineraryScreenState extends State<ItineraryScreen> {
   late AppStrings _strings;
   final Signal _segnale = baselineSignal();
+
   /// L'itinerario di `POST /itinerary`, conservato per ogni adattamento.
   Itinerary? _originale;
 
@@ -78,7 +84,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     }
   }
 
-  void _onMostrato(Itinerary mostrato) => setState(() => _itinerario = mostrato);
+  void _onMostrato(Itinerary mostrato) =>
+      setState(() => _itinerario = mostrato);
 
   /// Apre il conferimento a Urban Memory, contestuale alla tappa appena
   /// vissuta: `esperienza_id` e i luoghi che "riguarda" sono passati dal
@@ -94,14 +101,15 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
       strings: _strings,
     );
     if (esito == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_strings.memorySuccess)));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(_strings.memorySuccess)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(_strings.itineraryTitle)),
+      appBar: AppBar(title: const TitoloMarchio()),
       body: SafeArea(child: _buildBody(context)),
     );
   }
@@ -127,13 +135,17 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.wifi_off, size: 40, color: Theme.of(context).colorScheme.error),
+              Icon(Icons.wifi_off,
+                  size: 40, color: Theme.of(context).colorScheme.error,),
               const SizedBox(height: 12),
               Text(_strings.itineraryError, textAlign: TextAlign.center),
               const SizedBox(height: 4),
-              Text(_errore!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
+              Text(_errore!,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.bodySmall,),
               const SizedBox(height: 16),
-              FilledButton(onPressed: _caricaItinerario, child: Text(_strings.retry)),
+              FilledButton(
+                  onPressed: _caricaItinerario, child: Text(_strings.retry),),
             ],
           ),
         ),
@@ -145,32 +157,52 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
       return Center(child: Text(_strings.emptyStops));
     }
 
-    return RefreshIndicator(
-      onRefresh: _caricaItinerario,
-      child: ListView(
-        padding: const EdgeInsets.only(bottom: 24),
-        children: [
-          AdaptiveCard(
-            key: ObjectKey(_originale),
-            bffClient: widget.bffClient,
-            original: _originale!,
-            profile: widget.profile,
-            strings: _strings,
-            onShown: _onMostrato,
-          ),
-          if (itinerario.adattatoDaSegnale) _AdattatoBadge(strings: _strings),
-          for (var i = 0; i < itinerario.stops.length; i++)
-            StopCard(
-              stop: itinerario.stops[i],
-              evidenziata: tappaSostituita(itinerario.stops[i]),
-              mantenutaSenzaAlternativa: tappaMantenutaSenzaAlternativa(itinerario.stops[i]),
-              strings: _strings,
-              onLasciaRicordo: () => _lasciaRicordo(itinerario.stops[i]),
+    return Column(
+      children: [
+        TestataGiornata(
+            itinerario: itinerario, data: _segnale.data ?? Orologio.adesso().toLocal(), strings: _strings,),
+        Expanded(
+          child: ColonnaCentrata(
+            child: RefreshIndicator(
+              onRefresh: _caricaItinerario,
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: 24),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    child: Text(_strings.itineraryTitle,
+                        style: Theme.of(context).textTheme.headlineSmall,),
+                  ),
+                  AdaptiveCard(
+                    key: ObjectKey(_originale),
+                    bffClient: widget.bffClient,
+                    original: _originale!,
+                    profile: widget.profile,
+                    strings: _strings,
+                    onShown: _onMostrato,
+                  ),
+                  if (itinerario.adattatoDaSegnale)
+                    _AdattatoBadge(strings: _strings),
+                  for (var i = 0; i < itinerario.stops.length; i++)
+                    StopCard(
+                      stop: itinerario.stops[i],
+                      evidenziata: tappaSostituita(itinerario.stops[i]),
+                      mantenutaSenzaAlternativa:
+                          tappaMantenutaSenzaAlternativa(itinerario.stops[i]),
+                      strings: _strings,
+                      numero: i + 1,
+                      onLasciaRicordo: () =>
+                          _lasciaRicordo(itinerario.stops[i]),
+                    ),
+                  if (itinerario.tappeEscluse.isNotEmpty)
+                    TappeEscluseNote(
+                        escluse: itinerario.tappeEscluse, strings: _strings,),
+                ],
+              ),
             ),
-          if (itinerario.tappeEscluse.isNotEmpty)
-            TappeEscluseNote(escluse: itinerario.tappeEscluse, strings: _strings),
-        ],
-      ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -180,7 +212,8 @@ class TappeEscluseNote extends StatelessWidget {
   final List<TappaEsclusa> escluse;
   final AppStrings strings;
 
-  const TappeEscluseNote({super.key, required this.escluse, required this.strings});
+  const TappeEscluseNote(
+      {super.key, required this.escluse, required this.strings,});
 
   @override
   Widget build(BuildContext context) {
@@ -195,7 +228,8 @@ class TappeEscluseNote extends StatelessWidget {
           for (final t in escluse)
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text(rigaTappaEsclusa(t, strings), style: textTheme.bodySmall),
+              child: Text(rigaTappaEsclusa(t, strings),
+                  style: textTheme.bodySmall,),
             ),
         ],
       ),
@@ -227,7 +261,8 @@ class CuriosityTile extends StatelessWidget {
   final Curiosita curiosita;
   final AppStrings strings;
 
-  const CuriosityTile({super.key, required this.curiosita, required this.strings});
+  const CuriosityTile(
+      {super.key, required this.curiosita, required this.strings,});
 
   @override
   Widget build(BuildContext context) {
@@ -240,11 +275,13 @@ class CuriosityTile extends StatelessWidget {
         children: [
           Text(
             leggenda ? strings.legendLabel : strings.curiosityLabel,
-            style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
+            style: theme.textTheme.labelMedium
+                ?.copyWith(fontWeight: FontWeight.bold),
           ),
           Text(curiosita.testo, style: theme.textTheme.bodyMedium),
           if (curiosita.fontePubblica)
-            Text(strings.sourceLabel(curiosita.fonte), style: theme.textTheme.bodySmall),
+            Text(strings.sourceLabel(curiosita.fonte),
+                style: theme.textTheme.bodySmall,),
         ],
       ),
     );
@@ -260,6 +297,9 @@ class StopCard extends StatelessWidget {
   final AppStrings strings;
   final VoidCallback onLasciaRicordo;
 
+  /// Numero della tappa (1-based), nello stesso ordine della mappa. Null = senza cerchio.
+  final int? numero;
+
   const StopCard({
     super.key,
     required this.stop,
@@ -267,100 +307,109 @@ class StopCard extends StatelessWidget {
     this.mantenutaSenzaAlternativa = false,
     required this.strings,
     required this.onLasciaRicordo,
+    this.numero,
   });
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final etichetta = evidenziata
+        ? EtichettaEsito(
+            testo: strings.changedStop,
+            sfondo: Tk.sostituitaSfondo,
+            colore: Tk.sostituitaTesto,)
+        : mantenutaSenzaAlternativa
+            ? EtichettaEsito(
+                testo: strings.keptNoAlternative,
+                sfondo: Tk.mantenutaSfondo,
+                colore: Tk.mantenutaTesto,)
+            : null;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: evidenziata ? scheme.tertiaryContainer : null,
-      shape: evidenziata
-          ? RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: scheme.tertiary, width: 2),
-            )
-          : null,
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Text(
-                  stop.arrivo.label,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(width: 8),
-                Text('· ${stop.durataMin} ${strings.durationLabel}'),
-                const Spacer(),
-                if (evidenziata)
-                  Chip(
-                    label: Text(strings.changedStop),
-                    visualDensity: VisualDensity.compact,
-                    backgroundColor: scheme.tertiary,
-                    labelStyle: TextStyle(color: scheme.onTertiary),
-                  ),
-              ],
-            ),
-            if (mantenutaSenzaAlternativa)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(strings.keptNoAlternative, style: Theme.of(context).textTheme.labelMedium),
+            if (numero != null) ...[
+              Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                    color: Tk.accento, shape: BoxShape.circle,),
+                child: Text('$numero',
+                    style: stileTesto(15, 800, Tk.testoSuAccento),),
               ),
-            const SizedBox(height: 4),
-            Text(
-              titoloTappa(stop.titolo, strings),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 12),
-            // Il `reason` è il prodotto: sempre in evidenza, mai una nota a
-            // piè di pagina.
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: scheme.primaryContainer.withValues(alpha: evidenziata ? 0.6 : 1.0),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
+              const SizedBox(width: 12),
+            ],
+            Expanded(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.auto_awesome, size: 18, color: scheme.onPrimaryContainer),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      stop.reason,
-                      style: Theme.of(context)
-                          .textTheme
-                          .bodyMedium
-                          ?.copyWith(color: scheme.onPrimaryContainer),
+                  if (etichetta != null)
+                    Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: etichetta,),
+                  Text(titoloTappa(stop.titolo, strings),
+                      style: theme.textTheme.titleMedium,),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${stop.arrivo.label} · ${stop.durataMin} ${strings.durationLabel}',
+                    style: stileTesto(14, 700, Tk.testoSecondario),
+                  ),
+                  const SizedBox(height: 10),
+                  // Il `reason` è il prodotto: sempre in evidenza, mai una nota a
+                  // piè di pagina.
+                  Text(stop.reason, style: theme.textTheme.bodyLarge),
+                  for (final c in stop.curiosita)
+                    CuriosityTile(curiosita: c, strings: strings),
+                  if (stop.puntoArrivo != null)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: () =>
+                            apriInNuovaScheda(urlComeArrivo(stop.puntoArrivo)!),
+                        icon: const Icon(Icons.directions_walk, size: 18),
+                        label: Text(strings.howToArrive),
+                      ),
+                    ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton.icon(
+                      onPressed: onLasciaRicordo,
+                      icon: const Icon(Icons.auto_stories_outlined, size: 18),
+                      label: Text(strings.leaveMemoryAction),
                     ),
                   ),
                 ],
               ),
             ),
-            for (final c in stop.curiosita) CuriosityTile(curiosita: c, strings: strings),
-            if (stop.puntoArrivo != null)
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: () => apriInNuovaScheda(urlComeArrivo(stop.puntoArrivo)!),
-                  icon: const Icon(Icons.directions_walk, size: 18),
-                  label: Text(strings.howToArrive),
-                ),
-              ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: onLasciaRicordo,
-                icon: const Icon(Icons.auto_stories_outlined, size: 18),
-                label: Text(strings.leaveMemoryAction),
-              ),
-            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Etichetta dell'esito (solo se c'è un esito): "sostituita" o "resta in programma".
+class EtichettaEsito extends StatelessWidget {
+  final String testo;
+  final Color sfondo;
+  final Color colore;
+  const EtichettaEsito(
+      {super.key,
+      required this.testo,
+      required this.sfondo,
+      required this.colore,});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+          color: sfondo, borderRadius: BorderRadius.circular(Tk.raggio),),
+      child: Text(testo, style: stileTesto(13, 700, colore)),
     );
   }
 }

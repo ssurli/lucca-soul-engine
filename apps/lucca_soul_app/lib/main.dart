@@ -4,6 +4,7 @@ import 'api/bff_client.dart';
 import 'screens/citizen_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'theme/app_theme.dart';
 import 'util/clock.dart';
 import 'util/person_id.dart';
 
@@ -66,10 +67,7 @@ class _LuccaSoulAppState extends State<LuccaSoulApp> {
     return MaterialApp(
       title: 'Lucca Soul Lab',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF7A5C3E)),
-        useMaterial3: true,
-      ),
+      theme: buildAppTheme(),
       home: _HomeScreen(bffClient: _bffClient, personId: _personId),
     );
   }

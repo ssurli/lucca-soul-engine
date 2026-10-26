@@ -1,0 +1,82 @@
+{
+  "descrizione": "Disposizione normalizzata (0..1, nord in alto, proporzioni conservate) dei 10 baluardi e della piattaforma di San Frediano delle mura urbane, dai centroidi OpenStreetMap (relation, (c) OpenStreetMap contributors, ODbL, interrogati il 2026-10-26 via Overpass). Da verificare dal committente sul canvas.",
+  "punti": [
+    {
+      "nome": "Baluardo San Colombano",
+      "tipo": "baluardo",
+      "x": 0.598,
+      "y": 0.7947,
+      "osm": "relation/20511805"
+    },
+    {
+      "nome": "Baluardo San Donato",
+      "tipo": "baluardo",
+      "x": 0.0,
+      "y": 0.5329,
+      "osm": "relation/20511802"
+    },
+    {
+      "nome": "Baluardo San Martino",
+      "tipo": "baluardo",
+      "x": 0.69,
+      "y": 0.1399,
+      "osm": "relation/20511810"
+    },
+    {
+      "nome": "Baluardo San Paolino",
+      "tipo": "baluardo",
+      "x": 0.0959,
+      "y": 0.7348,
+      "osm": "relation/20511803"
+    },
+    {
+      "nome": "Baluardo San Pietro",
+      "tipo": "baluardo",
+      "x": 0.9286,
+      "y": 0.1714,
+      "osm": "relation/20511809"
+    },
+    {
+      "nome": "Baluardo San Regolo",
+      "tipo": "baluardo",
+      "x": 0.778,
+      "y": 0.7298,
+      "osm": "relation/20511806"
+    },
+    {
+      "nome": "Baluardo San Salvatore",
+      "tipo": "baluardo",
+      "x": 1.0,
+      "y": 0.4072,
+      "osm": "relation/20511808"
+    },
+    {
+      "nome": "Baluardo Santa Croce",
+      "tipo": "baluardo",
+      "x": 0.1309,
+      "y": 0.3444,
+      "osm": "relation/20511801"
+    },
+    {
+      "nome": "Baluardo Santa Maria",
+      "tipo": "baluardo",
+      "x": 0.3311,
+      "y": 0.8601,
+      "osm": "relation/20511804"
+    },
+    {
+      "nome": "Baluardo della Libertà",
+      "tipo": "baluardo",
+      "x": 0.9328,
+      "y": 0.6402,
+      "osm": "relation/20511807"
+    },
+    {
+      "nome": "Piattaforma San Frediano",
+      "tipo": "piattaforma",
+      "x": 0.41,
+      "y": 0.272,
+      "osm": "relation/20511800"
+    }
+  ]
+}
