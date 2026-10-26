@@ -87,7 +87,7 @@ l'Experience Engine li converte in minuti a piedi per comporre l'itinerario sul 
   trasferimento tra tappe e al link "Come arrivo qui", mai al punteggio; le botteghe
   dimostrative non hanno punto (`docs/LIMITI.md`, ondata 3)
 - non si può chiedere «cosa c'è entro 300 metri» da un punto qualsiasi: si possono solo seguire
-  archi esistenti (38 su 15 luoghi, una rete sparsa)
+  archi esistenti (76 coppie `VICINO` su 24 luoghi nel seed di Lucca, una voce per coppia)
 - un'attività non può dichiarare un'area di servizio
 - il parametro `raggio_m` esiste nel codice ma è **dormiente**: sempre `None`, mai popolato —
   ed è un filtro del *visitatore*, non un attributo dell'attività
@@ -133,8 +133,14 @@ allineata** — è l'unica cosa che espone davvero in una presentazione.
 ## 6. La distribuzione dei flussi: robusta, non garantita
 
 **Cosa è garantito oggi:** il motore penalizza la concentrazione, e il recommender **migliora** la
-distribuzione su quattro scenari storici indipendenti (entropia 0,783 → 0,842 nel caso base).
-Il test è in CI: se qualcuno peggiorasse la concentrazione, la build si rompe.
+distribuzione su quattro scenari storici indipendenti **di test** (entropia 0,783 → 0,842 nel caso
+base). Il test è in CI: se qualcuno peggiorasse la concentrazione, la build si rompe.
+
+**Ma in produzione il recommender corregge solo sopra 20 eventi storici mappabili**
+(`SOGLIA_MINIMA_EVENTI_MAPPABILI` in `services/recommender/recommender/ranking.py`); sotto, il
+punteggio è identico a quello deterministico. L'app non invia eventi, quindi per la demo è di
+fatto spento (cold start; non verificato sul contenuto reale di Neon): il miglioramento è misurato
+solo su scenari di test, ed è un'euristica, non un modello addestrato.
 
 **Cosa NON è garantito:** la correzione è **locale, per singola richiesta**. Non è una garanzia
 matematica che su una popolazione di diecimila richieste l'aggregato non peggiori mai. È
@@ -159,14 +165,15 @@ temporale nella query di quota storica. Sono soluzioni **ortogonali, non alterna
 
 ---
 
-## 8. La dashboard non è mai stata compilata
+## 8. La dashboard non è mai stata compilata (superato: vedi l'aggiornamento)
 
 **Cosa è garantito oggi:** il codice Dart esiste, segue le convenzioni del resto dell'app, e i
 modelli hanno costruttore privato — il client non può fabbricarsi un `disponibile = true`
 aggirando la soppressione.
 
-**Cosa NON è garantito:** nulla di eseguibile. Mai `flutter pub get`, mai `flutter analyze`,
-mai `flutter test`. Le icone sono scelte alla cieca, i test scritti ma mai fatti girare.
+**Aggiornamento (ondata 4):** superato in gran parte. `flutter analyze` e `flutter test` girano in
+CI (con widget test); l'app, dashboard compresa, gira nel browser servita dal BFF. Resta: una
+prova manuale della dashboard non è documentata, e non esiste un'app per telefono (solo `web/`).
 
 **Nota:** il vincolo di privacy è comunque protetto, perché vive **al confine dell'API**, non
 nell'interfaccia. Un client qualsiasi — Flutter, curl, un'app di terzi — non può ottenere celle

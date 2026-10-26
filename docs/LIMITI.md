@@ -221,6 +221,13 @@ Di conseguenza:
   test sono puri, senza widget né rete;
 - non esistono widget test né test di integrazione.
 
+**Aggiornamento (ondata 4, 2026-10-26): superato in parte.** Esiste `web/`: l'app gira nel browser,
+servita dal BFF sulla stessa origine (`scripts\avvia_demo.ps1`, `APP_WEB_DIR`). Esistono widget test
+in `apps/lucca_soul_app/test/` (per esempio `titoli_widget_test.dart`, `grafica_test.dart`,
+`mappa_test.dart`), e `flutter analyze` e `flutter test` girano in CI (`.github/workflows/ci.yml`,
+job `flutter`). Restano: nessun test di integrazione contro un BFF in esecuzione, nessuna cartella
+piattaforma oltre `web/` (`android/`, `ios/`, `windows/`… assenti).
+
 ### Cosa servirebbe per chiudere il buco
 
 1. Generare le cartelle piattaforma (es. `flutter create --platforms=web,windows .` in
@@ -2912,4 +2919,48 @@ il controllo «al massimo una volta» vale sulle risposte a itinerari composti d
 - **Grafo non ricaricato:** finché Aura non ha il seed dell'ondata 3, la via Neo4j non ha punti
   (trasferimento a 10 minuti, nessun link), `fonte_pubblica` False (fonte nascosta) e
   `fonte_orari` None.
+
+## Ondata 4: grafica, mappa, app servita dal BFF, riordino (APERTO)
+
+**Trovato/deciso:** 2026-10-23/26 (ondata 4, ramo `feat/ondata4-grafica`). L'accessibilità sulle
+tappe in coda (compito 5-quater) è nella voce del livello fluttuante, sopra.
+
+- **Tramonto.** Il motore non conosce il tramonto: una tappa all'aperto, per esempio il parco
+  giochi, può cadere dopo il buio. Si risolve con il modello del tempo, dopo la demo. (Stessa
+  famiglia della voce «Il motore non conosce l'ora adatta di un'esperienza».)
+- **Riordino per vicinanza (compito 1).** L'ordine delle tappe minimizza i metri stimati (linea
+  d'aria × 1,3, `docs/ENGINE_INVARIANTS.md` §4-bis): non è un percorso calcolato su strada.
+  Minimizzare i metri può spostare in fondo (e più tardi) i luoghi periferici, senza toglierli.
+- **App servita dal BFF (compito 2).** Se `APP_WEB_DIR` punta a una cartella esistente, il BFF
+  serve la build web su `/`, stessa origine, con `Cache-Control: no-cache`. Senza variabile o con
+  cartella assente, il BFF parte come prima. Le rotte API hanno la precedenza sul mount; per
+  effetto del mount su `/`, un `GET` su una rotta solo `POST` (per esempio `GET /itinerary`)
+  risponde 404 invece di 405 (accettato dal committente).
+- **Opzione `-Rete` di `scripts\avvia_demo.ps1` (compito 2).** Il BFF ascolta su `0.0.0.0`, senza
+  alcuna autenticazione: solo per la demo, su una rete fidata (l'hotspot del telefono del
+  committente): su quella rete chiunque può chiamare anche `POST /memory` e `POST /booking`, che
+  scrivono su Neon, e leggere `/docs`. Lo stesso vale per `POST /events`.
+- **Mappa e OpenStreetMap (compito 4).** La mappa dell'itinerario dipende dalla rete e dalla regola
+  d'uso di OpenStreetMap: strato pubblico `tile.openstreetmap.org` via flutter_map, attribuzione
+  sempre visibile, User-Agent identificativo, nessun prefetch, download in blocco o uso offline,
+  cache secondo gli header HTTP. I server pubblici OSM non sono per un uso pubblico o intensivo:
+  per un lancio serve un fornitore di strati con le sue condizioni (cambiare `kUrlTileOsm` in
+  `lib/widgets/mappa_itinerario.dart`). Senza rete: segnaposti numerati e linee su sfondo neutro,
+  l'app funziona. La linea indica l'ordine delle tappe, non il percorso a piedi; le tappe senza
+  `punto_arrivo` (botteghe dimostrative, tappe in coda) non compaiono; con zero punti nessuna
+  mappa.
+- **Prezzi non mostrati in app.** L'app non legge né mostra `prezzo_eur`. Un prezzo assente non
+  vuol dire gratis (decisione dell'ondata 2a), e un totale con prezzi mancanti sarebbe falso. Si
+  rinvia a un campo "gratuità con fonte", dopo la demo. Nota: nel motore, il vincolo di prezzo
+  delle sostituzioni tratta ancora un prezzo assente come 0 (`(prezzo_eur or 0)`,
+  `experience_engine/engine.py`; voce dell'ondata 1, difetto g).
+- **Botteghe dimostrative (compito 5-ter non fatto, decisione del committente).** Il segno delle
+  botteghe dimostrative è solo nel testo del motivo («(esempio dimostrativo)»): nessun campo di
+  contratto, nessun badge separato in app.
+- **Foto delle tappe.** Il file è `apps/lucca_soul_app/assets/foto/<experience_id>.jpg`, con
+  didascalia e autore in `assets/foto/foto.json` indicizzato per `experience_id` (modifica del
+  brief approvata dal committente il 26/10: chiave per esperienza, non per luogo, quindi due
+  esperienze dello stesso luogo hanno foto separate). Una foto compare solo se esistono sia il
+  file sia la voce; le tappe fluttuanti e gli eventi promossi non hanno mai foto. Nessuna foto in
+  questa ondata.
 

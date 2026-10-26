@@ -53,7 +53,7 @@ distribuzione dei flussi e da Urban Memory, non abbiamo concorrenti diretti tra 
 | L'Index misura **solo gli utenti dell'app** | Non è una fotografia dei flussi cittadini | Dichiararlo; incrociare con dati esterni |
 | `behavior_event` senza flag sintetico né finestra temporale | Un evento di prova altera ranking e indicatori | Flag `sintetico` + finestra su `ts` |
 | `nuovi_percorsi` senza persistenza degli itinerari | Il valore va letto come "non misurato", non come zero | Persistere gli itinerari |
-| App e dashboard Flutter: compilano (`flutter analyze` e `flutter test` verdi in CI) ma **non sono mai state avviate**: mancano le cartelle piattaforma | Non dimostrabile a un cliente | Prima esecuzione e prova manuale (Traguardo A, blocco 1, `docs/BUILD_PLAN.md`) |
+| App e dashboard Flutter: compilano (`flutter analyze` e `flutter test` verdi in CI) e girano **solo nel browser**, servite dal BFF (ondata 4); nessuna app per telefono (esiste solo `web/`) | Dimostrabile in locale o su rete fidata, non pubblicabile così | Prova manuale della dashboard; messa online con le restrizioni di `docs/LIMITI.md` (ondata 4, CORS) |
 
 ### Come va raccontata all'amministrazione
 
@@ -133,8 +133,8 @@ Vende mappe e pass al viaggiatore (B2C). Si posiziona esplicitamente *contro* AI
 - Le 5 botteghe del seed sono dimostrative; i posti di Hint sono reali.
 - Sull'esperienza d'ingresso (profilo emotivo → consigli personali) **siamo indistinguibili**.
 - Il nostro vantaggio sui flussi oggi gira senza dati reali di affollamento.
-- La nostra app compila (`flutter analyze` e `flutter test` verdi in CI) ma non è mai stata
-  avviata: mancano le cartelle piattaforma.
+- La nostra app compila (`flutter analyze` e `flutter test` verdi in CI) e gira nel browser,
+  servita dal BFF (ondata 4); non esiste ancora come app per telefono (solo `web/`).
 
 **Rischio specifico:** Firenze entra in Hint a breve. Lucca come "gita da Firenze" è plausibile nel
 medio periodo [stima], ma probabilmente come aggiunta leggera: se il loro modello paga i local per
@@ -189,8 +189,8 @@ In ordine di priorità:
 
 1. **Una fonte reale per `Signal.affollamento`** — anche solo un CSV di biglietteria museale o parcheggi.
 2. **Flag `sintetico` + finestra temporale** su `behavior_event`, per non inquinare ranking e Index.
-3. **App e dashboard avviate e provate a mano** almeno una volta (oggi compilano in CI ma mancano
-   le cartelle piattaforma).
+3. **App e dashboard provate a mano** nel browser, servite dal BFF (l'app gira dall'ondata 4; una
+   prova manuale della dashboard non è documentata).
 4. **Il percorso "luogo non nel grafo"** per Urban Memory, perché la memoria più fragile non vada persa.
 5. Una frase onesta sul confine: l'Index misura l'effetto delle raccomandazioni sugli utenti dell'app,
    non i flussi dell'intera città.

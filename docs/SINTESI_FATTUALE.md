@@ -22,15 +22,15 @@
 | 0 | `packages/contracts` | Tipi Pydantic v2 condivisi (single source of truth) — importati da tutti i servizi, mai ridefiniti. |
 | 0 | `services/api` (BFF FastAPI) | Unico ingresso HTTP dell'app: orchestra i servizi interni, mai un accesso diretto a DB dal client. |
 | 1 | `services/graph` | Urban Knowledge Graph (Neo4j): schema, seed versionato di Lucca, query dei candidati esperienza. |
-| 1 | `services/rag` | Onboarding conversazionale → `EmotionalProfile`; genera i `reason` in italiano. L'LLM dialoga, non decide. |
+| 1 | `services/rag` | Onboarding conversazionale → `EmotionalProfile`; genera i `reason` in italiano. Oggi entrambi da regole, senza LLM né vector store (`compose_reason` deterministico; `enrich_with_llm` esiste ma il BFF non lo chiama). |
 | 1 | `services/experience-engine` | **AI Experience Engine** — l'unico componente che DECIDE: filtri etici duri + scoring + composizione a budget → `Itinerary` deterministico e spiegabile. |
 | 1 | `apps/lucca_soul_app` (Flutter) | Onboarding, itinerario con `reason` in evidenza, card adattiva ai segnali (pioggia/affollamento/stanchezza). |
 | 2 | `services/urban-memory` | Conferimento contributi (racconto, foto, mestiere…) con consenso obbligatorio, licenza tracciata, curatela prima della pubblicazione, aggancio al grafo via `RIGUARDA`. |
 | 3a | `services/marketplace` | Prenotazioni (`Booking`) + commissione (`CommissionRecord`, dato contabile, registrato SOLO dopo la conferma, mai un input di scoring). |
-| 3b | `services/recommender` | ML classico su `BehaviorEvent`: produce una `score_fn` che **penalizza** (mai premia) la concentrazione storica di flusso su un luogo — plug-in opzionale dentro l'Experience Engine, mai un secondo decisore. |
+| 3b | `services/recommender` | Euristica (nessun modello addestrato) su `BehaviorEvent`, attiva solo sopra 20 eventi mappabili, quindi spenta per la demo (cold start): produce una `score_fn` che **penalizza** (mai premia) la concentrazione storica di flusso su un luogo — plug-in opzionale dentro l'Experience Engine, mai un secondo decisore. |
 | 4 | `services/intelligence-index` | Calcola gli 8 indicatori dell'Urban Intelligence Index per periodo, gate di privacy k=10 applicato in un solo punto centrale, mai un valore pubblicato sotto soglia. |
 | 4 | `GET /dashboard/index`, `GET /dashboard/flows` (BFF) | Wrapper HTTP puri sull'Index — rispondono SEMPRE 200, "dato insufficiente" è un campo del body, mai un errore HTTP. |
-| 4 | `apps/lucca_soul_app` — `DashboardScreen` + `scripts/dashboard_viewer.html` | Due viste dello stesso substrato dati (Comune: 8 indicatori; Hotel/Museo: 2 mirati) — una in Flutter (analizzata e testata, mai avviata), una statica HTML (verificata dal vivo). |
+| 4 | `apps/lucca_soul_app` — `DashboardScreen` + `scripts/dashboard_viewer.html` | Due viste dello stesso substrato dati (Comune: 8 indicatori; Hotel/Museo: 2 mirati) — una in Flutter (analizzata e testata; dall'ondata 4 l'app gira nel browser, servita dal BFF), una statica HTML (verificata dal vivo). |
 
 ---
 
@@ -72,8 +72,9 @@ ogni `services/*/tests`), interprete `.venv`:
   `itinerary_diff_test.dart`, `dashboard_models_test.dart`, `periodo_test.dart`).
   Rieseguiti il 2026-10-14 sul notebook, Flutter 3.47.7: **`flutter analyze` 0 issue,
   `flutter test` 38/38 passati**. Non contati tra i 451 passati sopra (suite separata).
-  **L'app non è mai stata avviata:** mancano le cartelle piattaforma (`android/`, `web/`,
-  `windows/`…), quindi `flutter run` non ha un target — vedi `docs/LIMITI.md`.
+  **Aggiornamento (ondata 4):** esiste `web/` (unica cartella piattaforma): l'app gira nel
+  browser, servita dal BFF sulla stessa origine (`scripts\avvia_demo.ps1`); `flutter analyze` e
+  `flutter test` girano in CI, con widget test — vedi `docs/LIMITI.md`.
 
 ### 2.3 Servizi ed endpoint
 
@@ -180,8 +181,9 @@ di non chiuderlo ora. In una riga ciascuno:
    degli itinerari generati): il valore `0.0` prodotto va letto come "wiring assente", non
    "nessun percorso nuovo osservato".
 4. **Dashboard Flutter (`DashboardScreen`)** — passa `flutter analyze` e i test di
-   `dashboard_models_test.dart` (2026-10-14, Flutter 3.47.7), ma come tutta l'app non è mai
-   stata avviata: nessuno l'ha vista girare su uno schermo.
+   `dashboard_models_test.dart` (2026-10-14, Flutter 3.47.7). Dall'ondata 4 l'app gira nel
+   browser servita dal BFF e la dashboard è raggiungibile dalla home; una sua prova manuale non
+   è documentata.
 5. **`behavior_event` senza scoping temporale** — il Recommender legge l'intera tabella senza
    filtro su `ts`: un evento sintetico di verifica (anche datato nel futuro) altera SUBITO il
    ranking reale finché non viene ripulito (`scripts/pulisci_eventi_prefisso.py`).
@@ -268,5 +270,5 @@ esperienza vissuta ──▶ POST /memory (MemoryContribution, consenso obbligat
                    (gate k=10 in UN solo punto — intelligence_index.soglia — mai aggirabile)
                               │
                               ▼
-                   DashboardScreen (Flutter, testata, mai avviata) | scripts/dashboard_viewer.html (verificato)
+                   DashboardScreen (Flutter, testata, nel browser) | scripts/dashboard_viewer.html (verificato)
 ```

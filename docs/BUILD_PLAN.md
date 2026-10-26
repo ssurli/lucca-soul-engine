@@ -327,6 +327,9 @@ Ogni wave: obiettivo → agenti → criteri di accettazione. L'orchestratore ese
   notebook, Flutter 3.47.7, `flutter analyze` 0 issue e `flutter test` 38/38 (intera suite
   dell'app, incluso `dashboard_models_test.dart`). Resta aperto: l'app non è mai stata avviata
   (cartelle piattaforma assenti, `flutter run` senza target) — vedi `docs/LIMITI.md`.
+  **Aggiornamento (ondata 4):** superato. Esiste `web/`: l'app gira nel browser, servita dal BFF
+  sulla stessa origine (`scripts\avvia_demo.ps1`); `flutter analyze` e `flutter test` girano in
+  CI, con widget test.
   **→ LIMITE TROVATO DURANTE LA VERIFICA MANUALE CONTRO NEON/AURA REALI** (2026-07-21): il gate
   k=10 di `GET /dashboard/*` è periodo-scoped e si è confermato reale (evento sintetico su un
   periodo futuro, "2027-01", isolato dal mese corrente). Ma `recommender.repository.
@@ -406,7 +409,8 @@ Voci aperte in `docs/LIMITI.md`. Nessuna è assegnata: prima la decisione di pro
 3. **Frase della tappa mantenuta senza budget** — voce "La frase della tappa mantenuta cita il
    tempo anche senza budget".
 4. **Titolo dell'esperienza in `ItineraryStop` e `TappaEsclusa`, riempito dal grafo**, insieme
-   alla prima esecuzione dell'app (cartelle piattaforma assenti, `flutter run` senza target) —
+   alla prima esecuzione dell'app (oggi superata: esiste `web/`, l'app gira nel browser servita
+   dal BFF) —
    voce "L'app non ha nomi leggibili delle tappe". Oggi schede e note mostrano lo slug
    `experience_id`. Passa da `contract-keeper`; cambia il golden.
 
@@ -437,8 +441,9 @@ Wave lanciata in una sessione di Claude Code, con il §0 nel prompt. Ordine dei 
 Blocchi in ordine: ognuno parte quando il precedente è chiuso. Ogni blocco segue il protocollo
 (`contract-keeper` se tocca il contratto → agente competente → `test-engineer` →
 `ethics-guardian` dove richiesto).
-1. **Prima esecuzione dell'app.** L'app compila (`flutter analyze` e `flutter test` verdi in CI)
-   ma non è mai stata avviata: mancano le cartelle piattaforma.
+1. ~~**Prima esecuzione dell'app.** L'app compila (`flutter analyze` e `flutter test` verdi in CI)
+   ma non è mai stata avviata: mancano le cartelle piattaforma.~~ **CHIUSO:** esiste `web/`; l'app
+   gira nel browser, servita dal BFF sulla stessa origine (ondata 4, `scripts\avvia_demo.ps1`).
 2. **Titolo leggibile dell'esperienza** in `ItineraryStop` e `TappaEsclusa`, riempito dal grafo
    — voce "L'app non ha nomi leggibili delle tappe" in `docs/LIMITI.md`.
 3. **Ora adatta di un'esperienza** — voce "Il motore non conosce l'ora adatta di un'esperienza".
@@ -462,8 +467,10 @@ Blocchi in ordine: ognuno parte quando il precedente è chiuso. Ogni blocco segu
 di affollamento.
 
 **Pianificato nell'ondata grafica, prima del blocco del codice del 5/12:**
-- App web servita dal BFF sulla stessa origine (niente CORS), per demo da telefono e messa online.
-  Motivo: oggi l'app funziona solo in un Chrome con `--disable-web-security`, solo in locale.
+- ~~App web servita dal BFF sulla stessa origine (niente CORS), per demo da telefono e messa online.
+  Motivo: oggi l'app funziona solo in un Chrome con `--disable-web-security`, solo in locale.~~
+  **FATTO (ondata 4, compito 2):** `APP_WEB_DIR` + `scripts\avvia_demo.ps1` (`-Rete` per il
+  telefono su rete fidata). Blocco del codice anticipato a metà novembre (`docs/STATO.md`).
 
 **Regola di perimetro:** i nuovi difetti trovati durante il Traguardo A vanno in `docs/LIMITI.md`,
 salvo che blocchino la demo.

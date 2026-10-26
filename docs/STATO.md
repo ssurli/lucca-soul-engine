@@ -1,9 +1,10 @@
-# Stato del progetto — 2026-10-22
+# Stato del progetto — 2026-10-26
 
 `main`: ondata 1c inclusa (merge fast-forward di `feat/ondata1c-contenuti`, correzione `e36dfec`; CI verde).
 Ondata 2a inclusa (merge fast-forward di `feat/ondata2a-testi`, `d9f6664`; CI verde).
 Ondata 2b inclusa (merge fast-forward di `feat/ondata2b-app`, `9be2259`; CI verde).
 Ondata 3 inclusa (merge fast-forward di `feat/ondata3-dati`, `b7f2f6f`; CI verde).
+Ondata 4 chiusa sul ramo `feat/ondata4-grafica` (`6e93b06`..`5be487d`); merge su `main` da fare.
 I dettagli sono in `docs/LIMITI.md` e `docs/BUILD_PLAN.md`; questo file è solo il punto della
 situazione.
 
@@ -45,6 +46,24 @@ situazione.
   6 archi VICINO, curiosità del ginkgo sull'Orto; casi `demo|` dalle risposte reali dell'app
   (180 minuti; poco-tempo "Circa un'ora"); golden alla DODICESIMA modifica (cambiano le tappe).
 
+- **4** (grafica e demo), commit sul ramo `feat/ondata4-grafica`:
+  - compito 1 (`ccdefb0`): riordino delle tappe per vicinanza in composizione (prima tappa fissa,
+    botteghe ferme; fino a 7 tappe mobili tutte le permutazioni, sopra 7 vicino più prossimo;
+    ordine accettato solo se tutte aperte all'arrivo, budget rispettato e metri strettamente
+    minori). Distanze stimate (linea d'aria × 1,3), non un percorso su strada. Regola in
+    `docs/ENGINE_INVARIANTS.md` §4-bis;
+  - compito 2 (`6e93b06`): il BFF serve la build web su `/` se `APP_WEB_DIR` punta a una cartella
+    esistente (stessa origine, niente CORS); `scripts\avvia_demo.ps1` (`-Istante`, `-Rete`); con
+    `--dart-define=DEMO=true` l'app accetta `?istante=...Z` nell'indirizzo;
+  - compito 3 (`92b7853`): grafica direzione C;
+  - compito 4 (`8daafaa`): mappa dell'itinerario in alto (flutter_map + OpenStreetMap);
+  - compito 5 (`5be487d`): favicon e icone web dal logo delle Mura;
+  - compito 5-quater (`27a88e7`): nessuna tappa in coda (fluttuanti, eventi promossi) per chi
+    chiede accessibilità;
+  - compito 5-ter (badge "dimostrativo" come campo di contratto): NON fatto, per decisione del
+    committente; il segno resta nel testo del motivo («(esempio dimostrativo)»);
+  - compito 7: documentazione (questo aggiornamento).
+
 ## Da fare (committente), dopo il merge della 3
 
 1. Ricarica del seed su Aura: `.venv\Scripts\python.exe -m graph.loader`.
@@ -53,18 +72,22 @@ situazione.
    (dall'ondata 4, con le tappe riordinate per vicinanza, sono 4: si taglia solo il Duomo);
    il link "Come arrivo qui" porta all'ingresso giusto.
 
-## Prossima ondata: grafica (direzione C)
+## Prossimo passo: blocco del codice e prove della demo
 
-1. **App servita dal BFF sulla stessa origine** (niente CORS): oggi l'app funziona solo in un
-   Chrome con `--disable-web-security`.
-2. Direzione "C" (canvas "Lucca Soul — direzioni grafiche": caratteri del deck, accento mattone,
-   mappa in alto, interruttori dei segnali con "Annulla"), logo delle Mura nella testata, icona e
-   favicon dell'app (oggi quelle di Flutter). Miniature solo con foto di licenza nota (proprie o
-   Wikimedia Commons con credito).
-3. Badge "dimostrativo" per ricordi e botteghe fittizie (rimasto dalla 2b, da ripianificare).
-
-Poi **blocco del codice verso il 5/12**, prove con l'orologio fissato a sabato 12/12 (10:00 e
-15:00) e Aura verificata RUNNING il giorno prima.
+1. **Blocco del codice a metà novembre.** Dopo, solo correzioni di difetti che bloccano la demo.
+2. **Prove con l'orologio fissato a sabato 12/12**, alle 10:00 e alle 15:00 (ora di Lucca). Dalla
+   radice del repo:
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File scripts\avvia_demo.ps1 -Istante 2026-12-12T09:00:00Z
+   ```
+   poi nel browser `http://localhost:8000/` (10:00) e
+   `http://localhost:8000/?istante=2026-12-12T14:00:00Z` (15:00). Dettagli in
+   `apps/lucca_soul_app/README.md`.
+3. **Aura verificata RUNNING il giorno prima** (Aura Free si mette in pausa).
+4. **Copione aggiornato** (dall'ondata 4, tappe riordinate per vicinanza):
+   - profilo curioso alle 10:00: ordine atteso San Michele, Pfanner, San Frediano, San Pietro
+     Somaldi, Santi Giovanni, circa 1,6 km invece di 2,35;
+   - alle 15:00, curioso con «Piove» + «Sono stanco/a»: restano 4 tappe (tagliato il Duomo).
 
 ## Dopo la demo
 
