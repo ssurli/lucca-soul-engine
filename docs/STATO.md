@@ -4,7 +4,8 @@
 Ondata 2a inclusa (merge fast-forward di `feat/ondata2a-testi`, `d9f6664`; CI verde).
 Ondata 2b inclusa (merge fast-forward di `feat/ondata2b-app`, `9be2259`; CI verde).
 Ondata 3 inclusa (merge fast-forward di `feat/ondata3-dati`, `b7f2f6f`; CI verde).
-Ondata 4 inclusa in `main` (`6e93b06`..`effa9aa`, avanzamento veloce dal ramo `feat/ondata4-grafica`).
+Ondata 4 inclusa in `main` (8 commit, da `6e93b06` a `effa9aa` compresi: `git log 75e2857..effa9aa`;
+avanzamento veloce dal ramo `feat/ondata4-grafica`).
 I dettagli sono in `docs/LIMITI.md` e `docs/BUILD_PLAN.md`; questo file è solo il punto della
 situazione.
 
@@ -58,6 +59,8 @@ situazione.
   - compito 3 (`92b7853`): grafica direzione C;
   - compito 4 (`8daafaa`): mappa dell'itinerario in alto (flutter_map + OpenStreetMap);
   - compito 5 (`5be487d`): favicon e icone web dal logo delle Mura;
+  - compito 5-bis (`ded9832`): spazio per la foto della tappa (file e voce in
+    `assets/foto/foto.json` per `experience_id`; nessuna foto ancora caricata);
   - compito 5-quater (`27a88e7`): nessuna tappa in coda (fluttuanti, eventi promossi) per chi
     chiede accessibilità;
   - compito 5-ter (badge "dimostrativo" come campo di contratto): NON fatto, per decisione del
@@ -83,8 +86,13 @@ situazione.
    poi nel browser `http://localhost:8000/` (10:00) e
    `http://localhost:8000/?istante=2026-12-12T14:00:00Z` (15:00). Dettagli in
    `apps/lucca_soul_app/README.md`.
-3. **Aura verificata RUNNING il giorno prima** (Aura Free si mette in pausa).
-4. **Copione aggiornato** (dall'ondata 4, tappe riordinate per vicinanza):
+3. **Aura verificata RUNNING il giorno prima** (Aura Free si mette in pausa). Un'istanza Aura Free
+   in pausa da più di 30 giorni viene cancellata (documentazione Neo4j): riattivarla almeno una
+   volta a settimana fino al 12/12. Se fosse cancellata: `services/urban-memory/README.md`,
+   procedura "Aura cancellata".
+4. **Copione aggiornato** (dall'ondata 4, tappe riordinate per vicinanza). Le risposte
+   dell'onboarding da dare in demo sono quelle dei casi `demo|` del golden
+   (`services/api/tests/golden/lucca_itinerari.json`): con risposte diverse le tappe cambiano.
    - profilo curioso alle 10:00: ordine atteso San Michele, Pfanner, San Frediano, San Pietro
      Somaldi, Santi Giovanni, circa 1,6 km invece di 2,35;
    - alle 15:00, curioso con «Piove» + «Sono stanco/a»: restano 4 tappe (tagliato il Duomo).

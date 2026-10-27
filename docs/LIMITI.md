@@ -2931,6 +2931,11 @@ tappe in coda (compito 5-quater) è nella voce del livello fluttuante, sopra.
 - **Riordino per vicinanza (compito 1).** L'ordine delle tappe minimizza i metri stimati (linea
   d'aria × 1,3, `docs/ENGINE_INVARIANTS.md` §4-bis): non è un percorso calcolato su strada.
   Minimizzare i metri può spostare in fondo (e più tardi) i luoghi periferici, senza toglierli.
+- **Nessun riordino nell'adattamento.** Il riordino per vicinanza vale solo in composizione: con
+  una sostituzione il sostituto prende il posto della tappa tolta e le tappe rimaste non si
+  spostano, quindi i metri stimati possono aumentare. Per esempio `demo|curioso|pioggia-15` del
+  golden passa da 1700 a 2500 m (San Pietro Somaldi sostituito dalla sortita di San Paolino,
+  calcolato il 27/10 con `distanza_a_piedi_m` sulla richiesta e sulla risposta del caso).
 - **App servita dal BFF (compito 2).** Se `APP_WEB_DIR` punta a una cartella esistente, il BFF
   serve la build web su `/`, stessa origine, con `Cache-Control: no-cache`. Senza variabile o con
   cartella assente, il BFF parte come prima. Le rotte API hanno la precedenza sul mount; per
