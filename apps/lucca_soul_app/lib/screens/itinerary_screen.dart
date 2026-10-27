@@ -17,6 +17,7 @@ import '../util/directions_link.dart';
 import '../util/foto_tappa.dart';
 import '../util/excluded_stop_line.dart';
 import '../util/itinerary_diff.dart';
+import '../util/interruttori_controller.dart';
 import '../util/known_places.dart';
 import '../util/signal_presets.dart';
 import '../widgets/adaptive_card.dart';
@@ -58,11 +59,10 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   late AppStrings _strings;
   final Signal _segnale = baselineSignal();
 
-  /// L'itinerario di `POST /itinerary`, conservato per ogni adattamento.
-  Itinerary? _originale;
-
-  /// Quello mostrato: l'originale o l'ultimo adattamento.
-  Itinerary? _itinerario;
+  /// Unico proprietario di interruttori e itinerario mostrato (l'originale di
+  /// `POST /itinerary` o l'ultimo adattamento). Nuovo a ogni caricamento, cosi'
+  /// il refresh azzera insieme interruttori e itinerario.
+  InterruttoriController? _controller;
   ArchivioFoto _foto = const ArchivioFoto();
   bool _caricando = true;
   String? _errore;
@@ -80,6 +80,12 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     if (mounted) setState(() => _foto = archivio);
   }
 
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
   Future<void> _caricaItinerario() async {
     setState(() {
       _caricando = true;
@@ -93,19 +99,23 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
         signal: _segnale,
       );
       final itinerario = await widget.bffClient.itinerary(contesto);
+      if (!mounted) return;
+      final precedente = _controller;
       setState(() {
-        _originale = itinerario;
-        _itinerario = itinerario;
+        _controller = InterruttoriController(
+          bffClient: widget.bffClient,
+          originale: itinerario,
+          profilo: widget.profile,
+        );
       });
+      precedente?.dispose(); // le sue risposte in volo non contano piu'
+
     } on BffException catch (error) {
       setState(() => _errore = error.message);
     } finally {
       if (mounted) setState(() => _caricando = false);
     }
   }
-
-  void _onMostrato(Itinerary mostrato) =>
-      setState(() => _itinerario = mostrato);
 
   /// Apre il conferimento a Urban Memory, contestuale alla tappa appena
   /// vissuta: `esperienza_id` e i luoghi che "riguarda" sono passati dal
@@ -172,11 +182,21 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
       );
     }
 
-    final itinerario = _itinerario;
-    if (itinerario == null || itinerario.stops.isEmpty) {
+    final controller = _controller;
+    if (controller == null || controller.originale.stops.isEmpty) {
       return Center(child: Text(_strings.emptyStops));
     }
 
+    // L'itinerario mostrato deriva dallo stato del controller: si ricostruisce a ogni suo cambio.
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) => _buildItinerario(context, controller),
+    );
+  }
+
+  Widget _buildItinerario(
+      BuildContext context, InterruttoriController controller,) {
+    final itinerario = controller.itinerarioMostrato;
     return Column(
       children: [
         TestataGiornata(
@@ -198,16 +218,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                     child: Text(_strings.itineraryTitle,
                         style: Theme.of(context).textTheme.headlineSmall,),
                   ),
-                  AdaptiveCard(
-                    key: ObjectKey(_originale),
-                    bffClient: widget.bffClient,
-                    original: _originale!,
-                    profile: widget.profile,
-                    strings: _strings,
-                    onShown: _onMostrato,
-                  ),
-                  if (itinerario.adattatoDaSegnale)
-                    _AdattatoBadge(strings: _strings),
+                  AdaptiveCard(controller: controller, strings: _strings),
                   for (var i = 0; i < itinerario.stops.length; i++)
                     StopCard(
                       stop: itinerario.stops[i],
@@ -258,24 +269,6 @@ class TappeEscluseNote extends StatelessWidget {
                   style: textTheme.bodySmall,),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _AdattatoBadge extends StatelessWidget {
-  final AppStrings strings;
-
-  const _AdattatoBadge({required this.strings});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Chip(
-        avatar: const Icon(Icons.autorenew, size: 18),
-        label: Text(strings.adaptedBadge),
-        backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
       ),
     );
   }

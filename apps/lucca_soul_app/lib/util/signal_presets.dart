@@ -2,14 +2,14 @@ import '../models/meteo.dart';
 import '../models/signal.dart';
 
 /// Segnale di partenza per la generazione dell'itinerario: giornata serena,
-/// nessun affollamento noto, stanchezza minima. È il punto zero da cui la
+/// nessun affollamento noto, stanchezza a zero. È il punto zero da cui la
 /// card adattiva della Wave 1 si scosta quando l'utente simula un evento.
 Signal baselineSignal([DateTime? now]) {
   final t = Signal.orologio(now); // una sola lettura: ora e data coerenti
   return Signal(
     meteo: Meteo.sereno,
     affollamento: const {},
-    stanchezza: 0.1,
+    stanchezza: 0.0,
     ora: t.ora,
     data: t.data,
     istante: t.istante,

@@ -16,6 +16,7 @@ import 'package:lucca_soul_app/screens/itinerary_screen.dart';
 import 'package:lucca_soul_app/theme/app_theme.dart';
 import 'package:lucca_soul_app/theme/tokens.dart';
 import 'package:lucca_soul_app/util/app_strings.dart';
+import 'package:lucca_soul_app/util/interruttori_controller.dart';
 import 'package:lucca_soul_app/util/clock.dart';
 import 'package:lucca_soul_app/widgets/adaptive_card.dart';
 import 'package:lucca_soul_app/widgets/mura_logo.dart';
@@ -333,16 +334,15 @@ void main() {
         _stop('b2', esito: 'sostituita'),
         _stop('c', esito: 'mantenuta_senza_alternativa'),
       ]);
+      final controller = InterruttoriController(bffClient: _client(adat), originale: orig, profilo: _profilo);
+      addTearDown(controller.dispose);
       await t.pumpWidget(MaterialApp(
         theme: buildAppTheme(),
         home: Scaffold(
           body: SingleChildScrollView(
             child: AdaptiveCard(
-              bffClient: _client(adat),
-              original: orig,
-              profile: _profilo,
+              controller: controller,
               strings: _it,
-              onShown: (_) {},
             ),
           ),
         ),

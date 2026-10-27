@@ -11,6 +11,7 @@ import 'package:lucca_soul_app/models/itinerary.dart';
 import 'package:lucca_soul_app/models/meteo.dart';
 import 'package:lucca_soul_app/models/time_hms.dart';
 import 'package:lucca_soul_app/util/app_strings.dart';
+import 'package:lucca_soul_app/util/interruttori_controller.dart';
 import 'package:lucca_soul_app/util/signal_presets.dart';
 import 'package:lucca_soul_app/util/signal_toggles.dart';
 import 'package:lucca_soul_app/widgets/adaptive_card.dart';
@@ -152,15 +153,22 @@ void main() {
           return handler(req);
         }),
       );
+      final controller = InterruttoriController(bffClient: client, originale: _originale, profilo: _profilo);
+      addTearDown(controller.dispose);
+      // Registra l'itinerario mostrato ogni volta che cambia (era `onShown`).
+      Itinerary ultimo = controller.itinerarioMostrato;
+      controller.addListener(() {
+        if (!identical(controller.itinerarioMostrato, ultimo)) {
+          ultimo = controller.itinerarioMostrato;
+          shown.add(ultimo);
+        }
+      });
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: SingleChildScrollView(
             child: AdaptiveCard(
-              bffClient: client,
-              original: _originale,
-              profile: _profilo,
+              controller: controller,
               strings: AppStrings.forLanguages(['it']),
-              onShown: shown.add,
             ),
           ),
         ),
@@ -198,7 +206,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(richieste, hasLength(3));
       expect(richieste.last['signal']['meteo'], 'pioggia');
-      expect(richieste.last['signal']['stanchezza'], 0.1);
+      expect(richieste.last['signal']['stanchezza'], 0.0);
 
       await tester.tap(find.text('Annulla')); // torna a nessuno: originale, nessuna richiesta
       await tester.pumpAndSettle();

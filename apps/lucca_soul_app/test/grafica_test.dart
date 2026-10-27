@@ -15,6 +15,7 @@ import 'package:lucca_soul_app/screens/itinerary_screen.dart';
 import 'package:lucca_soul_app/theme/app_theme.dart';
 import 'package:lucca_soul_app/theme/tokens.dart';
 import 'package:lucca_soul_app/util/app_strings.dart';
+import 'package:lucca_soul_app/util/interruttori_controller.dart';
 import 'package:lucca_soul_app/util/clock.dart';
 import 'package:lucca_soul_app/util/riepilogo_cambio.dart';
 import 'package:lucca_soul_app/widgets/adaptive_card.dart';
@@ -253,17 +254,16 @@ void main() {
       baseUrl: Uri.parse('http://test'),
       httpClient: MockClient((_) async => http.Response(jsonEncode(adattato.toJson()), 200, headers: _json)),
     );
+    final controller = InterruttoriController(bffClient: client, originale: originale, profilo: _profilo);
+    addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
         theme: buildAppTheme(),
         home: Scaffold(
           body: SingleChildScrollView(
             child: AdaptiveCard(
-              bffClient: client,
-              original: originale,
-              profile: _profilo,
+              controller: controller,
               strings: _it,
-              onShown: (_) {},
             ),
           ),
         ),

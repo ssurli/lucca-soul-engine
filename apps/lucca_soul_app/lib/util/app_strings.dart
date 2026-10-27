@@ -28,7 +28,6 @@ class AppStrings {
   String get itineraryError => _isEn ? 'Could not reach the BFF.' : 'Non riesco a contattare il BFF.';
   String get retry => _isEn ? 'Retry' : 'Riprova';
   String get durationLabel => _isEn ? 'min' : 'min';
-  String get adaptedBadge => _isEn ? 'Rewritten' : 'Riscritta';
   String get adaptiveCardTitle => _isEn ? 'Something changed?' : 'È cambiato qualcosa?';
   String get signalRain => _isEn ? 'It is raining' : 'Piove';
   String get signalCrowd => _isEn ? 'Walls are crowded' : 'Mura affollate';
