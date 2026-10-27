@@ -6,6 +6,9 @@ Ondata 2b inclusa (merge fast-forward di `feat/ondata2b-app`, `9be2259`; CI verd
 Ondata 3 inclusa (merge fast-forward di `feat/ondata3-dati`, `b7f2f6f`; CI verde).
 Ondata 4 inclusa in `main` (8 commit, da `6e93b06` a `effa9aa` compresi: `git log 75e2857..effa9aa`;
 avanzamento veloce dal ramo `feat/ondata4-grafica`).
+Ondata 4-bis inclusa (merge fast-forward di `ondata4-interruttori`, `4d5aad8` e `b9a51d3`; CI
+verde): stato degli interruttori con un solo proprietario (`InterruttoriController`), stanchezza
+di partenza 0.0, tolto il chip 'Riscritta'.
 I dettagli sono in `docs/LIMITI.md` e `docs/BUILD_PLAN.md`; questo file è solo il punto della
 situazione.
 
@@ -74,6 +77,14 @@ situazione.
 3. Prova in app: profilo curioso, mezza giornata, Piove più Sono stanco/a: attese 3 tappe, non 2
    (dall'ondata 4, con le tappe riordinate per vicinanza, sono 4: si taglia solo il Duomo);
    il link "Come arrivo qui" porta all'ingresso giusto.
+
+## Da fare (committente), dopo il merge della 4-bis
+
+Tre prove in app (27/10):
+1. Profilo con bambini, con le risposte del 26/10.
+2. Profilo curioso: accendere «Piove», scorrere la lista fino in fondo e tornare su; l'interruttore
+   resta acceso, la fascia di riepilogo resta visibile e l'itinerario resta adattato.
+3. Il chip «Riscritta» non compare più.
 
 ## Prossimo passo: blocco del codice e prove della demo
 
