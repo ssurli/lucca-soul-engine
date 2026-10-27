@@ -81,7 +81,12 @@ situazione.
 ## Da fare (committente), dopo il merge della 4-bis
 
 Tre prove in app (27/10):
-1. Profilo con bambini, con le risposte del 26/10.
+1. Profilo con bambini, alle 10:00 (`http://localhost:8000/`), risposte all'onboarding: «Sì,
+   senza meta», «Un mix», «Entrambe», «Sì» (bambini), «Mezza giornata», «No» (accessibilità),
+   «No» (Firenze). Atteso: Giro in bicicletta sulle Mura 10:00, facciata di San Michele 10:54,
+   Orto botanico 11:30, buccellato 12:40; sulla mappa solo i numeri 1, 2 e 3 (il buccellato è di
+   una bottega dimostrativa, senza punto). Con le risposte del caso demo (prima risposta «Un
+   po'») l'itinerario è quello del golden `demo|con-bambini|sereno-10`.
 2. Profilo curioso: accendere «Piove», scorrere la lista fino in fondo e tornare su; l'interruttore
    resta acceso, la fascia di riepilogo resta visibile e l'itinerario resta adattato.
 3. Il chip «Riscritta» non compare più.
