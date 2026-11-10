@@ -83,6 +83,46 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     return _chiavi[i];
   }
 
+  final ScrollController _scroll = ScrollController();
+
+  /// Tocco su un segnaposto: apre la tappa [numero] (1-based) e ci scorre.
+  /// Se la tappa e' fuori dalla cache della lista la sua chiave non ha
+  /// contesto: si scorre a gradini verso di essa finche' non viene costruita.
+  void _apriDaMappa(int numero) {
+    final i = numero - 1;
+    if (i < 0) return;
+    setState(() => _aperte.add(i));
+    _scorriA(i);
+  }
+
+  Future<void> _scorriA(int i) async {
+    for (var tentativo = 0; tentativo < 60; tentativo++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+      final ctx = _chiave(i).currentContext;
+      if (ctx != null && ctx.mounted) {
+        await Scrollable.ensureVisible(ctx,
+            duration: const Duration(milliseconds: 250), curve: Curves.easeOut,);
+        return;
+      }
+      if (!_scroll.hasClients) return;
+      // Verso: se una tappa costruita ha indice minore di i si scende, altrimenti si sale.
+      var giu = true;
+      for (var j = _chiavi.length - 1; j >= 0; j--) {
+        if (_chiavi[j].currentContext != null) {
+          giu = j < i;
+          break;
+        }
+      }
+      final pos = _scroll.position;
+      final passo = pos.viewportDimension * 0.8;
+      final target = (pos.pixels + (giu ? passo : -passo))
+          .clamp(pos.minScrollExtent, pos.maxScrollExtent);
+      if (target == pos.pixels) return;
+      _scroll.jumpTo(target);
+    }
+  }
+
   void _toggleTappa(int i) => setState(() {
         if (!_aperte.remove(i)) _aperte.add(i);
       });
@@ -103,6 +143,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   @override
   void dispose() {
     _controller?.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -231,12 +272,15 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
             child: RefreshIndicator(
               onRefresh: _caricaItinerario,
               child: ListView(
+                controller: _scroll,
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
                   MappaItinerario(
                     tappe: itinerario.stops,
                     tileProvider: widget.tileProvider,
                     etichettaTappa: _strings.genericStop,
+                    dicitura: _strings.mapCaption,
+                    onSegnaposto: _apriDaMappa,
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),

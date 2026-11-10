@@ -15,7 +15,7 @@ const String kUrlTileOsm = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const String kAttribuzioneOsm = '© OpenStreetMap contributors';
 
 /// Altezza della mappa nella schermata dell'itinerario.
-const double kAltezzaMappa = 220;
+const double kAltezzaMappa = 168;
 
 /// Mappa in alto nella schermata dell'itinerario: un segnaposto numerato per
 /// ogni tappa con punto (stessa numerazione delle card) e una linea DRITTA tra
@@ -39,12 +39,20 @@ class MappaItinerario extends StatefulWidget {
   /// Etichetta accessibile dei segnaposto ("Tappa" nella lingua dell'app).
   final String etichettaTappa;
 
+  /// Dicitura in alto a sinistra ("Ordine delle tappe, non il percorso").
+  final String dicitura;
+
+  /// Tocco su un segnaposto: riceve il numero della tappa (1-based).
+  final ValueChanged<int>? onSegnaposto;
+
   const MappaItinerario({
     super.key,
     required this.tappe,
     this.tileProvider,
     this.controller,
     this.etichettaTappa = 'Tappa',
+    this.dicitura = 'Ordine delle tappe, non il percorso',
+    this.onSegnaposto,
   });
 
   @override
@@ -123,19 +131,30 @@ class _MappaItinerarioState extends State<MappaItinerario> {
                 ),
                 if (punti.length > 1)
                   PolylineLayer(
-                    polylines: [Polyline(points: punti, strokeWidth: 3, color: Tk.accento)],
+                    polylines: [Polyline(
+                      points: punti,
+                      strokeWidth: 3,
+                      color: Tk.accento,
+                      pattern: const StrokePattern.dotted(),
+                    ),
+                    ],
                   ),
                 MarkerLayer(
                   markers: [
                     for (final s in segnaposti)
                       Marker(
                         point: s.punto,
-                        width: 32,
-                        height: 32,
-                        child: Segnaposto(numero: s.numero, etichetta: widget.etichettaTappa),
+                        width: Tk.areaMinima,
+                        height: Tk.areaMinima,
+                        child: Segnaposto(
+                          numero: s.numero,
+                          etichetta: widget.etichettaTappa,
+                          onTap: widget.onSegnaposto == null ? null : () => widget.onSegnaposto!(s.numero),
+                        ),
                       ),
                   ],
                 ),
+                _Dicitura(testo: widget.dicitura),
                 const _Attribuzione(),
               ],
             ),
@@ -146,21 +165,32 @@ class _MappaItinerarioState extends State<MappaItinerario> {
   }
 }
 
-/// Segnaposto numerato: cerchio mattone, numero bianco (contrasto 5,9). Il
+/// Segnaposto numerato (area del tocco 44x44, cerchio disegnato 32): cerchio mattone, numero bianco (contrasto 5,9). Il
 /// numero è disegnato (non è un `Text`) così non si confonde con quello della
 /// card nelle ricerche per testo; per l'accessibilità porta l'etichetta
 /// "Tappa N".
 class Segnaposto extends StatelessWidget {
   final int numero;
   final String etichetta;
-  const Segnaposto({super.key, required this.numero, this.etichetta = 'Tappa'});
+  final VoidCallback? onTap;
+  const Segnaposto({super.key, required this.numero, this.etichetta = 'Tappa', this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       label: '$etichetta $numero',
+      button: true,
+      onTap: onTap,
       excludeSemantics: true,
-      child: CustomPaint(painter: _SegnapostoPainter(numero)),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: SizedBox(
+          width: Tk.areaMinima,
+          height: Tk.areaMinima,
+          child: CustomPaint(painter: _SegnapostoPainter(numero)),
+        ),
+      ),
     );
   }
 }
@@ -172,7 +202,7 @@ class _SegnapostoPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final c = size.center(Offset.zero);
-    final r = size.shortestSide / 2;
+    const r = 16.0; // cerchio di 32 px dentro l'area di tocco di 44
     canvas.drawCircle(c, r, Paint()..color = Tk.cardSfondo);
     canvas.drawCircle(c, r - 2, Paint()..color = Tk.accento);
     final tp = TextPainter(
@@ -198,6 +228,35 @@ class _Attribuzione extends StatelessWidget {
         color: Tk.cardSfondo.withValues(alpha: 0.9),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         child: Text(kAttribuzioneOsm, style: stileTesto(12, 600, Tk.testo)),
+      ),
+    );
+  }
+}
+
+/// Dicitura in alto a sinistra: la linea indica l'ordine, non il percorso.
+class _Dicitura extends StatelessWidget {
+  final String testo;
+  const _Dicitura({required this.testo});
+
+  @override
+  Widget build(BuildContext context) {
+    // Larghezza vincolata alla mappa (meno i margini): un testo lungo va a capo.
+    return Positioned(
+      left: 8,
+      right: 8,
+      top: 8,
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: IgnorePointer(
+          child: Container(
+            decoration: BoxDecoration(
+              color: Tk.cardSfondo,
+              borderRadius: BorderRadius.circular(Tk.raggioEtichetta),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            child: Text(testo, style: stileTesto(12, 700, Tk.testo)),
+          ),
+        ),
       ),
     );
   }
