@@ -91,8 +91,20 @@ void main() {
     }
   }
 
-  testWidgets('la testata della giornata non porta piu\' l\'etichetta', (t) async {
+  testWidgets('con DEMO: etichetta presente nell AppBar (testo e semantica)', (t) async {
+    final h = t.ensureSemantics();
     await _monta(t, demo: true, w: 390);
-    expect(find.descendant(of: find.byType(TestataGiornata), matching: find.byType(EtichettaDemo)), findsNothing);
+    expect(find.descendant(of: find.byType(AppBar), matching: find.text('DEMO')), findsOneWidget);
+    expect(find.bySemanticsLabel('Demo'), findsOneWidget);
+    h.dispose();
+  });
+
+  testWidgets('senza DEMO: etichetta assente (testo, semantica, widget)', (t) async {
+    final h = t.ensureSemantics();
+    await _monta(t, demo: false, w: 390);
+    expect(find.text('DEMO'), findsNothing);
+    expect(find.bySemanticsLabel('Demo'), findsNothing);
+    expect(find.byType(EtichettaDemo), findsNothing);
+    h.dispose();
   });
 }

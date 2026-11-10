@@ -54,14 +54,11 @@ class TestataGiornata extends StatelessWidget {
   final Itinerary itinerario;
   final DateTime data;
   final AppStrings strings;
-  /// Mostra l'etichetta "Demo" (build con `--dart-define=DEMO=true`).
-  final bool demo;
   const TestataGiornata(
       {super.key,
       required this.itinerario,
       required this.data,
-      required this.strings,
-      this.demo = false,});
+      required this.strings,});
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +82,6 @@ class TestataGiornata extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(riga, style: stileTesto(15, 600, Tk.testoSuTestata)),
-              if (demo) EtichettaDemo(strings: strings),
             ],
           ),
         ),
