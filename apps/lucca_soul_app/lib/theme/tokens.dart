@@ -35,6 +35,8 @@ class Tk {
 
   // Misure
   static const double raggio = 12;
+  static const double raggioEtichetta = 6;
+  static const double bordoEtichetta = 1.5;
   static const double areaMinima = 44;
   static const double colonnaMax = 600;
 

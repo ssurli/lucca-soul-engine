@@ -23,7 +23,8 @@ DateTime parseDemoIstante(String raw) {
 }
 
 /// `--dart-define=DEMO=true` abilita `?istante=` nell'indirizzo.
-const bool _demoDefine = bool.fromEnvironment('DEMO');
+/// Unica lettura del define: la leggono anche le schermate (etichetta "Demo").
+const bool demoAttivoDefine = bool.fromEnvironment('DEMO');
 
 final RegExp _istanteIndirizzo =
     RegExp(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?Z$');
@@ -70,7 +71,7 @@ class Orologio {
   /// contano solo con `DEMO=true` (vedi [risolviIstanteDemo]).
   static void inizializza({
     String demo = _demoIstanteDefine,
-    bool demoAttivo = _demoDefine,
+    bool demoAttivo = demoAttivoDefine,
     Map<String, String> query = const {},
   }) {
     final fisso =

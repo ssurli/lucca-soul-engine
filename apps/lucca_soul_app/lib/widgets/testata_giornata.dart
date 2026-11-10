@@ -31,11 +31,14 @@ class TestataGiornata extends StatelessWidget {
   final Itinerary itinerario;
   final DateTime data;
   final AppStrings strings;
+  /// Mostra l'etichetta "Demo" (build con `--dart-define=DEMO=true`).
+  final bool demo;
   const TestataGiornata(
       {super.key,
       required this.itinerario,
       required this.data,
-      required this.strings,});
+      required this.strings,
+      this.demo = false,});
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +56,30 @@ class TestataGiornata extends StatelessWidget {
       child: ColonnaCentrata(
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(riga, style: stileTesto(15, 600, Tk.testoSuTestata)),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(riga, style: stileTesto(15, 600, Tk.testoSuTestata)),
+              if (demo)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 1, horizontal: 6),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                        color: Tk.testoSuTestata, width: Tk.bordoEtichetta,),
+                    borderRadius: BorderRadius.circular(Tk.raggioEtichetta),
+                  ),
+                  child: Text(
+                    strings.demoLabel.toUpperCase(),
+                    semanticsLabel: strings.demoLabel,
+                    style: stileTesto(12, 800, Tk.testoSuTestata)
+                        .copyWith(letterSpacing: 0.6),
+                  ),
+                ),
+            ],
+          ),
         ),
       ),
     );

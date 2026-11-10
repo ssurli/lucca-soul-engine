@@ -200,7 +200,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     return Column(
       children: [
         TestataGiornata(
-            itinerario: itinerario, data: _segnale.data ?? Orologio.adesso().toLocal(), strings: _strings,),
+            itinerario: itinerario, data: _segnale.data ?? Orologio.adesso().toLocal(), strings: _strings, demo: demoAttivoDefine,),
         Expanded(
           child: ColonnaCentrata(
             child: RefreshIndicator(
