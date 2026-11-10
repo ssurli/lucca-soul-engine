@@ -296,13 +296,12 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                     dicitura: _strings.mapCaption,
                     onSegnaposto: _apriDaMappa,
                   ),
+                  AdaptiveCard(controller: controller, strings: _strings),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                     child: Text(_strings.itineraryTitle,
                         style: Theme.of(context).textTheme.headlineSmall,),
                   ),
-                  AdaptiveCard(controller: controller, strings: _strings),
-                  const SizedBox(height: 8),
                   for (var i = 0; i < itinerario.stops.length; i++)
                     StopCard(
                       key: _chiave(i),
