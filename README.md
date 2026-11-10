@@ -116,3 +116,11 @@ Soluzione (una volta per macchina):
 Fa usare a Python il magazzino certificati di Windows, dove la CA aziendale è gia presente.
 Il TLS resta VERIFICATO. Non usare `neo4j+ssc://` ne `verify=False`: disattiverebbero la
 protezione contro l'uomo-in-mezzo, incompatibile con la privacy by design del progetto.
+
+## Licenze
+
+- Codice: EUPL-1.2 (`LICENSE`, testo italiano in `LICENSE.it.txt`).
+- Documentazione e testi del seed: CC BY 4.0.
+- Foto, logo delle Mura e nome "Lucca Soul Lab": tutti i diritti riservati.
+
+Dettagli, eccezioni e terze parti in [`LICENZE.md`](LICENZE.md).

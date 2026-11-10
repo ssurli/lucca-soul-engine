@@ -1,2 +1,6 @@
 # Golden di Lucca: valori attesi CONGELATI, byte-identici su ogni sistema.
 services/api/tests/golden/*.json text eol=lf
+
+# Testi ufficiali EUPL-1.2: byte-identici alla fonte (Interoperable Europe), nessuna conversione dei fine riga.
+LICENSE -text
+LICENSE.it.txt -text
