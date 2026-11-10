@@ -2969,3 +2969,27 @@ tappe in coda (compito 5-quater) è nella voce del livello fluttuante, sopra.
   file sia la voce; le tappe fluttuanti e gli eventi promossi non hanno mai foto. Nessuna foto in
   questa ondata.
 
+
+## Minuti a piedi nell'app: attorno a una tappa non più in catalogo la riga riporta la stima fissa (APERTO)
+
+**Trovato:** 2026-11-10, compito 0 del brief "Schermata dell'itinerario, proposta A". **Accettato
+come limite noto** (decisione del committente del 2026-11-10).
+
+L'app mostra «circa N min a piedi» tra due tappe consecutive che hanno entrambe `punto_arrivo`,
+con N = `arrivo[n+1] − (arrivo[n] + durata[n])`. Nel motore quell'intervallo è solo trasferimento
+(`engine._passo`): `ceil(metri / 80)` se le due tappe hanno un punto, altrimenti la stima prudente
+`TEMPO_TRASFERIMENTO_DEFAULT_MIN` = 10 (`rules.py`).
+
+Il caso che sfugge: dopo un cambio di catalogo a sessione aperta (nuovo caricamento del grafo,
+esperienza tolta), una tappa dell'itinerario può non essere più tra i candidati dell'adattamento. Il
+motore la conserva come stub (`engine._stub_da_stop`) e restituisce il `punto_arrivo` ricevuto
+(`engine._punto_in_uscita`), ma nel calcolo usa un nodo senza punti: il trasferimento verso quella
+tappa e verso la successiva è la stima fissa di 10 minuti, non una distanza. L'app vede due punti e
+mostra «circa 10 min a piedi».
+
+Il comportamento del motore è fissato da
+`services/experience-engine/tests/test_trasferimento_punti.py::test_tappa_non_piu_nel_catalogo_stima_prudente_e_punto_ricevuto`.
+
+Cosa servirebbe: un campo nel contratto (`ItineraryStop`) che dichiari se il trasferimento verso la
+tappa è calcolato o stimato, scritto dal motore; l'app mostrerebbe la riga solo nel primo caso.
+Passa da `contract-keeper`, cambia il golden.
