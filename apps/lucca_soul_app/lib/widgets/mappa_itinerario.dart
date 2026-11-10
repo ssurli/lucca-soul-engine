@@ -7,6 +7,7 @@ import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 import '../util/app_strings.dart' show kUserAgentPackage;
 import '../util/mappa_tappe.dart';
+import '../util/segnaposti_separati.dart';
 
 /// Strato OpenStreetMap. Regola d'uso di tile.openstreetmap.org: attribuzione
 /// sempre visibile, User-Agent identificativo, nessun prefetch/download in
@@ -149,24 +150,12 @@ class _MappaItinerarioState extends State<MappaItinerario> {
                           ),
                         ],
                       ),
-                    MarkerLayer(
-                      markers: [
-                        for (final s in segnaposti)
-                          Marker(
-                            point: s.punto,
-                            width: Tk.areaMinima,
-                            height: Tk.areaMinima,
-                            child: Segnaposto(
-                              numero: s.numero,
-                              etichetta: widget.etichettaTappa,
-                              onTap: widget.onSegnaposto == null
-                                  ? null
-                                  : () => widget.onSegnaposto!(s.numero),
-                            ),
-                          ),
-                      ],
-                    ),
-                    const _Attribuzione(),
+                    _StratoSegnaposti(
+                  segnaposti: segnaposti,
+                  etichetta: widget.etichettaTappa,
+                  onSegnaposto: widget.onSegnaposto,
+                ),
+                const _Attribuzione(),
                   ],
                 ),
               ),
@@ -177,6 +166,50 @@ class _MappaItinerarioState extends State<MappaItinerario> {
             child: Text(widget.dicitura,
                 style: stileTesto(12, 700, Tk.testoSecondario),),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Strato dei segnaposti. Posizione sullo schermo dalla camera CORRENTE
+/// (si ricalcola a ogni pizzico); i segnaposti più vicini del diametro del
+/// cerchio vengono scostati in pixel di schermo ([separaSegnaposti]) perché
+/// numeri e tocchi restino distinti. La linea usa sempre i punti veri.
+class _StratoSegnaposti extends StatelessWidget {
+  final List<SegnapostoMappa> segnaposti;
+  final String etichetta;
+  final ValueChanged<int>? onSegnaposto;
+  const _StratoSegnaposti({
+    required this.segnaposti,
+    required this.etichetta,
+    required this.onSegnaposto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final camera = MapCamera.of(context);
+    final centri = separaSegnaposti([
+      for (final s in segnaposti) camera.latLngToScreenOffset(s.punto),
+    ]);
+    return SizedBox.expand(
+      child: Stack(
+        children: [
+          for (var i = 0; i < segnaposti.length; i++)
+            Positioned(
+              key: ValueKey('segnaposto-${segnaposti[i].numero}'),
+              left: centri[i].dx - Tk.areaMinima / 2,
+              top: centri[i].dy - Tk.areaMinima / 2,
+              width: Tk.areaMinima,
+              height: Tk.areaMinima,
+              child: Segnaposto(
+                numero: segnaposti[i].numero,
+                etichetta: etichetta,
+                onTap: onSegnaposto == null
+                    ? null
+                    : () => onSegnaposto!(segnaposti[i].numero),
+              ),
+            ),
         ],
       ),
     );
