@@ -36,7 +36,9 @@ class AppStrings {
   String get adaptError => _isEn ? 'Could not adapt the itinerary.' : 'Non riesco ad adattare l\'itinerario.';
   String get emptyStops => _isEn ? 'No stops yet.' : 'Ancora nessuna tappa.';
   String get excludedStopsTitle => _isEn ? 'Left out of today' : 'Rimaste fuori oggi';
-  String get mapCaption => _isEn ? 'Order of stops, not the route' : 'Ordine delle tappe, non il percorso';
+  String get mapCaption => _isEn
+      ? 'Tap a number to open the stop. The line shows the order, not the route.'
+      : "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.";
   String get genericStop => _isEn ? 'Stop' : 'Tappa';
   String get legendLabel => _isEn ? 'Legend' : 'Leggenda';
   String get curiosityLabel => _isEn ? 'Did you know' : 'Curiosità';

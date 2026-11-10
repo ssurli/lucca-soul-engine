@@ -80,7 +80,7 @@ Future<void> _schermata(
 
 Future<void> _soloMappa(
   WidgetTester t, {
-  String dicitura = 'Ordine delle tappe, non il percorso',
+  String dicitura = "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.",
   ValueChanged<int>? onSegnaposto,
   Size size = const Size(390, 844),
 }) async {
@@ -126,8 +126,8 @@ void main() {
   });
 
   for (final (lingue, testo) in [
-    (['it'], 'Ordine delle tappe, non il percorso'),
-    (['en'], 'Order of stops, not the route'),
+    (['it'], "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso."),
+    (['en'], 'Tap a number to open the stop. The line shows the order, not the route.'),
   ]) {
     testWidgets('dicitura in ${lingue.first}: in alto a sinistra, senza toccare l attribuzione', (t) async {
       await _schermata(t, [_s(1, p: _pA), _s(2, p: _pB)], lingue: lingue);
@@ -138,10 +138,11 @@ void main() {
       final mappa = t.getRect(find.byType(FlutterMap));
       final rd = t.getRect(d);
       final ra = t.getRect(attr);
-      expect(rd.left - mappa.left, greaterThanOrEqualTo(8));
-      expect(rd.top - mappa.top, greaterThanOrEqualTo(8));
-      expect(mappa.contains(rd.bottomRight), isTrue);
-      expect(rd.overlaps(ra), isFalse);
+      // sotto la mappa, allineata al suo bordo sinistro, fuori dal riquadro
+      expect(rd.top, greaterThanOrEqualTo(mappa.bottom));
+      expect((rd.left - mappa.left).abs(), lessThan(1));
+      expect(rd.overlaps(mappa), isFalse);
+      expect(mappa.contains(ra.bottomRight), isTrue); // attribuzione dentro la mappa
       final st = t.widget<Text>(d).style!;
       expect(st.fontSize, 12);
       expect(st.fontWeight, FontWeight.w700);
@@ -150,10 +151,11 @@ void main() {
   }
 
   testWidgets('dicitura e attribuzione non si sovrappongono a 360 px', (t) async {
-    await _soloMappa(t, dicitura: 'Order of stops, not the route', size: const Size(360, 640));
-    final rd = t.getRect(find.text('Order of stops, not the route'));
+    await _soloMappa(t, dicitura: 'Tap a number to open the stop. The line shows the order, not the route.', size: const Size(360, 640));
+    final rd = t.getRect(find.text('Tap a number to open the stop. The line shows the order, not the route.'));
     final ra = t.getRect(find.text(kAttribuzioneOsm));
     expect(rd.overlaps(ra), isFalse);
+    expect(rd.right, lessThanOrEqualTo(360));
     expect(t.takeException(), isNull);
   });
 

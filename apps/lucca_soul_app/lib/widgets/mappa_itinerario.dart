@@ -39,7 +39,7 @@ class MappaItinerario extends StatefulWidget {
   /// Etichetta accessibile dei segnaposto ("Tappa" nella lingua dell'app).
   final String etichettaTappa;
 
-  /// Dicitura in alto a sinistra ("Ordine delle tappe, non il percorso").
+  /// Riga sotto la mappa: la linea indica l'ordine, non il percorso.
   final String dicitura;
 
   /// Tocco su un segnaposto: riceve il numero della tappa (1-based).
@@ -51,7 +51,8 @@ class MappaItinerario extends StatefulWidget {
     this.tileProvider,
     this.controller,
     this.etichettaTappa = 'Tappa',
-    this.dicitura = 'Ordine delle tappe, non il percorso',
+    this.dicitura =
+        "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.",
     this.onSegnaposto,
   });
 
@@ -77,7 +78,9 @@ class _MappaItinerarioState extends State<MappaItinerario> {
     final vecchi = segnapostiMappa(old.tappe);
     if (_pronta && nuovi.isNotEmpty && !_uguali(nuovi, vecchi)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _controller.fitCamera(_inquadra([for (final s in nuovi) s.punto]));
+        if (mounted) {
+          _controller.fitCamera(_inquadra([for (final s in nuovi) s.punto]));
+        }
       });
     }
   }
@@ -103,63 +106,78 @@ class _MappaItinerarioState extends State<MappaItinerario> {
     final punti = [for (final s in segnaposti) s.punto];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(Tk.raggio),
-        child: DecoratedBox(
-          decoration: BoxDecoration(border: Border.all(color: Tk.cardBordo), borderRadius: BorderRadius.circular(Tk.raggio)),
-          child: SizedBox(
-            height: kAltezzaMappa,
-            child: FlutterMap(
-              mapController: _controller,
-              options: MapOptions(
-                backgroundColor: Tk.avviso,
-                initialCameraFit: _inquadra(punti),
-                onMapReady: () => _pronta = true,
-                interactionOptions: const InteractionOptions(
-                  flags: InteractiveFlag.pinchZoom | InteractiveFlag.doubleTapZoom,
-                ),
-              ),
-              children: [
-                TileLayer(
-                  urlTemplate: kUrlTileOsm,
-                  userAgentPackageName: kUserAgentPackage,
-                  tileProvider: widget.tileProvider,
-                  panBuffer: 0,
-                  // Rete assente o tile rifiutata: nessuna eccezione, la
-                  // mappa resta su sfondo neutro.
-                  errorTileCallback: (tile, error, stackTrace) {},
-                ),
-                if (punti.length > 1)
-                  PolylineLayer(
-                    polylines: [Polyline(
-                      points: punti,
-                      strokeWidth: 3,
-                      color: Tk.accento,
-                      pattern: const StrokePattern.dotted(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(Tk.raggio),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                  border: Border.all(color: Tk.cardBordo),
+                  borderRadius: BorderRadius.circular(Tk.raggio),),
+              child: SizedBox(
+                height: kAltezzaMappa,
+                child: FlutterMap(
+                  mapController: _controller,
+                  options: MapOptions(
+                    backgroundColor: Tk.avviso,
+                    initialCameraFit: _inquadra(punti),
+                    onMapReady: () => _pronta = true,
+                    interactionOptions: const InteractionOptions(
+                      flags: InteractiveFlag.pinchZoom |
+                          InteractiveFlag.doubleTapZoom,
                     ),
-                    ],
                   ),
-                MarkerLayer(
-                  markers: [
-                    for (final s in segnaposti)
-                      Marker(
-                        point: s.punto,
-                        width: Tk.areaMinima,
-                        height: Tk.areaMinima,
-                        child: Segnaposto(
-                          numero: s.numero,
-                          etichetta: widget.etichettaTappa,
-                          onTap: widget.onSegnaposto == null ? null : () => widget.onSegnaposto!(s.numero),
-                        ),
+                  children: [
+                    TileLayer(
+                      urlTemplate: kUrlTileOsm,
+                      userAgentPackageName: kUserAgentPackage,
+                      tileProvider: widget.tileProvider,
+                      panBuffer: 0,
+                      // Rete assente o tile rifiutata: nessuna eccezione, la
+                      // mappa resta su sfondo neutro.
+                      errorTileCallback: (tile, error, stackTrace) {},
+                    ),
+                    if (punti.length > 1)
+                      PolylineLayer(
+                        polylines: [
+                          Polyline(
+                            points: punti,
+                            strokeWidth: 3,
+                            color: Tk.accento,
+                            pattern: const StrokePattern.dotted(),
+                          ),
+                        ],
                       ),
+                    MarkerLayer(
+                      markers: [
+                        for (final s in segnaposti)
+                          Marker(
+                            point: s.punto,
+                            width: Tk.areaMinima,
+                            height: Tk.areaMinima,
+                            child: Segnaposto(
+                              numero: s.numero,
+                              etichetta: widget.etichettaTappa,
+                              onTap: widget.onSegnaposto == null
+                                  ? null
+                                  : () => widget.onSegnaposto!(s.numero),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const _Attribuzione(),
                   ],
                 ),
-                _Dicitura(testo: widget.dicitura),
-                const _Attribuzione(),
-              ],
+              ),
             ),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(widget.dicitura,
+                style: stileTesto(12, 700, Tk.testoSecondario),),
+          ),
+        ],
       ),
     );
   }
@@ -173,7 +191,8 @@ class Segnaposto extends StatelessWidget {
   final int numero;
   final String etichetta;
   final VoidCallback? onTap;
-  const Segnaposto({super.key, required this.numero, this.etichetta = 'Tappa', this.onTap});
+  const Segnaposto(
+      {super.key, required this.numero, this.etichetta = 'Tappa', this.onTap,});
 
   @override
   Widget build(BuildContext context) {
@@ -206,7 +225,8 @@ class _SegnapostoPainter extends CustomPainter {
     canvas.drawCircle(c, r, Paint()..color = Tk.cardSfondo);
     canvas.drawCircle(c, r - 2, Paint()..color = Tk.accento);
     final tp = TextPainter(
-      text: TextSpan(text: '$numero', style: stileTesto(14, 800, Tk.testoSuAccento)),
+      text: TextSpan(
+          text: '$numero', style: stileTesto(14, 800, Tk.testoSuAccento),),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
@@ -228,35 +248,6 @@ class _Attribuzione extends StatelessWidget {
         color: Tk.cardSfondo.withValues(alpha: 0.9),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         child: Text(kAttribuzioneOsm, style: stileTesto(12, 600, Tk.testo)),
-      ),
-    );
-  }
-}
-
-/// Dicitura in alto a sinistra: la linea indica l'ordine, non il percorso.
-class _Dicitura extends StatelessWidget {
-  final String testo;
-  const _Dicitura({required this.testo});
-
-  @override
-  Widget build(BuildContext context) {
-    // Larghezza vincolata alla mappa (meno i margini): un testo lungo va a capo.
-    return Positioned(
-      left: 8,
-      right: 8,
-      top: 8,
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: IgnorePointer(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Tk.cardSfondo,
-              borderRadius: BorderRadius.circular(Tk.raggioEtichetta),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            child: Text(testo, style: stileTesto(12, 700, Tk.testo)),
-          ),
-        ),
       ),
     );
   }
