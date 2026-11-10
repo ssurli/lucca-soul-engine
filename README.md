@@ -16,7 +16,7 @@ README aggiornato al 10 novembre 2026.
   bellezza o storie, bambini, tempo, accessibilità) diventano una giornata di tappe in ordine.
 - **Si adatta a un cambiamento.** Tre interruttori simulano «Piove», «Mura affollate» e
   «Sono stanco/a». Con «Piove», per esempio, una tappa all'aperto diventa una al chiuso e la
-  scheda dice «Sostituita per la pioggia». Si può annullare o tornare al percorso iniziale.
+  scheda dice «Sostituita per la pioggia». Si può tornare al percorso iniziale.
 - **Mostra gli orari.** Per ogni tappa l'ora di arrivo e la durata, per la giornata l'intervallo
   complessivo.
 - **Mostra la mappa.** Le tappe numerate su una mappa, con un link «Come arrivo qui».
@@ -37,7 +37,7 @@ README aggiornato al 10 novembre 2026.
 - **Ricordi d'esempio:** i 4 ricordi caricati per la demo sono testi del committente, segnati
   «(esempio dimostrativo)».
 - **Nessun dato reale di affollamento o di meteo.** I cambiamenti li simula chi usa l'app.
-  Il cruscotto per il Comune non ha dati reali da mostrare.
+  Il cruscotto per gli enti non ha dati reali da mostrare.
 
 ## Cosa non fa
 
