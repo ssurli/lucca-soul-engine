@@ -43,7 +43,12 @@ class ItineraryScreen extends StatefulWidget {
   /// Solo test: foto delle tappe iniettate. Default: dal bundle dell'app.
   final ArchivioFoto? archivioFoto;
 
+  /// Etichetta "Demo" nell'AppBar. Default: il define `DEMO` (unica lettura,
+  /// [demoAttivoDefine]); iniettabile nei test.
+  final bool demo;
+
   const ItineraryScreen({
+    this.demo = demoAttivoDefine,
     this.tileProvider,
     this.archivioFoto,
     super.key,
@@ -200,7 +205,16 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const TitoloMarchio()),
+      appBar: AppBar(
+        title: const TitoloMarchio(),
+        actions: [
+          if (widget.demo)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(child: EtichettaDemo(strings: _strings)),
+            ),
+        ],
+      ),
       body: SafeArea(child: _buildBody(context)),
     );
   }
@@ -266,7 +280,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     return Column(
       children: [
         TestataGiornata(
-            itinerario: itinerario, data: _segnale.data ?? Orologio.adesso().toLocal(), strings: _strings, demo: demoAttivoDefine,),
+            itinerario: itinerario, data: _segnale.data ?? Orologio.adesso().toLocal(), strings: _strings,),
         Expanded(
           child: ColonnaCentrata(
             child: RefreshIndicator(
