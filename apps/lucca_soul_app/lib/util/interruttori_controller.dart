@@ -57,9 +57,36 @@ class InterruttoriController extends ChangeNotifier {
   bool get senzaEffetto => _senzaEffetto;
   String? get errore => _errore;
 
-  void premi(SimulatedSignalKind kind) => _applica(_stato.premi(kind));
-  void annulla() => _applica(_stato.annulla());
-  void tornaAlPercorsoIniziale() => _applica(_stato.tornaAlPercorsoIniziale());
+  /// Ultimo tocco su un interruttore: quale e in che verso (true = acceso).
+  /// Null dopo annulla / ripristino / errore. Vale per la risposta dell'ultima
+  /// pressione (le risposte superate sono scartate da [_sequenza]).
+  ({SimulatedSignalKind kind, bool acceso})? _ultimoTocco;
+
+  /// Il segnale appena ACCESO che non ha cambiato nulla rispetto al mostrato
+  /// prima, mentre almeno un ALTRO segnale e' acceso. Null altrimenti.
+  SimulatedSignalKind? get segnaleSenzaAltroCambiamento {
+    final t = _ultimoTocco;
+    if (t == null || !t.acceso || !_senzaEffetto || _inCorso) return null;
+    if (!_statoMostrato.accesi.contains(t.kind)) return null;
+    if (_statoMostrato.accesi.length < 2) return null;
+    return t.kind;
+  }
+
+  void premi(SimulatedSignalKind kind) {
+    final nuovo = _stato.premi(kind);
+    _ultimoTocco = (kind: kind, acceso: nuovo.accesi.contains(kind));
+    _applica(nuovo);
+  }
+
+  void annulla() {
+    _ultimoTocco = null;
+    _applica(_stato.annulla());
+  }
+
+  void tornaAlPercorsoIniziale() {
+    _ultimoTocco = null;
+    _applica(_stato.tornaAlPercorsoIniziale());
+  }
 
   void _applica(SignalToggleState nuovo) {
     _stato = nuovo;
@@ -100,6 +127,7 @@ class InterruttoriController extends ChangeNotifier {
       if (_disposto || mia != _sequenza) return;
       _inCorso = false;
       _errore = error.message;
+      _ultimoTocco = null;
       _stato = _statoMostrato; // l'interruttore torna a rispecchiare ciò che si vede
       notifyListeners();
     }

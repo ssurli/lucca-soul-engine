@@ -247,7 +247,7 @@ void main() {
     });
   });
 
-  testWidgets('la fascia di riepilogo compare dopo un cambio, con Annulla', (tester) async {
+  testWidgets('la fascia di riepilogo compare dopo un cambio, con Percorso iniziale', (tester) async {
     final originale = _itin([_stop('a'), _stop('b')]);
     final adattato = _itin([_stop('a', esito: 'sostituita'), _stop('b', esito: 'mantenuta_senza_alternativa')]);
     final client = BffClient(
@@ -269,12 +269,13 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Annulla'), findsNothing);
+    expect(find.text('Percorso iniziale'), findsNothing);
     await tester.tap(find.text('Piove'));
     await tester.pumpAndSettle();
     expect(find.text('Piove: 1 tappa cambiata, 1 resta in programma.'), findsOneWidget);
-    expect(find.text('Annulla'), findsOneWidget);
-    expect(find.text('Torna al percorso iniziale'), findsOneWidget);
+    expect(find.text('Percorso iniziale'), findsOneWidget);
+    expect(find.text('Annulla'), findsNothing);
+    expect(find.text('Torna al percorso iniziale'), findsNothing);
   });
 
   test('nessun "gratis", "gratuit" o "€" nelle stringhe dell\'app', () {

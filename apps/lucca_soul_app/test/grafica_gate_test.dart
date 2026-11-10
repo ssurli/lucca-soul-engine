@@ -351,7 +351,7 @@ void main() {
 
     testWidgets('etichette esatte; spento = card; acceso = mattone, bianco, spunta', (t) async {
       await montaCard(t);
-      for (final e in ['Piove', 'Mura affollate', 'Sono stanco/a']) {
+      for (final e in ['Piove', 'Mura affollate', 'Stanco/a']) {
         expect(find.text(e), findsOneWidget);
       }
       Material mat(String e) => t.widget<Material>(
@@ -374,48 +374,45 @@ void main() {
       expect(mat('Mura affollate').color, _card);
       expect(find.byIcon(Icons.check), findsOneWidget);
 
-      await t.tap(find.text('Sono stanco/a'));
+      await t.tap(find.text('Stanco/a'));
       await t.pumpAndSettle();
-      expect(mat('Sono stanco/a').color, _mattone);
+      expect(mat('Stanco/a').color, _mattone);
       expect(find.byIcon(Icons.check), findsNWidgets(2));
       await t.tap(find.text('Piove'));
       await t.pumpAndSettle();
       expect(mat('Piove').color, _card);
     });
 
-    testWidgets('fascia: testo dagli esiti, Annulla a destra, Torna sotto', (t) async {
+    testWidgets('fascia: testo dagli esiti, Percorso iniziale a destra, niente Annulla', (t) async {
       await montaCard(t);
       await t.tap(find.text('Piove'));
       await t.pumpAndSettle();
       final testo = find.text('Piove: 2 tappe cambiate, 1 resta in programma.');
       expect(testo, findsOneWidget);
-      final annulla = find.text('Annulla');
-      final torna = find.text('Torna al percorso iniziale');
-      expect(annulla, findsOneWidget);
-      expect(t.getRect(annulla).left, greaterThanOrEqualTo(t.getRect(testo).right - 1),
-          reason: 'Annulla a destra del riepilogo',);
-      expect(t.getRect(torna).top, greaterThanOrEqualTo(t.getRect(annulla).bottom - 1),
-          reason: 'Torna sotto la fascia',);
+      final comando = find.text('Percorso iniziale');
+      expect(comando, findsOneWidget);
+      expect(find.text('Annulla'), findsNothing);
+      expect(t.getRect(comando).left, greaterThanOrEqualTo(t.getRect(testo).right - 1),
+          reason: 'Percorso iniziale a destra del riepilogo',);
       final fascia = t.widget<Container>(find.ancestor(of: testo, matching: find.byType(Container)).first);
       expect((fascia.decoration! as BoxDecoration).color, _avviso);
-      expect(_colore(t, annulla), _mattone);
-      expect(t.getSize(find.widgetWithText(TextButton, 'Annulla')).height, greaterThanOrEqualTo(44));
-      expect(t.getSize(find.widgetWithText(TextButton, 'Torna al percorso iniziale')).height,
-          greaterThanOrEqualTo(44),);
+      expect(_colore(t, comando), _mattone);
+      expect(t.getSize(find.widgetWithText(TextButton, 'Percorso iniziale')).height, greaterThanOrEqualTo(44));
     });
 
-    testWidgets('due segnali: il riepilogo li elenca; Torna azzera fascia e spunte', (t) async {
+    testWidgets('due segnali: il riepilogo li elenca; Percorso iniziale azzera spunte e toglie il comando', (t) async {
       await montaCard(t);
       await t.tap(find.text('Piove'));
       await t.pumpAndSettle();
       await t.tap(find.text('Mura affollate'));
       await t.pumpAndSettle();
       expect(find.textContaining('Piove, Mura affollate:'), findsOneWidget);
-      await t.tap(find.text('Torna al percorso iniziale'));
+      await t.tap(find.text('Percorso iniziale'));
       await t.pumpAndSettle();
-      // Per progetto il ritorno al percorso iniziale entra nella storia: la fascia
-      // resta, con il testo di ripristino, e Annulla puo' disfarlo.
+      // Il ritorno al percorso iniziale resta detto dalla fascia, senza comando
+      // (nulla da ripristinare).
       expect(find.text('Percorso iniziale ripristinato.'), findsOneWidget);
+      expect(find.text('Percorso iniziale'), findsNothing);
       expect(find.byIcon(Icons.check), findsNothing);
     });
   });
