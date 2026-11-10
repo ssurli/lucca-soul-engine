@@ -1,121 +1,137 @@
-# Lucca Soul Lab — Engine (orchestrator + multi-agent scaffold)
+# Lucca Soul Lab
 
-**v4 — cloud puro, zero infrastruttura locale.** Allineato al White Paper v1.0.
+Un'app che compone una giornata a piedi nel centro di Lucca a partire da sei domande, e spiega
+ogni scelta. Per esempio, in una prova con le risposte «musica» e «mezza giornata», la giornata
+comincia da San Michele in Foro: «in questa chiesa il giovane Giacomo Puccini dava lezioni
+d'organo». Accanto, una leggenda sulla facciata e la sua fonte.
 
-Scaffold Claude Code per costruire il motore di **Lucca Soul Lab** — *Urban Experience
-Intelligence Platform*. La sessione Claude Code fa da **orchestratore** e delega a subagent
-specialisti.
+## Stato
 
-> «Le Smart City raccolgono dati. Le città intelligenti generano significato.»
+Prototipo dimostrativo. Non è in linea: gira sul computer di chi lo avvia.
+README aggiornato al 10 novembre 2026.
 
-## Due profili, un solo codice
+## Cosa fa oggi
 
-Il codice **non sa dove gira**: cambia solo il `.env`.
+- **Compone l'itinerario dalle risposte.** Sei domande (voglia di perdersi, silenzio o musica,
+  bellezza o storie, bambini, tempo, accessibilità) diventano una giornata di tappe in ordine.
+- **Si adatta a un cambiamento.** Tre interruttori simulano «Piove», «Mura affollate» e
+  «Sono stanco/a». Con «Piove», per esempio, una tappa all'aperto diventa una al chiuso e la
+  scheda dice «Sostituita per la pioggia». Si può annullare o tornare al percorso iniziale.
+- **Mostra gli orari.** Per ogni tappa l'ora di arrivo e la durata, per la giornata l'intervallo
+  complessivo.
+- **Mostra la mappa.** Le tappe numerate su una mappa, con un link «Come arrivo qui».
+- **Spiega con le fonti.** Ogni tappa ha un motivo leggibile; curiosità e leggende riportano la fonte.
+- **Raccoglie ricordi.** Da ogni tappa si può lasciare un ricordo (racconto, foto, musica, mestiere,
+  ricetta, dialetto, testimonianza), solo con consenso esplicito e una licenza. Va in revisione
+  prima di essere pubblicato. Una vista per i cittadini elenca, luogo per luogo, i ricordi approvati.
 
-| | Profilo CLOUD (senza Docker) | Profilo LOCALE (con Docker) |
-|---|---|---|
-| Urban Knowledge Graph | Neo4j **Aura** (`neo4j+s://`) | Neo4j **Community** (`bolt://`) |
-| Dati, eventi, Urban Memory | **Neon** (`sslmode=require`) | Postgres locale |
-| Vector store (RAG) | **pgvector** dentro Neon | **pgvector** dentro Postgres |
-| Serve Docker? | **no** | sì |
+## Cosa è vero e cosa è d'esempio
 
-Il vector store è **pgvector in entrambi i profili**: una sola implementazione RAG da mantenere.
-Il profilo cloud gira anche su un portatile aziendale bloccato (nessun diritto di amministratore).
+- **Luoghi reali:** 24 luoghi del centro storico e 35 esperienze.
+- **Coordinate:** rilevate a mano dal committente su Google Maps il 22 ottobre 2026. Le distanze a
+  piedi sono stime: linea d'aria moltiplicata per 1,3.
+- **Orari:** ogni orario dichiara la sua fonte. Quattro vengono da siti ufficiali, gli altri sono
+  indicati dal committente; alcuni sono stime dichiarate come tali.
+- **Botteghe inventate:** le 5 botteghe artigiane sono esempi dimostrativi, non esercizi reali.
+  Il motivo della tappa lo dice («esempio dimostrativo») e non hanno un punto sulla mappa.
+- **Ricordi d'esempio:** i 4 ricordi caricati per la demo sono testi del committente, segnati
+  «(esempio dimostrativo)».
+- **Nessun dato reale di affollamento o di meteo.** I cambiamenti li simula chi usa l'app.
+  Il cruscotto per il Comune non ha dati reali da mostrare.
 
-Il bootstrap **rileva da solo** il profilo leggendo il `.env` e, se è locale, avvia Docker.
+## Cosa non fa
 
-## Cosa c'è
+- Non verifica che una persona sia stata davvero in un luogo.
+- Non conosce festività, chiusure straordinarie o posti disponibili: solo fasce orarie settimanali.
+- I contenuti sono stati raccolti con cura ma non verificati sul posto.
+- Non esiste un'app per telefono: l'app gira nel browser.
+- Un'installazione serve una sola città. La separazione tra motore e contenuti di una città è
+  provata solo su un borgo inventato, mai su una seconda città reale.
 
-```
-CLAUDE.md                    # memoria di progetto: tassonomia congelata, regole, protocollo
-RUNBOOK.md                   # come lanciare (guidato / lancio unico presidiato)
-scripts/bootstrap.ps1        # Wave 0 in un comando (Windows PowerShell)
-scripts/bootstrap.sh         # idem (Linux/macOS/WSL)
-docker-compose.yml           # solo per il PROFILO LOCALE
-.env.example                 # profilo CLOUD  (Aura + Neon)
-.env.local.example           # profilo LOCALE (Docker)
-docs/
-  ARCHITECTURE.md            # i due livelli di orchestrazione + flusso runtime
-  DATA_CONTRACTS.md          # tipi condivisi = single source of truth (anti-divergenza)
-  BUILD_PLAN.md              # 6 wave, assegnazioni, criteri di accettazione
-.claude/agents/              # 12 specialisti
-  tech-lead                  # orchestratore/planner (tool Task)
-  contract-keeper            # custode dei contratti dati
-  graph-architect            # Urban Knowledge Graph (Aura)
-  rag-engineer               # RAG + assistente conversazionale (pgvector)
-  recommender-engineer       # ML recommendation
-  experience-engine          # AI Experience Engine — l'unico che DECIDE
-  urban-memory-engineer      # Urban Memory — il fossato difendibile
-  index-engineer             # Urban Intelligence Index + dashboard
-  ethics-guardian            # Ethical AI Engine (gate, sola lettura)
-  api-engineer               # BFF FastAPI
-  frontend-engineer          # app Flutter
-  test-engineer              # contract + integration test
-```
+L'elenco completo, con cosa servirebbe per superare ogni limite, è in
+[`I_LIMITI_DEL_MOTORE.md`](I_LIMITI_DEL_MOTORE.md) e [`docs/LIMITI.md`](docs/LIMITI.md).
+Alcune voci di quei file sono state superate dal codice e lo dichiarano.
 
-## Le sei wave
+## Le regole che il codice fa rispettare
 
-| Wave | Contenuto |
+Ogni regola è protetta da test automatici, eseguiti a ogni invio del codice su GitHub.
+
+| Regola | Dove è protetta |
 |---|---|
-| 0 | Fondamenta & contratti (blocca tutto) |
-| 1 | **Proof of Concept**: conversazione → itinerario adattivo |
-| 2 | **Urban Memory** — anticipata: è il fossato, e cresce solo con l'uso |
-| 3 | Marketplace + Recommender ML |
-| 4 | Urban Intelligence Index + Dashboard |
-| 5 | Replica (Siena / Ferrara): cambia il dataset, non la tecnologia |
+| **Pagare non fa salire nessuno.** L'abbonamento decide solo se una bottega partner compare, mai dove. Le botteghe di oggi sono tutte dimostrative. | `services/experience-engine/tests/test_engine.py` (`test_scoring_non_usa_partner_id_ne_prezzo`, `test_scoring_bit_identico_con_abbonamento_e_prenotabilita_variati`, `test_partner_non_attivo_escluso_dai_filtri_duri`) |
+| **Ogni decisione è spiegata.** Nessuna tappa, tolta o sostituita, resta senza un motivo. | `packages/contracts/contracts/models.py` (motivo obbligatorio); `services/experience-engine/tests/test_engine.py` (`test_ogni_tappa_ha_reason_non_vuoto`); `services/experience-engine/tests/test_escluse_reason_canonico.py` |
+| **Nessun ricordo senza consenso e licenza.** | `services/urban-memory/tests/test_service.py`; vincoli del database in `services/urban-memory/tests/test_repository.py` (eseguiti in CI su Linux) |
+| **Sotto le 10 persone il dato non si mostra.** Indicatori e mappa dei flussi del cruscotto restano nascosti. | `services/intelligence-index/tests/test_index.py`, `services/intelligence-index/tests/test_intelligence_index_dashboard.py`, `services/api/tests/test_dashboard.py` |
 
-## Avvio
+## Per chi vuole provarlo
 
-1. Copia questi file nella radice del repo, `git init`, `git add -A && git commit`.
-2. Installa i client:
-   ```
-   pip install neo4j "psycopg[binary]"
-   ```
-3. Lancia il bootstrap — al primo giro crea il `.env` e si ferma:
-   - **Windows PowerShell:** `.\scripts\bootstrap.ps1`
-     (se Windows blocca lo script: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass`)
-   - **Linux / macOS / WSL:** `./scripts/bootstrap.sh`
-4. Compila il `.env`:
-   - **Profilo CLOUD** (da `.env.example`): `NEO4J_URI=neo4j+s://...` (NON `bolt://`),
-     `DATABASE_URL=postgresql://...?sslmode=require` (stringa **diretta**, senza `-pooler`),
-     `ANTHROPIC_API_KEY`.
-   - **Profilo LOCALE** (da `.env.local.example`): basta copiarlo e aggiungere `ANTHROPIC_API_KEY`.
-     Il bootstrap avvierà Docker da solo.
-5. Rilancia il bootstrap: verifica le connessioni e **abilita pgvector** su Neon automaticamente.
-6. Apri Claude Code nel repo e segui `RUNBOOK.md` (Modo A consigliato).
+Prerequisiti: Windows con PowerShell, Git, Python 3.13, Flutter (la CI usa 3.47.7), accesso a
+Internet per i pacchetti e per la mappa.
 
-> **Aura Free**: si auto-mette in pausa e l'istanza viene **cancellata dopo 30 giorni di
-> inattività**. Per questo il seed del grafo è versionato e rieseguibile in un comando: il grafo
-> è un artefatto ricostruibile, non un archivio. È anche la disciplina che serve per la Wave 5.
+```powershell
+git clone https://github.com/ssurli/lucca-soul-engine.git
+cd lucca-soul-engine
+python -m venv .venv
+.venv\Scripts\python.exe -m pip install -e packages\contracts -e services\graph -e services\rag -e services\experience-engine -e services\urban-memory -e services\marketplace -e services\recommender -e services\intelligence-index -e services\api
+powershell -ExecutionPolicy Bypass -File scripts\avvia_demo.ps1
+```
 
-## Quale città serve questa installazione: `CITY_SEED`
+Lo script costruisce l'app web, avvia il BFF sulla porta 8000 e stampa gli indirizzi: mattina
+`http://localhost:8000/`, pomeriggio con `?istante=...`.
 
-Il dataset del Knowledge Graph si sceglie con `CITY_SEED` nel `.env` (default
-`lucca`): seleziona `services/graph/graph/seed_<valore>.py` e
-`services/graph/cypher/01_seed_<valore>.cypher`. Un'installazione serve UNA
-città (nessun multi-tenant). Per aggiungerne una, vedi `services/graph/README.md`.
+**Senza `.env`** la demo funziona con i dati versionati nel repo. È stata provata così su una
+copia pulita: itinerario, adattamento, ricordo inviato, vista Cittadino e dashboard si aprono.
+Differenze: i ricordi restano in memoria fino allo spegnimento, nessun ricordo risulta approvato
+e la dashboard mostra solo «dato insufficiente».
 
-## Regole non negoziabili
+**Con Neo4j Aura e Neon:** copia `.env.example` in `.env` e compila i valori (Aura vuole
+`neo4j+s://`, Neon `sslmode=require`). `scripts\bootstrap.ps1` è facoltativo: verifica le
+connessioni e abilita l'estensione `vector` su Neon. Le credenziali stanno solo nel `.env`.
 
-Un solo schema · decide solo l'Experience Engine · privacy by design · **mai** ottimizzare
-click/pubblicità/vendite · **visibilità non acquistabile** · spiegabilità obbligatoria ·
-consenso e licenza per ogni contributo di Urban Memory.
+**Demo da un altro dispositivo:**
+`powershell -ExecutionPolicy Bypass -File scripts\avvia_demo.ps1 -Rete` ascolta su tutta la rete
+locale e stampa questo avviso: «Modalita' -Rete: SOLO per la demo su rete fidata. POST /memory e POST
+/booking scrivono su Neon e /docs e' leggibile da chiunque sulla rete.»
 
-Il vocabolario è quello del White Paper. Se un nome nel codice diverge, **vince il White Paper**.
+**Rete con ispezione TLS:** se Python fallisce con `SSLCertVerificationError`, esegui
+`pip install pip-system-certs`: Python userà i certificati di Windows, senza disattivare la verifica.
 
-## Nota ambiente: rete aziendale con ispezione TLS
+**Aura Free** si mette in pausa da sola e viene cancellata dopo 30 giorni di inattività. Il seed
+del grafo è versionato in `services/graph/cypher/` e si ricarica da zero: procedura in
+[`services/urban-memory/README.md`](services/urban-memory/README.md), sezione «Aura cancellata».
 
-Su rete AUSL il traffico HTTPS viene intercettato e ri-firmato con una CA aziendale.
-Python non la riconosce e ogni connessione TLS fallisce con:
-`SSLCertVerificationError: self-signed certificate in certificate chain`
+Test: `.venv\Scripts\python.exe -m pytest` (più le cartelle `services\*\tests`, come nella CI in
+`.github/workflows/`) e `flutter test` in `apps/lucca_soul_app`.
 
-Soluzione (una volta per macchina):
+## Com'è fatto
 
-    pip install pip-system-certs
+| Cartella | Cosa contiene |
+|---|---|
+| `apps/lucca_soul_app` | L'app Flutter (web): domande, itinerario, mappa, ricordi, dashboard. |
+| `services/api` | Il BFF FastAPI: l'unico ingresso dell'app, serve anche l'app web. |
+| `services/experience-engine` | Il motore che decide le tappe, a regole, deterministico e spiegabile. |
+| `services/graph` | Il grafo dei luoghi (Neo4j): schema, Cypher, dati della città scelti da `CITY_SEED`. |
+| `services/rag` | Le domande iniziali e i testi dei motivi; l'arricchimento via LLM è facoltativo. |
+| `services/recommender` | Riordina le proposte penalizzando i luoghi già più frequentati. |
+| `services/urban-memory` | I ricordi: consenso, licenza, revisione, aggancio ai luoghi. |
+| `services/intelligence-index` | Gli indicatori aggregati e anonimi per la dashboard. |
+| `services/marketplace` | Prenotazioni delle botteghe partner; non influisce sul punteggio. |
+| `packages/contracts` | I tipi di dati condivisi da tutti i servizi (vedi `docs/DATA_CONTRACTS.md`). |
 
-Fa usare a Python il magazzino certificati di Windows, dove la CA aziendale � gia presente.
-Il TLS resta VERIFICATO. Non usare `neo4j+ssc://` ne `verify=False`: disattiverebbero la
-protezione contro l'uomo-in-mezzo, incompatibile con la privacy by design del progetto.
+Il vocabolario del dominio è definito in [`docs/DATA_CONTRACTS.md`](docs/DATA_CONTRACTS.md).
+Gran parte del codice è scritta da agenti di Claude Code, definiti in `.claude/agents/`, ed è
+verificata da test e dalla CI su GitHub.
+
+## Contribuire
+
+Due strade, entrambe dalla sezione Issues di GitHub:
+
+- **Contenuti:** segnalare un errore su un luogo, un orario o una fonte, o proporre un contenuto.
+- **Codice:** aprire una issue prima di una pull request.
+
+Chi apre una pull request accetta le licenze di [`LICENZE.md`](LICENZE.md).
+
+Autore: Stefano Surlinelli.
 
 ## Licenze
 
