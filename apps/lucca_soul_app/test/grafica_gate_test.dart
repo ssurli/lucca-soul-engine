@@ -238,25 +238,36 @@ void main() {
       expect(cont.color, _testo);
     });
 
-    testWidgets('ogni Text dentro una StopCard ha contrasto >= 4,5 sul suo sfondo', (t) async {
+    testWidgets('ogni Text dentro una StopCard ha contrasto >= 4,5 sul suo sfondo (riga chiusa e aperta)', (t) async {
       await _monta(t, const Size(390, 2400));
-      for (final card in find.byType(StopCard).evaluate()) {
-        for (final f in find.descendant(of: find.byWidget(card.widget), matching: find.byType(Text)).evaluate()) {
-          final w = f.widget as Text;
-          final c = DefaultTextStyle.of(f).style.merge(w.style).color!;
-          final Color su;
-          if (w.data == '1' || w.data == '2' || w.data == '3') {
-            su = _mattone;
-          } else if (w.data == 'Cambiata dal segnale') {
-            su = _sostSfondo;
-          } else if (w.data == 'Resta in programma') {
-            su = _mantSfondo;
-          } else {
-            su = _card;
+      void controlla() {
+        for (final card in find.byType(StopCard).evaluate()) {
+          for (final f in find.descendant(of: find.byWidget(card.widget), matching: find.byType(Text)).evaluate()) {
+            final w = f.widget as Text;
+            final c = DefaultTextStyle.of(f).style.merge(w.style).color!;
+            final Color su;
+            if (w.data == '1' || w.data == '2' || w.data == '3') {
+              su = _mattone;
+            } else if (w.data == 'Cambiata dal segnale') {
+              su = _sostSfondo;
+            } else if (w.data == 'Resta in programma') {
+              su = _mantSfondo;
+            } else {
+              // Le tappe stanno direttamente sullo sfondo della pagina.
+              su = _sfondo;
+            }
+            expect(_rapporto(c, su), greaterThanOrEqualTo(4.5), reason: 'Text "${w.data}"');
           }
-          expect(_rapporto(c, su), greaterThanOrEqualTo(4.5), reason: 'Text "${w.data}"');
         }
       }
+
+      controlla(); // chiuse
+      for (var i = 0; i < 3; i++) {
+        await t.tap(find.byType(StopCard).at(i));
+        await t.pumpAndSettle();
+      }
+      expect(find.text('Perché ti piace camminare.'), findsNWidgets(3));
+      controlla(); // aperte
     });
   });
 
@@ -288,6 +299,9 @@ void main() {
 
     testWidgets('interruttori e "Come arrivo qui" >= 44 px', (t) async {
       await _monta(t, const Size(390, 844));
+      // La tappa e' una riga chiusa: si apre per trovare "Come arrivo qui".
+      await t.tap(find.byType(StopCard).first);
+      await t.pumpAndSettle();
       final tutti = [
         for (var i = 0; i < 3; i++) find.byType(InterruttoreSegnale).at(i),
         find.widgetWithText(TextButton, 'Come arrivo qui'),
@@ -418,9 +432,11 @@ void main() {
   });
 
   group('5. card della tappa', () {
-    testWidgets('ordine: numero | titolo, ora e durata, motivo, curiosita\', Come arrivo qui', (t) async {
+    testWidgets('ordine: numero | ora e durata, titolo, (aperta) motivo, curiosita\', Come arrivo qui', (t) async {
       await _monta(t, const Size(390, 2400));
       final card = find.byType(StopCard).first;
+      await t.tap(card);
+      await t.pumpAndSettle();
       Finder d(Finder f) => find.descendant(of: card, matching: f);
       final num = t.getRect(d(find.text('1')));
       final titolo = t.getRect(d(find.text('Passeggiata sulle Mura')));
@@ -431,8 +447,8 @@ void main() {
       expect(num.right, lessThanOrEqualTo(titolo.left));
       final cerchioRect = t.getRect(d(find.ancestor(of: find.text('1'), matching: find.byType(Container))).first);
       expect(cerchioRect.size, const Size(32, 32));
-      expect(titolo.bottom, lessThanOrEqualTo(ora.top));
-      expect(ora.bottom, lessThanOrEqualTo(motivo.top));
+      expect(ora.bottom, lessThanOrEqualTo(titolo.top));
+      expect(titolo.bottom, lessThanOrEqualTo(motivo.top));
       expect(motivo.bottom, lessThanOrEqualTo(cur.top));
       expect(cur.bottom, lessThanOrEqualTo(come.top));
       final cerchio = t.widget<Container>(d(find.ancestor(of: find.text('1'), matching: find.byType(Container))).first);

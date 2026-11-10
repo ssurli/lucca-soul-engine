@@ -177,6 +177,9 @@ void main() {
       for (var i = 0; i < 3; i++) {
         expect(tester.getSize(interruttori.at(i)).height, greaterThanOrEqualTo(44));
       }
+      // La tappa e' una riga chiusa: si apre per trovare "Come arrivo qui".
+      await tester.tap(find.byType(StopCard).first);
+      await tester.pumpAndSettle();
       final come = find.widgetWithText(TextButton, 'Come arrivo qui');
       expect(come, findsOneWidget);
       expect(tester.getSize(come).height, greaterThanOrEqualTo(44));

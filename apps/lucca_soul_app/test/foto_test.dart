@@ -61,6 +61,9 @@ Future<void> _montaCard(WidgetTester t, String id, ArchivioFoto a) async {
     ),
   );
   await t.pump();
+  // La tappa e' una riga chiusa: la si apre prima di cercare la foto.
+  await t.tap(find.byType(StopCard));
+  await t.pumpAndSettle();
 }
 
 void main() {
@@ -193,6 +196,11 @@ void main() {
         ),
       ),
     );
+    await t.pumpAndSettle();
+    expect(t.takeException(), isNull);
+    // Le tappe sono righe chiuse: si apre la prima (quella con la foto).
+    await t.ensureVisible(find.byType(StopCard).first);
+    await t.tap(find.byType(StopCard).first);
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
     expect(find.byType(MiniaturaFoto), findsOneWidget);

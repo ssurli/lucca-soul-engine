@@ -46,6 +46,7 @@ class AppStrings {
       _isEn ? '$segnale: no further change.' : '$segnale: nessun altro cambiamento.';
   String get resetShortAction => _isEn ? 'Original plan' : 'Percorso iniziale';
   String get howToArrive => _isEn ? 'How to get here' : 'Come arrivo qui';
+  String minutesOnFoot(int n) => _isEn ? 'about $n min on foot' : 'circa $n min a piedi';
   String get changedStop => _isEn ? 'Changed by the signal' : 'Cambiata dal segnale';
 
   // --- Urban Memory (Wave 2): conferimento contestuale --------------------

@@ -71,14 +71,19 @@ void main() {
       fontePubblica: true,
     );
 
-    Future<void> pump(WidgetTester tester, List<Curiosita> c, [AppStrings? s]) => tester.pumpWidget(_app(
-          StopCard(
-            stop: _stop(titolo: 'T', curiosita: c),
-            evidenziata: false,
-            strings: s ?? _strings,
-            onLasciaRicordo: () {},
-          ),
-        ),);
+    // La tappa e' una riga chiusa: si apre con un tocco prima di cercare le curiosita'.
+    Future<void> pump(WidgetTester tester, List<Curiosita> c, [AppStrings? s]) async {
+      await tester.pumpWidget(_app(
+        StopCard(
+          stop: _stop(titolo: 'T', curiosita: c),
+          evidenziata: false,
+          strings: s ?? _strings,
+          onLasciaRicordo: () {},
+        ),
+      ),);
+      await tester.tap(find.byType(StopCard));
+      await tester.pumpAndSettle();
+    }
 
     testWidgets('leggenda: etichetta Leggenda, testo Si racconta, fonte', (tester) async {
       await pump(tester, [leggenda]);

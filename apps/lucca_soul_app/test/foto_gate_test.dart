@@ -53,6 +53,12 @@ Future<void> _monta(WidgetTester t, FotoTappa? foto, {Size size = const Size(390
     ),
   ),);
   await t.pump();
+  // La tappa e' una riga chiusa: la si apre (se non lo e' gia', dopo un
+  // rimontaggio con lo stesso stato) prima di misurare foto e contenuto.
+  if (find.text('perché sì').evaluate().isEmpty) {
+    await t.tap(find.byType(StopCard));
+    await t.pumpAndSettle();
+  }
 }
 
 void main() {

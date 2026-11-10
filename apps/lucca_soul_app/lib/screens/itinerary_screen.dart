@@ -19,6 +19,7 @@ import '../util/excluded_stop_line.dart';
 import '../util/itinerary_diff.dart';
 import '../util/interruttori_controller.dart';
 import '../util/known_places.dart';
+import '../util/minuti_a_piedi.dart';
 import '../util/signal_presets.dart';
 import '../widgets/adaptive_card.dart';
 import '../widgets/colonna_centrata.dart';
@@ -66,6 +67,25 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   ArchivioFoto _foto = const ArchivioFoto();
   bool _caricando = true;
   String? _errore;
+
+  /// Indici (0-based) delle tappe aperte: unico stato aperto/chiuso, cosi'
+  /// anche dall'esterno (es. tocco sulla mappa) si apre una tappa per indice.
+  final Set<int> _aperte = {};
+
+  /// Una GlobalKey per tappa (per indice), per scorrere la lista alla tappa.
+  final List<GlobalKey> _chiavi = [];
+  Itinerary? _ultimoMostrato;
+
+  GlobalKey _chiave(int i) {
+    while (_chiavi.length <= i) {
+      _chiavi.add(GlobalKey());
+    }
+    return _chiavi[i];
+  }
+
+  void _toggleTappa(int i) => setState(() {
+        if (!_aperte.remove(i)) _aperte.add(i);
+      });
 
   @override
   void initState() {
@@ -197,6 +217,11 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   Widget _buildItinerario(
       BuildContext context, InterruttoriController controller,) {
     final itinerario = controller.itinerarioMostrato;
+    // Itinerario riscritto (o ricaricato): tutte le tappe tornano chiuse.
+    if (!identical(itinerario, _ultimoMostrato)) {
+      _ultimoMostrato = itinerario;
+      _aperte.clear();
+    }
     return Column(
       children: [
         TestataGiornata(
@@ -219,8 +244,17 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                         style: Theme.of(context).textTheme.headlineSmall,),
                   ),
                   AdaptiveCard(controller: controller, strings: _strings),
+                  const SizedBox(height: 8),
                   for (var i = 0; i < itinerario.stops.length; i++)
                     StopCard(
+                      key: _chiave(i),
+                      aperta: _aperte.contains(i),
+                      onToggle: () => _toggleTappa(i),
+                      conLinea: i < itinerario.stops.length - 1,
+                      minutiAllaProssima: i < itinerario.stops.length - 1
+                          ? minutiAPiedi(
+                              itinerario.stops[i], itinerario.stops[i + 1],)
+                          : null,
                       stop: itinerario.stops[i],
                       evidenziata: tappaSostituita(itinerario.stops[i]),
                       mantenutaSenzaAlternativa:
@@ -307,7 +341,11 @@ class CuriosityTile extends StatelessWidget {
   }
 }
 
-class StopCard extends StatelessWidget {
+/// Una tappa come riga chiusa (numero, ora e durata, titolo, esito, freccia);
+/// un tocco su tutta la riga la apre e mostra foto, motivo, curiosita', link e
+/// ricordo. Aperta/chiusa e' controllabile dall'esterno ([aperta] + [onToggle],
+/// per indice dallo schermo); senza [onToggle] tiene lo stato da se'.
+class StopCard extends StatefulWidget {
   final ItineraryStop stop;
   final bool evidenziata;
 
@@ -319,8 +357,18 @@ class StopCard extends StatelessWidget {
   /// Numero della tappa (1-based), nello stesso ordine della mappa. Null = senza cerchio.
   final int? numero;
 
-  /// Foto della tappa, se esiste (file + voce nel json). Null = card invariata.
+  /// Foto della tappa, se esiste (file + voce nel json). Null = nessuna foto.
   final FotoTappa? foto;
+
+  /// Stato aperto controllato dall'esterno. Null = stato interno (chiusa).
+  final bool? aperta;
+  final VoidCallback? onToggle;
+
+  /// Minuti a piedi verso la tappa successiva (da [minutiAPiedi]). Null = nessuna riga.
+  final int? minutiAllaProssima;
+
+  /// Linea verticale verso il numero della tappa successiva.
+  final bool conLinea;
 
   const StopCard({
     super.key,
@@ -331,87 +379,173 @@ class StopCard extends StatelessWidget {
     required this.onLasciaRicordo,
     this.numero,
     this.foto,
+    this.aperta,
+    this.onToggle,
+    this.minutiAllaProssima,
+    this.conLinea = false,
   });
+
+  @override
+  State<StopCard> createState() => _StopCardState();
+}
+
+class _StopCardState extends State<StopCard> {
+  bool _interna = false;
+
+  bool get _aperta => widget.aperta ?? _interna;
+
+  void _tocco() {
+    if (widget.onToggle != null) {
+      widget.onToggle!();
+    } else {
+      setState(() => _interna = !_interna);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final etichetta = evidenziata
+    final strings = widget.strings;
+    final stop = widget.stop;
+    final etichetta = widget.evidenziata
         ? EtichettaEsito(
             testo: strings.changedStop,
             sfondo: Tk.sostituitaSfondo,
             colore: Tk.sostituitaTesto,)
-        : mantenutaSenzaAlternativa
+        : widget.mantenutaSenzaAlternativa
             ? EtichettaEsito(
                 testo: strings.keptNoAlternative,
                 sfondo: Tk.mantenutaSfondo,
                 colore: Tk.mantenutaTesto,)
             : null;
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (numero != null) ...[
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                    color: Tk.accento, shape: BoxShape.circle,),
-                child: Text('$numero',
-                    style: stileTesto(15, 800, Tk.testoSuAccento),),
-              ),
-              const SizedBox(width: 12),
-            ],
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (etichetta != null)
-                    Padding(
-                        padding: const EdgeInsets.only(bottom: 6),
-                        child: etichetta,),
-                  Text(titoloTappa(stop.titolo, strings),
-                      style: theme.textTheme.titleMedium,),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${stop.arrivo.label} · ${stop.durataMin} ${strings.durationLabel}',
-                    style: stileTesto(14, 700, Tk.testoSecondario),
-                  ),
-                  if (foto != null)
-                    SezioneFoto(foto: foto!, titolo: titoloTappa(stop.titolo, strings), strings: strings),
-                  const SizedBox(height: 10),
-                  // Il `reason` è il prodotto: sempre in evidenza, mai una nota a
-                  // piè di pagina.
-                  Text(stop.reason, style: theme.textTheme.bodyLarge),
-                  for (final c in stop.curiosita)
-                    CuriosityTile(curiosita: c, strings: strings),
-                  if (stop.puntoArrivo != null)
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        onPressed: () =>
-                            apriInNuovaScheda(urlComeArrivo(stop.puntoArrivo)!),
-                        icon: const Icon(Icons.directions_walk, size: 18),
-                        label: Text(strings.howToArrive),
+    final titolo = titoloTappa(stop.titolo, strings);
+    final aperta = _aperta;
+    const sinistra = 32.0 + 12.0; // cerchio + spazio: la colonna di destra
+    final minuti = widget.minutiAllaProssima;
+    final rientro = widget.numero != null ? sinistra : 0.0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Stack(
+        children: [
+          if (widget.numero != null && widget.conLinea)
+            const Positioned(
+              left: 15,
+              top: 32,
+              bottom: 0,
+              width: 2,
+              child: ColoredBox(color: Tk.cardBordo),
+            ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Semantics(
+                container: true,
+                button: true,
+                expanded: aperta,
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: _tocco,
+                    borderRadius: BorderRadius.circular(Tk.raggio),
+                    child: ConstrainedBox(
+                      constraints:
+                          const BoxConstraints(minHeight: Tk.areaMinima),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (widget.numero != null) ...[
+                            Container(
+                              width: 32,
+                              height: 32,
+                              alignment: Alignment.center,
+                              decoration: const BoxDecoration(
+                                  color: Tk.accento, shape: BoxShape.circle,),
+                              child: Text('${widget.numero}',
+                                  style: stileTesto(15, 800, Tk.testoSuAccento),),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${stop.arrivo.label} · ${stop.durataMin} ${strings.durationLabel}',
+                                  style: stileTesto(14, 700, Tk.testoSecondario),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(titolo, style: theme.textTheme.titleMedium),
+                                if (etichetta != null)
+                                  Padding(
+                                      padding: const EdgeInsets.only(top: 6),
+                                      child: etichetta,),
+                              ],
+                            ),
+                          ),
+                          SizedBox(
+                            width: Tk.areaMinima,
+                            height: Tk.areaMinima,
+                            child: AnimatedRotation(
+                              turns: aperta ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 150),
+                              child: const Icon(Icons.expand_more,
+                                  color: Tk.testoSecondario,),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton.icon(
-                      onPressed: onLasciaRicordo,
-                      icon: const Icon(Icons.auto_stories_outlined, size: 18),
-                      label: Text(strings.leaveMemoryAction),
-                    ),
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
-        ),
+              if (aperta)
+                Padding(
+                  padding: EdgeInsets.only(left: rientro, top: 4, right: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (widget.foto != null)
+                        SezioneFoto(
+                            foto: widget.foto!, titolo: titolo, strings: strings,),
+                      const SizedBox(height: 10),
+                      // Il `reason` è il prodotto: sempre in evidenza, mai una nota a
+                      // piè di pagina.
+                      Text(stop.reason, style: theme.textTheme.bodyLarge),
+                      for (final c in stop.curiosita)
+                        CuriosityTile(curiosita: c, strings: strings),
+                      if (stop.puntoArrivo != null)
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: () => apriInNuovaScheda(
+                                urlComeArrivo(stop.puntoArrivo)!,),
+                            icon: const Icon(Icons.directions_walk, size: 18),
+                            label: Text(strings.howToArrive),
+                          ),
+                        ),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          onPressed: widget.onLasciaRicordo,
+                          icon: const Icon(Icons.auto_stories_outlined,
+                              size: 18,),
+                          label: Text(strings.leaveMemoryAction),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (minuti != null)
+                Padding(
+                  padding: EdgeInsets.only(left: rientro, top: 6, bottom: 6),
+                  child: Text(strings.minutesOnFoot(minuti),
+                      style: stileTesto(13, 600, Tk.testoSecondario),),
+                )
+              else
+                const SizedBox(height: 12),
+            ],
+          ),
+        ],
       ),
     );
   }
