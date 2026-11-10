@@ -406,8 +406,13 @@ void main() {
       final comando = find.text('Percorso iniziale');
       expect(comando, findsOneWidget);
       expect(find.text('Annulla'), findsNothing);
-      expect(t.getRect(comando).left, greaterThanOrEqualTo(t.getRect(testo).right - 1),
-          reason: 'Percorso iniziale a destra del riepilogo',);
+      final titolo = find.text('È cambiato qualcosa?');
+      expect(t.getRect(comando).left, greaterThanOrEqualTo(t.getRect(titolo).right - 1),
+          reason: 'Percorso iniziale a destra del titolo, sulla stessa riga',);
+      expect((t.getRect(comando).center.dy - t.getRect(titolo).center.dy).abs(), lessThan(6),
+          reason: 'stessa riga del titolo',);
+      expect(t.getRect(comando).bottom, lessThanOrEqualTo(t.getRect(testo).top),
+          reason: 'Percorso iniziale sopra la fascia',);
       final fascia = t.widget<Container>(find.ancestor(of: testo, matching: find.byType(Container)).first);
       expect((fascia.decoration! as BoxDecoration).color, _avviso);
       expect(_colore(t, comando), _mattone);

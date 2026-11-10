@@ -83,8 +83,25 @@ class AdaptiveCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(strings.adaptiveCardTitle,
-                style: stileTesto(13, 700, Tk.testoSecondario),),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(strings.adaptiveCardTitle,
+                      style: stileTesto(13, 700, Tk.testoSecondario),),
+                ),
+                // Nulla da ripristinare (nessun interruttore acceso): nessun comando.
+                if (!stato.nessunoAcceso)
+                  TextButton(
+                    onPressed: controller.tornaAlPercorsoIniziale,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(Tk.areaMinima, Tk.areaMinima),
+                      foregroundColor: Tk.accento,
+                      textStyle: stileTesto(14, 800, Tk.accento),
+                    ),
+                    child: Text(strings.resetShortAction),
+                  ),
+              ],
+            ),
             const SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -104,9 +121,6 @@ class AdaptiveCard extends StatelessWidget {
                 child: FasciaRiepilogo(
                   testo: _riepilogo(),
                   secondaRiga: _secondaRiga(),
-                  // Nulla da ripristinare (nessun interruttore acceso): nessun comando.
-                  azione: stato.nessunoAcceso ? null : strings.resetShortAction,
-                  onAzione: controller.tornaAlPercorsoIniziale,
                 ),
               ),
             if (controller.inCorso)
@@ -193,55 +207,29 @@ class InterruttoreSegnale extends StatelessWidget {
   }
 }
 
-/// Fascia di riepilogo (sfondo avviso): testo a sinistra, comando testuale a
-/// destra (accento su #EFE1CF). Senza [azione] non c'e' comando.
+/// Fascia di riepilogo (sfondo avviso): il testo usa tutta la larghezza. Il
+/// comando "Percorso iniziale" sta sulla riga del titolo della card.
 class FasciaRiepilogo extends StatelessWidget {
   final String testo;
   final String? secondaRiga;
-  final String? azione;
-  final VoidCallback onAzione;
 
-  const FasciaRiepilogo(
-      {super.key,
-      required this.testo,
-      this.secondaRiga,
-      this.azione,
-      required this.onAzione,});
+  const FasciaRiepilogo({super.key, required this.testo, this.secondaRiga});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
           color: Tk.avviso, borderRadius: BorderRadius.circular(Tk.raggio),),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(testo, style: stileTesto(14, 600, Tk.testo)),
-                  if (secondaRiga != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(secondaRiga!,
-                          style: stileTesto(14, 600, Tk.testo),),
-                    ),
-                ],
-              ),
-            ),
-          ),
-          if (azione != null)
-            TextButton(
-              onPressed: onAzione,
-              style: TextButton.styleFrom(
-                minimumSize: const Size(Tk.areaMinima, Tk.areaMinima),
-                foregroundColor: Tk.accento,
-                textStyle: stileTesto(14, 800, Tk.accento),
-              ),
-              child: Text(azione!),
+          Text(testo, style: stileTesto(14, 600, Tk.testo)),
+          if (secondaRiga != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(secondaRiga!, style: stileTesto(14, 600, Tk.testo)),
             ),
         ],
       ),
