@@ -78,10 +78,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
   DashboardIndexResponse? _indexResponse;
   bool _caricandoIndex = true;
   String? _erroreIndex;
+  bool _erroreIndexDiRete = false;
 
   DashboardFlowsResponse? _flowsResponse;
   bool _caricandoFlows = true;
   String? _erroreFlows;
+  bool _erroreFlowsDiRete = false;
 
   AppStrings get _strings => AppStrings.forLanguages([_lingua]);
   String get _periodo => formatPeriodo(_mese);
@@ -107,7 +109,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() => _indexResponse = risposta);
     } on BffException catch (error) {
       if (!mounted) return;
-      setState(() => _erroreIndex = error.message);
+      setState(() {
+        _erroreIndex = error.message;
+        _erroreIndexDiRete = error.connessioneAssente;
+      });
     } finally {
       if (mounted) setState(() => _caricandoIndex = false);
     }
@@ -128,7 +133,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       setState(() => _flowsResponse = risposta);
     } on BffException catch (error) {
       if (!mounted) return;
-      setState(() => _erroreFlows = error.message);
+      setState(() {
+        _erroreFlows = error.message;
+        _erroreFlowsDiRete = error.connessioneAssente;
+      });
     } finally {
       if (mounted) setState(() => _caricandoFlows = false);
     }
@@ -214,7 +222,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 strings: strings,
                 audience: _audience,
                 caricando: _caricandoIndex,
-                errore: _erroreIndex,
+                errore: _erroreIndex == null
+                    ? null
+                    : strings.serviceError(connessioneAssente: _erroreIndexDiRete),
                 risposta: _indexResponse,
                 onRetry: _caricaIndex,
               ),
@@ -224,7 +234,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 filtroGiorno: _filtroGiorno,
                 filtroOra: _filtroOra,
                 caricando: _caricandoFlows,
-                errore: _erroreFlows,
+                errore: _erroreFlows == null
+                    ? null
+                    : strings.serviceError(connessioneAssente: _erroreFlowsDiRete),
                 risposta: _flowsResponse,
                 onRetry: _caricaFlows,
                 onScegliGiorno: _scegliGiorno,

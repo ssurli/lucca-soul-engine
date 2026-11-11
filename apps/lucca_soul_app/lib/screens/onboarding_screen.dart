@@ -241,9 +241,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                    _erroreDiRete
-                        ? AppStrings.forLanguages([_lingua]).noConnection
-                        : _erroreInvio!,
+                    AppStrings.forLanguages([_lingua])
+                        .serviceError(connessioneAssente: _erroreDiRete),
                     style: TextStyle(color: Theme.of(context).colorScheme.error),),
               ),
             Padding(

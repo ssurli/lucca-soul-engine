@@ -248,15 +248,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
               Icon(Icons.wifi_off,
                   size: 40, color: Theme.of(context).colorScheme.error,),
               const SizedBox(height: 12),
-              if (_erroreDiRete)
-                Text(_strings.noConnection, textAlign: TextAlign.center)
-              else ...[
-                Text(_strings.itineraryError, textAlign: TextAlign.center),
-                const SizedBox(height: 4),
-                Text(_errore!,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodySmall,),
-              ],
+              Text(_strings.serviceError(connessioneAssente: _erroreDiRete),
+                  textAlign: TextAlign.center,),
               const SizedBox(height: 16),
               FilledButton(
                   onPressed: _caricaItinerario, child: Text(_strings.retry),),

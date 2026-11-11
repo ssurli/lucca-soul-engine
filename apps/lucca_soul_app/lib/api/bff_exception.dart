@@ -10,11 +10,17 @@ class BffException implements Exception {
   /// messaggio tecnico resta nei log di debug: la UI mostra un testo proprio.
   final bool connessioneAssente;
 
-  const BffException(this.message, {this.statusCode}) : connessioneAssente = false;
+  /// Vero se [message] è il `detail` TESTUALE scritto dal BFF (non il
+  /// testo di ripiego dell'app né una lista di validazione di FastAPI).
+  final bool dettaglioDelServer;
+
+  const BffException(this.message, {this.statusCode, this.dettaglioDelServer = false})
+      : connessioneAssente = false;
 
   const BffException.rete(this.message)
       : statusCode = null,
-        connessioneAssente = true;
+        connessioneAssente = true,
+        dettaglioDelServer = false;
 
   @override
   String toString() =>

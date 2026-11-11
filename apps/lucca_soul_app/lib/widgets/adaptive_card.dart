@@ -135,7 +135,7 @@ class AdaptiveCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(top: 8),
                 child: Text(
-                    controller.erroreDiRete ? strings.adaptNoConnection : controller.errore!,
+                    strings.adaptServiceError(connessioneAssente: controller.erroreDiRete),
                     style: TextStyle(color: theme.colorScheme.error),),
               ),
           ],

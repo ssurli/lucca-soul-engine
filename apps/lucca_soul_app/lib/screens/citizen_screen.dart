@@ -37,6 +37,7 @@ class _CitizenScreenState extends State<CitizenScreen> {
   List<MemoryContribution> _memorie = const [];
   bool _caricando = true;
   String? _errore;
+  bool _erroreDiRete = false;
 
   AppStrings get _strings => AppStrings.forLanguages([_lingua]);
 
@@ -50,12 +51,16 @@ class _CitizenScreenState extends State<CitizenScreen> {
     setState(() {
       _caricando = true;
       _errore = null;
+      _erroreDiRete = false;
     });
     try {
       final memorie = await widget.bffClient.memoriesForPlace(_placeId);
       setState(() => _memorie = memorie);
     } on BffException catch (error) {
-      setState(() => _errore = error.message);
+      setState(() {
+        _errore = error.message;
+        _erroreDiRete = error.connessioneAssente;
+      });
     } finally {
       if (mounted) setState(() => _caricando = false);
     }
@@ -161,9 +166,7 @@ class _CitizenScreenState extends State<CitizenScreen> {
             children: [
               Icon(Icons.wifi_off, size: 40, color: Theme.of(context).colorScheme.error),
               const SizedBox(height: 12),
-              Text(strings.citizenError, textAlign: TextAlign.center),
-              const SizedBox(height: 4),
-              Text(_errore!, textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodySmall),
+              Text(strings.serviceError(connessioneAssente: _erroreDiRete), textAlign: TextAlign.center),
               const SizedBox(height: 16),
               FilledButton(onPressed: _carica, child: Text(strings.retry)),
             ],
