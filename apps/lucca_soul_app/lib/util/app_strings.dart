@@ -222,7 +222,7 @@ class AppStrings {
   String changedStopsPart(int n) =>
       _isEn ? (n == 1 ? '1 stop changed' : '$n stops changed') : (n == 1 ? '1 tappa cambiata' : '$n tappe cambiate');
   String keptStopsPart(int n) =>
-      _isEn ? '$n stay${n == 1 ? 's' : ''} in plan' : (n == 1 ? '1 resta in programma' : '$n restano in programma');
+      _isEn ? '$n with no suitable alternative' : '$n senza alternativa adatta';
   String removedStopsPart(int n) =>
       _isEn ? (n == 1 ? '1 stop left out' : '$n stops left out') : (n == 1 ? '1 tappa tolta' : '$n tappe tolte');
 

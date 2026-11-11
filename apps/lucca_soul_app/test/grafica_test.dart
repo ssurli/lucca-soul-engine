@@ -215,7 +215,7 @@ void main() {
       ]);
       expect(
         riepilogoCambio(segnali: ['Piove'], adattato: adattato, originale: originale, strings: _it),
-        'Piove: 2 tappe cambiate, 1 resta in programma.',
+        'Piove: 2 tappe cambiate, 1 senza alternativa adatta.',
       );
     });
 
@@ -240,7 +240,7 @@ void main() {
       final a2 = _itin([_stop('a', esito: 'sostituita'), _stop('b', esito: 'mantenuta_senza_alternativa')]);
       expect(
         riepilogoCambio(segnali: ['It is raining'], adattato: a2, originale: originale, strings: en),
-        'It is raining: 1 stop changed, 1 stays in plan.',
+        'It is raining: 1 stop changed, 1 with no suitable alternative.',
       );
     });
 
@@ -275,7 +275,7 @@ void main() {
     expect(find.text('Percorso iniziale'), findsNothing);
     await tester.tap(find.text('Piove'));
     await tester.pumpAndSettle();
-    expect(find.text('Piove: 1 tappa cambiata, 1 resta in programma.'), findsOneWidget);
+    expect(find.text('Piove: 1 tappa cambiata, 1 senza alternativa adatta.'), findsOneWidget);
     expect(find.text('Percorso iniziale'), findsOneWidget);
     expect(find.text('Annulla'), findsNothing);
     expect(find.text('Torna al percorso iniziale'), findsNothing);

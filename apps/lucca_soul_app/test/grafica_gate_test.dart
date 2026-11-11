@@ -401,7 +401,7 @@ void main() {
       await montaCard(t);
       await t.tap(find.text('Piove'));
       await t.pumpAndSettle();
-      final testo = find.text('Piove: 2 tappe cambiate, 1 resta in programma.');
+      final testo = find.text('Piove: 2 tappe cambiate, 1 senza alternativa adatta.');
       expect(testo, findsOneWidget);
       final comando = find.text('Percorso iniziale');
       expect(comando, findsOneWidget);
