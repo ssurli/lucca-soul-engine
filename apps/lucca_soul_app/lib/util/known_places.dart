@@ -23,6 +23,7 @@ const List<String> kKnownPlaceIds = [
   'via-fillungo',
   'baluardo-san-paolino',
   'museo-nazionale-guinigi',
+  'chiesa-san-francesco',
 ];
 
 /// Nome leggibile di ogni luogo di [kKnownPlaceIds] (proprieta' `nome` del
@@ -43,6 +44,7 @@ const Map<String, String> kKnownPlaceNames = {
   'via-fillungo': 'Via Fillungo',
   'baluardo-san-paolino': 'Baluardo San Paolino',
   'museo-nazionale-guinigi': 'Museo Nazionale di Villa Guinigi',
+  'chiesa-san-francesco': 'Chiesa di San Francesco',
 };
 
 /// Gli id di [kKnownPlaceIds] in ordine alfabetico di nome (senza distinguere
@@ -50,10 +52,12 @@ const Map<String, String> kKnownPlaceNames = {
 List<String> kKnownPlaceIdsPerNome() => [...kKnownPlaceIds]
   ..sort((a, b) => kKnownPlaceNames[a]!.toLowerCase().compareTo(kKnownPlaceNames[b]!.toLowerCase()));
 
-/// Rispecchia (un sottoinsieme delle) relazioni `SI_SVOLGE_A`
-/// (Esperienza -> Luogo) del seed. Se un'esperienza non compare qui, non è
-/// un errore: si userà il suo stesso `experience_id` come unico
-/// riferimento in `riguarda` (vedi `riguardaPerEsperienza`).
+/// Rispecchia il `place_id` di TUTTE le esperienze del seed (relazione
+/// `SI_SVOLGE_A` Esperienza -> Luogo); il test
+/// `test/esperienze_luoghi_seed_test.dart` la confronta con il seed. Se
+/// un'esperienza futura non compare qui, non è un errore: si userà il suo
+/// stesso `experience_id` come unico riferimento in `riguarda` (vedi
+/// `riguardaPerEsperienza`).
 const Map<String, String> kExperienceIdToPlaceId = {
   'exp-passeggiata-mura': 'mura-urbane',
   'exp-bici-mura': 'mura-urbane',
@@ -77,6 +81,19 @@ const Map<String, String> kExperienceIdToPlaceId = {
   'exp-torchio-stamperia': 'piazza-anfiteatro',
   'exp-buccellato-pasticceria': 'piazza-napoleone',
   'exp-telaio-tessitura': 'san-frediano',
+  'exp-interno-san-michele': 'san-michele-in-foro',
+  'exp-interno-san-frediano': 'san-frediano',
+  'exp-chiesa-chiostro-san-francesco': 'chiesa-san-francesco',
+  'exp-chiostro-real-collegio': 'real-collegio',
+  'exp-sortita-san-paolino': 'baluardo-san-paolino',
+  'exp-museo-barsanti-matteucci': 'museo-barsanti-matteucci',
+  'exp-pfanner-dalle-mura': 'palazzo-pfanner',
+  'exp-via-del-fosso': 'via-del-fosso',
+  'exp-sotterraneo-santa-croce': 'baluardo-santa-croce',
+  'exp-santi-giovanni-reparata': 'santi-giovanni-reparata',
+  'exp-finestra-bernardini': 'palazzo-bernardini',
+  'exp-solchi-san-pietro-somaldi': 'san-pietro-somaldi',
+  'exp-parco-giochi-san-donato': 'parco-giochi-san-donato',
 };
 
 /// Gli id (di Luogo/Bottega/Artista) che un conferimento aperto da una
