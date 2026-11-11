@@ -26,6 +26,29 @@ class TitoloMarchio extends StatelessWidget {
   }
 }
 
+/// Etichetta "Demo" (build con `--dart-define=DEMO=true`): bordo e testo
+/// #F6F2EA sulla testata scura. Sta a destra del nome, sulla riga dell'AppBar.
+class EtichettaDemo extends StatelessWidget {
+  final AppStrings strings;
+  const EtichettaDemo({super.key, required this.strings});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 1, horizontal: 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: Tk.testoSuTestata, width: Tk.bordoEtichetta),
+        borderRadius: BorderRadius.circular(Tk.raggioEtichetta),
+      ),
+      child: Text(
+        strings.demoLabel.toUpperCase(),
+        semanticsLabel: strings.demoLabel,
+        style: stileTesto(12, 800, Tk.testoSuTestata).copyWith(letterSpacing: 0.6),
+      ),
+    );
+  }
+}
+
 /// Fascia scura sotto l'AppBar: data, fascia oraria, numero di tappe, "a piedi".
 class TestataGiornata extends StatelessWidget {
   final Itinerary itinerario;
@@ -53,7 +76,14 @@ class TestataGiornata extends StatelessWidget {
       child: ColonnaCentrata(
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(riga, style: stileTesto(15, 600, Tk.testoSuTestata)),
+          child: Wrap(
+            spacing: 10,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Text(riga, style: stileTesto(15, 600, Tk.testoSuTestata)),
+            ],
+          ),
         ),
       ),
     );

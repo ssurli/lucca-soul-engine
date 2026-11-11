@@ -69,6 +69,11 @@ void main() {
           ),
         );
     await tester.pumpWidget(app(_stop(punto: punto)));
+    // La tappa e' una riga chiusa: si apre con un tocco (lo stato resta anche
+    // nei pumpWidget successivi, stesso StopCard nello stesso posto).
+    expect(find.text('Come arrivo qui'), findsNothing);
+    await tester.tap(find.byType(StopCard));
+    await tester.pumpAndSettle();
     expect(find.text('Come arrivo qui'), findsOneWidget);
     await tester.pumpWidget(app(_stop()));
     expect(find.text('Come arrivo qui'), findsNothing);

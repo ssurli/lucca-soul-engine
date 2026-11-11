@@ -177,6 +177,9 @@ void main() {
       for (var i = 0; i < 3; i++) {
         expect(tester.getSize(interruttori.at(i)).height, greaterThanOrEqualTo(44));
       }
+      // La tappa e' una riga chiusa: si apre per trovare "Come arrivo qui".
+      await tester.tap(find.byType(StopCard).first);
+      await tester.pumpAndSettle();
       final come = find.widgetWithText(TextButton, 'Come arrivo qui');
       expect(come, findsOneWidget);
       expect(tester.getSize(come).height, greaterThanOrEqualTo(44));
@@ -247,7 +250,7 @@ void main() {
     });
   });
 
-  testWidgets('la fascia di riepilogo compare dopo un cambio, con Annulla', (tester) async {
+  testWidgets('la fascia di riepilogo compare dopo un cambio, con Percorso iniziale', (tester) async {
     final originale = _itin([_stop('a'), _stop('b')]);
     final adattato = _itin([_stop('a', esito: 'sostituita'), _stop('b', esito: 'mantenuta_senza_alternativa')]);
     final client = BffClient(
@@ -269,12 +272,13 @@ void main() {
         ),
       ),
     );
-    expect(find.text('Annulla'), findsNothing);
+    expect(find.text('Percorso iniziale'), findsNothing);
     await tester.tap(find.text('Piove'));
     await tester.pumpAndSettle();
     expect(find.text('Piove: 1 tappa cambiata, 1 resta in programma.'), findsOneWidget);
-    expect(find.text('Annulla'), findsOneWidget);
-    expect(find.text('Torna al percorso iniziale'), findsOneWidget);
+    expect(find.text('Percorso iniziale'), findsOneWidget);
+    expect(find.text('Annulla'), findsNothing);
+    expect(find.text('Torna al percorso iniziale'), findsNothing);
   });
 
   test('nessun "gratis", "gratuit" o "€" nelle stringhe dell\'app', () {

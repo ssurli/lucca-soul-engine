@@ -115,10 +115,16 @@ void main() {
       await _monta(t, [...quattro, _s('coda')]);
       final seg = find.byType(Segnaposto);
       expect(seg, findsNWidgets(3));
-      // flutter_map fonde i nodi semantici dei marker nello stesso nodo:
-      // l'etichetta fusa deve contenere le tre etichette, in ordine, e nessuna per la tappa 3.
-      final righe = t.getSemantics(seg.first).label.split('\n');
-      expect(righe.where((r) => r.startsWith('Tappa')).toList(), ['Tappa 1', 'Tappa 2', 'Tappa 4']);
+      // Ora ogni segnaposto e' un pulsante: un nodo semantico proprio con la sua etichetta
+      // (prima flutter_map li fondeva in un nodo solo). Stesse etichette, stesso ordine,
+      // nessuna per la tappa 3.
+      final etichette = [
+        for (var i = 0; i < 3; i++) t.getSemantics(seg.at(i)).label,
+      ];
+      expect(etichette, ['Tappa 1', 'Tappa 2', 'Tappa 4']);
+      for (var i = 0; i < 3; i++) {
+        expect(t.getSemantics(seg.at(i)).flagsCollection.isButton, isTrue);
+      }
       h.dispose();
     });
   });

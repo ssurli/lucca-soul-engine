@@ -381,7 +381,7 @@ void main() {
 
   group('Compito B: stanchezza di partenza a 0 (widget)', () {
     testWidgets(
-        '"Sono stanco/a" acceso e poi spento: itinerario di partenza, richiesta iniziale con stanchezza 0.0',
+        '"Stanco/a" acceso e poi spento: itinerario di partenza, richiesta iniziale con stanchezza 0.0',
         (t) async {
       final bff = FakeBff();
       await _monta(t, bff);

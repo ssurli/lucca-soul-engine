@@ -238,25 +238,36 @@ void main() {
       expect(cont.color, _testo);
     });
 
-    testWidgets('ogni Text dentro una StopCard ha contrasto >= 4,5 sul suo sfondo', (t) async {
+    testWidgets('ogni Text dentro una StopCard ha contrasto >= 4,5 sul suo sfondo (riga chiusa e aperta)', (t) async {
       await _monta(t, const Size(390, 2400));
-      for (final card in find.byType(StopCard).evaluate()) {
-        for (final f in find.descendant(of: find.byWidget(card.widget), matching: find.byType(Text)).evaluate()) {
-          final w = f.widget as Text;
-          final c = DefaultTextStyle.of(f).style.merge(w.style).color!;
-          final Color su;
-          if (w.data == '1' || w.data == '2' || w.data == '3') {
-            su = _mattone;
-          } else if (w.data == 'Cambiata dal segnale') {
-            su = _sostSfondo;
-          } else if (w.data == 'Resta in programma') {
-            su = _mantSfondo;
-          } else {
-            su = _card;
+      void controlla() {
+        for (final card in find.byType(StopCard).evaluate()) {
+          for (final f in find.descendant(of: find.byWidget(card.widget), matching: find.byType(Text)).evaluate()) {
+            final w = f.widget as Text;
+            final c = DefaultTextStyle.of(f).style.merge(w.style).color!;
+            final Color su;
+            if (w.data == '1' || w.data == '2' || w.data == '3') {
+              su = _mattone;
+            } else if (w.data == 'Cambiata dal segnale') {
+              su = _sostSfondo;
+            } else if (w.data == 'Resta in programma') {
+              su = _mantSfondo;
+            } else {
+              // Le tappe stanno direttamente sullo sfondo della pagina.
+              su = _sfondo;
+            }
+            expect(_rapporto(c, su), greaterThanOrEqualTo(4.5), reason: 'Text "${w.data}"');
           }
-          expect(_rapporto(c, su), greaterThanOrEqualTo(4.5), reason: 'Text "${w.data}"');
         }
       }
+
+      controlla(); // chiuse
+      for (var i = 0; i < 3; i++) {
+        await t.tap(find.byType(StopCard).at(i));
+        await t.pumpAndSettle();
+      }
+      expect(find.text('Perché ti piace camminare.'), findsNWidgets(3));
+      controlla(); // aperte
     });
   });
 
@@ -288,6 +299,9 @@ void main() {
 
     testWidgets('interruttori e "Come arrivo qui" >= 44 px', (t) async {
       await _monta(t, const Size(390, 844));
+      // La tappa e' una riga chiusa: si apre per trovare "Come arrivo qui".
+      await t.tap(find.byType(StopCard).first);
+      await t.pumpAndSettle();
       final tutti = [
         for (var i = 0; i < 3; i++) find.byType(InterruttoreSegnale).at(i),
         find.widgetWithText(TextButton, 'Come arrivo qui'),
@@ -351,7 +365,7 @@ void main() {
 
     testWidgets('etichette esatte; spento = card; acceso = mattone, bianco, spunta', (t) async {
       await montaCard(t);
-      for (final e in ['Piove', 'Mura affollate', 'Sono stanco/a']) {
+      for (final e in ['Piove', 'Mura affollate', 'Stanco/a']) {
         expect(find.text(e), findsOneWidget);
       }
       Material mat(String e) => t.widget<Material>(
@@ -374,56 +388,60 @@ void main() {
       expect(mat('Mura affollate').color, _card);
       expect(find.byIcon(Icons.check), findsOneWidget);
 
-      await t.tap(find.text('Sono stanco/a'));
+      await t.tap(find.text('Stanco/a'));
       await t.pumpAndSettle();
-      expect(mat('Sono stanco/a').color, _mattone);
+      expect(mat('Stanco/a').color, _mattone);
       expect(find.byIcon(Icons.check), findsNWidgets(2));
       await t.tap(find.text('Piove'));
       await t.pumpAndSettle();
       expect(mat('Piove').color, _card);
     });
 
-    testWidgets('fascia: testo dagli esiti, Annulla a destra, Torna sotto', (t) async {
+    testWidgets('fascia: testo dagli esiti, Percorso iniziale a destra, niente Annulla', (t) async {
       await montaCard(t);
       await t.tap(find.text('Piove'));
       await t.pumpAndSettle();
       final testo = find.text('Piove: 2 tappe cambiate, 1 resta in programma.');
       expect(testo, findsOneWidget);
-      final annulla = find.text('Annulla');
-      final torna = find.text('Torna al percorso iniziale');
-      expect(annulla, findsOneWidget);
-      expect(t.getRect(annulla).left, greaterThanOrEqualTo(t.getRect(testo).right - 1),
-          reason: 'Annulla a destra del riepilogo',);
-      expect(t.getRect(torna).top, greaterThanOrEqualTo(t.getRect(annulla).bottom - 1),
-          reason: 'Torna sotto la fascia',);
+      final comando = find.text('Percorso iniziale');
+      expect(comando, findsOneWidget);
+      expect(find.text('Annulla'), findsNothing);
+      final titolo = find.text('È cambiato qualcosa?');
+      expect(t.getRect(comando).left, greaterThanOrEqualTo(t.getRect(titolo).right - 1),
+          reason: 'Percorso iniziale a destra del titolo, sulla stessa riga',);
+      expect((t.getRect(comando).center.dy - t.getRect(titolo).center.dy).abs(), lessThan(6),
+          reason: 'stessa riga del titolo',);
+      expect(t.getRect(comando).bottom, lessThanOrEqualTo(t.getRect(testo).top),
+          reason: 'Percorso iniziale sopra la fascia',);
       final fascia = t.widget<Container>(find.ancestor(of: testo, matching: find.byType(Container)).first);
       expect((fascia.decoration! as BoxDecoration).color, _avviso);
-      expect(_colore(t, annulla), _mattone);
-      expect(t.getSize(find.widgetWithText(TextButton, 'Annulla')).height, greaterThanOrEqualTo(44));
-      expect(t.getSize(find.widgetWithText(TextButton, 'Torna al percorso iniziale')).height,
-          greaterThanOrEqualTo(44),);
+      expect(_colore(t, comando), _mattone);
+      expect(t.getSize(find.widgetWithText(TextButton, 'Percorso iniziale')).height, greaterThanOrEqualTo(44));
     });
 
-    testWidgets('due segnali: il riepilogo li elenca; Torna azzera fascia e spunte', (t) async {
+    testWidgets('due segnali: il riepilogo li elenca; Percorso iniziale azzera spunte e toglie il comando', (t) async {
       await montaCard(t);
       await t.tap(find.text('Piove'));
       await t.pumpAndSettle();
       await t.tap(find.text('Mura affollate'));
       await t.pumpAndSettle();
       expect(find.textContaining('Piove, Mura affollate:'), findsOneWidget);
-      await t.tap(find.text('Torna al percorso iniziale'));
+      await t.tap(find.text('Percorso iniziale'));
       await t.pumpAndSettle();
-      // Per progetto il ritorno al percorso iniziale entra nella storia: la fascia
-      // resta, con il testo di ripristino, e Annulla puo' disfarlo.
+      // Il ritorno al percorso iniziale resta detto dalla fascia, senza comando
+      // (nulla da ripristinare).
       expect(find.text('Percorso iniziale ripristinato.'), findsOneWidget);
+      expect(find.text('Percorso iniziale'), findsNothing);
       expect(find.byIcon(Icons.check), findsNothing);
     });
   });
 
   group('5. card della tappa', () {
-    testWidgets('ordine: numero | titolo, ora e durata, motivo, curiosita\', Come arrivo qui', (t) async {
+    testWidgets('ordine: numero | ora e durata, titolo, (aperta) motivo, curiosita\', Come arrivo qui', (t) async {
       await _monta(t, const Size(390, 2400));
       final card = find.byType(StopCard).first;
+      await t.tap(card);
+      await t.pumpAndSettle();
       Finder d(Finder f) => find.descendant(of: card, matching: f);
       final num = t.getRect(d(find.text('1')));
       final titolo = t.getRect(d(find.text('Passeggiata sulle Mura')));
@@ -434,8 +452,8 @@ void main() {
       expect(num.right, lessThanOrEqualTo(titolo.left));
       final cerchioRect = t.getRect(d(find.ancestor(of: find.text('1'), matching: find.byType(Container))).first);
       expect(cerchioRect.size, const Size(32, 32));
-      expect(titolo.bottom, lessThanOrEqualTo(ora.top));
-      expect(ora.bottom, lessThanOrEqualTo(motivo.top));
+      expect(ora.bottom, lessThanOrEqualTo(titolo.top));
+      expect(titolo.bottom, lessThanOrEqualTo(motivo.top));
       expect(motivo.bottom, lessThanOrEqualTo(cur.top));
       expect(cur.bottom, lessThanOrEqualTo(come.top));
       final cerchio = t.widget<Container>(d(find.ancestor(of: find.text('1'), matching: find.byType(Container))).first);

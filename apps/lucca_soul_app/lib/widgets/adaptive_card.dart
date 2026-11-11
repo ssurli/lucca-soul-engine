@@ -62,6 +62,11 @@ class AdaptiveCard extends StatelessWidget {
     );
   }
 
+  String? _secondaRiga() {
+    final k = controller.segnaleSenzaAltroCambiamento;
+    return k == null ? null : strings.noFurtherChange(_etichettaPer(k));
+  }
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
         listenable: controller,
@@ -78,11 +83,28 @@ class AdaptiveCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(strings.adaptiveCardTitle,
-                style: theme.textTheme.titleMedium,),
-            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(strings.adaptiveCardTitle,
+                      style: stileTesto(13, 700, Tk.testoSecondario),),
+                ),
+                // Nulla da ripristinare (nessun interruttore acceso): nessun comando.
+                if (!stato.nessunoAcceso)
+                  TextButton(
+                    onPressed: controller.tornaAlPercorsoIniziale,
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(Tk.areaMinima, Tk.areaMinima),
+                      foregroundColor: Tk.accento,
+                      textStyle: stileTesto(14, 800, Tk.accento),
+                    ),
+                    child: Text(strings.resetShortAction),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
             Wrap(
-              spacing: 8,
+              spacing: 6,
               runSpacing: 8,
               children: SimulatedSignalKind.values.map((kind) {
                 return InterruttoreSegnale(
@@ -93,37 +115,21 @@ class AdaptiveCard extends StatelessWidget {
                 );
               }).toList(),
             ),
-            if (stato.puoAnnullare)
+            if (stato.puoAnnullare || !stato.nessunoAcceso)
               Padding(
                 padding: const EdgeInsets.only(top: 12),
                 child: FasciaRiepilogo(
                   testo: _riepilogo(),
-                  azione: strings.undoAction,
-                  onAzione: controller.annulla,
+                  secondaRiga: _secondaRiga(),
                 ),
               ),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: stato.nessunoAcceso
-                      ? null
-                      : controller.tornaAlPercorsoIniziale,
-                  child: Text(strings.resetAction),
-                ),
-                if (controller.inCorso)
-                  const SizedBox(
-                      height: 16,
-                      width: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),),
-              ],
-            ),
-            if (controller.senzaEffetto && !controller.inCorso)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(strings.noEffectNote),
+            if (controller.inCorso)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),),
               ),
             if (controller.errore != null)
               Padding(
@@ -183,14 +189,14 @@ class InterruttoreSegnale extends StatelessWidget {
             constraints: const BoxConstraints(
                 minHeight: Tk.areaMinima, minWidth: Tk.areaMinima,),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(acceso ? Icons.check : icona, size: 18, color: fg),
-                  const SizedBox(width: 8),
+                  Icon(acceso ? Icons.check : icona, size: 16, color: fg),
+                  const SizedBox(width: 4),
                   Flexible(
-                      child: Text(etichetta, style: stileTesto(15, 700, fg)),),
+                      child: Text(etichetta, style: stileTesto(14, 700, fg)),),
                 ],
               ),
             ),
@@ -201,34 +207,30 @@ class InterruttoreSegnale extends StatelessWidget {
   }
 }
 
-/// Fascia di riepilogo (sfondo avviso) con l'azione a destra: "Annulla" in
-/// mattone su #EFE1CF.
+/// Fascia di riepilogo (sfondo avviso): il testo usa tutta la larghezza. Il
+/// comando "Percorso iniziale" sta sulla riga del titolo della card.
 class FasciaRiepilogo extends StatelessWidget {
   final String testo;
-  final String azione;
-  final VoidCallback onAzione;
+  final String? secondaRiga;
 
-  const FasciaRiepilogo(
-      {super.key,
-      required this.testo,
-      required this.azione,
-      required this.onAzione,});
+  const FasciaRiepilogo({super.key, required this.testo, this.secondaRiga});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.only(left: 14, right: 4),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
           color: Tk.avviso, borderRadius: BorderRadius.circular(Tk.raggio),),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(testo, style: stileTesto(15, 600, Tk.testo)),
+          Text(testo, style: stileTesto(14, 600, Tk.testo)),
+          if (secondaRiga != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(secondaRiga!, style: stileTesto(14, 600, Tk.testo)),
             ),
-          ),
-          TextButton(onPressed: onAzione, child: Text(azione)),
         ],
       ),
     );

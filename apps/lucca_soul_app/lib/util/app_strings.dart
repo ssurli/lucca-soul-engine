@@ -31,23 +31,25 @@ class AppStrings {
   String get adaptiveCardTitle => _isEn ? 'Something changed?' : 'È cambiato qualcosa?';
   String get signalRain => _isEn ? 'It is raining' : 'Piove';
   String get signalCrowd => _isEn ? 'Walls are crowded' : 'Mura affollate';
-  String get signalTired => _isEn ? 'I am tired' : 'Sono stanco/a';
+  String get signalTired => _isEn ? 'Tired' : 'Stanco/a';
   String get adaptSuccess => _isEn ? 'Itinerary rewritten' : 'Itinerario riscritto';
   String get adaptError => _isEn ? 'Could not adapt the itinerary.' : 'Non riesco ad adattare l\'itinerario.';
   String get emptyStops => _isEn ? 'No stops yet.' : 'Ancora nessuna tappa.';
   String get excludedStopsTitle => _isEn ? 'Left out of today' : 'Rimaste fuori oggi';
+  String get mapCaption => _isEn
+      ? 'Tap a number to open the stop. The line shows the order, not the route.'
+      : "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.";
   String get genericStop => _isEn ? 'Stop' : 'Tappa';
   String get legendLabel => _isEn ? 'Legend' : 'Leggenda';
   String get curiosityLabel => _isEn ? 'Did you know' : 'Curiosità';
   String sourceLabel(String fonte) => _isEn ? 'Source: $fonte' : 'Fonte: $fonte';
   String get keptNoAlternative =>
       _isEn ? 'Stays in plan: no suitable alternative' : 'Resta in programma: nessuna alternativa adatta';
-  String get undoAction => _isEn ? 'Undo' : 'Annulla';
-  String get resetAction => _isEn ? 'Back to the original plan' : 'Torna al percorso iniziale';
-  String get noEffectNote => _isEn
-      ? 'This change does not affect your plan for today.'
-      : 'Questo cambiamento non tocca il tuo percorso di oggi.';
+  String noFurtherChange(String segnale) =>
+      _isEn ? '$segnale: no further change.' : '$segnale: nessun altro cambiamento.';
+  String get resetShortAction => _isEn ? 'Original plan' : 'Percorso iniziale';
   String get howToArrive => _isEn ? 'How to get here' : 'Come arrivo qui';
+  String minutesOnFoot(int n) => _isEn ? 'about $n min on foot' : 'circa $n min a piedi';
   String get changedStop => _isEn ? 'Changed by the signal' : 'Cambiata dal segnale';
 
   // --- Urban Memory (Wave 2): conferimento contestuale --------------------
@@ -207,6 +209,7 @@ class AppStrings {
 
   // --- Grafica (ondata 4): testata, riepilogo del cambio ----------------------
   String photoBy(String autore) => _isEn ? 'Photo: $autore' : 'Foto: $autore';
+  String get demoLabel => _isEn ? 'Demo' : 'Demo';
   String get onFoot => _isEn ? 'on foot' : 'a piedi';
   String stopsCount(int n) => _isEn ? (n == 1 ? '1 stop' : '$n stops') : (n == 1 ? '1 tappa' : '$n tappe');
   String get backToOriginalSummary => _isEn ? 'Back to the original plan.' : 'Percorso iniziale ripristinato.';

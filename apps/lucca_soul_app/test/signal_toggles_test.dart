@@ -175,25 +175,25 @@ void main() {
       ),);
     }
 
-    testWidgets('accendere e spegnere Sono stanco/a: torna all\'originale, nessuna nuova richiesta', (tester) async {
+    testWidgets('accendere e spegnere Stanco/a: torna all\'originale, nessuna nuova richiesta', (tester) async {
       await monta(tester, (_) async => http.Response(corpo(adattato()), 200, headers: _json));
-      await tester.tap(find.text('Sono stanco/a'));
+      await tester.tap(find.text('Stanco/a'));
       await tester.pumpAndSettle();
       expect(richieste, hasLength(1));
       expect(richieste.single['signal']['stanchezza'], 0.85);
       expect(shown.last.stops.first.esitoAdattamento, 'sostituita');
 
-      await tester.tap(find.text('Sono stanco/a')); // seconda pressione: spegne
+      await tester.tap(find.text('Stanco/a')); // seconda pressione: spegne
       await tester.pumpAndSettle();
       expect(richieste, hasLength(1));
       expect(shown.last, same(_originale));
     });
 
-    testWidgets('Piove + Sono stanco/a: richiesta combinata dall\'originale; Annulla ripristina', (tester) async {
+    testWidgets('Piove + Stanco/a: richiesta combinata dall\'originale; spegnere gli interruttori ripristina', (tester) async {
       await monta(tester, (_) async => http.Response(corpo(adattato()), 200, headers: _json));
       await tester.tap(find.text('Piove'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Sono stanco/a'));
+      await tester.tap(find.text('Stanco/a'));
       await tester.pumpAndSettle();
       expect(richieste, hasLength(2));
       expect(richieste.last['signal']['meteo'], 'pioggia');
@@ -202,27 +202,45 @@ void main() {
       final stops = richieste.last['itinerary']['stops'] as List<dynamic>;
       expect((stops.first as Map<String, dynamic>).containsKey('esito_adattamento'), isFalse);
 
-      await tester.tap(find.text('Annulla')); // torna a solo pioggia
+      await tester.tap(find.text('Stanco/a')); // spento: torna a solo pioggia
       await tester.pumpAndSettle();
       expect(richieste, hasLength(3));
       expect(richieste.last['signal']['meteo'], 'pioggia');
       expect(richieste.last['signal']['stanchezza'], 0.0);
 
-      await tester.tap(find.text('Annulla')); // torna a nessuno: originale, nessuna richiesta
+      await tester.tap(find.text('Piove')); // spento: nessuno, originale, nessuna richiesta
       await tester.pumpAndSettle();
       expect(richieste, hasLength(3));
       expect(shown.last, same(_originale));
     });
 
-    testWidgets('adattamento che non tocca nulla: mostra la nota', (tester) async {
-      final nulla = _it([_stop('a', 'non_toccata'), _stop('b', 'non_toccata')]);
-      await monta(tester, (_) async => http.Response(corpo(nulla), 200, headers: _json));
-      await tester.tap(find.text('Mura affollate'));
+    testWidgets('Percorso iniziale: ripristina l\'originale, spegne gli interruttori, nessuna richiesta', (tester) async {
+      await monta(tester, (_) async => http.Response(corpo(adattato()), 200, headers: _json));
+      await tester.tap(find.text('Piove'));
       await tester.pumpAndSettle();
-      expect(find.text('Questo cambiamento non tocca il tuo percorso di oggi.'), findsOneWidget);
+      await tester.tap(find.text('Stanco/a'));
+      await tester.pumpAndSettle();
+      expect(richieste, hasLength(2));
+      await tester.tap(find.text('Percorso iniziale'));
+      await tester.pumpAndSettle();
+      expect(richieste, hasLength(2));
+      expect(shown.last, same(_originale));
+      expect(find.byIcon(Icons.check), findsNothing);
+      expect(find.text('Annulla'), findsNothing);
     });
 
-    testWidgets('con Piove acceso, Mura affollate che non cambia nulla: nota; Sono stanco/a che taglia: niente nota', (tester) async {
+    testWidgets('adattamento che non tocca nulla: la fascia dice nessuna tappa cambiata', (tester) async {
+      final nulla = _it([_stop('a', 'non_toccata'), _stop('b', 'non_toccata')]);
+      await monta(tester, (_) async => http.Response(corpo(nulla), 200, headers: _json));
+      expect(find.byType(FasciaRiepilogo), findsNothing);
+      await tester.tap(find.text('Mura affollate'));
+      await tester.pumpAndSettle();
+      expect(find.byType(FasciaRiepilogo), findsOneWidget);
+      expect(find.text('Mura affollate: nessuna tappa cambiata.'), findsOneWidget);
+      expect(find.text('Percorso iniziale'), findsOneWidget);
+    });
+
+    testWidgets('con Piove acceso, Mura affollate che non cambia nulla: la fascia resta; Stanco/a che taglia: la fascia non dice nessuna tappa cambiata', (tester) async {
       final pioggia = _it([_stop('a', 'sostituita'), _stop('b', 'non_toccata')]);
       final taglio = _it([_stop('a', 'sostituita')]);
       var n = 0;
@@ -230,19 +248,47 @@ void main() {
         n++;
         return http.Response(corpo(n == 3 ? taglio : pioggia), 200, headers: _json);
       });
-      const nota = 'Questo cambiamento non tocca il tuo percorso di oggi.';
+      const niente = 'nessuna tappa cambiata';
       await tester.tap(find.text('Piove'));
       await tester.pumpAndSettle();
-      expect(find.text(nota), findsNothing); // sostituita rispetto all'originale
+      expect(find.textContaining(niente), findsNothing); // sostituita rispetto all'originale
       await tester.tap(find.text('Mura affollate'));
       await tester.pumpAndSettle();
-      expect(find.text(nota), findsOneWidget);
-      await tester.tap(find.text('Sono stanco/a'));
+      // Senza effetto rispetto a "Piove": la fascia c'e' e riepiloga il cumulo.
+      expect(find.text('Piove, Mura affollate: 1 tappa cambiata.'), findsOneWidget);
+      expect(find.text('Mura affollate: nessun altro cambiamento.'), findsOneWidget);
+      await tester.tap(find.text('Stanco/a'));
       await tester.pumpAndSettle();
-      expect(find.text(nota), findsNothing);
-      await tester.tap(find.text('Torna al percorso iniziale')); // nessuna richiesta
+      expect(find.textContaining(niente), findsNothing);
+      expect(find.text('Piove, Mura affollate, Stanco/a: 1 tappa cambiata.'), findsOneWidget);
+      expect(find.textContaining('nessun altro cambiamento'), findsNothing);
+      await tester.tap(find.text('Percorso iniziale')); // nessuna richiesta
       await tester.pumpAndSettle();
-      expect(find.text(nota), findsNothing);
+      expect(find.textContaining('nessun altro cambiamento'), findsNothing);
+      expect(find.textContaining(niente), findsNothing);
+      expect(find.text('Percorso iniziale ripristinato.'), findsOneWidget);
+    });
+
+    testWidgets('un solo segnale senza effetto: niente seconda riga', (tester) async {
+      final nulla = _it([_stop('a', 'non_toccata'), _stop('b', 'non_toccata')]);
+      await monta(tester, (_) async => http.Response(corpo(nulla), 200, headers: _json));
+      await tester.tap(find.text('Mura affollate'));
+      await tester.pumpAndSettle();
+      expect(find.text('Mura affollate: nessuna tappa cambiata.'), findsOneWidget);
+      expect(find.textContaining('nessun altro cambiamento'), findsNothing);
+    });
+
+    testWidgets('spegnimento senza effetto con un altro segnale acceso: niente seconda riga', (tester) async {
+      final pioggia = _it([_stop('a', 'sostituita'), _stop('b', 'non_toccata')]);
+      await monta(tester, (_) async => http.Response(corpo(pioggia), 200, headers: _json));
+      await tester.tap(find.text('Piove'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Mura affollate'));
+      await tester.pumpAndSettle();
+      expect(find.text('Mura affollate: nessun altro cambiamento.'), findsOneWidget);
+      await tester.tap(find.text('Mura affollate')); // spegne, stessa risposta: senza effetto
+      await tester.pumpAndSettle();
+      expect(find.textContaining('nessun altro cambiamento'), findsNothing);
     });
 
     testWidgets('risposte fuori ordine: conta solo l\'ultimo stato richiesto', (tester) async {
@@ -254,7 +300,7 @@ void main() {
       });
       await tester.tap(find.text('Piove')); // richiesta 0
       await tester.pump();
-      await tester.tap(find.text('Sono stanco/a')); // richiesta 1
+      await tester.tap(find.text('Stanco/a')); // richiesta 1
       await tester.pump();
       expect(risposte, hasLength(2));
       final ultimo = _it([_stop('a', 'non_toccata'), _stop('b', 'sostituita')]);
