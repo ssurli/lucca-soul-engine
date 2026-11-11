@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:http/http.dart' as http;
 
 import '../models/adapt_request.dart';
@@ -136,20 +136,20 @@ class BffClient {
     try {
       response = await _http.get(uri).timeout(const Duration(seconds: 20));
     } catch (error) {
-      throw BffException('Impossibile contattare il BFF su $uri: $error');
+      final tecnico = 'Impossibile contattare il BFF su $uri: $error';
+      debugPrint(tecnico);
+      throw BffException.rete(tecnico);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw BffException(
-        _extractErrorDetail(response.bodyBytes) ??
-            'Il BFF ha risposto con un errore',
-        statusCode: response.statusCode,
-      );
+      throw _erroreHttp(uri, response);
     }
 
     final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (decoded is! Map<String, dynamic>) {
-      throw BffException('Risposta del BFF non nel formato atteso per $path');
+      final tecnico = 'Risposta del BFF non nel formato atteso per $path';
+      debugPrint(tecnico);
+      throw BffException(tecnico);
     }
     return decoded;
   }
@@ -169,20 +169,20 @@ class BffClient {
           )
           .timeout(const Duration(seconds: 20));
     } catch (error) {
-      throw BffException('Impossibile contattare il BFF su $uri: $error');
+      final tecnico = 'Impossibile contattare il BFF su $uri: $error';
+      debugPrint(tecnico);
+      throw BffException.rete(tecnico);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw BffException(
-        _extractErrorDetail(response.bodyBytes) ??
-            'Il BFF ha risposto con un errore',
-        statusCode: response.statusCode,
-      );
+      throw _erroreHttp(uri, response);
     }
 
     final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (decoded is! Map<String, dynamic>) {
-      throw BffException('Risposta del BFF non nel formato atteso per $path');
+      final tecnico = 'Risposta del BFF non nel formato atteso per $path';
+      debugPrint(tecnico);
+      throw BffException(tecnico);
     }
     return decoded;
   }
@@ -193,29 +193,45 @@ class BffClient {
     try {
       response = await _http.get(uri).timeout(const Duration(seconds: 20));
     } catch (error) {
-      throw BffException('Impossibile contattare il BFF su $uri: $error');
+      final tecnico = 'Impossibile contattare il BFF su $uri: $error';
+      debugPrint(tecnico);
+      throw BffException.rete(tecnico);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw BffException(
-        _extractErrorDetail(response.bodyBytes) ??
-            'Il BFF ha risposto con un errore',
-        statusCode: response.statusCode,
-      );
+      throw _erroreHttp(uri, response);
     }
 
     final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
     if (decoded is! List<dynamic>) {
-      throw BffException('Risposta del BFF non nel formato atteso per $path');
+      final tecnico = 'Risposta del BFF non nel formato atteso per $path';
+      debugPrint(tecnico);
+      throw BffException(tecnico);
     }
     return decoded;
+  }
+
+  /// Eccezione per una risposta non 2xx. Url, codice e corpo vanno SOLO nei
+  /// log di debug: la UI non mostra mai `message`, salvo i messaggi pensati
+  /// per l'utente (422 di `POST /memory`, vedi `memory_contribution_sheet`).
+  BffException _erroreHttp(Uri uri, http.Response response) {
+    debugPrint('Il BFF su $uri ha risposto ${response.statusCode}: '
+        '${utf8.decode(response.bodyBytes, allowMalformed: true)}');
+    final dettaglio = _extractErrorDetail(response.bodyBytes);
+    return BffException(
+      dettaglio ?? 'Il BFF ha risposto con un errore',
+      statusCode: response.statusCode,
+      dettaglioDelServer: dettaglio != null,
+    );
   }
 
   String? _extractErrorDetail(List<int> bodyBytes) {
     try {
       final Object? decoded = jsonDecode(utf8.decode(bodyBytes));
-      if (decoded is Map<String, dynamic> && decoded['detail'] != null) {
-        return decoded['detail'].toString();
+      // Solo un `detail` testuale: la lista dei 422 di validazione di
+      // FastAPI è tecnica e resta nei log di debug.
+      if (decoded is Map<String, dynamic> && decoded['detail'] is String) {
+        return decoded['detail'] as String;
       }
     } catch (_) {
       // Corpo non JSON: si usa il messaggio di default del chiamante.

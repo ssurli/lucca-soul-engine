@@ -5,7 +5,7 @@ import 'itinerary_diff.dart';
 /// Fascia di riepilogo dopo un cambio, calcolata SOLO dagli esiti del motore:
 /// `esito_adattamento` delle tappe (sostituita / mantenuta_senza_alternativa)
 /// e `tappe_escluse` comparse rispetto all'itinerario originale.
-/// Es. «Piove: 2 tappe cambiate, 1 resta in programma.»
+/// Es. «Piove: 2 tappe cambiate, 1 senza alternativa adatta.»
 ///
 /// [segnali] sono le etichette degli interruttori accesi. Logica pura.
 String riepilogoCambio({

@@ -83,7 +83,14 @@ class _MemoryContributionSheetState extends State<MemoryContributionSheet> {
   // per persistere il contributo.
   bool _consenso = false;
   bool _inviando = false;
+  /// Testo da mostrare sotto [AppStrings.memorySubmitError]. Il 422 di
+  /// `POST /memory` porta il motivo del rifiuto pensato per l'utente
+  /// ("conferimento rifiutato: ...", `urban_memory_error_handler` nel BFF):
+  /// resta il messaggio del server. Ogni altro errore mostra un testo
+  /// dell'app, mai url, codice o corpo.
   String? _errore;
+  bool _erroreDiRete = false;
+  bool _erroreDelServerPerUtente = false;
 
   bool get _haContenuto =>
       _testoController.text.trim().isNotEmpty || _mediaController.text.trim().isNotEmpty;
@@ -96,6 +103,8 @@ class _MemoryContributionSheetState extends State<MemoryContributionSheet> {
     setState(() {
       _inviando = true;
       _errore = null;
+      _erroreDiRete = false;
+      _erroreDelServerPerUtente = false;
     });
     try {
       final contribution = MemoryContribution(
@@ -115,7 +124,11 @@ class _MemoryContributionSheetState extends State<MemoryContributionSheet> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on BffException catch (error) {
-      setState(() => _errore = error.message);
+      setState(() {
+        _errore = error.message;
+        _erroreDiRete = error.connessioneAssente;
+        _erroreDelServerPerUtente = error.statusCode == 422 && error.dettaglioDelServer;
+      });
     } finally {
       if (mounted) setState(() => _inviando = false);
     }
@@ -218,7 +231,9 @@ class _MemoryContributionSheetState extends State<MemoryContributionSheet> {
               const SizedBox(height: 4),
               Text(strings.memorySubmitError, style: TextStyle(color: scheme.error)),
               Text(
-                _errore!,
+                _erroreDelServerPerUtente
+                    ? _errore!
+                    : strings.serviceError(connessioneAssente: _erroreDiRete),
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.error),
               ),
             ],

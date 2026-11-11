@@ -43,6 +43,7 @@ class InterruttoriController extends ChangeNotifier {
   bool _inCorso = false;
   bool _senzaEffetto = false;
   String? _errore;
+  bool _erroreDiRete = false;
   bool _disposto = false;
 
   SignalToggleState get stato => _stato;
@@ -56,6 +57,10 @@ class InterruttoriController extends ChangeNotifier {
   bool get inCorso => _inCorso;
   bool get senzaEffetto => _senzaEffetto;
   String? get errore => _errore;
+
+  /// Vero se l'ultimo errore e' di rete (BFF non raggiunto): la UI mostra un
+  /// testo proprio invece del messaggio tecnico.
+  bool get erroreDiRete => _erroreDiRete;
 
   /// Ultimo tocco su un interruttore: quale e in che verso (true = acceso).
   /// Null dopo annulla / ripristino / errore. Vale per la risposta dell'ultima
@@ -91,6 +96,7 @@ class InterruttoriController extends ChangeNotifier {
   void _applica(SignalToggleState nuovo) {
     _stato = nuovo;
     _errore = null;
+    _erroreDiRete = false;
     notifyListeners();
     _richiedi(nuovo);
   }
@@ -127,6 +133,7 @@ class InterruttoriController extends ChangeNotifier {
       if (_disposto || mia != _sequenza) return;
       _inCorso = false;
       _errore = error.message;
+      _erroreDiRete = error.connessioneAssente;
       _ultimoTocco = null;
       _stato = _statoMostrato; // l'interruttore torna a rispecchiare ciò che si vede
       notifyListeners();

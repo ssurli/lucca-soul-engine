@@ -25,7 +25,26 @@ class AppStrings {
 
   String get itineraryTitle => _isEn ? 'Your day in Lucca' : 'La tua giornata a Lucca';
   String get itineraryLoading => _isEn ? 'Composing your itinerary…' : 'Sto componendo l\'itinerario…';
-  String get itineraryError => _isEn ? 'Could not reach the BFF.' : 'Non riesco a contattare il BFF.';
+  String get noConnection => _isEn ? 'No connection. Try again.' : 'Connessione assente. Riprova.';
+  String get adaptNoConnection => _isEn
+      ? 'Change not applied: no connection. Try again.'
+      : 'Modifica non applicata: connessione assente. Riprova.';
+  String get serviceUnavailable => _isEn
+      ? 'The service is not responding. Try again shortly.'
+      : 'Il servizio non risponde. Riprova tra poco.';
+  String get adaptServiceUnavailable => _isEn
+      ? 'Change not applied: the service is not responding. Try again shortly.'
+      : 'Modifica non applicata: il servizio non risponde. Riprova tra poco.';
+
+  /// Testo a schermo per un errore del BFF: mai url, codice o corpo.
+  String serviceError({required bool connessioneAssente}) =>
+      connessioneAssente ? noConnection : serviceUnavailable;
+
+  /// Come [serviceError], nella card adattiva: dice che la modifica non è
+  /// stata applicata (lo schermo mostra ancora l'ultimo risultato valido).
+  String adaptServiceError({required bool connessioneAssente}) =>
+      connessioneAssente ? adaptNoConnection : adaptServiceUnavailable;
+  String get notOnMap => _isEn ? 'Not shown on the map' : 'Non compare sulla mappa';
   String get retry => _isEn ? 'Retry' : 'Riprova';
   String get durationLabel => _isEn ? 'min' : 'min';
   String get adaptiveCardTitle => _isEn ? 'Something changed?' : 'È cambiato qualcosa?';
@@ -120,7 +139,6 @@ class AppStrings {
           'sostenibilità sociale di tutto il sistema.';
   String get citizenPlaceLabel => _isEn ? 'Place' : 'Luogo';
   String get citizenLoading => _isEn ? 'Loading memories…' : 'Sto caricando i ricordi…';
-  String get citizenError => _isEn ? 'Could not reach the BFF.' : 'Non riesco a contattare il BFF.';
   String get citizenEmpty => _isEn
       ? 'No curated memories yet for this place.'
       : 'Ancora nessun ricordo curato per questo luogo.';
@@ -150,10 +168,9 @@ class AppStrings {
   String get dashboardLoadingFlows =>
       _isEn ? 'Computing the flow heatmap…' : 'Sto calcolando la heatmap dei flussi…';
   String get dashboardErrorIndex =>
-      _isEn ? 'Could not reach the BFF for the index.' : 'Non riesco a contattare il BFF per l\'index.';
-  String get dashboardErrorFlows => _isEn
-      ? 'Could not reach the BFF for the flow heatmap.'
-      : 'Non riesco a contattare il BFF per la heatmap dei flussi.';
+      _isEn ? 'Indicators unavailable.' : 'Indicatori non disponibili.';
+  String get dashboardErrorFlows =>
+      _isEn ? 'Flow heatmap unavailable.' : 'Heatmap dei flussi non disponibile.';
 
   // Stato "dato insufficiente" (soglia k=10, privacy by design): MAI uno
   // zero, MAI un errore — uno stato esplicito e leggibile, distinto dai due
@@ -217,7 +234,7 @@ class AppStrings {
   String changedStopsPart(int n) =>
       _isEn ? (n == 1 ? '1 stop changed' : '$n stops changed') : (n == 1 ? '1 tappa cambiata' : '$n tappe cambiate');
   String keptStopsPart(int n) =>
-      _isEn ? '$n stay${n == 1 ? 's' : ''} in plan' : (n == 1 ? '1 resta in programma' : '$n restano in programma');
+      _isEn ? '$n with no suitable alternative' : '$n senza alternativa adatta';
   String removedStopsPart(int n) =>
       _isEn ? (n == 1 ? '1 stop left out' : '$n stops left out') : (n == 1 ? '1 tappa tolta' : '$n tappe tolte');
 
