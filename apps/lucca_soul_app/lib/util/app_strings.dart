@@ -30,6 +30,7 @@ class AppStrings {
   String get adaptNoConnection => _isEn
       ? 'Change not applied: no connection. Try again.'
       : 'Modifica non applicata: connessione assente. Riprova.';
+  String get notOnMap => _isEn ? 'Not shown on the map' : 'Non compare sulla mappa';
   String get retry => _isEn ? 'Retry' : 'Riprova';
   String get durationLabel => _isEn ? 'min' : 'min';
   String get adaptiveCardTitle => _isEn ? 'Something changed?' : 'È cambiato qualcosa?';
