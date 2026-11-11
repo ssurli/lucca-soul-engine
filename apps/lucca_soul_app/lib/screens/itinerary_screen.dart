@@ -72,6 +72,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   ArchivioFoto _foto = const ArchivioFoto();
   bool _caricando = true;
   String? _errore;
+  bool _erroreDiRete = false;
 
   /// Indici (0-based) delle tappe aperte: unico stato aperto/chiuso, cosi'
   /// anche dall'esterno (es. tocco sulla mappa) si apre una tappa per indice.
@@ -156,6 +157,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     setState(() {
       _caricando = true;
       _errore = null;
+      _erroreDiRete = false;
     });
     try {
       final contesto = VisitorContext(
@@ -177,7 +179,10 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
       precedente?.dispose(); // le sue risposte in volo non contano piu'
 
     } on BffException catch (error) {
-      setState(() => _errore = error.message);
+      setState(() {
+        _errore = error.message;
+        _erroreDiRete = error.connessioneAssente;
+      });
     } finally {
       if (mounted) setState(() => _caricando = false);
     }
@@ -243,11 +248,15 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
               Icon(Icons.wifi_off,
                   size: 40, color: Theme.of(context).colorScheme.error,),
               const SizedBox(height: 12),
-              Text(_strings.itineraryError, textAlign: TextAlign.center),
-              const SizedBox(height: 4),
-              Text(_errore!,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,),
+              if (_erroreDiRete)
+                Text(_strings.noConnection, textAlign: TextAlign.center)
+              else ...[
+                Text(_strings.itineraryError, textAlign: TextAlign.center),
+                const SizedBox(height: 4),
+                Text(_errore!,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall,),
+              ],
               const SizedBox(height: 16),
               FilledButton(
                   onPressed: _caricaItinerario, child: Text(_strings.retry),),

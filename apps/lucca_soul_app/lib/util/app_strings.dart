@@ -26,6 +26,10 @@ class AppStrings {
   String get itineraryTitle => _isEn ? 'Your day in Lucca' : 'La tua giornata a Lucca';
   String get itineraryLoading => _isEn ? 'Composing your itinerary…' : 'Sto componendo l\'itinerario…';
   String get itineraryError => _isEn ? 'Could not reach the BFF.' : 'Non riesco a contattare il BFF.';
+  String get noConnection => _isEn ? 'No connection. Try again.' : 'Connessione assente. Riprova.';
+  String get adaptNoConnection => _isEn
+      ? 'Change not applied: no connection. Try again.'
+      : 'Modifica non applicata: connessione assente. Riprova.';
   String get retry => _isEn ? 'Retry' : 'Riprova';
   String get durationLabel => _isEn ? 'min' : 'min';
   String get adaptiveCardTitle => _isEn ? 'Something changed?' : 'È cambiato qualcosa?';

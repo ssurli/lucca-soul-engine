@@ -4,6 +4,7 @@ import '../api/bff_client.dart';
 import '../api/bff_exception.dart';
 import '../models/emotional_profile.dart';
 import '../models/onboarding.dart';
+import '../util/app_strings.dart';
 import 'itinerary_screen.dart';
 
 /// Una singola risposta possibile a una domanda della conversazione:
@@ -136,6 +137,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _stepCorrente = 0;
   bool _inviando = false;
   String? _erroreInvio;
+  bool _erroreDiRete = false;
 
   bool get _completato => _risposte.length == kDomandeVisibili.length;
 
@@ -178,7 +180,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         ),
       );
     } on BffException catch (error) {
-      setState(() => _erroreInvio = error.message);
+      setState(() {
+        _erroreInvio = error.message;
+        _erroreDiRete = error.connessioneAssente;
+      });
     } finally {
       if (mounted) setState(() => _inviando = false);
     }
@@ -235,7 +240,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             if (_erroreInvio != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(_erroreInvio!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                child: Text(
+                    _erroreDiRete
+                        ? AppStrings.forLanguages([_lingua]).noConnection
+                        : _erroreInvio!,
+                    style: TextStyle(color: Theme.of(context).colorScheme.error),),
               ),
             Padding(
               padding: const EdgeInsets.all(16),

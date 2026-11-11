@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:http/http.dart' as http;
 
 import '../models/adapt_request.dart';
@@ -136,7 +136,9 @@ class BffClient {
     try {
       response = await _http.get(uri).timeout(const Duration(seconds: 20));
     } catch (error) {
-      throw BffException('Impossibile contattare il BFF su $uri: $error');
+      final tecnico = 'Impossibile contattare il BFF su $uri: $error';
+      debugPrint(tecnico);
+      throw BffException.rete(tecnico);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -169,7 +171,9 @@ class BffClient {
           )
           .timeout(const Duration(seconds: 20));
     } catch (error) {
-      throw BffException('Impossibile contattare il BFF su $uri: $error');
+      final tecnico = 'Impossibile contattare il BFF su $uri: $error';
+      debugPrint(tecnico);
+      throw BffException.rete(tecnico);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -193,7 +197,9 @@ class BffClient {
     try {
       response = await _http.get(uri).timeout(const Duration(seconds: 20));
     } catch (error) {
-      throw BffException('Impossibile contattare il BFF su $uri: $error');
+      final tecnico = 'Impossibile contattare il BFF su $uri: $error';
+      debugPrint(tecnico);
+      throw BffException.rete(tecnico);
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

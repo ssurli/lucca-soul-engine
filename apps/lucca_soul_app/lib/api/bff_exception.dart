@@ -6,7 +6,15 @@ class BffException implements Exception {
   final String message;
   final int? statusCode;
 
-  const BffException(this.message, {this.statusCode});
+  /// Vero se il BFF non e' stato raggiunto (rete assente, timeout). Il
+  /// messaggio tecnico resta nei log di debug: la UI mostra un testo proprio.
+  final bool connessioneAssente;
+
+  const BffException(this.message, {this.statusCode}) : connessioneAssente = false;
+
+  const BffException.rete(this.message)
+      : statusCode = null,
+        connessioneAssente = true;
 
   @override
   String toString() =>
