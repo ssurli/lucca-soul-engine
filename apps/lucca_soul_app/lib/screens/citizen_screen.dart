@@ -114,7 +114,9 @@ class _CitizenScreenState extends State<CitizenScreen> {
                   labelText: strings.citizenPlaceLabel,
                   border: const OutlineInputBorder(),
                 ),
-                items: kKnownPlaceIds.map((p) => DropdownMenuItem(value: p, child: Text(p))).toList(),
+                items: kKnownPlaceIdsPerNome()
+                    .map((p) => DropdownMenuItem(value: p, child: Text(kKnownPlaceNames[p]!)))
+                    .toList(),
                 onChanged: (value) {
                   if (value != null && value != _placeId) {
                     setState(() => _placeId = value);

@@ -25,6 +25,31 @@ const List<String> kKnownPlaceIds = [
   'museo-nazionale-guinigi',
 ];
 
+/// Nome leggibile di ogni luogo di [kKnownPlaceIds] (proprieta' `nome` del
+/// seed). Mostrato nel menu della vista Cittadino; il valore resta l'id.
+const Map<String, String> kKnownPlaceNames = {
+  'mura-urbane': 'Mura di Lucca',
+  'piazza-anfiteatro': "Piazza dell'Anfiteatro",
+  'torre-guinigi': 'Torre Guinigi',
+  'duomo-san-martino': 'Duomo di San Martino',
+  'casa-puccini': 'Casa Natale di Giacomo Puccini',
+  'san-michele-in-foro': 'Chiesa di San Michele in Foro',
+  'orto-botanico': 'Orto Botanico di Lucca',
+  'teatro-del-giglio': 'Teatro del Giglio',
+  'palazzo-pfanner': 'Palazzo Pfanner',
+  'san-frediano': 'Basilica di San Frediano',
+  'torre-delle-ore': 'Torre delle Ore',
+  'piazza-napoleone': 'Piazza Napoleone',
+  'via-fillungo': 'Via Fillungo',
+  'baluardo-san-paolino': 'Baluardo San Paolino',
+  'museo-nazionale-guinigi': 'Museo Nazionale di Villa Guinigi',
+};
+
+/// Gli id di [kKnownPlaceIds] in ordine alfabetico di nome (senza distinguere
+/// maiuscole), per il menu della vista Cittadino.
+List<String> kKnownPlaceIdsPerNome() => [...kKnownPlaceIds]
+  ..sort((a, b) => kKnownPlaceNames[a]!.toLowerCase().compareTo(kKnownPlaceNames[b]!.toLowerCase()));
+
 /// Rispecchia (un sottoinsieme delle) relazioni `SI_SVOLGE_A`
 /// (Esperienza -> Luogo) del seed. Se un'esperienza non compare qui, non è
 /// un errore: si userà il suo stesso `experience_id` come unico
