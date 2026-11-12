@@ -1494,9 +1494,14 @@ def adapt_itinerary(
        tappe stub. Senza
        alternativa ammissibile la tappa resta, con esito
        `MANTENUTA_SENZA_ALTERNATIVA` e una frase in coda al `reason`.
-    2. stanchezza > soglia: taglia le tappe in coda oltre ~2/3 del tempo
-       originale (il benessere conta più del numero di tappe); le tappe
-       tolte vanno in `tappe_escluse` (`TAGLIATA_STANCHEZZA`).
+    2. stanchezza > soglia: taglia le tappe in coda oltre ~2/3 del tempo di
+       visita delle tappe CORRENTI (dopo le sostituzioni: limite e accumulo
+       sulla stessa base), con un tetto: mai più tappe né più minuti di
+       visita di quanti la stessa regola ne terrebbe sull'itinerario
+       ricevuto, salvo la prima tappa che resta sempre (eccezione approvata
+       dal committente; `_taglia_per_stanchezza`). Il benessere conta più del
+       numero di tappe; le tappe tolte vanno in `tappe_escluse`
+       (`TAGLIATA_STANCHEZZA`).
     3. tetto della giornata: con gli arrivi ricalcolati da `signal.ora`, le
        tappe che finirebbero oltre le 24:00 escono e vanno in
        `tappe_escluse` (`TAGLIATA_TETTO_GIORNATA`). Vale sempre, anche per
@@ -1708,7 +1713,8 @@ def adapt_itinerary(
 
     nuove_escluse: list[TappaEsclusa] = []
 
-    # 2. Stanchezza alta: taglia la coda oltre ~2/3 del tempo originale.
+    # 2. Stanchezza alta: taglia la coda oltre ~2/3 del tempo corrente, con
+    # il tetto dell'itinerario ricevuto (`_taglia_per_stanchezza`).
     if signal.stanchezza > SOGLIA_STANCHEZZA_ALTA:
         tenuti = _taglia_per_stanchezza(itinerary, correnti)
         nuove_escluse.extend(
@@ -2081,38 +2087,74 @@ def _sostituzione_nel_budget(
     return _minuti_usati_permanenti(ipotesi) <= limite
 
 
+def _prefisso_vicino_al_limite(durate: Sequence[int], limite: int) -> int:
+    """Lunghezza del prefisso di `durate` il cui totale è il più vicino a
+    `limite`: la durata successiva si TIENE se il totale che la include è
+    strettamente più vicino al limite di quello che la esclude
+    (`|incl - limite| < |escl - limite|`); a parità si ESCLUDE, e al primo
+    escluso ci si ferma. Può valere 0 (il minimo di una tappa lo applica il
+    chiamante)."""
+    tempo = 0
+    n = 0
+    for durata in durate:
+        incluso = tempo + durata
+        if abs(incluso - limite) >= abs(tempo - limite):
+            break
+        n += 1
+        tempo = incluso
+    return n
+
+
 def _taglia_per_stanchezza(
     itinerary: Itinerary, correnti: list[_CandidatoConReason]
 ) -> list[_CandidatoConReason]:
     """Mantiene le tappe di testa il cui tempo totale è il più vicino ai 2/3
-    del tempo originale (prefisso).
+    del tempo delle tappe CORRENTI (prefisso), senza mai superare ciò che la
+    stessa regola terrebbe sull'itinerario ricevuto.
 
-    - `limite` = `int(2/3 * somma delle durate dell'itinerario RICEVUTO)`
-      (`itinerary.stops`, cioè PRIMA delle sostituzioni di questo adattamento);
-      il tempo è invece sommato sulle durate di `correnti`, cioè DOPO le
-      sostituzioni (una tappa sostituita conta con la durata del sostituto).
-      Solo durate di visita: i trasferimenti non entrano nel conto.
+    - `limite` = `int(2/3 * somma delle durate di correnti)`, cioè DOPO le
+      sostituzioni di questo adattamento (una tappa sostituita conta con la
+      durata del sostituto), e il tempo è sommato sulle stesse durate: limite
+      e accumulo hanno la STESSA base. (Prima il limite usava le durate di
+      `itinerary.stops` e l'accumulo quelle di `correnti`: una sostituzione
+      più corta allargava il limite e il taglio teneva PIÙ tappe, cioè più
+      segnali negativi davano un itinerario più lungo.) Solo durate di
+      visita: i trasferimenti non entrano nel conto.
     - Scorrendo in ordine, la tappa successiva si TIENE se il totale che la
       include è strettamente più vicino al limite di quello che la esclude
       (`|incl - limite| < |escl - limite|`); a parità di distanza si ESCLUDE.
       Al primo escluso ci si ferma: il risultato è sempre un prefisso, mai si
       salta una tappa per tenerne una successiva.
-    - Almeno una tappa resta sempre: se la prima da sola supera il limite
-      (anche di oltre il doppio, caso in cui la regola la escluderebbe) è
-      comunque tenuta, e solo lei.
+    - TETTO: `n0` e `t0` sono il numero di tappe e i minuti di visita che la
+      stessa regola (limite 2/3, almeno una tappa) terrebbe sull'itinerario
+      RICEVUTO, con le durate di `itinerary.stops`. Del prefisso ammesso
+      sulle correnti ci si ferma anche prima della tappa che porterebbe a più
+      di `n0` tappe o a più di `t0` minuti: la stanchezza non può mai dare
+      un itinerario più lungo di quello che avrebbe dato senza sostituzioni.
+    - Almeno una tappa resta sempre: la prima è tenuta anche se la regola la
+      escluderebbe e anche se da sola supera `t0`. È un'ECCEZIONE al tetto
+      approvata dal committente: il tempo di visita può superare `t0` solo
+      quando resta una sola tappa.
+
+    Senza sostituzioni (correnti con le stesse durate dei ricevuti) il tetto
+    non morde e il risultato è identico alla regola precedente.
 
     Le tappe di coda sono le meno affini (l'itinerario è ordinato per score in
     composizione): tagliarle riduce lo sforzo senza sacrificare il meglio."""
-    durata_originale = sum(s.durata_min for s in itinerary.stops)
-    limite = int(durata_originale * 2 / 3)
+    durate_ricevute = [s.durata_min for s in itinerary.stops]
+    n0 = max(1, _prefisso_vicino_al_limite(durate_ricevute, int(sum(durate_ricevute) * 2 / 3)))
+    t0 = sum(durate_ricevute[:n0])
+    durate_correnti = [c.experience.durata_min for c in correnti]
+    ammesse = _prefisso_vicino_al_limite(
+        durate_correnti, int(sum(durate_correnti) * 2 / 3)
+    )
     tenuti: list[_CandidatoConReason] = []
-    tempo = 0
-    for cand in correnti:
-        incluso = tempo + cand.experience.durata_min
-        if abs(incluso - limite) >= abs(tempo - limite):
+    minuti = 0
+    for cand in correnti[: min(ammesse, n0)]:
+        if minuti + cand.experience.durata_min > t0:
             break
         tenuti.append(cand)
-        tempo = incluso
+        minuti += cand.experience.durata_min
     return tenuti or correnti[:1]
 
 

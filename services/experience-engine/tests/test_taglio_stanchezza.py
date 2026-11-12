@@ -69,13 +69,17 @@ def test_caso_reale_curioso_pioggia_e_stanchezza_tiene_tre_tappe() -> None:
     assert _ids(_taglia_per_stanchezza(ricevuto, correnti)) == ["interno", "frediano", "reparata"]
 
 
-def test_limite_sulle_durate_ricevute_non_sulle_correnti() -> None:
-    # Ricevuto 60+60+60 = 180 -> limite 120. Correnti piu' corte (sostituzioni
-    # da 30): 30, 60, 90 si avvicinano tutte a 120 -> restano tutte e tre.
-    # Se il limite fosse sulle correnti (90 -> 60) la terza uscirebbe.
+def test_limite_sulle_durate_correnti_dopo_le_sostituzioni() -> None:
+    # MODIFICATO per decisione del committente (correzione C, ramo feat/folla).
+    # Prima si chiamava `test_limite_sulle_durate_ricevute_non_sulle_correnti`
+    # e fissava la regola vecchia (limite sulle durate RICEVUTE -> tutte e tre).
+    # Regola nuova: limite e accumulo sulle durate dello STESSO itinerario,
+    # quello dopo le sostituzioni: correnti 30+30+30 = 90 -> limite 60, quindi
+    # 30, 60 restano e la terza (90) esce. Il TETTO dal ricevuto non morde:
+    # ricevuto 60+60+60 -> n0 = 2 tappe, t0 = 120 min (le tenute sono 2 e 60).
     ricevuto = _itinerario([("a", 60), ("b", 60), ("c", 60)])
     correnti = [_cand("a2", 30), _cand("b2", 30), _cand("c2", 30)]
-    assert _ids(_taglia_per_stanchezza(ricevuto, correnti)) == ["a2", "b2", "c2"]
+    assert _ids(_taglia_per_stanchezza(ricevuto, correnti)) == ["a2", "b2"]
 
 
 def test_parita_di_distanza_esclude() -> None:
