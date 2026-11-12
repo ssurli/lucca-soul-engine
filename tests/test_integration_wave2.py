@@ -126,7 +126,9 @@ def test_nessun_contributo_persiste_senza_consenso(client: Any) -> None:
 
     resp = client.post("/memory", json=payload)
     assert resp.status_code == 422
-    assert "consenso" in resp.json()["detail"].lower()
+    assert resp.json()["detail"] == (
+        "Per conservare il ricordo serve il tuo consenso: spunta la casella e riprova."
+    )
 
     # Mai persistito: non compare nemmeno cercandolo per place_id.
     get_resp = client.get(f"/memory/{place_id}")
@@ -174,8 +176,9 @@ def test_pseudonimo_obbligatorio_e_nessun_campo_pii(client: Any) -> None:
     payload = _payload(id="mem-w2-no-pseudonimo", contributor_id="")
     resp = client.post("/memory", json=payload)
     assert resp.status_code == 422
-    dettaglio = resp.json()["detail"].lower()
-    assert "pseudonimo" in dettaglio or "contributor_id" in dettaglio
+    assert resp.json()["detail"] == (
+        "Non è stato possibile firmare il ricordo. Chiudi il foglio, riaprilo e riprova."
+    )
 
     # contributor_id è uno PSEUDONIMO: il contratto non deve esporre nessun
     # campo che assomigli a PII grezza (nome, email, telefono, indirizzo...).

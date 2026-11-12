@@ -169,8 +169,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.staticfiles import StaticFiles
 from starlette.types import Scope
 from urban_memory import (
+    ConsentRequiredError,
+    LicenseRequiredError,
     MemoryRepository,
     MemoryStorageError,
+    PseudonymRequiredError,
     UrbanMemoryError,
     contributions_for_place,
     submit_contribution,
@@ -344,21 +347,46 @@ def _normalizza_segnale(signal: contracts.Signal) -> contracts.Signal:
     return contracts.Signal.model_validate(dati)
 
 
+# Frasi per la persona, scelte dal TIPO dell'eccezione (mai da `str(exc)`,
+# che nomina campi tecnici). Le sottoclassi specifiche vengono PRIMA della base.
+_FRASI_RIFIUTO_RICORDO: tuple[tuple[type[UrbanMemoryError], str], ...] = (
+    (
+        ConsentRequiredError,
+        "Per conservare il ricordo serve il tuo consenso: spunta la casella e riprova.",
+    ),
+    (LicenseRequiredError, "Scegli una licenza per il ricordo e riprova."),
+    (
+        PseudonymRequiredError,
+        "Non è stato possibile firmare il ricordo. Chiudi il foglio, riaprilo e riprova.",
+    ),
+)
+_FRASE_RIFIUTO_GENERICA = "Il ricordo non può essere conservato così com'è."
+
+
+def _frase_rifiuto_ricordo(exc: UrbanMemoryError) -> str:
+    for tipo, frase in _FRASI_RIFIUTO_RICORDO:
+        if isinstance(exc, tipo):
+            return frase
+    return _FRASE_RIFIUTO_GENERICA
+
+
 @app.exception_handler(UrbanMemoryError)
 def urban_memory_error_handler(request: Request, exc: UrbanMemoryError) -> Utf8JSONResponse:
     """Mappa i vincoli non negoziabili della Urban Memory (consenso,
     licenza, pseudonimo — sollevati da `urban_memory.service`, un solo
-    punto verificabile) a un 422 esplicativo in italiano, MAI un 500: chi
-    conferisce deve sapere esattamente cosa manca (utile per un conferimento
-    leggero e contestuale, vedi CLAUDE.md).
+    punto verificabile) a un 422 con una frase in italiano per la persona,
+    MAI un 500: chi conferisce deve sapere cosa fare (conferimento leggero e
+    contestuale, vedi CLAUDE.md).
 
-    Il messaggio dell'eccezione (`str(exc)`) descrive SOLO il vincolo
-    violato, mai il contenuto del contributo (`testo`, `media_uri`,
-    `contributor_id`): niente PII finisce in una risposta HTTP né in un log.
+    La frase è scelta dal TIPO dell'eccezione (`isinstance`, sottoclassi
+    specifiche prima della base `UrbanMemoryError`, che copre anche
+    `InvalidTargetsError` e le sottoclassi future). Il corpo NON contiene mai
+    `str(exc)` (nomi di campi tecnici) né il contenuto del contributo
+    (`testo`, `media_uri`, `contributor_id`): niente PII in risposte o log.
     """
     return Utf8JSONResponse(
         status_code=422,
-        content={"detail": f"conferimento rifiutato: {exc}"},
+        content={"detail": _frase_rifiuto_ricordo(exc)},
     )
 
 
