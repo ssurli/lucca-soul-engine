@@ -14,6 +14,7 @@ import '../theme/tokens.dart';
 import '../util/app_strings.dart';
 import '../util/clock.dart';
 import '../util/directions_link.dart';
+import '../util/riepilogo_cambio.dart';
 import '../util/foto_tappa.dart';
 import '../util/excluded_stop_line.dart';
 import '../util/itinerary_diff.dart';
@@ -271,6 +272,26 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     );
   }
 
+  /// Riga «Prima/Ora» sopra le tappe, solo con un adattamento mostrato.
+  List<Widget> _confronto(InterruttoriController controller) {
+    final testo = confrontoInUnaRiga(
+      originale: controller.originale,
+      mostrato: controller.itinerarioMostrato,
+      strings: _strings,
+    );
+    if (testo == null) return const [];
+    return [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+        child: Text(
+          testo,
+          key: const Key('confronto-in-una-riga'),
+          style: Theme.of(context).textTheme.bodyMedium,
+        ),
+      ),
+    ];
+  }
+
   Widget _buildItinerario(
       BuildContext context, InterruttoriController controller,) {
     final itinerario = controller.itinerarioMostrato;
@@ -299,6 +320,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                     onSegnaposto: _apriDaMappa,
                   ),
                   AdaptiveCard(controller: controller, strings: _strings),
+                  if (controller.adattamentoMostrato != null)
+                    ..._confronto(controller),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
                     child: Text(_strings.itineraryTitle,

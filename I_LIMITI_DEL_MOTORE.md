@@ -47,12 +47,13 @@ sul tipo di prova (vedi Parte 2 — non è una scelta tecnica).
 
 **Cosa NON è garantito:** se fosse positiva o negativa. Non esiste alcun campo di valutazione,
 in nessun punto del sistema. L'unico segnale potenzialmente negativo è `skip`, e nel recommender
-ha **peso 0,0** — neutralizzato di proposito («mai un premio per essere ignorato»).
+ha **peso 0,0** — neutralizzato di proposito («non deve mai premiare un luogo perché è stato
+ignorato»).
 
 **Conseguenza:** se il sistema propone qualcosa di sbagliato, non lo sa e non lo saprà mai.
 
-**Come è gestito:** l'indicatore `soddisfazione` della dashboard mostra esplicitamente
-«non ancora misurabile» — non zero, non vuoto. Un buco dichiarato invece di un numero inventato.
+**Come è gestito:** l'indicatore `soddisfazione` della dashboard dell'app lo dice a parole:
+«Nessuna fonte dati ancora» (il viewer HTML locale: «non ancora misurabile») — non zero, non vuoto. Un buco dichiarato invece di un numero inventato.
 
 **Cosa servirebbe:** un campo di valutazione esplicito, raccolto da utenti reali. **Non** un
 proxy comportamentale travestito da soddisfazione: sarebbe engagement mascherato, esattamente
@@ -78,14 +79,18 @@ il curatore può crearlo». Richiede che un curatore esista (vedi Parte 2).
 
 ## 4. Nessun raggio d'azione, nessuna coordinata
 
-**Cosa è garantito oggi:** la relazione `VICINO` porta i **metri** fra due luoghi collegati, e
-l'Experience Engine li converte in minuti a piedi per comporre l'itinerario sul tempo disponibile.
+**Cosa è garantito oggi:** la relazione `VICINO` porta i **metri** fra due luoghi collegati
+(stime scritte a mano): servono alla frase «A … m da …, già visitato» e a restringere i candidati
+in Neo4j. Il tempo a piedi fra due tappe l'Experience Engine lo ricava invece dai punti (linea
+d'aria × 1,3, `contracts.distanza_a_piedi_m`), con una stima prudente quando un punto manca.
 
 **Cosa NON è garantito:**
-- dall'ondata 3 (22/10/2026) ogni luogo ha un punto (lat/lon, rilevato a mano dal committente) e
-  le esperienze delle Mura e del tramonto hanno punti di arrivo: servono SOLO al tempo di
-  trasferimento tra tappe e al link "Come arrivo qui", mai al punteggio; le botteghe
-  dimostrative non hanno punto (`docs/LIMITI.md`, ondata 3)
+- dall'ondata 3 (22/10/2026) ogni luogo tranne `mura-urbane` ha un punto (lat/lon, rilevato a
+  mano dal committente) e le esperienze delle Mura e del tramonto hanno punti di arrivo: servono
+  al tempo di trasferimento tra tappe, al link "Come arrivo qui", all'ordine di visita delle
+  tappe già scelte e al limite di 300 m di cammino in più nelle sostituzioni per affollamento;
+  mai a decidere quali tappe, né al punteggio; le botteghe dimostrative non hanno punto
+  (`docs/LIMITI.md`, ondata 3)
 - non si può chiedere «cosa c'è entro 300 metri» da un punto qualsiasi: si possono solo seguire
   archi esistenti (76 coppie `VICINO` su 24 luoghi nel seed di Lucca, una voce per coppia)
 - un'attività non può dichiarare un'area di servizio
@@ -104,7 +109,8 @@ luoghi serviti — non un sistema geometrico, sovradimensionato per un pilota su
 ## 5. Orari e disponibilità: solo il minimo
 
 **Cosa è garantito oggi** (implementato dopo la verifica): fasce settimanali ricorrenti su
-`ExperienceNode.orari_apertura`, un quinto filtro duro nella composizione dell'itinerario, e il
+`ExperienceNode.orari_apertura`, un sesto filtro duro (`rules.aperta_durante`), controllato
+all'arrivo di ogni tappa, e il
 rifiuto della prenotazione fuori orario *prima* di persistere.
 
 **Cosa NON è garantito:** capienza (`prenotabile` è un booleano, non un contatore), conflitti di
@@ -122,11 +128,11 @@ allineata** — è l'unica cosa che espone davvero in una presentazione.
   Lo stesso metodo non verificava nemmeno `partner_abbonamento_attivo` — un gap pre-esistente
   mai esteso all'adattamento. **Chiuso** (2026-10-15): l'adattamento ora applica lo stesso
   filtro duro della composizione, in un solo punto.
-- Tutti i filtri duri valutano ogni candidato contro **un singolo istante** di `Signal`, non
-  contro l'ora in cui la tappa verrà davvero visitata più avanti nell'itinerario. Se il giro
-  parte alle 10 e la terza tappa cade alle 15, il controllo avviene alle 10. Per l'affollamento
-  è tollerabile; per gli orari è un errore vero. È un limite di progettazione della pipeline,
-  da disegnare con un caso reale davanti.
+- Gli orari sono controllati all'arrivo di ogni tappa, sull'intervallo [arrivo, arrivo +
+  durata]. Gli altri filtri duri, affollamento compreso, valutano invece **un solo** `Signal`,
+  quello della richiesta: se il giro parte alle 10 e la terza tappa cade alle 15, l'affollamento
+  considerato è quello delle 10. Per l'affollamento è tollerabile; è un limite di progettazione
+  della pipeline, da disegnare con un caso reale davanti.
 
 ---
 
@@ -136,7 +142,8 @@ allineata** — è l'unica cosa che espone davvero in una presentazione.
 distribuzione su quattro scenari storici indipendenti **di test** (entropia 0,783 → 0,842 nel caso
 base). Il test è in CI: se qualcuno peggiorasse la concentrazione, la build si rompe.
 
-**Ma in produzione il recommender corregge solo sopra 20 eventi storici mappabili**
+**Ma in produzione il recommender corregge solo da 20 in su di peso storico mappabile**
+(somma pesata degli eventi: uno `stop` vale 2, uno `skip` 0)
 (`SOGLIA_MINIMA_EVENTI_MAPPABILI` in `services/recommender/recommender/ranking.py`); sotto, il
 punteggio è identico a quello deterministico. L'app non invia eventi, quindi per la demo è di
 fatto spento (cold start; non verificato sul contenuto reale di Neon): il miglioramento è misurato
@@ -234,9 +241,13 @@ lo score delle esperienze permanenti resta bit-identico con e senza segnali.
    diluviare su una piazza aperta). È il prossimo passo naturale, e tocca la stessa logica del
    bug orari appena corretto.
 3. Nessun tetto al numero di tappe fluttuanti aggiunte.
-4. Nessun filtro affollamento o accessibilità sulla tappa fluttuante.
-5-6. Il canale che *popola* i segnali nel mondo reale non esiste (è il problema di `POST /events`,
-   voce 1): oggi si assume che il segnale arrivi, non si costruisce chi lo emette né con quale prova.
+4. Nessun filtro affollamento sulla tappa fluttuante. L'accessibilità è chiusa in modo
+   conservativo: a chi la chiede non arriva nessuna tappa fluttuante (né evento promosso), perché
+   il segnale non dice se il luogo è accessibile.
+5-6. Il canale pubblico che *popola* i segnali non esiste: oggi un segnale entra solo da un
+   comando ristretto (`python -m urban_memory.submit_signal`) e viene conservato sul server; il
+   BFF ignora quelli mandati dal client. Non c'è un endpoint per chi lo emette, né una prova che
+   dica il vero.
 
 **Perché è comunque solido:** il vettore «compro visibilità segnalando invece di pagare» è chiuso
 per costruzione — filtro commerciale duro + score bit-identico, verificati da un gate etico
@@ -269,9 +280,11 @@ Le alternative compatibili, in ordine di forza decrescente:
 - **check-in volontario** — nessuna prova, ma nessuna intrusione; e un dato che la persona *sa*
   di aver dato è più onesto di una posizione dedotta
 
-**C'è una via d'uscita già disponibile:** il `booking` è una prova migliore dello `stop`. Chi
-prenota e riceve conferma ha lasciato una traccia verificata da entrambe le parti. Forse il
-segnale forte non è «sono stato lì» ma «ho prenotato e la bottega ha confermato».
+**C'è una via d'uscita già impostata nel codice:** il `booking` è una prova migliore dello
+`stop`. Chi prenota e riceve conferma ha lasciato una traccia verificata da entrambe le parti.
+Forse il segnale forte non è «sono stato lì» ma «ho prenotato e la bottega ha confermato». La
+conferma esiste nel Marketplace (`confirm_booking`), ma il BFF non la espone e l'app non
+prenota: va aperta prima di poterla usare come prova.
 
 ---
 
@@ -298,7 +311,7 @@ Non difenderti. Confermalo e spiega la scelta:
 ## Il principio, se serve dichiararlo
 
 > «Ogni volta che abbiamo dovuto scegliere fra un indicatore vuoto e uno finto, abbiamo scelto
-> il vuoto. La dashboard dice "non ancora misurabile" invece di mostrare uno zero. È una scelta
+> il vuoto. La dashboard dice "nessuna fonte dati ancora" invece di mostrare uno zero. È una scelta
 > che si paga in una demo e si ripaga in una verifica.»
 
 ---

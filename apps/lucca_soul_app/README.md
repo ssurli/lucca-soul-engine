@@ -85,7 +85,7 @@ dipendenza da un device o da un BFF in esecuzione.
   orario di arrivo, durata e `reason` sempre in evidenza. Ogni tappa ha
   un'azione "Lascia un ricordo" che apre il conferimento a Urban Memory.
 - **Card adattiva** (`lib/widgets/adaptive_card.dart`) — tre bottoni di
-  simulazione segnale (pioggia, mura affollate, stanchezza) che chiamano
+  simulazione segnale (pioggia, troppa folla, stanchezza) che chiamano
   `POST /itinerary/adapt` e mostrano le tappe cambiate, evidenziate, con il
   nuovo `reason`.
 - **Vista Cittadino** (`lib/screens/citizen_screen.dart`, Wave 2) — "il

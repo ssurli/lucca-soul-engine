@@ -17,17 +17,23 @@ from urban_memory.canale_fluttuante import persist_signal, sweep_and_fetch_activ
 from urban_memory.segnale_repository import InMemorySegnaleFluttuanteRepository
 from urban_memory.traccia_repository import InMemoryTracciaRepository
 
-ORA = datetime.now(UTC)
+
+@pytest.fixture
+def ora() -> datetime:
+    """L'istante del test, letto all'inizio di OGNI test (non all'import): i
+    segnali scadono a `ora` + qualche minuto e il validatore di
+    `SegnaleFluttuante` li confronta con l'orologio reale."""
+    return datetime.now(UTC)
 
 
-def _segnale(**overrides: object) -> SegnaleFluttuante:
+def _segnale(ora: datetime, **overrides: object) -> SegnaleFluttuante:
     defaults: dict[str, object] = {
         "id": "violinista-piazza-anfiteatro-1",
         "descrizione": "Un violinista suona in piazza",
         "temi": ["musica", "arte"],
         "place_id": "piazza-anfiteatro",
         "non_commerciale": True,
-        "valido_fino": ORA + timedelta(hours=1),
+        "valido_fino": ora + timedelta(hours=1),
     }
     defaults.update(overrides)
     return SegnaleFluttuante(**defaults)
@@ -38,14 +44,14 @@ def _segnale(**overrides: object) -> SegnaleFluttuante:
 # ---------------------------------------------------------------------------
 
 
-def test_persist_signal_delega_al_repository() -> None:
+def test_persist_signal_delega_al_repository(ora: datetime) -> None:
     repo = InMemorySegnaleFluttuanteRepository()
-    segnale = _segnale()
+    segnale = _segnale(ora)
 
     persistito = persist_signal(repo, segnale)
 
     assert persistito == segnale
-    assert repo.fetch_attivi(ORA) == [segnale]
+    assert repo.fetch_attivi(ora) == [segnale]
 
 
 # ---------------------------------------------------------------------------
@@ -53,26 +59,26 @@ def test_persist_signal_delega_al_repository() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_segnale_attivo_compare_tra_gli_eventi_attivi() -> None:
+def test_segnale_attivo_compare_tra_gli_eventi_attivi(ora: datetime) -> None:
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale(valido_fino=ORA + timedelta(hours=2)))
+    segnale_repo.persist(_segnale(ora, valido_fino=ora + timedelta(hours=2)))
 
-    attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ORA)
+    attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ora)
 
     assert [s.id for s in attivi] == ["violinista-piazza-anfiteatro-1"]
 
 
-def test_segnale_scaduto_non_compare_e_deposita_traccia_una_sola_volta() -> None:
+def test_segnale_scaduto_non_compare_e_deposita_traccia_una_sola_volta(ora: datetime) -> None:
     """Cammino felice della scadenza: un segnale scaduto (a) NON compare tra
     gli attivi e (b) deposita ESATTAMENTE una traccia — con `place_id`/`temi`
     presi dal segnale e `creato_il` = `valido_fino` del segnale (valore del
     server, Strada B), non l'istante dello sweep."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale(id="scade-oggi", valido_fino=ORA + timedelta(minutes=1)))
+    segnale_repo.persist(_segnale(ora, id="scade-oggi", valido_fino=ora + timedelta(minutes=1)))
 
-    istante_sweep = ORA + timedelta(hours=1)  # simulato: dopo la scadenza
+    istante_sweep = ora + timedelta(hours=1)  # simulato: dopo la scadenza
     attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante_sweep)
 
     assert attivi == [], "un segnale scaduto non deve mai comparire tra gli attivi"
@@ -83,15 +89,15 @@ def test_segnale_scaduto_non_compare_e_deposita_traccia_una_sola_volta() -> None
     assert traccia.place_id == "piazza-anfiteatro"
     assert traccia.temi == ("musica", "arte")
     # Specifica corretta: il timbro è valido_fino del segnale, non lo sweep.
-    assert traccia.creato_il == ORA + timedelta(minutes=1)
+    assert traccia.creato_il == ora + timedelta(minutes=1)
 
 
-def test_creato_il_della_traccia_e_tz_aware() -> None:
+def test_creato_il_della_traccia_e_tz_aware(ora: datetime) -> None:
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale(id="scade", valido_fino=ORA + timedelta(minutes=1)))
+    segnale_repo.persist(_segnale(ora, id="scade", valido_fino=ora + timedelta(minutes=1)))
 
-    sweep_and_fetch_active(segnale_repo, traccia_repo, now=ORA + timedelta(hours=1))
+    sweep_and_fetch_active(segnale_repo, traccia_repo, now=ora + timedelta(hours=1))
 
     traccia = traccia_repo.list_for_place("piazza-anfiteatro")[0]
     assert traccia.creato_il.tzinfo is not None
@@ -102,14 +108,14 @@ def test_creato_il_della_traccia_e_tz_aware() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_timbro_e_valido_fino_non_lo_sweep_tardivo() -> None:
+def test_timbro_e_valido_fino_non_lo_sweep_tardivo(ora: datetime) -> None:
     """Segnale scaduto "venerdì", sweep "lunedì" (3 giorni dopo): traccia e
     place_link_writer ricevono venerdì, non lunedì."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    venerdi = ORA + timedelta(minutes=1)
+    venerdi = ora + timedelta(minutes=1)
     lunedi = venerdi + timedelta(days=3)
-    segnale_repo.persist(_segnale(id="sabato-sera", valido_fino=venerdi))
+    segnale_repo.persist(_segnale(ora, id="sabato-sera", valido_fino=venerdi))
     chiamate: list[tuple[str, datetime]] = []
 
     sweep_and_fetch_active(
@@ -123,19 +129,19 @@ def test_timbro_e_valido_fino_non_lo_sweep_tardivo() -> None:
     assert chiamate == [("piazza-anfiteatro", venerdi)]
 
 
-def test_valido_fino_non_utc_e_normalizzato_in_utc() -> None:
+def test_valido_fino_non_utc_e_normalizzato_in_utc(ora: datetime) -> None:
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
     plus2 = timezone(timedelta(hours=2))
-    valido = (ORA + timedelta(minutes=1)).astimezone(plus2)
-    segnale_repo.persist(_segnale(id="roma", valido_fino=valido))
+    valido = (ora + timedelta(minutes=1)).astimezone(plus2)
+    segnale_repo.persist(_segnale(ora, id="roma", valido_fino=valido))
     chiamate: list[tuple[str, datetime]] = []
 
     sweep_and_fetch_active(
         segnale_repo,
         traccia_repo,
         place_link_writer=lambda p, q: chiamate.append((p, q)),
-        now=ORA + timedelta(days=1),
+        now=ora + timedelta(days=1),
     )
 
     creato = traccia_repo.list_for_place("piazza-anfiteatro")[0].creato_il
@@ -144,23 +150,23 @@ def test_valido_fino_non_utc_e_normalizzato_in_utc() -> None:
     assert chiamate[0][1].utcoffset() == timedelta(0)
 
 
-def test_depositi_e_scritture_luogo_in_ordine_cronologico_non_per_id() -> None:
+def test_depositi_e_scritture_luogo_in_ordine_cronologico_non_per_id(ora: datetime) -> None:
     """Due segnali dello stesso luogo, id in ordine INVERSO rispetto al tempo:
     il writer li riceve dal più vecchio al più recente, quindi l'ultimo valore
     scritto (e, con la Cypher monotona, il finale) è il più recente."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    prima = ORA + timedelta(minutes=1)
-    dopo = ORA + timedelta(minutes=30)
-    segnale_repo.persist(_segnale(id="a-recente", valido_fino=dopo))
-    segnale_repo.persist(_segnale(id="b-vecchio", valido_fino=prima))
+    prima = ora + timedelta(minutes=1)
+    dopo = ora + timedelta(minutes=30)
+    segnale_repo.persist(_segnale(ora, id="a-recente", valido_fino=dopo))
+    segnale_repo.persist(_segnale(ora, id="b-vecchio", valido_fino=prima))
     chiamate: list[tuple[str, datetime]] = []
 
     sweep_and_fetch_active(
         segnale_repo,
         traccia_repo,
         place_link_writer=lambda p, q: chiamate.append((p, q)),
-        now=ORA + timedelta(days=3),
+        now=ora + timedelta(days=3),
     )
 
     assert [q for _, q in chiamate] == [prima, dopo]
@@ -172,16 +178,18 @@ def test_depositi_e_scritture_luogo_in_ordine_cronologico_non_per_id() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_sweep_ripetuto_non_rideposita_la_traccia() -> None:
+def test_sweep_ripetuto_non_rideposita_la_traccia(ora: datetime) -> None:
     """LOAD-BEARING: uno scaduto già spazzato NON deve MAI ri-depositare la
     traccia. Chiama `sweep_and_fetch_active` DUE volte con lo stesso segnale
     già scaduto: solo la PRIMA chiamata deposita, la seconda è un no-op —
     verificato contando le righe nel ledger, non assumendolo."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale(id="scade-una-volta", valido_fino=ORA + timedelta(minutes=1)))
+    segnale_repo.persist(
+        _segnale(ora, id="scade-una-volta", valido_fino=ora + timedelta(minutes=1))
+    )
 
-    istante = ORA + timedelta(hours=1)
+    istante = ora + timedelta(hours=1)
     sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante)
     sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante)
     sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante + timedelta(days=365))
@@ -198,35 +206,36 @@ def test_sweep_ripetuto_non_rideposita_la_traccia() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_place_link_writer_invocato_per_ogni_segnale_scaduto() -> None:
+def test_place_link_writer_invocato_per_ogni_segnale_scaduto(ora: datetime) -> None:
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale(id="scade", valido_fino=ORA + timedelta(minutes=1)))
+    segnale_repo.persist(_segnale(ora, id="scade", valido_fino=ora + timedelta(minutes=1)))
     chiamate: list[tuple[str, object]] = []
 
     def _writer(place_id: str, quando: datetime) -> None:
         chiamate.append((place_id, quando))
 
-    istante = ORA + timedelta(hours=1)
+    istante = ora + timedelta(hours=1)
     sweep_and_fetch_active(segnale_repo, traccia_repo, place_link_writer=_writer, now=istante)
 
-    assert chiamate == [("piazza-anfiteatro", ORA + timedelta(minutes=1))]
+    assert chiamate == [("piazza-anfiteatro", ora + timedelta(minutes=1))]
 
 
-def test_place_link_writer_none_di_default_non_e_mai_chiamato() -> None:
+def test_place_link_writer_none_di_default_non_e_mai_chiamato(ora: datetime) -> None:
     # Default None: nessuna scrittura nel grafo, nessun errore — comodo per
     # test di dominio puri che riguardano solo Postgres.
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale(id="scade", valido_fino=ORA + timedelta(minutes=1)))
+    segnale_repo.persist(_segnale(ora, id="scade", valido_fino=ora + timedelta(minutes=1)))
 
     # Nessuna eccezione, nessun place_link_writer passato.
-    attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ORA + timedelta(hours=1))
+    attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ora + timedelta(hours=1))
     assert attivi == []
 
 
 def test_place_link_writer_che_fallisce_e_isolato_non_propaga(
     caplog: pytest.LogCaptureFixture,
+    ora: datetime,
 ) -> None:
     """Revisione `ethics-guardian`: un `place_link_writer` che fallisce
     (grafo irraggiungibile) NON deve MAI propagare — `ultima_traccia_il` è
@@ -236,7 +245,7 @@ def test_place_link_writer_che_fallisce_e_isolato_non_propaga(
     un dato perso."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale(id="scade", valido_fino=ORA + timedelta(minutes=1)))
+    segnale_repo.persist(_segnale(ora, id="scade", valido_fino=ora + timedelta(minutes=1)))
 
     def _writer_che_fallisce(place_id: str, quando: datetime) -> None:
         raise RuntimeError("grafo irraggiungibile (simulato)")
@@ -246,7 +255,7 @@ def test_place_link_writer_che_fallisce_e_isolato_non_propaga(
             segnale_repo,
             traccia_repo,
             place_link_writer=_writer_che_fallisce,
-            now=ORA + timedelta(hours=1),
+            now=ora + timedelta(hours=1),
         )
 
     assert attivi == []  # nessuna eccezione propagata fin qui
@@ -259,6 +268,7 @@ def test_place_link_writer_che_fallisce_e_isolato_non_propaga(
 
 def test_deposita_che_fallisce_e_isolato_non_propaga(
     caplog: pytest.LogCaptureFixture,
+    ora: datetime,
 ) -> None:
     """Revisione `ethics-guardian` (FAIL corretto): un fallimento di
     `deposita` per un segnale già transitato a `expired` (commit
@@ -269,22 +279,21 @@ def test_deposita_che_fallisce_e_isolato_non_propaga(
     normalmente (ritorna `fetch_attivi`, mai un'eccezione)."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale(id="scade", valido_fino=ORA + timedelta(minutes=1)))
+    segnale_repo.persist(_segnale(ora, id="scade", valido_fino=ora + timedelta(minutes=1)))
     # Deposita già una traccia con lo stesso segnale_id "a mano" per forzare
     # la violazione dell'idempotenza (difesa in profondità del repository,
     # vedi test_traccia_repository.py) — il modo più semplice per far
     # fallire `deposita` senza un mock dedicato.
     traccia_repo.deposita(
-        segnale_id="scade", place_id="piazza-anfiteatro", temi=["musica"], creato_il=ORA
+        segnale_id="scade", place_id="piazza-anfiteatro", temi=["musica"], creato_il=ora
     )
 
     with caplog.at_level("ERROR"):
-        attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ORA + timedelta(hours=1))
+        attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ora + timedelta(hours=1))
 
     assert attivi == []  # nessuna eccezione propagata fin qui
     assert any("PERDITA PERMANENTE" in r.message for r in caplog.records), (
-        "la perdita permanente della traccia deve essere loggata esplicitamente, "
-        "mai silenziosa"
+        "la perdita permanente della traccia deve essere loggata esplicitamente, mai silenziosa"
     )
 
 
@@ -293,7 +302,7 @@ def test_deposita_che_fallisce_e_isolato_non_propaga(
 # ---------------------------------------------------------------------------
 
 
-def test_segnale_commerciale_scaduto_non_deposita_traccia_ne_chiama_writer() -> None:
+def test_segnale_commerciale_scaduto_non_deposita_traccia_ne_chiama_writer(ora: datetime) -> None:
     """LOAD-BEARING (revisione DEDICATA `ethics-guardian`, non
     un'autovalutazione — varco su "nessuno spazio è acquistabile", CLAUDE.md):
     un segnale commerciale (`non_commerciale=False`) che scade NON deve MAI
@@ -304,10 +313,11 @@ def test_segnale_commerciale_scaduto_non_deposita_traccia_ne_chiama_writer() -> 
     traccia_repo = InMemoryTracciaRepository()
     segnale_repo.persist(
         _segnale(
+            ora,
             id="promo-negozio",
             place_id="bottega-x",
             non_commerciale=False,
-            valido_fino=ORA + timedelta(minutes=1),
+            valido_fino=ora + timedelta(minutes=1),
         )
     )
     chiamate: list[tuple[str, object]] = []
@@ -316,7 +326,7 @@ def test_segnale_commerciale_scaduto_non_deposita_traccia_ne_chiama_writer() -> 
         chiamate.append((place_id, quando))
 
     attivi = sweep_and_fetch_active(
-        segnale_repo, traccia_repo, place_link_writer=_writer, now=ORA + timedelta(hours=1)
+        segnale_repo, traccia_repo, place_link_writer=_writer, now=ora + timedelta(hours=1)
     )
 
     assert attivi == []
@@ -324,14 +334,16 @@ def test_segnale_commerciale_scaduto_non_deposita_traccia_ne_chiama_writer() -> 
     assert chiamate == []
 
 
-def test_segnale_non_commerciale_scaduto_deposita_come_prima_regressione() -> None:
+def test_segnale_non_commerciale_scaduto_deposita_come_prima_regressione(ora: datetime) -> None:
     """Regressione: il default (`non_commerciale=True`) deve continuare a
     depositare normalmente e ad aggiornare il luogo — il filtro NON deve
     stringere il cammino felice già coperto sopra."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
     segnale_repo.persist(
-        _segnale(id="ammissibile", non_commerciale=True, valido_fino=ORA + timedelta(minutes=1))
+        _segnale(
+            ora, id="ammissibile", non_commerciale=True, valido_fino=ora + timedelta(minutes=1)
+        )
     )
     chiamate: list[tuple[str, object]] = []
 
@@ -339,17 +351,17 @@ def test_segnale_non_commerciale_scaduto_deposita_come_prima_regressione() -> No
         chiamate.append((place_id, quando))
 
     attivi = sweep_and_fetch_active(
-        segnale_repo, traccia_repo, place_link_writer=_writer, now=ORA + timedelta(hours=1)
+        segnale_repo, traccia_repo, place_link_writer=_writer, now=ora + timedelta(hours=1)
     )
 
     assert attivi == []
     tracce = traccia_repo.list_for_place("piazza-anfiteatro")
     assert len(tracce) == 1
     assert tracce[0].segnale_id == "ammissibile"
-    assert chiamate == [("piazza-anfiteatro", ORA + timedelta(minutes=1))]
+    assert chiamate == [("piazza-anfiteatro", ora + timedelta(minutes=1))]
 
 
-def test_batch_misto_solo_il_non_commerciale_deposita_isolamento_per_segnale() -> None:
+def test_batch_misto_solo_il_non_commerciale_deposita_isolamento_per_segnale(ora: datetime) -> None:
     """Batch misto nello stesso sweep: un segnale commerciale e uno non
     commerciale scadono insieme. Solo quello non commerciale deposita una
     traccia — il commerciale non blocca né altera il deposito dell'altro
@@ -357,9 +369,10 @@ def test_batch_misto_solo_il_non_commerciale_deposita_isolamento_per_segnale() -
     fallimenti di deposito, vedi sopra)."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    scade_a_breve = ORA + timedelta(minutes=1)
+    scade_a_breve = ora + timedelta(minutes=1)
     segnale_repo.persist(
         _segnale(
+            ora,
             id="commerciale",
             place_id="bottega-x",
             non_commerciale=False,
@@ -368,6 +381,7 @@ def test_batch_misto_solo_il_non_commerciale_deposita_isolamento_per_segnale() -
     )
     segnale_repo.persist(
         _segnale(
+            ora,
             id="non-commerciale",
             place_id="piazza-anfiteatro",
             non_commerciale=True,
@@ -375,7 +389,7 @@ def test_batch_misto_solo_il_non_commerciale_deposita_isolamento_per_segnale() -
         )
     )
 
-    attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ORA + timedelta(hours=1))
+    attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=ora + timedelta(hours=1))
 
     assert attivi == []
     assert traccia_repo.list_for_place("bottega-x") == []
@@ -384,7 +398,7 @@ def test_batch_misto_solo_il_non_commerciale_deposita_isolamento_per_segnale() -
     assert tracce[0].segnale_id == "non-commerciale"
 
 
-def test_segnale_commerciale_transita_comunque_a_expired() -> None:
+def test_segnale_commerciale_transita_comunque_a_expired(ora: datetime) -> None:
     """Il fix non impedisce la scadenza: un segnale commerciale scaduto non
     deve MAI ricomparire tra gli attivi in un fetch successivo, anche se non
     ha depositato alcuna traccia — la transizione attivo->expired
@@ -394,14 +408,15 @@ def test_segnale_commerciale_transita_comunque_a_expired() -> None:
     traccia_repo = InMemoryTracciaRepository()
     segnale_repo.persist(
         _segnale(
+            ora,
             id="commerciale-scaduto",
             place_id="bottega-x",
             non_commerciale=False,
-            valido_fino=ORA + timedelta(minutes=1),
+            valido_fino=ora + timedelta(minutes=1),
         )
     )
 
-    istante = ORA + timedelta(hours=1)
+    istante = ora + timedelta(hours=1)
     primo = sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante)
     secondo = sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante + timedelta(days=1))
 
@@ -412,6 +427,7 @@ def test_segnale_commerciale_transita_comunque_a_expired() -> None:
 
 def test_fallimento_deposita_isolato_non_blocca_gli_altri_segnali(
     caplog: pytest.LogCaptureFixture,
+    ora: datetime,
 ) -> None:
     """LOAD-BEARING (revisione `ethics-guardian`, FAIL corretto in questa
     versione): due segnali scadono nello stesso sweep. Il deposito del
@@ -421,12 +437,12 @@ def test_fallimento_deposita_isolato_non_blocca_gli_altri_segnali(
     `SegnaleFluttuanteRepository` e `TracciaRepository`: l'isolamento è
     PER SEGNALE, non atomicità piena)."""
     segnale_repo = InMemorySegnaleFluttuanteRepository()
-    scade_a_breve = ORA + timedelta(minutes=1)
+    scade_a_breve = ora + timedelta(minutes=1)
     segnale_repo.persist(
-        _segnale(id="fallisce", place_id="luogo-a", temi=["musica"], valido_fino=scade_a_breve)
+        _segnale(ora, id="fallisce", place_id="luogo-a", temi=["musica"], valido_fino=scade_a_breve)
     )
     segnale_repo.persist(
-        _segnale(id="riesce", place_id="luogo-b", temi=["storia"], valido_fino=scade_a_breve)
+        _segnale(ora, id="riesce", place_id="luogo-b", temi=["storia"], valido_fino=scade_a_breve)
     )
 
     reale = InMemoryTracciaRepository()
@@ -439,9 +455,7 @@ def test_fallimento_deposita_isolato_non_blocca_gli_altri_segnali(
         UNIQUE usata in `test_deposita_che_fallisce_e_isolato_non_propaga`
         sopra)."""
 
-        def deposita(
-            self, *, segnale_id: str, place_id: str, temi: list[str], creato_il: datetime
-        ):
+        def deposita(self, *, segnale_id: str, place_id: str, temi: list[str], creato_il: datetime):
             if segnale_id == "fallisce":
                 raise RuntimeError("storage irraggiungibile (simulato)")
             return reale.deposita(
@@ -457,7 +471,7 @@ def test_fallimento_deposita_isolato_non_blocca_gli_altri_segnali(
         def occorrenze_per_pattern(self, place_id: str, temi: list[str]):
             return reale.occorrenze_per_pattern(place_id, temi)
 
-    istante = ORA + timedelta(hours=1)
+    istante = ora + timedelta(hours=1)
     with caplog.at_level("ERROR"):
         attivi = sweep_and_fetch_active(
             segnale_repo, _TracciaRepoCheFallisceSuUnSegnale(), now=istante

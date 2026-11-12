@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:http/http.dart' as http;
 
 import '../models/adapt_request.dart';
@@ -64,21 +64,21 @@ class BffClient {
   /// sessione corrente.
   Future<EmotionalProfile> onboarding(OnboardingRequest request) async {
     final json = await _post('/session/onboarding', request.toJson());
-    return EmotionalProfile.fromJson(json);
+    return _converti('/session/onboarding', () => EmotionalProfile.fromJson(json));
   }
 
   /// `POST /itinerary` — genera l'itinerario del giorno per il contesto
   /// dato (profilo + segnale corrente).
   Future<Itinerary> itinerary(VisitorContext context) async {
     final json = await _post('/itinerary', context.toJson());
-    return Itinerary.fromJson(json);
+    return _converti('/itinerary', () => Itinerary.fromJson(json));
   }
 
   /// `POST /itinerary/adapt` — riscrive l'itinerario a fronte di un nuovo
   /// segnale (pioggia, affollamento, stanchezza).
   Future<Itinerary> adaptItinerary(AdaptRequest request) async {
     final json = await _post('/itinerary/adapt', request.toJson());
-    return Itinerary.fromJson(json);
+    return _converti('/itinerary/adapt', () => Itinerary.fromJson(json));
   }
 
   /// `POST /memory` — conferisce un contributo alla Urban Memory. Il BFF
@@ -89,16 +89,19 @@ class BffClient {
     MemoryContribution contribution,
   ) async {
     final json = await _post('/memory', contribution.toJson());
-    return MemoryContribution.fromJson(json);
+    return _converti('/memory', () => MemoryContribution.fromJson(json));
   }
 
   /// `GET /memory/{place_id}` — solo i contributi già curati (revisionati)
   /// che riguardano un Luogo/Bottega/Artista del grafo.
   Future<List<MemoryContribution>> memoriesForPlace(String placeId) async {
     final list = await _getList('/memory/${Uri.encodeComponent(placeId)}');
-    return list
-        .map((e) => MemoryContribution.fromJson(e as Map<String, dynamic>))
-        .toList();
+    return _converti(
+      '/memory/{place_id}',
+      () => list
+          .map((e) => MemoryContribution.fromJson(e as Map<String, dynamic>))
+          .toList(),
+    );
   }
 
   /// `GET /dashboard/index?periodo=YYYY-MM` — l'Urban Intelligence Index del
@@ -108,7 +111,7 @@ class BffClient {
   /// rete/BFF (la terza fascia di stato, gestita dal chiamante).
   Future<DashboardIndexResponse> dashboardIndex(String periodo) async {
     final json = await _get('/dashboard/index', {'periodo': periodo});
-    return DashboardIndexResponse.fromJson(json);
+    return _converti('/dashboard/index', () => DashboardIndexResponse.fromJson(json));
   }
 
   /// `GET /dashboard/flows?periodo=YYYY-MM&giorno=YYYY-MM-DD&ora=0..23` —
@@ -124,7 +127,7 @@ class BffClient {
     if (giorno != null) query['giorno'] = formatDateYmd(giorno);
     if (ora != null) query['ora'] = ora.toString();
     final json = await _get('/dashboard/flows', query);
-    return DashboardFlowsResponse.fromJson(json);
+    return _converti('/dashboard/flows', () => DashboardFlowsResponse.fromJson(json));
   }
 
   Future<Map<String, dynamic>> _get(
@@ -137,7 +140,7 @@ class BffClient {
       response = await _http.get(uri).timeout(const Duration(seconds: 20));
     } catch (error) {
       final tecnico = 'Impossibile contattare il BFF su $uri: $error';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException.rete(tecnico);
     }
 
@@ -145,10 +148,10 @@ class BffClient {
       throw _erroreHttp(uri, response);
     }
 
-    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    final Object? decoded = _decodifica(path, response);
     if (decoded is! Map<String, dynamic>) {
       final tecnico = 'Risposta del BFF non nel formato atteso per $path';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException(tecnico);
     }
     return decoded;
@@ -170,7 +173,7 @@ class BffClient {
           .timeout(const Duration(seconds: 20));
     } catch (error) {
       final tecnico = 'Impossibile contattare il BFF su $uri: $error';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException.rete(tecnico);
     }
 
@@ -178,10 +181,10 @@ class BffClient {
       throw _erroreHttp(uri, response);
     }
 
-    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    final Object? decoded = _decodifica(path, response);
     if (decoded is! Map<String, dynamic>) {
       final tecnico = 'Risposta del BFF non nel formato atteso per $path';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException(tecnico);
     }
     return decoded;
@@ -194,7 +197,7 @@ class BffClient {
       response = await _http.get(uri).timeout(const Duration(seconds: 20));
     } catch (error) {
       final tecnico = 'Impossibile contattare il BFF su $uri: $error';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException.rete(tecnico);
     }
 
@@ -202,20 +205,52 @@ class BffClient {
       throw _erroreHttp(uri, response);
     }
 
-    final Object? decoded = jsonDecode(utf8.decode(response.bodyBytes));
+    final Object? decoded = _decodifica(path, response);
     if (decoded is! List<dynamic>) {
       final tecnico = 'Risposta del BFF non nel formato atteso per $path';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException(tecnico);
     }
     return decoded;
+  }
+
+  /// Unico punto di log del client: solo in debug. In release url e corpi di
+  /// risposta (il 422 di FastAPI rimanda il contributo inviato) non escono.
+  void _log(String messaggio) {
+    if (kDebugMode) debugPrint(messaggio);
+  }
+
+  /// Decodifica il corpo di una risposta 2xx. Un corpo non JSON (es. HTML di
+  /// un proxy) diventa una [BffException] non di rete, senza riportarne il
+  /// contenuto.
+  Object? _decodifica(String path, http.Response response) {
+    try {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    } catch (_) {
+      const tecnico = 'Risposta del BFF non decodificabile';
+      _log('$tecnico per $path');
+      throw const BffException(tecnico);
+    }
+  }
+
+  /// Esegue la conversione JSON -> modello: qualunque errore (campo mancante,
+  /// tipo errato) diventa una [BffException] non di rete, cosi' le schermate
+  /// lo trattano come errore del servizio.
+  T _converti<T>(String path, T Function() conversione) {
+    try {
+      return conversione();
+    } catch (_) {
+      const tecnico = 'Risposta del BFF non nel formato atteso';
+      _log('$tecnico per $path');
+      throw const BffException(tecnico);
+    }
   }
 
   /// Eccezione per una risposta non 2xx. Url, codice e corpo vanno SOLO nei
   /// log di debug: la UI non mostra mai `message`, salvo i messaggi pensati
   /// per l'utente (422 di `POST /memory`, vedi `memory_contribution_sheet`).
   BffException _erroreHttp(Uri uri, http.Response response) {
-    debugPrint('Il BFF su $uri ha risposto ${response.statusCode}: '
+    _log('Il BFF su $uri ha risposto ${response.statusCode}: '
         '${utf8.decode(response.bodyBytes, allowMalformed: true)}');
     final dettaglio = _extractErrorDetail(response.bodyBytes);
     return BffException(

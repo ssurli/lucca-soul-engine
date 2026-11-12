@@ -24,6 +24,14 @@ const List<String> kKnownPlaceIds = [
   'baluardo-san-paolino',
   'museo-nazionale-guinigi',
   'chiesa-san-francesco',
+  'real-collegio',
+  'museo-barsanti-matteucci',
+  'via-del-fosso',
+  'baluardo-santa-croce',
+  'santi-giovanni-reparata',
+  'palazzo-bernardini',
+  'san-pietro-somaldi',
+  'parco-giochi-san-donato',
 ];
 
 /// Nome leggibile di ogni luogo di [kKnownPlaceIds] (proprieta' `nome` del
@@ -45,6 +53,14 @@ const Map<String, String> kKnownPlaceNames = {
   'baluardo-san-paolino': 'Baluardo San Paolino',
   'museo-nazionale-guinigi': 'Museo Nazionale di Villa Guinigi',
   'chiesa-san-francesco': 'Chiesa di San Francesco',
+  'real-collegio': 'Real Collegio',
+  'museo-barsanti-matteucci': 'Museo Barsanti e Matteucci',
+  'via-del-fosso': 'Via del Fosso',
+  'baluardo-santa-croce': 'Baluardo Santa Croce',
+  'santi-giovanni-reparata': 'Chiesa dei Santi Giovanni e Reparata',
+  'palazzo-bernardini': 'Palazzo Bernardini',
+  'san-pietro-somaldi': 'Chiesa di San Pietro Somaldi',
+  'parco-giochi-san-donato': 'Parco giochi di Porta San Donato',
 };
 
 /// Gli id di [kKnownPlaceIds] in ordine alfabetico di nome (senza distinguere

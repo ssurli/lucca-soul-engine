@@ -68,6 +68,12 @@ class AppStrings {
       _isEn ? 'Stays in plan: no suitable alternative' : 'Resta in programma: nessuna alternativa adatta';
   String noFurtherChange(String segnale) =>
       _isEn ? '$segnale: no further change.' : '$segnale: nessun altro cambiamento.';
+  String get noStopsShort => _isEn ? 'no stops' : 'nessuna tappa';
+  String stopsAndEnd(int n, String fine) => _isEn
+      ? '$n ${n == 1 ? 'stop' : 'stops'}, ends $fine'
+      : '$n ${n == 1 ? 'tappa' : 'tappe'}, fine $fine';
+  String compareLine(String prima, String ora) =>
+      _isEn ? 'Before: $prima · Now: $ora' : 'Prima: $prima · Ora: $ora';
   String get resetShortAction => _isEn ? 'Original plan' : 'Percorso iniziale';
   String get howToArrive => _isEn ? 'How to get here' : 'Come arrivo qui';
   String minutesOnFoot(int n) => _isEn ? 'about $n min on foot' : 'circa $n min a piedi';
@@ -97,6 +103,33 @@ class AppStrings {
           'published before a curator review.'
       : 'Senza questo consenso il contributo non può essere conservato. Niente '
           'viene pubblicato prima di una revisione.';
+  /// Spiegazione della licenza dalla sigla. Una sigla sconosciuta lancia
+  /// [ArgumentError]: nessun testo di ripiego che possa descrivere una
+  /// licenza diversa da quella inviata.
+  String licenseExplanation(String sigla) {
+    switch (sigla) {
+      case 'CC-BY-SA-4.0':
+        return _isEn
+            ? 'Anyone can reuse and adapt your memory, even commercially, as long as they credit the source and keep the same licence.'
+            : 'Chiunque può riusare e modificare il tuo ricordo, anche a fini commerciali, citando la fonte e mantenendo la stessa licenza.';
+      case 'CC-BY-4.0':
+        return _isEn
+            ? 'Anyone can reuse and adapt your memory, even commercially, as long as they credit the source.'
+            : 'Chiunque può riusare e modificare il tuo ricordo, anche a fini commerciali, citando la fonte.';
+      case 'CC0-1.0':
+        return _isEn
+            ? 'You give up all rights: anyone can use your memory without conditions and without crediting anyone.'
+            : 'Rinunci a ogni diritto: chiunque può usare il tuo ricordo senza condizioni e senza citare nessuno.';
+    }
+    throw ArgumentError.value(sigla, 'sigla', 'licenza sconosciuta');
+  }
+
+  String get licenseIrrevocable => _isEn
+      ? 'This choice cannot be withdrawn: anyone who has already received the memory under this licence can keep using it.'
+      : 'La scelta non si può ritirare: chi ha già ricevuto il ricordo con questa licenza può continuare a usarlo.';
+  String get memoryNoPersonalData => _isEn
+      ? "Don't write names, addresses or other personal details, yours or anyone else's."
+      : 'Non scrivere nomi, indirizzi o altri dati personali, tuoi o di altre persone.';
   String get memorySubmit => _isEn ? 'Contribute' : 'Conferisci';
   String get memorySuccess => _isEn
       ? 'Thank you: your contribution is now in review.'
