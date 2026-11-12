@@ -407,6 +407,31 @@ Controllo (eseguito): composto con il riordino disattivato, l'itinerario riprodu
 ESATTAMENTE le tappe, gli arrivi e i `reason` della richiesta congelata precedente (3 casi su
 3); la richiesta precedente, rigiocata col codice nuovo, da' l'`atteso` precedente.
 
+QUATTORDICESIMA modifica autorizzata (2026-11-12, ramo feat/folla; aggiornamento dei soli
+casi di adattamento che cambiano, AUTORIZZATO dal committente), SOLO in
+`lucca_itinerari.json` e SOLO nell'`atteso` di 10 casi su 91, tutti adattamenti per
+affollamento; richieste e altri 81 `atteso` identici, nessun caso `compose` cambiato
+(verificato rigiocando tutte le 91 richieste), `lucca_punteggi.json` intatto. Motivi:
+correzione 1 (in adattamento l'affollamento > 0.7 colpisce solo le esperienze
+all'aperto, sia la tappa sia il divieto sul sostituto) e correzione 2 (limite al cammino
+in piu' per le sostituzioni da affollamento, `rules.AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M` =
+300 m). La correzione C (taglio per stanchezza) non cambia alcun caso.
+  ATTRIBUZIONE, verificata da script e non dedotta: le stesse richieste rigiocate con il
+limite disattivato (costante a 10**9) cambiano solo i 4 casi marcati [1]; gli altri 6
+cambiano solo con il limite [2]. Senza prefisso `exp-`:
+  adapt e adapt-budget|curioso|affollamento-oltre-soglia [1]: laboratorio-liuteria (al
+    chiuso, San Michele a 0.95) non e' piu' sostituita da casa-puccini-visita; resta e il
+    controllo orari la toglie (tagliata_orario); arrivi successivi anticipati.
+  adapt e adapt-budget|accessibile|affollamento-oltre-soglia [1+2]: come sopra per
+    laboratorio-liuteria [1]; facciata-san-michele ora sostituita da mercato-anfiteatro
+    invece di duomo-volto-santo, che sfora il limite [2].
+  adapt e adapt-budget|accessibile|affollamento-moderato [2]: giardino-pfanner sostituita
+    da casa-puccini-visita invece di duomo-volto-santo (oltre il limite).
+  adapt e adapt-budget|con-bambini|affollamento-moderato [2]: orto-botanico-bambini
+    sostituita da duomo-volto-santo invece di sortita-san-paolino (oltre il limite).
+  adapt e adapt-budget|con-bambini|affollamento-oltre-soglia [2]: bici-mura sostituita da
+    duomo-volto-santo invece di sortita-san-paolino (oltre il limite).
+
 AGGIUNTI (2026-10-19, ondata 1): 4 casi `adapt-profilo|...` (tipo `adapt`), la cui
 richiesta porta `profile` nell'AdaptRequest (difetto j); i 74 casi esistenti sono
 byte-identici. Profili da `rag.onboarding.profile_from_answers` con le risposte esatte

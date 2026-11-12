@@ -15,15 +15,15 @@
             "esito_adattamento": "non_toccata"
           },
           {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "10:31:00",
-            "durata_min": 35,
-            "reason": "Sostituita per l'affollamento al Palazzo Pfanner. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "10:27:00",
+            "durata_min": 50,
+            "reason": "Sostituita per l'affollamento al Palazzo Pfanner. Temi: Giacomo Puccini, musica, storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:16:00",
+            "arrivo": "11:24:00",
             "durata_min": 25,
             "reason": "Evoca il tema \"Arte\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
@@ -98,35 +98,34 @@
         "tempo_effettivo_min": 180,
         "stops": [
           {
-            "experience_id": "exp-duomo-volto-santo",
+            "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "10:00:00",
-            "durata_min": 35,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
+            "durata_min": 30,
+            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "10:45:00",
+            "arrivo": "10:34:00",
             "durata_min": 30,
             "reason": "Evoca il tema \"Verde e giardini\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:18:00",
+            "arrivo": "11:07:00",
             "durata_min": 25,
             "reason": "Evoca il tema \"Arte\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:50:00",
-            "durata_min": 50,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": "sostituita"
           }
         ],
-        "tappe_escluse": []
+        "tappe_escluse": [
+          {
+            "experience_id": "exp-laboratorio-liuteria",
+            "esito": "tagliata_orario",
+            "reason": "Tolta: all'ora in cui ci arriveresti il luogo è chiuso, o chiude prima della fine della visita."
+          }
+        ]
       },
       "richiesta": {
         "itinerary": {
@@ -369,15 +368,15 @@
             "esito_adattamento": "non_toccata"
           },
           {
-            "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "10:58:00",
-            "durata_min": 20,
-            "reason": "Sostituita per l'affollamento all'Orto Botanico di Lucca. Temi: storia. Al chiuso.",
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "10:48:00",
+            "durata_min": 35,
+            "reason": "Sostituita per l'affollamento all'Orto Botanico di Lucca. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "11:27:00",
+            "arrivo": "11:29:00",
             "durata_min": 25,
             "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
@@ -464,15 +463,15 @@
         "tempo_effettivo_min": 240,
         "stops": [
           {
-            "experience_id": "exp-sortita-san-paolino",
+            "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
-            "durata_min": 20,
-            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia. Al chiuso.",
+            "durata_min": 35,
+            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "10:29:00",
+            "arrivo": "10:41:00",
             "durata_min": 25,
             "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
@@ -882,42 +881,41 @@
             "esito_adattamento": "sostituita"
           },
           {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "10:38:00",
-            "durata_min": 50,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": "sostituita"
-          },
-          {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:35:00",
+            "arrivo": "10:33:00",
             "durata_min": 25,
             "reason": "Evoca il tema \"Arte\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:03:00",
+            "arrivo": "11:01:00",
             "durata_min": 30,
             "reason": "Evoca il tema \"Verde e giardini\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "12:43:00",
+            "arrivo": "11:41:00",
             "durata_min": 35,
             "reason": "Luigi Boccherini è legato a Duomo di San Martino, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-piazza-napoleone",
-            "arrivo": "13:23:00",
+            "arrivo": "12:21:00",
             "durata_min": 20,
             "reason": "Evoca il tema \"Storia\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           }
         ],
-        "tappe_escluse": []
+        "tappe_escluse": [
+          {
+            "experience_id": "exp-laboratorio-liuteria",
+            "esito": "tagliata_orario",
+            "reason": "Tolta: all'ora in cui ci arriveresti il luogo è chiuso, o chiude prima della fine della visita."
+          }
+        ]
       },
       "richiesta": {
         "itinerary": {
@@ -2587,15 +2585,15 @@
             "esito_adattamento": "non_toccata"
           },
           {
-            "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "10:31:00",
-            "durata_min": 35,
-            "reason": "Sostituita per l'affollamento al Palazzo Pfanner. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
+            "experience_id": "exp-casa-puccini-visita",
+            "arrivo": "10:27:00",
+            "durata_min": 50,
+            "reason": "Sostituita per l'affollamento al Palazzo Pfanner. Temi: Giacomo Puccini, musica, storia. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:16:00",
+            "arrivo": "11:24:00",
             "durata_min": 25,
             "reason": "Evoca il tema \"Arte\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
@@ -2663,35 +2661,34 @@
         "tempo_effettivo_min": null,
         "stops": [
           {
-            "experience_id": "exp-duomo-volto-santo",
+            "experience_id": "exp-mercato-anfiteatro",
             "arrivo": "10:00:00",
-            "durata_min": 35,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
+            "durata_min": 30,
+            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: storia, medioevo. All'aperto.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "10:45:00",
+            "arrivo": "10:34:00",
             "durata_min": 30,
             "reason": "Evoca il tema \"Verde e giardini\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:18:00",
+            "arrivo": "11:07:00",
             "durata_min": 25,
             "reason": "Evoca il tema \"Arte\", e rispetta il bisogno di un percorso accessibile; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
-          },
-          {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "11:50:00",
-            "durata_min": 50,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": "sostituita"
           }
         ],
-        "tappe_escluse": []
+        "tappe_escluse": [
+          {
+            "experience_id": "exp-laboratorio-liuteria",
+            "esito": "tagliata_orario",
+            "reason": "Tolta: all'ora in cui ci arriveresti il luogo è chiuso, o chiude prima della fine della visita."
+          }
+        ]
       },
       "richiesta": {
         "itinerary": {
@@ -2913,15 +2910,15 @@
             "esito_adattamento": "non_toccata"
           },
           {
-            "experience_id": "exp-sortita-san-paolino",
-            "arrivo": "10:58:00",
-            "durata_min": 20,
-            "reason": "Sostituita per l'affollamento all'Orto Botanico di Lucca. Temi: storia. Al chiuso.",
+            "experience_id": "exp-duomo-volto-santo",
+            "arrivo": "10:48:00",
+            "durata_min": 35,
+            "reason": "Sostituita per l'affollamento all'Orto Botanico di Lucca. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "11:27:00",
+            "arrivo": "11:29:00",
             "durata_min": 25,
             "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
@@ -3000,15 +2997,15 @@
         "tempo_effettivo_min": null,
         "stops": [
           {
-            "experience_id": "exp-sortita-san-paolino",
+            "experience_id": "exp-duomo-volto-santo",
             "arrivo": "10:00:00",
-            "durata_min": 20,
-            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Temi: storia. Al chiuso.",
+            "durata_min": 35,
+            "reason": "Sostituita per l'affollamento alle Mura di Lucca. Nel 1751, a otto anni, Luigi Boccherini debuttò come voce bianca nelle feste di Santa Croce, celebrate in questa cattedrale. Al chiuso.",
             "esito_adattamento": "sostituita"
           },
           {
             "experience_id": "exp-facciata-san-michele",
-            "arrivo": "10:29:00",
+            "arrivo": "10:41:00",
             "durata_min": 25,
             "reason": "Giacomo Puccini è legato a Chiesa di San Michele in Foro, ed è pensata anche per chi viaggia con bambini; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
@@ -3385,42 +3382,41 @@
             "esito_adattamento": "sostituita"
           },
           {
-            "experience_id": "exp-casa-puccini-visita",
-            "arrivo": "10:38:00",
-            "durata_min": 50,
-            "reason": "Sostituita per l'affollamento alla Chiesa di San Michele in Foro. Temi: Giacomo Puccini, musica, storia. Al chiuso.",
-            "esito_adattamento": "sostituita"
-          },
-          {
             "experience_id": "exp-mosaico-san-frediano",
-            "arrivo": "11:35:00",
+            "arrivo": "10:33:00",
             "durata_min": 25,
             "reason": "Evoca il tema \"Arte\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-giardino-pfanner",
-            "arrivo": "12:03:00",
+            "arrivo": "11:01:00",
             "durata_min": 30,
             "reason": "Evoca il tema \"Verde e giardini\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-duomo-volto-santo",
-            "arrivo": "12:43:00",
+            "arrivo": "11:41:00",
             "durata_min": 35,
             "reason": "Luigi Boccherini è legato a Duomo di San Martino, e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           },
           {
             "experience_id": "exp-piazza-napoleone",
-            "arrivo": "13:23:00",
+            "arrivo": "12:21:00",
             "durata_min": 20,
             "reason": "Evoca il tema \"Storia\", e hai voglia di perderti e lasciarti sorprendere; inoltre, in questo momento è meno affollato.",
             "esito_adattamento": "non_toccata"
           }
         ],
-        "tappe_escluse": []
+        "tappe_escluse": [
+          {
+            "experience_id": "exp-laboratorio-liuteria",
+            "esito": "tagliata_orario",
+            "reason": "Tolta: all'ora in cui ci arriveresti il luogo è chiuso, o chiude prima della fine della visita."
+          }
+        ]
       },
       "richiesta": {
         "itinerary": {
