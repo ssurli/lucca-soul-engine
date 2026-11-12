@@ -46,6 +46,7 @@ from contracts import (
 )
 
 from .rules import (
+    AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M,
     DURATA_TAPPA_EVENTO_MIN,
     DURATA_TAPPA_FLUTTUANTE_MIN,
     SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
@@ -1369,6 +1370,7 @@ def _migliore_alternativa(
     *,
     luoghi_occupati: AbstractSet[str] = frozenset(),
     entra_nel_budget: Callable[[GraphCandidate], bool] | None = None,
+    entro_il_cammino: Callable[[GraphCandidate], bool] | None = None,
     arrivo_di: Callable[[GraphCandidate], time],
     vocabolario: VocabolarioTemi,
     prezzo_tolta: float,
@@ -1422,6 +1424,13 @@ def _migliore_alternativa(
       tra quelli che stanno nel budget. `None` = nessun vincolo di budget
       (itinerario senza budget). Il predicato non legge partner né prezzo:
       il vincolo di tempo vale identico per ogni candidato;
+    - `entro_il_cammino`: predicato sui METRI A PIEDI aggiunti dalla
+      sostituzione (`_cammino_entro_il_limite`), costruito da
+      `adapt_itinerary` solo per una sostituzione causata dall'AFFOLLAMENTO
+      e non dalla pioggia; un candidato che farebbe camminare più di
+      `rules.AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M` metri in più non è
+      ammesso. `None` = nessun limite (pioggia, o test di dominio). Legge
+      solo i punti di arrivo: nessun partner, prezzo o attribuzione;
     - costo: `prezzo_tolta` è il prezzo della tappa tolta (None = 0). Un
       candidato è ammesso solo se `(prezzo_eur or 0) <= prezzo_tolta`: chi
       ha scelto una tappa gratuita non si ritrova a pagare per colpa della
@@ -1458,6 +1467,8 @@ def _migliore_alternativa(
             continue  # folla: solo le esperienze all'aperto
         if entra_nel_budget is not None and not entra_nel_budget(c):
             continue
+        if entro_il_cammino is not None and not entro_il_cammino(c):
+            continue  # folla: troppi metri a piedi in più
         if (e.prezzo_eur or 0.0) > prezzo_tolta:
             continue
         ammessi.append(c)
@@ -1495,7 +1506,16 @@ def adapt_itinerary(
        candidato al chiuso in un luogo affollato è ammesso). Eccezione voluta:
        da `SOGLIA_AFFOLLAMENTO_CRITICO` (0.8) in su il filtro duro
        (`rules.passa_filtri_duri`, lo stesso della composizione, invariato)
-       esclude ogni sostituto in quel luogo, anche al chiuso. Un'alternativa entra solo se
+       esclude ogni sostituto in quel luogo, anche al chiuso.
+       Limite al cammino (solo affollamento): per una sostituzione causata
+       dalla folla e NON dalla pioggia, il sostituto è ammesso solo se i
+       metri a piedi in più restano entro
+       `rules.AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M` (inclusivo): distribuire
+       i flussi non deve far camminare molto di più
+       (`_cammino_entro_il_limite`). Se la tappa è toccata dalla pioggia
+       vale la regola della pioggia e il limite non si applica. Nessun
+       sostituto nel limite -> `MANTENUTA_SENZA_ALTERNATIVA` con motivo
+       affollamento. Un'alternativa entra solo se
        l'itinerario con la sostituzione resta nel budget (vedi sotto) e se
        non costa più della tappa tolta; tra gli ammessi si preferisce chi ne
        condivide un tema (`_migliore_alternativa`). Vincolo "una tappa per
@@ -1652,6 +1672,16 @@ def adapt_itinerary(
         if not (piove_e_aperto or place_affollato):
             continue  # tappa non toccata dal segnale
 
+        # Limite al cammino in più: solo per una sostituzione causata
+        # dall'affollamento. Se piove sulla tappa vale la regola della
+        # pioggia (precedenza) e il limite non si applica.
+        limita_cammino = place_affollato and not piove_e_aperto
+        entro_il_cammino: Callable[[GraphCandidate], bool] | None
+        if limita_cammino:
+            entro_il_cammino = partial(_cammino_entro_il_limite, correnti=correnti, indice=i)
+        else:
+            entro_il_cammino = None
+
         entra_nel_budget: Callable[[GraphCandidate], bool] | None
         if limite_budget is None:
             entra_nel_budget = None  # itinerario senza budget: vedi sopra
@@ -1685,6 +1715,7 @@ def adapt_itinerary(
             solo_al_chiuso=piove_e_aperto,
             max_affollamento=SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
             entra_nel_budget=entra_nel_budget,
+            entro_il_cammino=entro_il_cammino,
             arrivo_di=arrivo_di,
             vocabolario=vocabolario,
             prezzo_tolta=e.prezzo_eur or 0.0,
@@ -2118,6 +2149,61 @@ def _prefisso_vicino_al_limite(durate: Sequence[int], limite: int) -> int:
         n += 1
         tempo = incluso
     return n
+
+
+def _aumento_cammino(
+    alternativa: GraphCandidate,
+    *,
+    correnti: Sequence[GraphCandidate],
+    indice: int,
+) -> int:
+    """Metri a piedi IN PIÙ se `alternativa` prende il posto della tappa
+    `indice` di `correnti`:
+
+        d(prec, sost) + d(sost, succ) - d(prec, orig) - d(orig, succ)
+
+    con `d = contracts.distanza_a_piedi_m`. I termini vecchi usano i punti
+    di `_progressione(correnti)`, i nuovi quelli di `_progressione`
+    sull'ipotesi con il sostituto in posizione `indice` (il punto di arrivo
+    scelto può dipendere dalla tappa precedente). Un segmento con un estremo
+    senza punto vale 0 (regola di `_metri_ordine`); la prima tappa non ha
+    termine `prec`, l'ultima non ha termine `succ`. Legge solo i punti di
+    arrivo."""
+    ipotesi = [*correnti[:indice], alternativa, *correnti[indice + 1 :]]
+    vecchi = _progressione(correnti)
+    nuovi = _progressione(ipotesi)
+
+    def segmento(prog: Sequence[tuple[int, Punto | None]], a: int, b: int) -> int:
+        pa, pb = prog[a][1], prog[b][1]
+        if pa is None or pb is None:
+            return 0
+        return distanza_a_piedi_m(pa, pb)
+
+    aumento = 0
+    if indice > 0:
+        aumento += segmento(nuovi, indice - 1, indice) - segmento(vecchi, indice - 1, indice)
+    if indice < len(correnti) - 1:
+        aumento += segmento(nuovi, indice, indice + 1) - segmento(vecchi, indice, indice + 1)
+    return aumento
+
+
+def _cammino_entro_il_limite(
+    alternativa: GraphCandidate,
+    *,
+    correnti: Sequence[GraphCandidate],
+    indice: int,
+) -> bool:
+    """Vero se la sostituzione della tappa `indice` con `alternativa` aggiunge
+    al più `AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M` metri a piedi
+    (`_aumento_cammino`, limite inclusivo). La costante è letta come nome
+    globale del modulo A OGNI CHIAMATA (niente default di argomento né copie):
+    il valore definitivo sarà scelto da una misura che la sostituisce qui.
+    Solo per le sostituzioni causate dall'affollamento; legge solo punti,
+    mai partner, prezzo o attribuzione."""
+    return (
+        _aumento_cammino(alternativa, correnti=correnti, indice=indice)
+        <= AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M
+    )
 
 
 def _taglia_per_stanchezza(

@@ -2993,3 +2993,37 @@ Il comportamento del motore è fissato da
 Cosa servirebbe: un campo nel contratto (`ItineraryStop`) che dichiari se il trasferimento verso la
 tappa è calcolato o stimato, scritto dal motore; l'app mostrerebbe la riga solo nel primo caso.
 Passa da `contract-keeper`, cambia il golden.
+
+
+## Affollamento in adattamento e taglio per stanchezza: cosa resta fuori (APERTO)
+
+**Trovato:** 2026-11-12, ramo `feat/folla` (correzioni C, 1, 2). Misura: 324 profili, 12/12/2026
+alle 10:00 e 15:00, affollamento 0.75 sull'elenco simulato dell'app.
+
+- **Eccezione "almeno una tappa" (approvata dal committente).** Il taglio per stanchezza non dà
+  più tappe né più minuti di visita del taglio dell'itinerario ricevuto senza sostituzioni, tranne
+  quando resta una sola tappa: la prima è sempre tenuta, anche se un sostituto più lungo la porta
+  oltre quei minuti.
+- **Più segnali non danno sempre meno tappe.** La garanzia vale rispetto al solo "Stanco/a", non
+  tra due combinazioni qualsiasi. Misurato: in 53-66 profili su 324 una combinazione con più segnali
+  ha più tappe di una con meno. Due cause: (a) "Troppa folla + Stanco/a" contro "Piove + Troppa
+  folla + Stanco/a": il sostituto per la folla dura di più di quello per la pioggia e il tetto in
+  minuti taglia una tappa in più; (b) tagli per orario (`tagliata_orario`) che dipendono dagli
+  arrivi, diversi da una combinazione all'altra.
+- **Limite al cammino (`AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M`, 300 m).** Conta solo i due segmenti
+  adiacenti alla tappa sostituita: se cambia il punto d'arrivo della tappa successiva, il segmento
+  dopo non è contato. Un segmento con un estremo senza punto vale 0 (regola di `_metri_ordine`),
+  quindi un sostituto senza punto è sempre ammesso, anche se il trasferimento verso di lui è la
+  stima fissa di 10 minuti. Il limite non si applica alla pioggia (precedenza della pioggia); misurato
+  senza applicarlo, a 300 m colpirebbe 102-120 profili sotto pioggia e aggiungerebbe "senza
+  alternativa adatta" in 54-87.
+- **Tappe all'aperto mantenute per il limite.** Una tappa all'aperto su un luogo tra 0.7 e 0.8
+  resta (`mantenuta_senza_alternativa`) se nessun sostituto sta nel limite; il visitatore lo legge
+  nel `reason`, ma l'Urban Intelligence Index non distingue queste tappe dalle altre mantenute.
+- **La penalità di affollamento nel punteggio vale anche al chiuso.** `rules.calcola_score`
+  penalizza ogni esperienza di un luogo affollato, al chiuso o no: con la pioggia la scelta del
+  sostituto al chiuso può cambiare se il luogo è nell'elenco (misurato: "Piove + Troppa folla"
+  diverso da "Piove" in 17-30 profili, tutti per un sostituto al chiuso diverso). La composizione
+  non è stata cambiata, per decisione del committente.
+- **Filtro critico.** A `>= 0.8` il filtro duro esclude tutto il luogo, anche al chiuso, in
+  composizione e in adattamento: per questo l'app invia 0.75.

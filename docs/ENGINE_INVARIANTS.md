@@ -201,8 +201,12 @@ di riscrittura mirata, con conseguenze concrete:
 - `_migliore_alternativa` **chiama `rules.passa_filtri_duri`** (con `luoghi_gia_visti=[]`:
   l'`AdaptRequest` non li trasporta) e aggiunge SOLO i vincoli propri dell'adattamento:
   esperienze già nell'itinerario, accessibilità conservativa per tappa quando il profilo è
-  assente (`AdaptRequest.profile` opzionale dal 2026-10-19, difetto j), `al_chiuso` su pioggia, affollamento `> 0.7` (più stretto della soglia critica
-  `>= 0.8` del filtro duro, che quindi resta assorbita), e dal 2026-10-19 (difetto g) il
+  assente (`AdaptRequest.profile` opzionale dal 2026-10-19, difetto j), `al_chiuso` su pioggia, affollamento `> 0.7`
+  **solo per i candidati all'aperto** (`al_chiuso=False`, dal 2026-11-12, ramo feat/folla;
+  la soglia critica `>= 0.8` del filtro duro esclude invece tutto il luogo, anche al chiuso, e
+  resta invariata), il **limite al cammino in più** per le sostituzioni causate
+  dall'affollamento (`rules.AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M`, 300 m, solo i due segmenti
+  adiacenti; non si applica se la tappa è toccata dalla pioggia), e dal 2026-10-19 (difetto g) il
   **costo**: un sostituto è ammesso solo se `prezzo_eur` (None = 0) non supera quello della
   tappa tolta. Il prezzo può solo escludere, mai ordinare né dare punteggio; `partner_id` non
   è letto e `calcola_score` è invariato. Storia: fino al 2026-10-15 i filtri
@@ -217,7 +221,12 @@ di riscrittura mirata, con conseguenze concrete:
   `sospesa=True` esce con `tagliata_sospesa`, prima del controllo orari. Accessibilità,
   luoghi visti, affollamento critico e abbonamento partner NON sono ricontrollati sulle tappe
   mantenute (comportamento preesistente, non cambiato dall'ondata 1b-2): pioggia e
-  affollamento oltre 0.7 le riscrivono al passo 1.
+  affollamento oltre 0.7 le riscrivono al passo 1 (l'affollamento solo se la tappa è
+  all'aperto, dal 2026-11-12).
+- **Taglio per stanchezza** (dal 2026-11-12): limite (2/3) e accumulo sulle durate delle tappe
+  DOPO le sostituzioni, con un tetto: non più tappe né più minuti di visita del taglio
+  dell'itinerario ricevuto senza sostituzioni. Unica eccezione, approvata dal committente: la
+  prima tappa resta sempre, anche se da sola supera quei minuti.
 - **Non chiama mai `segnali_fluttuanti_pertinenti`**: un segnale fluttuante comparso *dopo*
   la composizione iniziale non entra mai via `adapt_itinerary` — solo `compose_itinerary`
   ne tiene conto.
