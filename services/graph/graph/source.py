@@ -177,10 +177,13 @@ class SeedCandidateSource:
                     "partner_abbonamento_attivo": self._abbonamento_attivo(esperienza.partner_id)
                 }
             )
+            # Una volta sola: alimenta punti di arrivo e `partner_dimostrativo`
+            # (stessa regola del suffisso di `attribuzione`).
+            partner_dimostrativo = self._bottega_fittizia(esperienza.partner_id)
             punti_arrivo = risolvi_punti_arrivo(
                 esperienza.punti_arrivo,
                 luogo.punto,
-                self._bottega_fittizia(esperienza.partner_id),
+                partner_dimostrativo,
             )
             vicinanza = self._vicinanza(luogo, riferimento, punti_arrivo)
             risultato.append(
@@ -196,6 +199,7 @@ class SeedCandidateSource:
                         else self._distanza(esperienza.place_id, riferimento)
                     ),
                     attribuzione=self._attribuzione(esperienza),
+                    partner_dimostrativo=partner_dimostrativo,
                     place_articolo=luogo.articolo,
                     racconti=racconti_con_fonte(
                         legati=self._legati_per_luogo.get(luogo.id, []),
@@ -513,11 +517,14 @@ class Neo4jCandidateSource:
         # `botteghe` NON entra in `connessioni` (contate nello score del
         # motore): alimenta solo `attribuzione`, fatto commerciale separato e
         # non conteggiato — "nessuno spazio è acquistabile".
+        # `partner_dimostrativo` e il suffisso dell'attribuzione usano la STESSA
+        # valutazione (assente nel grafo = dimostrativo), cosi' non divergono.
+        partner_dimostrativo = bool(botteghe[0].get("fittizio", True)) if botteghe else False
         attribuzione = (
             testo_attribuzione(
                 botteghe[0]["nome"],
                 botteghe[0].get("mestiere") or "",
-                bool(botteghe[0].get("fittizio", True)),
+                partner_dimostrativo,
             )
             if botteghe
             else None
@@ -545,6 +552,7 @@ class Neo4jCandidateSource:
             connessioni=connessioni,
             distanza_m=metri,
             attribuzione=attribuzione,
+            partner_dimostrativo=partner_dimostrativo,
             place_articolo=record["place_articolo"],
             racconti=racconti_con_fonte(
                 legati=legati,
