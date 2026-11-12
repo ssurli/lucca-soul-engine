@@ -22,22 +22,20 @@ Signal baselineSignal([DateTime? now]) {
 /// sono innescati da tre bottoni per dimostrare la riscrittura.
 enum SimulatedSignalKind { pioggia, affollamento, stanchezza }
 
-extension SimulatedSignalKindLabel on SimulatedSignalKind {
-  String get label {
-    switch (this) {
-      case SimulatedSignalKind.pioggia:
-        return 'Sta piovendo';
-      case SimulatedSignalKind.affollamento:
-        return 'Mura affollate';
-      case SimulatedSignalKind.stanchezza:
-        return 'Sono stanco/a';
-    }
-  }
-}
+// Le etichette dei segnali vivono SOLO in `AppStrings` (signalRain,
+// signalCrowd, signalTired): nessuna copia qui.
 
-/// Luoghi noti del seed di Lucca (`services/graph/cypher/01_seed_lucca.cypher`)
-/// usati per rendere plausibile il segnale di affollamento simulato.
-const List<String> _luoghiTipicamenteAffollati = ['mura-urbane', 'piazza-anfiteatro'];
+/// Elenco simulato, scritto a mano (in produzione arriverebbe dal Data Layer).
+/// Luoghi noti del seed (`services/graph/cypher/01_seed_lucca.cypher`).
+const List<String> kLuoghiAffollatiSimulati = ['via-fillungo', 'san-michele-in-foro'];
+
+/// Valore di affollamento simulato per ogni luogo dell'elenco. Sta tra la
+/// soglia di adattamento del motore (rules.SOGLIA_AFFOLLAMENTO_ADATTAMENTO =
+/// 0.7: sopra, le tappe all'aperto vengono riscritte) e la soglia critica
+/// (rules.SOGLIA_AFFOLLAMENTO_CRITICO = 0.8: da li' il filtro duro esclude
+/// tutto il luogo, anche gli interni, che quindi non potrebbero fare da
+/// sostituto). Verificato da tests/test_valore_folla_app.py.
+const double kValoreAffollamentoSimulato = 0.75;
 
 /// Costruisce il nuovo `Signal` a partire da quello corrente, alterando
 /// solo la dimensione simulata dal bottone premuto. `now` solo nei test.
@@ -48,7 +46,7 @@ Signal buildSimulatedSignal(SimulatedSignalKind kind, Signal current, [DateTime?
       return current.copyWith(meteo: Meteo.pioggia, ora: t.ora, data: t.data, istante: t.istante);
     case SimulatedSignalKind.affollamento:
       return current.copyWith(
-        affollamento: {for (final luogo in _luoghiTipicamenteAffollati) luogo: 0.95},
+        affollamento: {for (final luogo in kLuoghiAffollatiSimulati) luogo: kValoreAffollamentoSimulato},
         ora: t.ora, data: t.data, istante: t.istante,
       );
     case SimulatedSignalKind.stanchezza:
