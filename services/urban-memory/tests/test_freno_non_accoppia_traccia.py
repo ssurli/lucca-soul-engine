@@ -40,6 +40,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+import pytest
 from contracts import SegnaleFluttuante
 from urban_memory.canale_fluttuante import sweep_and_fetch_active
 from urban_memory.freno_pattern import tira_freno
@@ -76,9 +77,7 @@ def _moduli_importati(path: Path) -> set[str]:
 
 
 def test_urban_memory_dir_esiste() -> None:
-    assert _URBAN_MEMORY_DIR.is_dir(), (
-        f"atteso {_URBAN_MEMORY_DIR} — layout del repo cambiato?"
-    )
+    assert _URBAN_MEMORY_DIR.is_dir(), f"atteso {_URBAN_MEMORY_DIR} — layout del repo cambiato?"
 
 
 def test_moduli_del_freno_esistono() -> None:
@@ -140,13 +139,20 @@ def test_canale_fluttuante_non_menziona_mai_frenato_nel_sorgente() -> None:
 # 2. Scenario comportamentale — freno tirato, traccia depositata comunque
 # ---------------------------------------------------------------------------
 
-ORA = datetime.now(UTC)
+
+@pytest.fixture
+def ora() -> datetime:
+    """L'istante del test, letto all'inizio di OGNI test (non all'import): i
+    segnali scadono a `ora` + qualche minuto e il validatore di
+    `SegnaleFluttuante` li confronta con l'orologio reale."""
+    return datetime.now(UTC)
+
 
 _PLACE_ID = "piazza-anfiteatro"
 _TEMI = ("musica", "arte")
 
 
-def _segnale_approvato_per_lo_stesso_pattern(**overrides: Any) -> SegnaleFluttuante:
+def _segnale_approvato_per_lo_stesso_pattern(ora: datetime, **overrides: Any) -> SegnaleFluttuante:
     """Un `SegnaleFluttuante` approvato (`non_commerciale=True`) per LO
     STESSO `place_id`/insieme di `temi` del pattern che, sul lato-grafo,
     corrisponde all'`:Evento` promosso che stiamo per frenare — la
@@ -158,13 +164,13 @@ def _segnale_approvato_per_lo_stesso_pattern(**overrides: Any) -> SegnaleFluttua
         "temi": list(_TEMI),
         "place_id": _PLACE_ID,
         "non_commerciale": True,
-        "valido_fino": ORA + timedelta(minutes=1),
+        "valido_fino": ora + timedelta(minutes=1),
     }
     defaults.update(overrides)
     return SegnaleFluttuante(**defaults)
 
 
-def test_traccia_si_deposita_normalmente_mentre_levento_e_frenato() -> None:
+def test_traccia_si_deposita_normalmente_mentre_levento_e_frenato(ora: datetime) -> None:
     """Scenario concreto richiesto dal brief: un pattern viene frenato
     (`tira_freno` su `evento-id` corrispondente), e SUBITO DOPO una nuova
     occorrenza (un `SegnaleFluttuante` approvato per lo stesso place/temi)
@@ -187,7 +193,7 @@ def test_traccia_si_deposita_normalmente_mentre_levento_e_frenato() -> None:
         repo=freno_repo,
         place_id=_PLACE_ID,
         temi=list(_TEMI),
-        quando=ORA,
+        quando=ora,
     )
     assert riga_freno.azione == "tirato"
     assert freno_writer_chiamate == [("evento-piazza-anfiteatro-arte-musica", True)]
@@ -195,9 +201,9 @@ def test_traccia_si_deposita_normalmente_mentre_levento_e_frenato() -> None:
     # --- lato ledger: un segnale approvato per LO STESSO pattern scade -----
     segnale_repo = InMemorySegnaleFluttuanteRepository()
     traccia_repo = InMemoryTracciaRepository()
-    segnale_repo.persist(_segnale_approvato_per_lo_stesso_pattern())
+    segnale_repo.persist(_segnale_approvato_per_lo_stesso_pattern(ora))
 
-    istante_sweep = ORA + timedelta(hours=1)  # dopo la scadenza del segnale
+    istante_sweep = ora + timedelta(hours=1)  # dopo la scadenza del segnale
     attivi = sweep_and_fetch_active(segnale_repo, traccia_repo, now=istante_sweep)
 
     # Il segnale non compare più tra gli attivi (è scaduto)...
@@ -215,7 +221,7 @@ def test_traccia_si_deposita_normalmente_mentre_levento_e_frenato() -> None:
     assert traccia.segnale_id == "violinista-piazza-anfiteatro-durante-il-freno"
     assert traccia.place_id == _PLACE_ID
     assert traccia.temi == _TEMI
-    assert traccia.creato_il == ORA + timedelta(minutes=1)  # valido_fino, non lo sweep
+    assert traccia.creato_il == ora + timedelta(minutes=1)  # valido_fino, non lo sweep
 
     # Il freno resta, indipendentemente, tirato: nessuno dei due percorsi ha
     # influenzato l'altro.
@@ -223,7 +229,9 @@ def test_traccia_si_deposita_normalmente_mentre_levento_e_frenato() -> None:
     assert registrata.azione == "tirato"
 
 
-def test_traccia_continua_a_depositarsi_su_piu_occorrenze_con_freno_sempre_tirato() -> None:
+def test_traccia_continua_a_depositarsi_su_piu_occorrenze_con_freno_sempre_tirato(
+    ora: datetime,
+) -> None:
     """Rinforza lo scenario sopra su PIÙ occorrenze successive (non solo una):
     con il freno tirato e MAI rilasciato in questo test, tre segnali
     approvati distinti per lo stesso pattern scadono in tre sweep separati e
@@ -236,7 +244,7 @@ def test_traccia_continua_a_depositarsi_su_piu_occorrenze_con_freno_sempre_tirat
         motivazione="freno di lunga durata per questo test",
         writer=lambda evento_id, frenato: None,
         repo=freno_repo,
-        quando=ORA,
+        quando=ora,
     )
 
     segnale_repo = InMemorySegnaleFluttuanteRepository()
@@ -245,13 +253,12 @@ def test_traccia_continua_a_depositarsi_su_piu_occorrenze_con_freno_sempre_tirat
     for indice in range(3):
         segnale_repo.persist(
             _segnale_approvato_per_lo_stesso_pattern(
+                ora,
                 id=f"occorrenza-{indice}",
-                valido_fino=ORA + timedelta(minutes=1) + timedelta(hours=indice),
+                valido_fino=ora + timedelta(minutes=1) + timedelta(hours=indice),
             )
         )
-        sweep_and_fetch_active(
-            segnale_repo, traccia_repo, now=ORA + timedelta(hours=indice + 1)
-        )
+        sweep_and_fetch_active(segnale_repo, traccia_repo, now=ora + timedelta(hours=indice + 1))
 
     tracce = traccia_repo.list_for_place(_PLACE_ID)
     assert sorted(t.segnale_id for t in tracce) == [
