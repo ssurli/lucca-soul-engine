@@ -282,6 +282,11 @@ NOMI_COMMERCIALI_VIETATI_NELLO_SCORING = (
     "booking",
     "commission",
     "commissione",
+    # Bottega dimostrativa: sola presentazione, mai scoring (guardia AST
+    # completa in test_scoring_non_legge_dimostrativa.py).
+    "partner_dimostrativo",
+    "dimostrativa",
+    "fittizio",
 )
 
 

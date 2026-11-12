@@ -640,6 +640,10 @@ def _costruisci_stops(
                 reason=reason,
                 # Deciso dal motore (`_passo`); l'app costruisce solo il link.
                 punto_arrivo=punto_arrivo,
+                # SOLA presentazione: copiato dal candidato, mai letto da
+                # scoring o scelta (guardia AST in
+                # tests/test_scoring_non_legge_dimostrativa.py).
+                dimostrativa=cand.partner_dimostrativo,
             )
         )
         orario = _somma_minuti(orario, cand.experience.durata_min)
@@ -935,6 +939,8 @@ def _aggiungi_tappe_fluttuanti(
                 reason=_reason_fluttuante(
                     segnale, place_nome, place_articoli.get(segnale.place_id)
                 ),
+                # Un segnale fluttuante non e' offerto da una bottega.
+                dimostrativa=False,
             )
         )
         orario_corrente = _somma_minuti(orario_corrente, DURATA_TAPPA_FLUTTUANTE_MIN)
@@ -1149,6 +1155,8 @@ def _aggiungi_tappe_eventi_promossi(
                 reason=_reason_evento_promosso(
                     evento, place_nome, data_visita, place_articoli.get(evento.place_id)
                 ),
+                # Un evento promosso non e' un'esperienza offerta da una bottega.
+                dimostrativa=False,
             )
         )
         orario_corrente = _somma_minuti(orario_corrente, DURATA_TAPPA_EVENTO_MIN)
@@ -2003,8 +2011,15 @@ def _titolo_tappa(cand: _CandidatoConReason) -> str | None:
 
 
 def _narrazione_tappa(cand: _CandidatoConReason) -> dict[str, Any]:
-    """Campi di SOLA narrazione della tappa che `cand` occupa (`titolo` e
-    curiosita' del luogo), per l'aggiornamento di una tappa ricevuta.
+    """Campi di SOLA narrazione/presentazione della tappa che `cand` occupa
+    (`titolo`, curiosita' del luogo, `dimostrativa`), per l'aggiornamento o la
+    ricostruzione di una tappa.
+
+    `dimostrativa` e' RICALCOLATO dal candidato corrente, mai preso dalla tappa
+    ricevuta: per un candidato reale `cand.partner_dimostrativo` (una tappa
+    sostituita prende quello del sostituto); per uno stub sempre False (non ha
+    candidato, il client non puo' dichiararlo). Come le curiosita', mai letto
+    da scoring o scelta (tests/test_scoring_non_legge_dimostrativa.py).
 
     Le curiosita' vengono da `cand.curiosita`: per un candidato noto e' il
     catalogo (vince sul client), per uno stub quelle ricevute (copiate da
@@ -2012,7 +2027,11 @@ def _narrazione_tappa(cand: _CandidatoConReason) -> dict[str, Any]:
     (tests/test_scoring_non_legge_curiosita.py) ammette letture delle
     curiosita' solo nei costruttori di tappe, mai in `adapt_itinerary` o nelle
     funzioni che scelgono e ordinano."""
-    return {"titolo": _titolo_tappa(cand), "curiosita": list(cand.curiosita)}
+    return {
+        "titolo": _titolo_tappa(cand),
+        "curiosita": list(cand.curiosita),
+        "dimostrativa": False if cand.senza_candidato else cand.partner_dimostrativo,
+    }
 
 
 def _marca_reason(
@@ -2113,6 +2132,9 @@ def _stub_da_stop(stop: ItineraryStop, reason: str) -> _CandidatoConReason:
         # puo' iniettare curiosita' sue in una tappa del catalogo.
         curiosita=stop.curiosita,
         punto_ricevuto=stop.punto_arrivo,
+        # Mai dal client (`stop.dimostrativa` non si legge): uno stub non ha
+        # candidato, e `_narrazione_tappa` lo restituisce comunque False.
+        partner_dimostrativo=False,
     )
 
 
@@ -2482,13 +2504,14 @@ def _ricostruisci_stops(
         stops.append(
             ItineraryStop(
                 experience_id=cand.experience.id,
-                titolo=_titolo_tappa(cand),
-                curiosita=cand.curiosita,
                 arrivo=orario,
                 durata_min=cand.experience.durata_min,
                 reason=reason,
                 esito_adattamento=cand.esito_deciso or EsitoAdattamento.NON_TOCCATA,
                 punto_arrivo=_punto_in_uscita(cand, punto_arrivo),
+                # titolo, curiosita', dimostrativa: stessa regola dell'adapt
+                # senza cambi (`_narrazione_tappa`).
+                **_narrazione_tappa(cand),
             )
         )
         orario = _somma_minuti(orario, cand.experience.durata_min)
