@@ -8,15 +8,19 @@ d'organo». Accanto, una leggenda sulla facciata e la sua fonte.
 ## Stato
 
 Prototipo dimostrativo. Non è in linea: gira sul computer di chi lo avvia.
-README aggiornato al 10 novembre 2026.
+README aggiornato al 12 novembre 2026.
 
 ## Cosa fa oggi
 
 - **Compone l'itinerario dalle risposte.** Sei domande (voglia di perdersi, silenzio o musica,
   bellezza o storie, bambini, tempo, accessibilità) diventano una giornata di tappe in ordine.
-- **Si adatta a un cambiamento.** Tre interruttori simulano «Piove», «Mura affollate» e
-  «Sono stanco/a». Con «Piove», per esempio, una tappa all'aperto diventa una al chiuso e la
-  scheda dice «Sostituita per la pioggia». Si può tornare al percorso iniziale.
+- **Si adatta a un cambiamento.** Tre interruttori simulano «Piove», «Troppa folla» e
+  «Stanco/a». Con «Piove», per esempio, una tappa all'aperto diventa una al chiuso e la
+  scheda dice «Sostituita per la pioggia». Con «Troppa folla» una tappa all'aperto in un luogo
+  affollato lascia il posto a un'alternativa vicina, mai a più di 300 metri a piedi in più;
+  se non ce n'è una, la tappa resta e la scheda lo dice. Con «Stanco/a» la giornata si accorcia,
+  e aggiungere altri segnali non le dà mai più tappe di quante ne terrebbe la sola stanchezza. Si può tornare al
+  percorso iniziale.
 - **Mostra gli orari.** Per ogni tappa l'ora di arrivo e la durata, per la giornata l'intervallo
   complessivo.
 - **Mostra la mappa.** Le tappe numerate su una mappa, con un link «Come arrivo qui».
@@ -37,7 +41,8 @@ README aggiornato al 10 novembre 2026.
 - **Ricordi d'esempio:** i 4 ricordi caricati per la demo sono testi del committente, segnati
   «(esempio dimostrativo)».
 - **Nessun dato reale di affollamento o di meteo.** I cambiamenti li simula chi usa l'app.
-  Il cruscotto per gli enti non ha dati reali da mostrare.
+  «Troppa folla» segna come affollati via Fillungo e San Michele in Foro: un elenco scritto a mano,
+  non una misura. Il cruscotto per gli enti non ha dati reali da mostrare.
 
 ## Cosa non fa
 
@@ -61,6 +66,7 @@ Ogni regola è protetta da test automatici, eseguiti a ogni invio del codice su 
 | **Pagare non fa salire nessuno.** L'abbonamento decide solo se una bottega partner compare, mai dove. Le botteghe di oggi sono tutte dimostrative. | `services/experience-engine/tests/test_engine.py` (`test_scoring_non_usa_partner_id_ne_prezzo`, `test_scoring_bit_identico_con_abbonamento_e_prenotabilita_variati`, `test_partner_non_attivo_escluso_dai_filtri_duri`) |
 | **Ogni decisione è spiegata.** Nessuna tappa, tolta o sostituita, resta senza un motivo. | `packages/contracts/contracts/models.py` (motivo obbligatorio); `services/experience-engine/tests/test_engine.py` (`test_ogni_tappa_ha_reason_non_vuoto`); `services/experience-engine/tests/test_escluse_reason_canonico.py` |
 | **Nessun ricordo senza consenso e licenza.** | `services/urban-memory/tests/test_service.py`; vincoli del database in `services/urban-memory/tests/test_repository.py` (eseguiti in CI su Linux) |
+| **Evitare la folla non fa camminare molto di più, e la pioggia ha la precedenza.** Una sostituzione per la folla aggiunge al massimo 300 metri a piedi; la folla tocca solo le tappe all'aperto, e sotto la pioggia una tappa non resta mai all'aperto per colpa della folla. | `services/experience-engine/tests/test_folla_limite_cammino.py`, `services/experience-engine/tests/test_folla_al_chiuso.py`, `tests/test_valore_folla_app.py` |
 | **Sotto le 10 persone il dato non si mostra.** Indicatori e mappa dei flussi del cruscotto restano nascosti. | `services/intelligence-index/tests/test_index.py`, `services/intelligence-index/tests/test_intelligence_index_dashboard.py`, `services/api/tests/test_dashboard.py` |
 
 ## Per chi vuole provarlo
