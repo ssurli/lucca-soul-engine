@@ -290,7 +290,10 @@ def _itinerario_una_tappa(id_: str) -> Itinerary:
 
 
 def test_sostituzione_per_affollamento_nomina_il_luogo_con_articolo() -> None:
-    orig = _cand("orig", al_chiuso=True, articolo="la", nome="Torre di Prova")
+    # MODIFICATO per decisione del committente (ramo feat/folla, correzione 1): l'affollamento
+    # in adattamento colpisce solo al_chiuso=False; la tappa era al_chiuso=True e ora e'
+    # all'aperto, cosi' resta colpita dalla folla come voleva il test.
+    orig = _cand("orig", al_chiuso=False, articolo="la", nome="Torre di Prova")
     alt = _cand("alt", al_chiuso=True, articolo=None, nome="Via di Prova")
     segnale = Signal(
         meteo="sereno", affollamento={"luogo-orig": 0.95}, stanchezza=0.0, ora=time(10, 0)
@@ -316,7 +319,10 @@ def test_sostituzione_per_affollamento_nomina_il_luogo_con_articolo() -> None:
 def test_frase_di_esito_affollamento_con_articolo(
     articolo: str | None, nome: str, dove: str
 ) -> None:
-    orig = _cand("orig", al_chiuso=True, articolo=articolo, nome=nome)
+    # MODIFICATO per decisione del committente (ramo feat/folla, correzione 1): l'affollamento
+    # in adattamento colpisce solo al_chiuso=False; la tappa era al_chiuso=True e ora e'
+    # all'aperto, cosi' resta colpita dalla folla come voleva il test.
+    orig = _cand("orig", al_chiuso=False, articolo=articolo, nome=nome)
     segnale = Signal(
         meteo="sereno", affollamento={"luogo-orig": 0.95}, stanchezza=0.0, ora=time(10, 0)
     )

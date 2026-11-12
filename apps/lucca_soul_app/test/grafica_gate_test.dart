@@ -365,7 +365,7 @@ void main() {
 
     testWidgets('etichette esatte; spento = card; acceso = mattone, bianco, spunta', (t) async {
       await montaCard(t);
-      for (final e in ['Piove', 'Mura affollate', 'Stanco/a']) {
+      for (final e in ['Piove', 'Troppa folla', 'Stanco/a']) {
         expect(find.text(e), findsOneWidget);
       }
       Material mat(String e) => t.widget<Material>(
@@ -385,7 +385,7 @@ void main() {
         find.descendant(of: find.widgetWithText(InterruttoreSegnale, 'Piove'), matching: find.byIcon(Icons.check)),
         findsOneWidget,
       );
-      expect(mat('Mura affollate').color, _card);
+      expect(mat('Troppa folla').color, _card);
       expect(find.byIcon(Icons.check), findsOneWidget);
 
       await t.tap(find.text('Stanco/a'));
@@ -423,9 +423,9 @@ void main() {
       await montaCard(t);
       await t.tap(find.text('Piove'));
       await t.pumpAndSettle();
-      await t.tap(find.text('Mura affollate'));
+      await t.tap(find.text('Troppa folla'));
       await t.pumpAndSettle();
-      expect(find.textContaining('Piove, Mura affollate:'), findsOneWidget);
+      expect(find.textContaining('Piove, Troppa folla:'), findsOneWidget);
       await t.tap(find.text('Percorso iniziale'));
       await t.pumpAndSettle();
       // Il ritorno al percorso iniziale resta detto dalla fascia, senza comando

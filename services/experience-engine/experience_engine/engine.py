@@ -46,6 +46,7 @@ from contracts import (
 )
 
 from .rules import (
+    AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M,
     DURATA_TAPPA_EVENTO_MIN,
     DURATA_TAPPA_FLUTTUANTE_MIN,
     SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
@@ -1369,6 +1370,7 @@ def _migliore_alternativa(
     *,
     luoghi_occupati: AbstractSet[str] = frozenset(),
     entra_nel_budget: Callable[[GraphCandidate], bool] | None = None,
+    entro_il_cammino: Callable[[GraphCandidate], bool] | None = None,
     arrivo_di: Callable[[GraphCandidate], time],
     vocabolario: VocabolarioTemi,
     prezzo_tolta: float,
@@ -1406,15 +1408,29 @@ def _migliore_alternativa(
       profilo è assente (una tappa accessibile si sostituisce solo con una
       accessibile) — l'accessibilità non viene mai degradata;
     - `solo_al_chiuso`: con la pioggia, solo esperienze al chiuso;
-    - affollamento > `max_affollamento`: luogo scorrevole. La soglia di
-      adattamento (0.7) è più severa di quella critica di
-      `passa_filtri_duri` (0.8) e la include;
+    - affollamento > `max_affollamento`: luogo scorrevole. Il divieto vale
+      SOLO per i candidati all'aperto (`al_chiuso=False`): una sala al
+      chiuso in un luogo affollato non aggiunge gente alla calca in strada,
+      e con pioggia e folla l'interno della stessa chiesa deve poter
+      sostituire la facciata. La soglia di adattamento (0.7) è più severa di
+      quella critica di `passa_filtri_duri` (0.8): da 0.8 in su il filtro
+      duro esclude comunque TUTTO il luogo, anche al chiuso, ed è voluto
+      (oltre la soglia critica il luogo non va caricato di nuove visite, a
+      prescindere da dove si svolgono; il filtro di composizione resta
+      invariato);
     - `entra_nel_budget`: predicato sul TEMPO (durata e trasferimento
       dell'alternativa, nient'altro) costruito da `adapt_itinerary`; un
       candidato che sforerebbe il budget non è ammesso, e vince il migliore
       tra quelli che stanno nel budget. `None` = nessun vincolo di budget
       (itinerario senza budget). Il predicato non legge partner né prezzo:
       il vincolo di tempo vale identico per ogni candidato;
+    - `entro_il_cammino`: predicato sui METRI A PIEDI aggiunti dalla
+      sostituzione (`_cammino_entro_il_limite`), costruito da
+      `adapt_itinerary` solo per una sostituzione causata dall'AFFOLLAMENTO
+      e non dalla pioggia; un candidato che farebbe camminare più di
+      `rules.AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M` metri in più non è
+      ammesso. `None` = nessun limite (pioggia, o test di dominio). Legge
+      solo i punti di arrivo: nessun partner, prezzo o attribuzione;
     - costo: `prezzo_tolta` è il prezzo della tappa tolta (None = 0). Un
       candidato è ammesso solo se `(prezzo_eur or 0) <= prezzo_tolta`: chi
       ha scelto una tappa gratuita non si ritrova a pagare per colpa della
@@ -1447,10 +1463,12 @@ def _migliore_alternativa(
             continue
         if solo_al_chiuso and not e.al_chiuso:
             continue
-        if signal.affollamento.get(e.place_id, 0.0) > max_affollamento:
-            continue
+        if not e.al_chiuso and signal.affollamento.get(e.place_id, 0.0) > max_affollamento:
+            continue  # folla: solo le esperienze all'aperto
         if entra_nel_budget is not None and not entra_nel_budget(c):
             continue
+        if entro_il_cammino is not None and not entro_il_cammino(c):
+            continue  # folla: troppi metri a piedi in più
         if (e.prezzo_eur or 0.0) > prezzo_tolta:
             continue
         ammessi.append(c)
@@ -1481,8 +1499,23 @@ def adapt_itinerary(
     In ordine:
     1. pioggia: le tappe `al_chiuso=False` sono sostituite dalla migliore
        alternativa `al_chiuso=True` non già presente; affollamento > soglia
-       sul luogo di una tappa: sostituzione con alternativa in luogo
-       scorrevole (distribuzione dei flussi). Un'alternativa entra solo se
+       sul luogo di una tappa ALL'APERTO: sostituzione con alternativa in
+       luogo scorrevole (distribuzione dei flussi). L'affollamento colpisce
+       solo le esperienze all'aperto, sia la tappa (una tappa al chiuso in un
+       luogo affollato non è toccata dalla folla) sia il sostituto (un
+       candidato al chiuso in un luogo affollato è ammesso). Eccezione voluta:
+       da `SOGLIA_AFFOLLAMENTO_CRITICO` (0.8) in su il filtro duro
+       (`rules.passa_filtri_duri`, lo stesso della composizione, invariato)
+       esclude ogni sostituto in quel luogo, anche al chiuso.
+       Limite al cammino (solo affollamento): per una sostituzione causata
+       dalla folla e NON dalla pioggia, il sostituto è ammesso solo se i
+       metri a piedi in più restano entro
+       `rules.AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M` (inclusivo): distribuire
+       i flussi non deve far camminare molto di più
+       (`_cammino_entro_il_limite`). Se la tappa è toccata dalla pioggia
+       vale la regola della pioggia e il limite non si applica. Nessun
+       sostituto nel limite -> `MANTENUTA_SENZA_ALTERNATIVA` con motivo
+       affollamento. Un'alternativa entra solo se
        l'itinerario con la sostituzione resta nel budget (vedi sotto) e se
        non costa più della tappa tolta; tra gli ammessi si preferisce chi ne
        condivide un tema (`_migliore_alternativa`). Vincolo "una tappa per
@@ -1494,9 +1527,14 @@ def adapt_itinerary(
        tappe stub. Senza
        alternativa ammissibile la tappa resta, con esito
        `MANTENUTA_SENZA_ALTERNATIVA` e una frase in coda al `reason`.
-    2. stanchezza > soglia: taglia le tappe in coda oltre ~2/3 del tempo
-       originale (il benessere conta più del numero di tappe); le tappe
-       tolte vanno in `tappe_escluse` (`TAGLIATA_STANCHEZZA`).
+    2. stanchezza > soglia: taglia le tappe in coda oltre ~2/3 del tempo di
+       visita delle tappe CORRENTI (dopo le sostituzioni: limite e accumulo
+       sulla stessa base), con un tetto: mai più tappe né più minuti di
+       visita di quanti la stessa regola ne terrebbe sull'itinerario
+       ricevuto, salvo la prima tappa che resta sempre (eccezione approvata
+       dal committente; `_taglia_per_stanchezza`). Il benessere conta più del
+       numero di tappe; le tappe tolte vanno in `tappe_escluse`
+       (`TAGLIATA_STANCHEZZA`).
     3. tetto della giornata: con gli arrivi ricalcolati da `signal.ora`, le
        tappe che finirebbero oltre le 24:00 escono e vanno in
        `tappe_escluse` (`TAGLIATA_TETTO_GIORNATA`). Vale sempre, anche per
@@ -1624,13 +1662,25 @@ def adapt_itinerary(
             continue
 
         e = cand.experience
-        place_affollato = (
+        # La folla tocca solo le esperienze all'aperto: una tappa al chiuso in
+        # un luogo affollato resta (vedi la docstring, passo 1).
+        place_affollato = (not e.al_chiuso) and (
             signal.affollamento.get(e.place_id, 0.0) > SOGLIA_AFFOLLAMENTO_ADATTAMENTO
         )
         piove_e_aperto = signal.meteo == "pioggia" and not e.al_chiuso
 
         if not (piove_e_aperto or place_affollato):
             continue  # tappa non toccata dal segnale
+
+        # Limite al cammino in più: solo per una sostituzione causata
+        # dall'affollamento. Se piove sulla tappa vale la regola della
+        # pioggia (precedenza) e il limite non si applica.
+        limita_cammino = place_affollato and not piove_e_aperto
+        entro_il_cammino: Callable[[GraphCandidate], bool] | None
+        if limita_cammino:
+            entro_il_cammino = partial(_cammino_entro_il_limite, correnti=correnti, indice=i)
+        else:
+            entro_il_cammino = None
 
         entra_nel_budget: Callable[[GraphCandidate], bool] | None
         if limite_budget is None:
@@ -1665,6 +1715,7 @@ def adapt_itinerary(
             solo_al_chiuso=piove_e_aperto,
             max_affollamento=SOGLIA_AFFOLLAMENTO_ADATTAMENTO,
             entra_nel_budget=entra_nel_budget,
+            entro_il_cammino=entro_il_cammino,
             arrivo_di=arrivo_di,
             vocabolario=vocabolario,
             prezzo_tolta=e.prezzo_eur or 0.0,
@@ -1708,7 +1759,8 @@ def adapt_itinerary(
 
     nuove_escluse: list[TappaEsclusa] = []
 
-    # 2. Stanchezza alta: taglia la coda oltre ~2/3 del tempo originale.
+    # 2. Stanchezza alta: taglia la coda oltre ~2/3 del tempo corrente, con
+    # il tetto dell'itinerario ricevuto (`_taglia_per_stanchezza`).
     if signal.stanchezza > SOGLIA_STANCHEZZA_ALTA:
         tenuti = _taglia_per_stanchezza(itinerary, correnti)
         nuove_escluse.extend(
@@ -2081,38 +2133,129 @@ def _sostituzione_nel_budget(
     return _minuti_usati_permanenti(ipotesi) <= limite
 
 
+def _prefisso_vicino_al_limite(durate: Sequence[int], limite: int) -> int:
+    """Lunghezza del prefisso di `durate` il cui totale è il più vicino a
+    `limite`: la durata successiva si TIENE se il totale che la include è
+    strettamente più vicino al limite di quello che la esclude
+    (`|incl - limite| < |escl - limite|`); a parità si ESCLUDE, e al primo
+    escluso ci si ferma. Può valere 0 (il minimo di una tappa lo applica il
+    chiamante)."""
+    tempo = 0
+    n = 0
+    for durata in durate:
+        incluso = tempo + durata
+        if abs(incluso - limite) >= abs(tempo - limite):
+            break
+        n += 1
+        tempo = incluso
+    return n
+
+
+def _aumento_cammino(
+    alternativa: GraphCandidate,
+    *,
+    correnti: Sequence[GraphCandidate],
+    indice: int,
+) -> int:
+    """Metri a piedi IN PIÙ se `alternativa` prende il posto della tappa
+    `indice` di `correnti`:
+
+        d(prec, sost) + d(sost, succ) - d(prec, orig) - d(orig, succ)
+
+    con `d = contracts.distanza_a_piedi_m`. I termini vecchi usano i punti
+    di `_progressione(correnti)`, i nuovi quelli di `_progressione`
+    sull'ipotesi con il sostituto in posizione `indice` (il punto di arrivo
+    scelto può dipendere dalla tappa precedente). Un segmento con un estremo
+    senza punto vale 0 (regola di `_metri_ordine`); la prima tappa non ha
+    termine `prec`, l'ultima non ha termine `succ`. Legge solo i punti di
+    arrivo."""
+    ipotesi = [*correnti[:indice], alternativa, *correnti[indice + 1 :]]
+    vecchi = _progressione(correnti)
+    nuovi = _progressione(ipotesi)
+
+    def segmento(prog: Sequence[tuple[int, Punto | None]], a: int, b: int) -> int:
+        pa, pb = prog[a][1], prog[b][1]
+        if pa is None or pb is None:
+            return 0
+        return distanza_a_piedi_m(pa, pb)
+
+    aumento = 0
+    if indice > 0:
+        aumento += segmento(nuovi, indice - 1, indice) - segmento(vecchi, indice - 1, indice)
+    if indice < len(correnti) - 1:
+        aumento += segmento(nuovi, indice, indice + 1) - segmento(vecchi, indice, indice + 1)
+    return aumento
+
+
+def _cammino_entro_il_limite(
+    alternativa: GraphCandidate,
+    *,
+    correnti: Sequence[GraphCandidate],
+    indice: int,
+) -> bool:
+    """Vero se la sostituzione della tappa `indice` con `alternativa` aggiunge
+    al più `AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M` metri a piedi
+    (`_aumento_cammino`, limite inclusivo). La costante è letta come nome
+    globale del modulo A OGNI CHIAMATA (niente default di argomento né copie):
+    il valore definitivo sarà scelto da una misura che la sostituisce qui.
+    Solo per le sostituzioni causate dall'affollamento; legge solo punti,
+    mai partner, prezzo o attribuzione."""
+    return (
+        _aumento_cammino(alternativa, correnti=correnti, indice=indice)
+        <= AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M
+    )
+
+
 def _taglia_per_stanchezza(
     itinerary: Itinerary, correnti: list[_CandidatoConReason]
 ) -> list[_CandidatoConReason]:
     """Mantiene le tappe di testa il cui tempo totale è il più vicino ai 2/3
-    del tempo originale (prefisso).
+    del tempo delle tappe CORRENTI (prefisso), senza mai superare ciò che la
+    stessa regola terrebbe sull'itinerario ricevuto.
 
-    - `limite` = `int(2/3 * somma delle durate dell'itinerario RICEVUTO)`
-      (`itinerary.stops`, cioè PRIMA delle sostituzioni di questo adattamento);
-      il tempo è invece sommato sulle durate di `correnti`, cioè DOPO le
-      sostituzioni (una tappa sostituita conta con la durata del sostituto).
-      Solo durate di visita: i trasferimenti non entrano nel conto.
+    - `limite` = `int(2/3 * somma delle durate di correnti)`, cioè DOPO le
+      sostituzioni di questo adattamento (una tappa sostituita conta con la
+      durata del sostituto), e il tempo è sommato sulle stesse durate: limite
+      e accumulo hanno la STESSA base. (Prima il limite usava le durate di
+      `itinerary.stops` e l'accumulo quelle di `correnti`: una sostituzione
+      più corta allargava il limite e il taglio teneva PIÙ tappe, cioè più
+      segnali negativi davano un itinerario più lungo.) Solo durate di
+      visita: i trasferimenti non entrano nel conto.
     - Scorrendo in ordine, la tappa successiva si TIENE se il totale che la
       include è strettamente più vicino al limite di quello che la esclude
       (`|incl - limite| < |escl - limite|`); a parità di distanza si ESCLUDE.
       Al primo escluso ci si ferma: il risultato è sempre un prefisso, mai si
       salta una tappa per tenerne una successiva.
-    - Almeno una tappa resta sempre: se la prima da sola supera il limite
-      (anche di oltre il doppio, caso in cui la regola la escluderebbe) è
-      comunque tenuta, e solo lei.
+    - TETTO: `n0` e `t0` sono il numero di tappe e i minuti di visita che la
+      stessa regola (limite 2/3, almeno una tappa) terrebbe sull'itinerario
+      RICEVUTO, con le durate di `itinerary.stops`. Del prefisso ammesso
+      sulle correnti ci si ferma anche prima della tappa che porterebbe a più
+      di `n0` tappe o a più di `t0` minuti: la stanchezza non può mai dare
+      un itinerario più lungo di quello che avrebbe dato senza sostituzioni.
+    - Almeno una tappa resta sempre: la prima è tenuta anche se la regola la
+      escluderebbe e anche se da sola supera `t0`. È un'ECCEZIONE al tetto
+      approvata dal committente: il tempo di visita può superare `t0` solo
+      quando resta una sola tappa.
+
+    Senza sostituzioni (correnti con le stesse durate dei ricevuti) il tetto
+    non morde e il risultato è identico alla regola precedente.
 
     Le tappe di coda sono le meno affini (l'itinerario è ordinato per score in
     composizione): tagliarle riduce lo sforzo senza sacrificare il meglio."""
-    durata_originale = sum(s.durata_min for s in itinerary.stops)
-    limite = int(durata_originale * 2 / 3)
+    durate_ricevute = [s.durata_min for s in itinerary.stops]
+    n0 = max(1, _prefisso_vicino_al_limite(durate_ricevute, int(sum(durate_ricevute) * 2 / 3)))
+    t0 = sum(durate_ricevute[:n0])
+    durate_correnti = [c.experience.durata_min for c in correnti]
+    ammesse = _prefisso_vicino_al_limite(
+        durate_correnti, int(sum(durate_correnti) * 2 / 3)
+    )
     tenuti: list[_CandidatoConReason] = []
-    tempo = 0
-    for cand in correnti:
-        incluso = tempo + cand.experience.durata_min
-        if abs(incluso - limite) >= abs(tempo - limite):
+    minuti = 0
+    for cand in correnti[: min(ammesse, n0)]:
+        if minuti + cand.experience.durata_min > t0:
             break
         tenuti.append(cand)
-        tempo = incluso
+        minuti += cand.experience.durata_min
     return tenuti or correnti[:1]
 
 

@@ -90,10 +90,10 @@ void main() {
       expect(r.signal.istante, DateTime.utc(2026, 6, 1, 13));
     });
 
-    test('Mura affollate applica la mappa dei luoghi affollati a 0.95', () {
+    test('Troppa folla applica la mappa dei luoghi affollati a 0.75', () {
       final r = richiestaDiAdattamento(accesi: {_a}, originale: _originale, profilo: null)!;
-      expect(r.signal.affollamento, isNotEmpty);
-      expect(r.signal.affollamento.values, everyElement(0.95));
+      expect(r.signal.affollamento.keys, kLuoghiAffollatiSimulati);
+      expect(r.signal.affollamento.values, everyElement(0.75));
       expect(r.signal.meteo, Meteo.sereno);
     });
   });
@@ -113,7 +113,7 @@ void main() {
       expect(senza(_originale, [_stop('a', 'mantenuta_senza_alternativa'), _stop('b', 'non_toccata')]), isFalse);
     });
 
-    test('con Piove acceso, Mura affollate non tocca nulla: stessi id, ordine ed esiti', () {
+    test('con Piove acceso, Troppa folla non tocca nulla: stessi id, ordine ed esiti', () {
       expect(senza(soloPioggia, [_stop('a', 'sostituita'), _stop('b', 'non_toccata')]), isTrue);
     });
 
@@ -233,14 +233,14 @@ void main() {
       final nulla = _it([_stop('a', 'non_toccata'), _stop('b', 'non_toccata')]);
       await monta(tester, (_) async => http.Response(corpo(nulla), 200, headers: _json));
       expect(find.byType(FasciaRiepilogo), findsNothing);
-      await tester.tap(find.text('Mura affollate'));
+      await tester.tap(find.text('Troppa folla'));
       await tester.pumpAndSettle();
       expect(find.byType(FasciaRiepilogo), findsOneWidget);
-      expect(find.text('Mura affollate: nessuna tappa cambiata.'), findsOneWidget);
+      expect(find.text('Troppa folla: nessuna tappa cambiata.'), findsOneWidget);
       expect(find.text('Percorso iniziale'), findsOneWidget);
     });
 
-    testWidgets('con Piove acceso, Mura affollate che non cambia nulla: la fascia resta; Stanco/a che taglia: la fascia non dice nessuna tappa cambiata', (tester) async {
+    testWidgets('con Piove acceso, Troppa folla che non cambia nulla: la fascia resta; Stanco/a che taglia: la fascia non dice nessuna tappa cambiata', (tester) async {
       final pioggia = _it([_stop('a', 'sostituita'), _stop('b', 'non_toccata')]);
       final taglio = _it([_stop('a', 'sostituita')]);
       var n = 0;
@@ -252,15 +252,15 @@ void main() {
       await tester.tap(find.text('Piove'));
       await tester.pumpAndSettle();
       expect(find.textContaining(niente), findsNothing); // sostituita rispetto all'originale
-      await tester.tap(find.text('Mura affollate'));
+      await tester.tap(find.text('Troppa folla'));
       await tester.pumpAndSettle();
       // Senza effetto rispetto a "Piove": la fascia c'e' e riepiloga il cumulo.
-      expect(find.text('Piove, Mura affollate: 1 tappa cambiata.'), findsOneWidget);
-      expect(find.text('Mura affollate: nessun altro cambiamento.'), findsOneWidget);
+      expect(find.text('Piove, Troppa folla: 1 tappa cambiata.'), findsOneWidget);
+      expect(find.text('Troppa folla: nessun altro cambiamento.'), findsOneWidget);
       await tester.tap(find.text('Stanco/a'));
       await tester.pumpAndSettle();
       expect(find.textContaining(niente), findsNothing);
-      expect(find.text('Piove, Mura affollate, Stanco/a: 1 tappa cambiata.'), findsOneWidget);
+      expect(find.text('Piove, Troppa folla, Stanco/a: 1 tappa cambiata.'), findsOneWidget);
       expect(find.textContaining('nessun altro cambiamento'), findsNothing);
       await tester.tap(find.text('Percorso iniziale')); // nessuna richiesta
       await tester.pumpAndSettle();
@@ -272,9 +272,9 @@ void main() {
     testWidgets('un solo segnale senza effetto: niente seconda riga', (tester) async {
       final nulla = _it([_stop('a', 'non_toccata'), _stop('b', 'non_toccata')]);
       await monta(tester, (_) async => http.Response(corpo(nulla), 200, headers: _json));
-      await tester.tap(find.text('Mura affollate'));
+      await tester.tap(find.text('Troppa folla'));
       await tester.pumpAndSettle();
-      expect(find.text('Mura affollate: nessuna tappa cambiata.'), findsOneWidget);
+      expect(find.text('Troppa folla: nessuna tappa cambiata.'), findsOneWidget);
       expect(find.textContaining('nessun altro cambiamento'), findsNothing);
     });
 
@@ -283,10 +283,10 @@ void main() {
       await monta(tester, (_) async => http.Response(corpo(pioggia), 200, headers: _json));
       await tester.tap(find.text('Piove'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Mura affollate'));
+      await tester.tap(find.text('Troppa folla'));
       await tester.pumpAndSettle();
-      expect(find.text('Mura affollate: nessun altro cambiamento.'), findsOneWidget);
-      await tester.tap(find.text('Mura affollate')); // spegne, stessa risposta: senza effetto
+      expect(find.text('Troppa folla: nessun altro cambiamento.'), findsOneWidget);
+      await tester.tap(find.text('Troppa folla')); // spegne, stessa risposta: senza effetto
       await tester.pumpAndSettle();
       expect(find.textContaining('nessun altro cambiamento'), findsNothing);
     });

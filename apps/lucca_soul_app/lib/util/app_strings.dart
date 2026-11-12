@@ -49,7 +49,7 @@ class AppStrings {
   String get durationLabel => _isEn ? 'min' : 'min';
   String get adaptiveCardTitle => _isEn ? 'Something changed?' : 'È cambiato qualcosa?';
   String get signalRain => _isEn ? 'It is raining' : 'Piove';
-  String get signalCrowd => _isEn ? 'Walls are crowded' : 'Mura affollate';
+  String get signalCrowd => _isEn ? 'Too crowded' : 'Troppa folla';
   String get signalTired => _isEn ? 'Tired' : 'Stanco/a';
   String get adaptSuccess => _isEn ? 'Itinerary rewritten' : 'Itinerario riscritto';
   String get adaptError => _isEn ? 'Could not adapt the itinerary.' : 'Non riesco ad adattare l\'itinerario.';

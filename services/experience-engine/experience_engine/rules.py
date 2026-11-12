@@ -40,9 +40,31 @@ from contracts import (
 #: una preferenza. Sotto soglia agisce comunque una penalità proporzionale.
 SOGLIA_AFFOLLAMENTO_CRITICO = 0.8
 
-#: In fase di adattamento una tappa il cui luogo supera questa soglia viene
-#: riscritta verso un'alternativa più scorrevole (distribuzione dei flussi).
+#: In fase di adattamento una tappa ALL'APERTO il cui luogo supera questa
+#: soglia viene riscritta verso un'alternativa più scorrevole (distribuzione
+#: dei flussi), e un sostituto all'aperto in un luogo oltre soglia non è
+#: ammesso. Le esperienze al chiuso non sono toccate da questa soglia: una
+#: sala al chiuso non aggiunge gente alla calca in strada. Da
+#: `SOGLIA_AFFOLLAMENTO_CRITICO` in su vale invece il filtro duro di
+#: `passa_filtri_statici`, che esclude tutto il luogo, anche al chiuso
+#: (voluto, invariato).
 SOGLIA_AFFOLLAMENTO_ADATTAMENTO = 0.7
+
+#: Metri a piedi IN PIÙ ammessi per una sostituzione causata
+#: dall'AFFOLLAMENTO, in adattamento: distribuire i flussi non deve far
+#: camminare molto di più chi visita. Non si applica alla pioggia: se la tappa
+#: è all'aperto e piove vale la regola della pioggia (precedenza), anche se il
+#: luogo è affollato. Formula, sostituto `sost` al posto di `orig` tra `prec` e
+#: `succ`: d(prec, sost) + d(sost, succ) - d(prec, orig) - d(orig, succ)
+#: <= costante (inclusivo), d = `contracts.distanza_a_piedi_m` sui punti di
+#: arrivo della progressione; prima tappa senza termine `prec`, ultima senza
+#: termine `succ`. Tappe senza punto: un segmento con un estremo senza punto
+#: vale 0. Sono contati solo i due segmenti adiacenti alla tappa sostituita.
+#: Valore scelto dalla misura del 2026-11-12 (324 profili, 12/12/2026 alle
+#: 10:00 e 15:00, elenco simulato dell'app, affollamento 0.75): con 300 m
+#: l'aumento medio del cammino dove aumenta resta <= 300 m (218 / 248 m);
+#: con 500 e 800 m e senza limite lo supera (303-421 m).
+AUMENTO_CAMMINO_MAX_AFFOLLAMENTO_M: Final = 300
 
 #: Sopra questa soglia di stanchezza il motore preferisce tappe brevi e, in
 #: adattamento, accorcia l'itinerario: il benessere della persona conta più

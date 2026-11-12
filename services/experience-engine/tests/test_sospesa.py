@@ -197,7 +197,10 @@ def test_adapt_pioggia_senza_altri_sostituti_la_sospesa_non_entra() -> None:
 
 @pytest.mark.parametrize("sospesa", [False, True])
 def test_adapt_affollamento_il_sostituto_ideale_sospeso_non_e_scelto(sospesa: bool) -> None:
-    t = _cand("t", temi=("arte",))
+    # MODIFICATO per decisione del committente (ramo feat/folla, correzione 1): l'affollamento
+    # in adattamento colpisce solo al_chiuso=False; la tappa era al_chiuso=True e ora e'
+    # all'aperto, cosi' resta colpita dalla folla come voleva il test.
+    t = _cand("t", al_chiuso=False, temi=("arte",))
     ideale = _cand("a-ideale", sospesa=sospesa, temi=("arte",))
     altro = _cand("z-altro", temi=("verde",))
     sig = _segnale(affollamento={"luogo-t": 0.75})
