@@ -58,9 +58,9 @@ Aggiungi, nell'ordine — una frase per punto, senza dilungarti:
 **L'adattamento.**
 > «E cambia mentre la giornata cambia. Se comincia a piovere, il percorso si riscrive verso
 > luoghi al chiuso. Se c'è troppa folla in via Fillungo o a San Michele, una tappa all'aperto
-> lì cambia con un'altra in un luogo meno affollato, se ce n'è una che non ti faccia camminare
-> più di 300 metri in più; altrimenti resta, e te lo dice. Le tappe al chiuso restano dove
-> sono.»
+> lì cambia: con un'alternativa al chiuso, anche nello stesso posto, o con una in un luogo meno
+> affollato, purché non ti faccia camminare più di 300 metri in più; altrimenti resta, e te lo
+> dice. Le tappe al chiuso restano dove sono.»
 
 **La città in tempo reale.**
 > «E reagisce a ciò che accade adesso. Se c'è un violinista che suona in una piazza, e a te
