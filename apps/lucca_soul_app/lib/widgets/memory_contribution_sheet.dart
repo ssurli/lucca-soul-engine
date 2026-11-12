@@ -217,6 +217,18 @@ class _MemoryContributionSheetState extends State<MemoryContributionSheet> {
               },
             ),
             const SizedBox(height: 8),
+            Text(
+              strings.licenseExplanation(_licenza),
+              key: const Key('license-explanation'),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              strings.licenseIrrevocable,
+              key: const Key('license-irrevocable'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline),
+            ),
+            const SizedBox(height: 8),
             // Consenso esplicito: checkbox mai pre-spuntata. È la condizione
             // non negoziabile per abilitare l'invio (vedi `_puoInviare`).
             CheckboxListTile(
