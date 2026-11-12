@@ -68,6 +68,12 @@ class AppStrings {
       _isEn ? 'Stays in plan: no suitable alternative' : 'Resta in programma: nessuna alternativa adatta';
   String noFurtherChange(String segnale) =>
       _isEn ? '$segnale: no further change.' : '$segnale: nessun altro cambiamento.';
+  String get noStopsShort => _isEn ? 'no stops' : 'nessuna tappa';
+  String stopsAndEnd(int n, String fine) => _isEn
+      ? '$n ${n == 1 ? 'stop' : 'stops'}, ends $fine'
+      : '$n ${n == 1 ? 'tappa' : 'tappe'}, fine $fine';
+  String compareLine(String prima, String ora) =>
+      _isEn ? 'Before: $prima · Now: $ora' : 'Prima: $prima · Ora: $ora';
   String get resetShortAction => _isEn ? 'Original plan' : 'Percorso iniziale';
   String get howToArrive => _isEn ? 'How to get here' : 'Come arrivo qui';
   String minutesOnFoot(int n) => _isEn ? 'about $n min on foot' : 'circa $n min a piedi';
