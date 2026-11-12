@@ -76,6 +76,10 @@ class ItineraryStop {
   /// mantenuta_senza_alternativa.
   final String? esitoAdattamento;
 
+  /// Stringa grezza (non enum), come esitoAdattamento: pioggia | affollamento.
+  /// Valorizzata dal motore solo per sostituita / mantenuta_senza_alternativa.
+  final String? causaAdattamento;
+
   /// Curiosita della tappa (contratto: default []).
   final List<Curiosita> curiosita;
 
@@ -94,6 +98,7 @@ class ItineraryStop {
     required this.reason,
     this.titolo,
     this.esitoAdattamento,
+    this.causaAdattamento,
     this.curiosita = const [],
     this.puntoArrivo,
     this.dimostrativa = false,
@@ -107,6 +112,7 @@ class ItineraryStop {
       reason: json['reason'] as String,
       titolo: json['titolo'] as String?,
       esitoAdattamento: json['esito_adattamento'] as String?,
+      causaAdattamento: json['causa_adattamento'] as String?,
       curiosita: (json['curiosita'] as List<dynamic>? ?? const [])
           .map((e) => Curiosita.fromJson(e as Map<String, dynamic>))
           .toList(),
@@ -124,6 +130,7 @@ class ItineraryStop {
         'reason': reason,
         if (titolo != null) 'titolo': titolo,
         if (esitoAdattamento != null) 'esito_adattamento': esitoAdattamento,
+        if (causaAdattamento != null) 'causa_adattamento': causaAdattamento,
         // Omessa se vuota (come tappe_escluse): il BFF ha default [].
         if (curiosita.isNotEmpty) 'curiosita': curiosita.map((c) => c.toJson()).toList(),
         if (puntoArrivo != null) 'punto_arrivo': puntoArrivo!.toJson(),

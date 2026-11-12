@@ -491,7 +491,7 @@ class _StopCardState extends State<StopCard> {
     final stop = widget.stop;
     final etichetta = widget.evidenziata
         ? EtichettaEsito(
-            testo: strings.changedStop,
+            testo: strings.changedStopFor(stop.causaAdattamento),
             sfondo: Tk.sostituitaSfondo,
             colore: Tk.sostituitaTesto,)
         : widget.mantenutaSenzaAlternativa

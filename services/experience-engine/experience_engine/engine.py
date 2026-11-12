@@ -1599,7 +1599,11 @@ def adapt_itinerary(
     adattamento precedente, che descriveva un altro segnale); se la tappa ha
     un candidato reale, la disclosure partner è ricalcolata dal candidato
     corrente (`_con_disclosure`), una sola e sempre ultima. Le tappe senza
-    candidato restano intatte (`_reason_finale`).
+    candidato restano intatte (`_reason_finale`). `causa_adattamento` è
+    "pioggia" o "affollamento" per le tappe `SOSTITUITA` e
+    `MANTENUTA_SENZA_ALTERNATIVA` (la stessa causa che il `reason` dice; la
+    pioggia sulla tappa vince sull'affollamento), None per le altre: è
+    ricalcolata a ogni adattamento, mai copiata dalla richiesta.
 
     `tappe_escluse` si accumula: parte da `itinerary.tappe_escluse` e
     aggiunge le nuove, una sola voce per `experience_id` (vince l'esito più
@@ -1680,6 +1684,12 @@ def adapt_itinerary(
         if not (piove_e_aperto or place_affollato):
             continue  # tappa non toccata dal segnale
 
+        # Causa dell'adattamento, decisa UNA volta: da essa derivano sia il
+        # campo `causa_adattamento` sia il testo del `reason` (frase di esito
+        # o "Sostituita per ..."), così non possono divergere. Pioggia sulla
+        # tappa vince anche se il luogo è affollato.
+        causa: _CausaAdattamento = "pioggia" if piove_e_aperto else "affollamento"
+
         # Limite al cammino in più: solo per una sostituzione causata
         # dall'affollamento. Se piove sulla tappa vale la regola della
         # pioggia (precedenza) e il limite non si applica.
@@ -1734,7 +1744,7 @@ def adapt_itinerary(
             # la tappa resta e lo dice, prima della disclosure partner.
             frase = _frase_esito(
                 EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA,
-                motivo="pioggia" if piove_e_aperto else "affollamento",
+                motivo=causa,
                 luogo=cand.place_nome,
                 articolo=cand.place_articolo,
             )
@@ -1743,6 +1753,7 @@ def adapt_itinerary(
                 _con_bagliore(correnti[i].reason_deciso or stop.reason, cand, frase),
                 EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA,
                 stop.experience_id,
+                causa_deciso=causa,
             )
             continue
 
@@ -1754,14 +1765,14 @@ def adapt_itinerary(
         # i tagli) e senza segnali (il segnale è già detto da "Sostituita per
         # ..."). `connessioni` alimentano solo il punteggio, non il testo.
         motivo = fn(alt, profilo_effettivo, [], prima_tappa=False)
-        if piove_e_aperto:
+        if causa == "pioggia":
             segnale = "la pioggia"
         else:
             segnale = "l'affollamento " + con_luogo("a", cand.place_articolo, cand.place_nome)
         alt_reason = adapt_fn(motivo, segnale)
         correnti[i] = _marca_reason(
             alt, alt_reason, EsitoAdattamento.SOSTITUITA, stop.experience_id,
-            segnale_sostituzione=segnale,
+            segnale_sostituzione=segnale, causa_deciso=causa,
         )
         sostituite = True
 
@@ -1827,6 +1838,8 @@ def adapt_itinerary(
                         vocabolario=vocabolario,
                     ),
                     "esito_adattamento": c.esito_deciso,
+                    # Sempre ricalcolata, mai copiata dalla richiesta.
+                    "causa_adattamento": c.causa_deciso,
                     "punto_arrivo": _punto_in_uscita(c, punto),
                     **_narrazione_tappa(c),
                 }
@@ -1966,6 +1979,10 @@ def _senza_frase_esito(reason: str) -> str:
 # --- Candidati con reason/esito decisi --------------------------------------
 
 
+#: Causa di un adattamento di tappa (`ItineraryStop.causa_adattamento`).
+_CausaAdattamento = Literal["pioggia", "affollamento"]
+
+
 class _CandidatoConReason(GraphCandidate):
     """Candidato con `reason` ed esito già decisi (interno all'adapt).
 
@@ -1986,6 +2003,11 @@ class _CandidatoConReason(GraphCandidate):
     #: ..." ("la pioggia", "l'affollamento alla ..."), per ricomporre il
     #: `reason` con la frase del profilo (`_con_frase_profilo`).
     segnale_sostituzione: str | None = None
+    #: Solo per le tappe `SOSTITUITA` e `MANTENUTA_SENZA_ALTERNATIVA`: la
+    #: causa ("pioggia" | "affollamento") da cui deriva anche il testo del
+    #: `reason`; emessa come `ItineraryStop.causa_adattamento`. None altrove
+    #: (non toccate, stub).
+    causa_deciso: _CausaAdattamento | None = None
     #: Solo per gli stub (`senza_candidato`): il `punto_arrivo` della tappa
     #: ricevuta, conservato com'e' nella risposta ("non riscrivere al buio").
     #: Non entra MAI nelle distanze: uno stub non ha `punti_arrivo`, quindi il
@@ -2041,16 +2063,17 @@ def _marca_reason(
     id_originale: str,
     *,
     segnale_sostituzione: str | None = None,
+    causa_deciso: _CausaAdattamento | None = None,
 ) -> _CandidatoConReason:
     dati = cand.model_dump()
     for campo in (
         "reason_deciso", "esito_deciso", "id_originale", "senza_candidato", "titolo_ricevuto",
-        "segnale_sostituzione", "punto_ricevuto",
+        "segnale_sostituzione", "punto_ricevuto", "causa_deciso",
     ):
         dati.pop(campo, None)
     return _CandidatoConReason(
         **dati, reason_deciso=reason, esito_deciso=esito, id_originale=id_originale,
-        segnale_sostituzione=segnale_sostituzione,
+        segnale_sostituzione=segnale_sostituzione, causa_deciso=causa_deciso,
     )
 
 
@@ -2508,6 +2531,7 @@ def _ricostruisci_stops(
                 durata_min=cand.experience.durata_min,
                 reason=reason,
                 esito_adattamento=cand.esito_deciso or EsitoAdattamento.NON_TOCCATA,
+                causa_adattamento=cand.causa_deciso,
                 punto_arrivo=_punto_in_uscita(cand, punto_arrivo),
                 # titolo, curiosita', dimostrativa: stessa regola dell'adapt
                 # senza cambi (`_narrazione_tappa`).
