@@ -127,6 +127,9 @@ class AppStrings {
   String get licenseIrrevocable => _isEn
       ? 'This choice cannot be withdrawn: anyone who has already received the memory under this licence can keep using it.'
       : 'La scelta non si può ritirare: chi ha già ricevuto il ricordo con questa licenza può continuare a usarlo.';
+  String get memoryNoPersonalData => _isEn
+      ? "Don't write names, addresses or other personal details, yours or anyone else's."
+      : 'Non scrivere nomi, indirizzi o altri dati personali, tuoi o di altre persone.';
   String get memorySubmit => _isEn ? 'Contribute' : 'Conferisci';
   String get memorySuccess => _isEn
       ? 'Thank you: your contribution is now in review.'

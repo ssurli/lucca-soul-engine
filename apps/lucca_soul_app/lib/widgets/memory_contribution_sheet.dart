@@ -193,6 +193,14 @@ class _MemoryContributionSheetState extends State<MemoryContributionSheet> {
               ),
               onChanged: (_) => setState(() {}),
             ),
+            // Avviso sempre visibile (non helperText: sparirebbe col contatore
+            // e col messaggio d'errore del campo). Nessun controllo sul testo.
+            Text(
+              strings.memoryNoPersonalData,
+              key: const Key('memory-no-personal-data'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline),
+            ),
+            const SizedBox(height: 8),
             TextField(
               controller: _mediaController,
               decoration: InputDecoration(
