@@ -37,7 +37,8 @@ README aggiornato al 12 novembre 2026.
 - **Orari:** ogni orario dichiara la sua fonte. Quattro vengono da siti ufficiali, gli altri sono
   indicati dal committente; alcuni sono stime dichiarate come tali.
 - **Botteghe inventate:** le 5 botteghe artigiane sono esempi dimostrativi, non esercizi reali.
-  Il motivo della tappa lo dice («esempio dimostrativo») e non hanno un punto sulla mappa.
+  La tappa lo dice già da chiusa, sotto il titolo («Bottega inventata per la demo»); il motivo
+  lo ripete («esempio dimostrativo») e non hanno un punto sulla mappa.
 - **Ricordi d'esempio:** i 4 ricordi caricati per la demo sono testi del committente, segnati
   «(esempio dimostrativo)».
 - **Nessun dato reale di affollamento o di meteo.** I cambiamenti li simula chi usa l'app.

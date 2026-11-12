@@ -30,7 +30,8 @@ Se cominci con "abbiamo un knowledge graph con un layer RAG", hai già perso la 
 Poi ti fermi. Lascia che sia l'altro a chiedere "e come fa?".
 
 Se mostri la demo, dillo: la bottega di liuteria del seed è un esempio dimostrativo, non un
-esercizio reale di Lucca, e nell'app la tappa lo dichiara («esempio dimostrativo»).
+esercizio reale di Lucca, e nell'app la tappa lo dichiara già da chiusa, sotto il titolo
+(«Bottega inventata per la demo»); aperta, il motivo lo ripete («esempio dimostrativo»).
 
 **Perché funziona:** la persona *vede* la differenza invece di sentirsela descrivere.
 E capisce da sola che serve una tecnologia diversa, senza che tu debba nominarla.
