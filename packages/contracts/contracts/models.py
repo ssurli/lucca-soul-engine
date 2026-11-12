@@ -875,6 +875,13 @@ class ItineraryStop(ContractModel):
     # candidato corrente e ignora il valore ricevuto dal client. L'app lo mostra
     # come etichetta sulla tappa chiusa. Mai input di scoring.
     dimostrativa: bool = False
+    # PERCHÉ la tappa è cambiata o è stata mantenuta in adattamento. Scritto SOLO
+    # dall'Experience Engine e RICALCOLATO a ogni adattamento (mai copiato dalla
+    # richiesta). Con pioggia sulla tappa vale "pioggia" anche se il luogo è
+    # affollato. Ammesso solo con esito SOSTITUITA o MANTENUTA_SENZA_ALTERNATIVA
+    # (validatore); l'inverso no: itinerari vecchi hanno esito senza causa.
+    # L'app lo usa per l'etichetta della tappa. Mai input di scoring.
+    causa_adattamento: Literal["pioggia", "affollamento"] | None = None
 
     @field_validator("esito_adattamento")
     @classmethod
@@ -887,6 +894,18 @@ class ItineraryStop(ContractModel):
                 "le tappe tagliate vivono in Itinerary.tappe_escluse"
             )
         return v
+
+    @model_validator(mode="after")
+    def _causa_solo_con_esito_di_sostituzione_o_mantenimento(self) -> ItineraryStop:
+        if self.causa_adattamento is not None and self.esito_adattamento not in (
+            EsitoAdattamento.SOSTITUITA,
+            EsitoAdattamento.MANTENUTA_SENZA_ALTERNATIVA,
+        ):
+            raise ValueError(
+                "causa_adattamento ammessa solo con esito_adattamento "
+                "'sostituita' o 'mantenuta_senza_alternativa'"
+            )
+        return self
 
 
 class TappaEsclusa(ContractModel):

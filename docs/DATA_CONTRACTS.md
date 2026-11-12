@@ -508,6 +508,15 @@ class ItineraryStop(BaseModel):
                                       # adattamento). In adattamento il motore lo RICALCOLA dal candidato
                                       # corrente e ignora il valore ricevuto dal client. L'app lo mostra
                                       # come etichetta sulla tappa chiusa. Mai input di scoring
+    causa_adattamento: Literal["pioggia", "affollamento"] | None = None
+                                      # PERCHÉ la tappa è cambiata o è stata mantenuta. Scritto SOLO
+                                      # dall'Experience Engine e RICALCOLATO a ogni adattamento (mai
+                                      # copiato dalla richiesta). Con pioggia sulla tappa vale "pioggia"
+                                      # anche se il luogo è affollato. Ammesso solo se esito_adattamento è
+                                      # SOSTITUITA o MANTENUTA_SENZA_ALTERNATIVA (validatore, ValueError
+                                      # altrimenti); l'inverso non è richiesto (esito senza causa = itinerari
+                                      # vecchi, validi). L'app lo usa per l'etichetta della tappa. Mai input
+                                      # di scoring
 
 class TappaEsclusa(BaseModel):        # tappa tolta da un adattamento
     experience_id: str
@@ -877,6 +886,14 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
   UNICO punto a partire dall'esito, così campo e testo non possono divergere.
 
 ## Changelog
+
+- **2026-11-12 — causa dell'adattamento.** Aggiunto `ItineraryStop.causa_adattamento:
+  Literal["pioggia", "affollamento"] | None = None` (retrocompatibile: default `None`) con
+  `model_validator` che lo ammette solo se `esito_adattamento` è `SOSTITUITA` o
+  `MANTENUTA_SENZA_ALTERNATIVA`. Nessun campo rinominato o rimosso. Consumatori:
+  `services/experience-engine` (scrittura, ricalcolo a ogni adattamento), `services/api`
+  (passaggio; il valore ricevuto dal client è ignorato), `apps/lucca_soul_app` (specchio Dart da
+  allineare: etichetta della tappa).
 
 - **2026-11-12 — bottega dimostrativa.** Aggiunti, entrambi `bool = False` (retrocompatibili:
   itinerari e golden esistenti restano validi) e MAI input di scoring:
