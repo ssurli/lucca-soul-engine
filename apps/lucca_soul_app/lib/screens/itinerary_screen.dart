@@ -534,6 +534,12 @@ class _StopCardState extends State<StopCard> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(titolo, style: theme.textTheme.titleMedium),
+                                if (stop.dimostrativa)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(strings.demoWorkshop,
+                                        style: stileTesto(13, 600, Tk.testoSecondario),),
+                                  ),
                                 if (stop.puntoArrivo == null)
                                   Padding(
                                     padding: const EdgeInsets.only(top: 2),

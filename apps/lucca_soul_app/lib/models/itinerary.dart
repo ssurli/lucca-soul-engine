@@ -83,6 +83,10 @@ class ItineraryStop {
   /// "Come arrivo qui" (es. botteghe dimostrative).
   final Punto? puntoArrivo;
 
+  /// True = esperienza di una bottega inventata per la demo. Sempre
+  /// riemessa da toJson: l'itinerario torna a /itinerary/adapt.
+  final bool dimostrativa;
+
   const ItineraryStop({
     required this.experienceId,
     required this.arrivo,
@@ -92,6 +96,7 @@ class ItineraryStop {
     this.esitoAdattamento,
     this.curiosita = const [],
     this.puntoArrivo,
+    this.dimostrativa = false,
   });
 
   factory ItineraryStop.fromJson(Map<String, dynamic> json) {
@@ -108,6 +113,7 @@ class ItineraryStop {
       puntoArrivo: json['punto_arrivo'] == null
           ? null
           : Punto.fromJson(json['punto_arrivo'] as Map<String, dynamic>),
+      dimostrativa: json['dimostrativa'] as bool? ?? false,
     );
   }
 
@@ -121,6 +127,7 @@ class ItineraryStop {
         // Omessa se vuota (come tappe_escluse): il BFF ha default [].
         if (curiosita.isNotEmpty) 'curiosita': curiosita.map((c) => c.toJson()).toList(),
         if (puntoArrivo != null) 'punto_arrivo': puntoArrivo!.toJson(),
+        'dimostrativa': dimostrativa,
       };
 }
 

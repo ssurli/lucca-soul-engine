@@ -45,6 +45,8 @@ class AppStrings {
   String adaptServiceError({required bool connessioneAssente}) =>
       connessioneAssente ? adaptNoConnection : adaptServiceUnavailable;
   String get notOnMap => _isEn ? 'Not shown on the map' : 'Non compare sulla mappa';
+  String get demoWorkshop =>
+      _isEn ? 'Made-up workshop, for the demo' : 'Bottega inventata per la demo';
   String get retry => _isEn ? 'Retry' : 'Riprova';
   String get durationLabel => _isEn ? 'min' : 'min';
   String get adaptiveCardTitle => _isEn ? 'Something changed?' : 'È cambiato qualcosa?';

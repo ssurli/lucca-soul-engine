@@ -301,6 +301,12 @@ class GraphCandidate(BaseModel):
     # trasparente nel `reason`, mai input di scoring.
     attribuzione: str | None = None    # es. "Offerta da <bottega>, bottega di <mestiere>."
     # (+ " (esempio dimostrativo)" prima del punto finale se la bottega è fittizia)
+    partner_dimostrativo: bool = False # True se l'esperienza è offerta da una bottega dimostrativa
+                                        # (`Bottega.fittizio` nel dataset; nel grafo `fittizio` assente
+                                        # = True, stessa regola del suffisso di `attribuzione`). False se
+                                        # nessun partner. SOLO narrazione, MAI input di scoring (come
+                                        # `attribuzione` e `curiosita`): `calcola_score` e le funzioni
+                                        # che scelgono/ordinano non lo leggono; guardia AST in experience-engine
     # Campi di SOLO TESTO per il `reason` (ondata 2a, compito 4). NON sono input di
     # scoring: `connessioni` resta l'unico alimentatore della sorpresa (numero di frasi)
     # e il `reason` non la legge più; `calcola_score` non legge questi campi mai.
@@ -495,6 +501,13 @@ class ItineraryStop(BaseModel):
                                       # il più vicino alla tappa precedente (prima tappa: il primo di
                                       # `GraphCandidate.punti_arrivo`). None = nessun link (es. bottega).
                                       # Il motore decide, l'app costruisce solo il link. Mai nel punteggio
+    dimostrativa: bool = False        # la tappa è un'esperienza di una bottega dimostrativa (inventata per
+                                      # la demo). Scritto SOLO dall'Experience Engine, copiando
+                                      # `GraphCandidate.partner_dimostrativo` dal candidato corrente; False
+                                      # per le tappe senza candidato (fluttuanti, eventi promossi, stub di
+                                      # adattamento). In adattamento il motore lo RICALCOLA dal candidato
+                                      # corrente e ignora il valore ricevuto dal client. L'app lo mostra
+                                      # come etichetta sulla tappa chiusa. Mai input di scoring
 
 class TappaEsclusa(BaseModel):        # tappa tolta da un adattamento
     experience_id: str
@@ -865,6 +878,18 @@ class AdaptRequest(BaseModel):             # input di POST /itinerary/adapt
 
 ## Changelog
 
+- **2026-11-12 — bottega dimostrativa.** Aggiunti, entrambi `bool = False` (retrocompatibili:
+  itinerari e golden esistenti restano validi) e MAI input di scoring:
+  `GraphCandidate.partner_dimostrativo` (True se l'esperienza è offerta da una bottega con
+  `Bottega.fittizio=True`; nel grafo `fittizio` assente = True) e `ItineraryStop.dimostrativa`
+  (copia del precedente, scritta solo dall'Experience Engine). Nessun campo rinominato o rimosso;
+  `TappaEsclusa` invariata. Consumatori: `services/graph` (`SeedCandidateSource` e
+  `Neo4jCandidateSource` valorizzano `partner_dimostrativo`; nessun `.cypher` cambia:
+  `10_candidates.cypher` restituisce già `botteghe[].fittizio`), `services/experience-engine`
+  (copia su `ItineraryStop.dimostrativa`; in adattamento la ricalcola dal candidato corrente e
+  ignora il valore del client; False per fluttuanti, eventi promossi, stub), BFF `services/api`
+  (nessuna modifica, serializza il modello), app Flutter (`apps/lucca_soul_app/lib/models/itinerary.dart`
+  legge e riemette; `StopCard` mostra l'etichetta a tappa chiusa).
 - **2026-10-22 — ondata 3, dati di posizione e fonti.** Aggiunti, tutti con default
   (retrocompatibili) e MAI input di scoring: `Punto(lat, lon)` (lat -90..90, lon -180..180;
   esportato da `contracts`), `ExperienceNode.punti_arrivo: list[Punto] = []`,

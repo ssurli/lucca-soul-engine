@@ -615,6 +615,13 @@ class GraphCandidate(ContractModel):
     # `reason`, mai input di scoring.
     attribuzione: str | None = None  # es. "Offerta da <bottega>, bottega di <mestiere>."
     # (+ " (esempio dimostrativo)" prima del punto finale se la bottega è fittizia)
+    # True se l'esperienza è offerta da una bottega dimostrativa (`Bottega.fittizio`
+    # nel dataset; nel grafo la proprietà `fittizio` assente = True, stessa regola
+    # del suffisso di `attribuzione`). False se nessun partner. SOLO narrazione,
+    # MAI input di scoring (stesso principio di `attribuzione` e `curiosita`):
+    # `calcola_score` e le funzioni che scelgono/ordinano non lo leggono; una
+    # guardia AST in experience-engine lo verifica.
+    partner_dimostrativo: bool = False
     # Campi di SOLO TESTO per il `reason` (ondata 2a, compito 4). NON sono
     # input di scoring: `connessioni` resta l'unico alimentatore della
     # sorpresa (numero di frasi) e il `reason` non la legge più; questi campi
@@ -861,6 +868,13 @@ class ItineraryStop(ContractModel):
     # `GraphCandidate.punti_arrivo`). None = nessun link (es. bottega). Il
     # motore decide, l'app costruisce solo il link. Mai nel punteggio.
     punto_arrivo: Punto | None = None
+    # La tappa è un'esperienza di una bottega dimostrativa (inventata per la demo).
+    # Scritto SOLO dall'Experience Engine, copiando `GraphCandidate.partner_dimostrativo`
+    # dal candidato corrente; False per le tappe senza candidato (fluttuanti, eventi
+    # promossi, stub di adattamento). In adattamento il motore lo RICALCOLA dal
+    # candidato corrente e ignora il valore ricevuto dal client. L'app lo mostra
+    # come etichetta sulla tappa chiusa. Mai input di scoring.
+    dimostrativa: bool = False
 
     @field_validator("esito_adattamento")
     @classmethod
