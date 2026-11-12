@@ -153,7 +153,7 @@ void main() {
       expect(itinerary.adattatoDaSegnale, false);
     });
 
-    Map<String, dynamic> base({String? esito, bool nuovi = false}) => {
+    Map<String, dynamic> base({String? esito, bool nuovi = false, bool? dimostrativa}) => {
           'person_id': 'visitor_abc',
           'stops': [
             {
@@ -162,6 +162,7 @@ void main() {
               'durata_min': 60,
               'reason': 'Le mura sono libere',
               if (esito != null) 'esito_adattamento': esito,
+              if (dimostrativa != null) 'dimostrativa': dimostrativa,
             },
           ],
           'generated_at': '2026-07-13T08:00:00.000Z',
@@ -179,19 +180,27 @@ void main() {
         };
 
     test("andata e ritorno esatta con i campi dell'adattamento", () {
-      final j = base(esito: 'sostituita', nuovi: true);
+      final j = base(esito: 'sostituita', nuovi: true, dimostrativa: true);
       final it = Itinerary.fromJson(j);
       expect(it.tempoDisponibileMin, 240);
       expect(it.tempoEffettivoMin, 180);
       expect(it.tappeEscluse.single.esito, 'tagliata_tetto_giornata');
       expect(it.stops.first.esitoAdattamento, 'sostituita');
+      expect(it.stops.first.dimostrativa, true);
       expect(it.toJson(), j);
     });
 
     test('forma attuale senza campi nuovi: nessuna chiave null, campi vecchi intatti', () {
       final j = base();
       final out = Itinerary.fromJson(j).toJson();
-      expect(out, j);
+      // JSON vecchio senza la chiave: letto con false, riemesso con la chiave.
+      final atteso = {
+        ...j,
+        'stops': [
+          for (final s in j['stops'] as List) {...(s as Map<String, dynamic>), 'dimostrativa': false},
+        ],
+      };
+      expect(out, atteso);
       expect(out.containsKey('tempo_disponibile_min'), false);
       expect(out.containsKey('tempo_effettivo_min'), false);
       expect(out.containsKey('tappe_escluse'), false);
@@ -200,9 +209,40 @@ void main() {
     });
 
     test("un esito sconosciuto sopravvive all'andata e ritorno", () {
-      final j = base(esito: 'esito_futuro', nuovi: true);
+      final j = base(esito: 'esito_futuro', nuovi: true, dimostrativa: false);
       (j['tappe_escluse'] as List).first['esito'] = 'esito_futuro';
       expect(Itinerary.fromJson(j).toJson(), j);
+    });
+  });
+
+  group('ItineraryStop.dimostrativa', () {
+    Map<String, dynamic> tappa([Object? d = _assente]) => {
+          'experience_id': 'bottega-x',
+          'arrivo': '09:00:00',
+          'durata_min': 30,
+          'reason': 'm',
+          if (!identical(d, _assente)) 'dimostrativa': d,
+        };
+
+    test('fromJson senza la chiave: false', () {
+      expect(ItineraryStop.fromJson(tappa()).dimostrativa, false);
+    });
+
+    test('fromJson con true: true', () {
+      expect(ItineraryStop.fromJson(tappa(true)).dimostrativa, true);
+    });
+
+    test('andata e ritorno con true conserva true', () {
+      final j = tappa(true);
+      final out = ItineraryStop.fromJson(j).toJson();
+      expect(out['dimostrativa'], true);
+      expect(ItineraryStop.fromJson(out).dimostrativa, true);
+    });
+
+    test('toJson contiene sempre la chiave', () {
+      expect(ItineraryStop.fromJson(tappa()).toJson()['dimostrativa'], false);
+      expect(ItineraryStop.fromJson(tappa(false)).toJson()['dimostrativa'], false);
+      expect(ItineraryStop.fromJson(tappa(true)).toJson().containsKey('dimostrativa'), true);
     });
   });
 
@@ -269,3 +309,5 @@ void main() {
     });
   });
 }
+
+const Object _assente = Object();
