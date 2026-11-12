@@ -200,9 +200,15 @@ def test_flusso_reale_riordinato_piove_e_stanco(client: TestClient) -> None:
     Composizione: facciata-san-michele, interno-san-frediano, solchi-san-pietro-somaldi,
     santi-giovanni-reparata, duomo-volto-santo (durate 25, 30, 10, 40, 35 = 140, limite 93).
     Dopo le sostituzioni le durate correnti sono 20, 30, 20, 40, 35 e i totali cumulati
-    20, 50, 70, 110, 145: la quarta si tiene (|110 - 93| = 17 < |70 - 93| = 23), la quinta no
-    (|145 - 93| = 52 >= 17). Il tempo tenuto e' quindi 110 minuti (somma delle durate,
-    senza trasferimenti, come _taglia_per_stanchezza) contro un limite di 93."""
+    20, 50, 70, 110, 145.
+
+    MODIFICATO per decisione del committente (ramo feat/folla, correzione C): prima il limite
+    era sulle durate ricevute (93) e la quarta tappa si teneva (110 min). Ora il limite e'
+    int(2/3 * 145) = 96 sulle correnti (la quarta, 110, sarebbe ancora piu' vicina) ma vale
+    il TETTO dal ricevuto: con 25, 30, 10, 40, 35 la regola terrebbe n0 = 4 tappe e
+    t0 = 105 minuti, e le prime quattro correnti fanno 110 > 105. Ne restano 3 (70 min);
+    santi-giovanni-reparata esce con tagliata_stanchezza (eccezione "almeno una tappa"
+    non coinvolta)."""
     req = OnboardingRequest(
         lingua="it",
         risposte=[OnboardingAnswer(domanda_id=k, risposta=v) for k, v in RISPOSTE.items()],
@@ -240,19 +246,18 @@ def test_flusso_reale_riordinato_piove_e_stanco(client: TestClient) -> None:
         ("exp-interno-san-michele", "sostituita"),
         ("exp-interno-san-frediano", "non_toccata"),
         ("exp-sortita-san-paolino", "sostituita"),
-        ("exp-santi-giovanni-reparata", "non_toccata"),
     ]
-    assert [(e["experience_id"], e["esito"]) for e in ad["tappe_escluse"]] == [
+    assert sorted((e["experience_id"], e["esito"]) for e in ad["tappe_escluse"]) == [
         ("exp-duomo-volto-santo", "tagliata_stanchezza"),
+        ("exp-santi-giovanni-reparata", "tagliata_stanchezza"),
     ]
     assert ad["adattato_da_segnale"] is True
     # Scelta del prefisso rispetto all'obiettivo: tempo tenuto = somma delle durate
     # correnti (dopo le sostituzioni), come nel motore.
     tenuto = sum(s["durata_min"] for s in ad["stops"])
-    assert [s["durata_min"] for s in ad["stops"]] == [20, 30, 20, 40]
-    assert tenuto == 110
-    assert abs(tenuto - limite) == 17
-    # La quinta tappa avrebbe portato il tempo a 145, piu' lontano dal limite.
-    assert abs(tenuto - limite) < abs(tenuto + 35 - limite)
-    # Senza la quarta il tempo sarebbe 70, piu' lontano di 110.
-    assert abs(tenuto - limite) < abs(tenuto - 40 - limite)
+    assert [s["durata_min"] for s in ad["stops"]] == [20, 30, 20]
+    assert tenuto == 70
+    # Tetto: 70 <= t0 = 105 (la quarta tappa avrebbe portato il tempo a 110 > 105).
+    assert tenuto + 40 > 105
+    # Senza la terza (20) il tempo sarebbe 50, piu' lontano dal limite di 70.
+    assert abs(tenuto - limite) < abs(tenuto - 20 - limite)
