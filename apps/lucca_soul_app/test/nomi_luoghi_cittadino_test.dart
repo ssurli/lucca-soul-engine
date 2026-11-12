@@ -15,6 +15,20 @@ void main() {
     expect(kKnownPlaceNames.keys.toSet(), kKnownPlaceIds.toSet());
   });
 
+  test('ogni Luogo del seed e in kKnownPlaceIds e il numero coincide con il seed', () {
+    final cypher = File('../../services/graph/cypher/01_seed_lucca.cypher').readAsStringSync();
+    final idNelSeed = RegExp(r"MERGE \(l:Luogo \{id: '([^']+)'\}\)")
+        .allMatches(cypher)
+        .map((m) => m.group(1)!)
+        .toList();
+    expect(idNelSeed, isNotEmpty, reason: 'nessun Luogo letto dal seed: regex o percorso errati');
+    expect(idNelSeed.toSet().length, idNelSeed.length, reason: 'id duplicati nel seed');
+    final mancanti = idNelSeed.where((id) => !kKnownPlaceIds.contains(id)).toList();
+    expect(mancanti, isEmpty, reason: 'Luoghi del seed assenti da kKnownPlaceIds');
+    expect(kKnownPlaceIds.length, idNelSeed.length);
+    expect(kKnownPlaceIds.toSet().length, kKnownPlaceIds.length, reason: 'duplicati in kKnownPlaceIds');
+  });
+
   test('i nomi coincidono con il seed del grafo', () {
     final cypher = File('../../services/graph/cypher/01_seed_lucca.cypher').readAsStringSync();
     final righe = const LineSplitter().convert(cypher);
