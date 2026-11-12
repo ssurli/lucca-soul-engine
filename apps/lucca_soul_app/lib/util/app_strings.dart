@@ -78,6 +78,16 @@ class AppStrings {
   String get howToArrive => _isEn ? 'How to get here' : 'Come arrivo qui';
   String minutesOnFoot(int n) => _isEn ? 'about $n min on foot' : 'circa $n min a piedi';
   String get changedStop => _isEn ? 'Changed by the signal' : 'Cambiata dal segnale';
+  String get changedStopRain => _isEn ? 'Changed because of the rain' : 'Cambiata per la pioggia';
+  String get changedStopCrowd => _isEn ? 'Changed because of the crowd' : 'Cambiata per la folla';
+
+  /// Etichetta della tappa sostituita secondo la causa dichiarata dal motore.
+  /// Causa assente o sconosciuta: ripiego su [changedStop].
+  String changedStopFor(String? causa) => switch (causa) {
+        'pioggia' => changedStopRain,
+        'affollamento' => changedStopCrowd,
+        _ => changedStop,
+      };
 
   // --- Urban Memory (Wave 2): conferimento contestuale --------------------
   String get leaveMemoryAction => _isEn ? 'Leave a memory' : 'Lascia un ricordo';
