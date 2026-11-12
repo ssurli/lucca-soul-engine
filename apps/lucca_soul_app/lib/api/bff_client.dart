@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 import 'package:http/http.dart' as http;
 
 import '../models/adapt_request.dart';
@@ -140,7 +140,7 @@ class BffClient {
       response = await _http.get(uri).timeout(const Duration(seconds: 20));
     } catch (error) {
       final tecnico = 'Impossibile contattare il BFF su $uri: $error';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException.rete(tecnico);
     }
 
@@ -151,7 +151,7 @@ class BffClient {
     final Object? decoded = _decodifica(path, response);
     if (decoded is! Map<String, dynamic>) {
       final tecnico = 'Risposta del BFF non nel formato atteso per $path';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException(tecnico);
     }
     return decoded;
@@ -173,7 +173,7 @@ class BffClient {
           .timeout(const Duration(seconds: 20));
     } catch (error) {
       final tecnico = 'Impossibile contattare il BFF su $uri: $error';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException.rete(tecnico);
     }
 
@@ -184,7 +184,7 @@ class BffClient {
     final Object? decoded = _decodifica(path, response);
     if (decoded is! Map<String, dynamic>) {
       final tecnico = 'Risposta del BFF non nel formato atteso per $path';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException(tecnico);
     }
     return decoded;
@@ -197,7 +197,7 @@ class BffClient {
       response = await _http.get(uri).timeout(const Duration(seconds: 20));
     } catch (error) {
       final tecnico = 'Impossibile contattare il BFF su $uri: $error';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException.rete(tecnico);
     }
 
@@ -208,10 +208,16 @@ class BffClient {
     final Object? decoded = _decodifica(path, response);
     if (decoded is! List<dynamic>) {
       final tecnico = 'Risposta del BFF non nel formato atteso per $path';
-      debugPrint(tecnico);
+      _log(tecnico);
       throw BffException(tecnico);
     }
     return decoded;
+  }
+
+  /// Unico punto di log del client: solo in debug. In release url e corpi di
+  /// risposta (il 422 di FastAPI rimanda il contributo inviato) non escono.
+  void _log(String messaggio) {
+    if (kDebugMode) debugPrint(messaggio);
   }
 
   /// Decodifica il corpo di una risposta 2xx. Un corpo non JSON (es. HTML di
@@ -222,7 +228,7 @@ class BffClient {
       return jsonDecode(utf8.decode(response.bodyBytes));
     } catch (_) {
       const tecnico = 'Risposta del BFF non decodificabile';
-      debugPrint('$tecnico per $path');
+      _log('$tecnico per $path');
       throw const BffException(tecnico);
     }
   }
@@ -235,7 +241,7 @@ class BffClient {
       return conversione();
     } catch (_) {
       const tecnico = 'Risposta del BFF non nel formato atteso';
-      debugPrint('$tecnico per $path');
+      _log('$tecnico per $path');
       throw const BffException(tecnico);
     }
   }
@@ -244,7 +250,7 @@ class BffClient {
   /// log di debug: la UI non mostra mai `message`, salvo i messaggi pensati
   /// per l'utente (422 di `POST /memory`, vedi `memory_contribution_sheet`).
   BffException _erroreHttp(Uri uri, http.Response response) {
-    debugPrint('Il BFF su $uri ha risposto ${response.statusCode}: '
+    _log('Il BFF su $uri ha risposto ${response.statusCode}: '
         '${utf8.decode(response.bodyBytes, allowMalformed: true)}');
     final dettaglio = _extractErrorDetail(response.bodyBytes);
     return BffException(
