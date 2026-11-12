@@ -40,8 +40,14 @@ from contracts import (
 #: una preferenza. Sotto soglia agisce comunque una penalità proporzionale.
 SOGLIA_AFFOLLAMENTO_CRITICO = 0.8
 
-#: In fase di adattamento una tappa il cui luogo supera questa soglia viene
-#: riscritta verso un'alternativa più scorrevole (distribuzione dei flussi).
+#: In fase di adattamento una tappa ALL'APERTO il cui luogo supera questa
+#: soglia viene riscritta verso un'alternativa più scorrevole (distribuzione
+#: dei flussi), e un sostituto all'aperto in un luogo oltre soglia non è
+#: ammesso. Le esperienze al chiuso non sono toccate da questa soglia: una
+#: sala al chiuso non aggiunge gente alla calca in strada. Da
+#: `SOGLIA_AFFOLLAMENTO_CRITICO` in su vale invece il filtro duro di
+#: `passa_filtri_statici`, che esclude tutto il luogo, anche al chiuso
+#: (voluto, invariato).
 SOGLIA_AFFOLLAMENTO_ADATTAMENTO = 0.7
 
 #: Sopra questa soglia di stanchezza il motore preferisce tappe brevi e, in

@@ -245,7 +245,10 @@ def test_vincolo_di_budget_identico_con_o_senza_partner() -> None:
 
 
 def test_frase_affollamento_testo_esatto_con_il_nome_del_luogo() -> None:
-    orig = _cand(_esperienza("orig", 30, al_chiuso=True, place="luogo-x"))
+    # MODIFICATO per decisione del committente (ramo feat/folla, correzione 1): l'affollamento
+    # in adattamento colpisce solo al_chiuso=False; la tappa era al_chiuso=True e ora e'
+    # all'aperto, cosi' resta colpita dalla folla come voleva il test.
+    orig = _cand(_esperienza("orig", 30, al_chiuso=False, place="luogo-x"))
     it = _itinerario([("orig", 30)], budget=100)
     folla = Signal(meteo="sereno", affollamento={"luogo-x": 0.75}, stanchezza=0.0, ora=time(10, 0))
 

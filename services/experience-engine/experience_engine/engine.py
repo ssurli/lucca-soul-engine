@@ -1406,9 +1406,16 @@ def _migliore_alternativa(
       profilo è assente (una tappa accessibile si sostituisce solo con una
       accessibile) — l'accessibilità non viene mai degradata;
     - `solo_al_chiuso`: con la pioggia, solo esperienze al chiuso;
-    - affollamento > `max_affollamento`: luogo scorrevole. La soglia di
-      adattamento (0.7) è più severa di quella critica di
-      `passa_filtri_duri` (0.8) e la include;
+    - affollamento > `max_affollamento`: luogo scorrevole. Il divieto vale
+      SOLO per i candidati all'aperto (`al_chiuso=False`): una sala al
+      chiuso in un luogo affollato non aggiunge gente alla calca in strada,
+      e con pioggia e folla l'interno della stessa chiesa deve poter
+      sostituire la facciata. La soglia di adattamento (0.7) è più severa di
+      quella critica di `passa_filtri_duri` (0.8): da 0.8 in su il filtro
+      duro esclude comunque TUTTO il luogo, anche al chiuso, ed è voluto
+      (oltre la soglia critica il luogo non va caricato di nuove visite, a
+      prescindere da dove si svolgono; il filtro di composizione resta
+      invariato);
     - `entra_nel_budget`: predicato sul TEMPO (durata e trasferimento
       dell'alternativa, nient'altro) costruito da `adapt_itinerary`; un
       candidato che sforerebbe il budget non è ammesso, e vince il migliore
@@ -1447,8 +1454,8 @@ def _migliore_alternativa(
             continue
         if solo_al_chiuso and not e.al_chiuso:
             continue
-        if signal.affollamento.get(e.place_id, 0.0) > max_affollamento:
-            continue
+        if not e.al_chiuso and signal.affollamento.get(e.place_id, 0.0) > max_affollamento:
+            continue  # folla: solo le esperienze all'aperto
         if entra_nel_budget is not None and not entra_nel_budget(c):
             continue
         if (e.prezzo_eur or 0.0) > prezzo_tolta:
@@ -1481,8 +1488,14 @@ def adapt_itinerary(
     In ordine:
     1. pioggia: le tappe `al_chiuso=False` sono sostituite dalla migliore
        alternativa `al_chiuso=True` non già presente; affollamento > soglia
-       sul luogo di una tappa: sostituzione con alternativa in luogo
-       scorrevole (distribuzione dei flussi). Un'alternativa entra solo se
+       sul luogo di una tappa ALL'APERTO: sostituzione con alternativa in
+       luogo scorrevole (distribuzione dei flussi). L'affollamento colpisce
+       solo le esperienze all'aperto, sia la tappa (una tappa al chiuso in un
+       luogo affollato non è toccata dalla folla) sia il sostituto (un
+       candidato al chiuso in un luogo affollato è ammesso). Eccezione voluta:
+       da `SOGLIA_AFFOLLAMENTO_CRITICO` (0.8) in su il filtro duro
+       (`rules.passa_filtri_duri`, lo stesso della composizione, invariato)
+       esclude ogni sostituto in quel luogo, anche al chiuso. Un'alternativa entra solo se
        l'itinerario con la sostituzione resta nel budget (vedi sotto) e se
        non costa più della tappa tolta; tra gli ammessi si preferisce chi ne
        condivide un tema (`_migliore_alternativa`). Vincolo "una tappa per
@@ -1629,7 +1642,9 @@ def adapt_itinerary(
             continue
 
         e = cand.experience
-        place_affollato = (
+        # La folla tocca solo le esperienze all'aperto: una tappa al chiuso in
+        # un luogo affollato resta (vedi la docstring, passo 1).
+        place_affollato = (not e.al_chiuso) and (
             signal.affollamento.get(e.place_id, 0.0) > SOGLIA_AFFOLLAMENTO_ADATTAMENTO
         )
         piove_e_aperto = signal.meteo == "pioggia" and not e.al_chiuso
