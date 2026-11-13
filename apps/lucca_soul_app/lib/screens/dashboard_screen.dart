@@ -7,7 +7,9 @@ import '../models/dashboard_index_response.dart';
 import '../models/flow_cell.dart';
 import '../models/urban_intelligence_index.dart';
 import '../util/app_strings.dart';
+import '../util/indicatore_sotto_soglia.dart';
 import '../util/periodo.dart';
+import '../util/registrazione_eventi.dart';
 
 /// Le lingue in cui può presentarsi la dashboard. Stesso meccanismo del
 /// selettore di `citizen_screen.dart`: qui non esiste un `EmotionalProfile`
@@ -196,6 +198,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
+              if (!kAppRegistraEventi) ...[
+                Card(
+                  key: const Key('avviso-prova-senza-eventi'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(strings.dashboardProvaSenzaEventi)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               _AudienceSelector(
                 audience: _audience,
                 strings: strings,
@@ -444,6 +467,9 @@ class _IndexSection extends StatelessWidget {
     // `disponibile=false`: stato esplicito "dato insufficiente" per l'INTERO
     // periodo, mai un cruscotto con valori a zero/finti (CLAUDE.md).
     if (!dati.disponibile) {
+      final chiaveSottoSoglia = indicatoreDaMotivo(dati.motivoIndisponibilita);
+      final nomeSottoSoglia =
+          chiaveSottoSoglia == null ? null : strings.nomeIndicatore(chiaveSottoSoglia);
       return Card(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -463,7 +489,14 @@ class _IndexSection extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Text(dati.motivoIndisponibilita ?? strings.dashboardIndexUnavailableFallback),
+              Text(strings.dashboardIndexUnavailableFallback),
+              if (nomeSottoSoglia != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  strings.dashboardPrimoIndicatoreSottoSoglia(nomeSottoSoglia),
+                  key: const Key('riga-primo-indicatore-sotto-soglia'),
+                ),
+              ],
             ],
           ),
         ),

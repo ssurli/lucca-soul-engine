@@ -179,6 +179,16 @@ Questa è la domanda a cui hai la risposta migliore. Non rispondere con un princ
 > Quello che manca è la sperimentazione con persone reali. È esattamente la fase per cui
 > cerchiamo il partner.»
 
+### «La dashboard è vuota. Quando si accende?»
+
+> «Oggi non si accende, e lo dico subito: questa versione dell'app non
+> registra i percorsi delle persone, quindi non c'è niente da contare.
+> Quando lo farà, la dashboard non mostrerà comunque nulla finché in un
+> mese non ci sono almeno dieci persone diverse: sotto quella soglia
+> l'anonimato non è garantito e il dato non esce. Il messaggio "dato
+> insufficiente" che vedete è quello che vedrebbe il Comune ogni volta
+> che i numeri sono troppo piccoli.»
+
 ### «Perché Lucca?»
 
 > «Perché è la scala giusta per un esperimento: abbastanza grande da avere un flusso

@@ -111,7 +111,12 @@ class BffClient {
   /// rete/BFF (la terza fascia di stato, gestita dal chiamante).
   Future<DashboardIndexResponse> dashboardIndex(String periodo) async {
     final json = await _get('/dashboard/index', {'periodo': periodo});
-    return _converti('/dashboard/index', () => DashboardIndexResponse.fromJson(json));
+    final risposta =
+        _converti('/dashboard/index', () => DashboardIndexResponse.fromJson(json));
+    if (!risposta.disponibile) {
+      _log('dashboard: ${risposta.motivoIndisponibilita}');
+    }
+    return risposta;
   }
 
   /// `GET /dashboard/flows?periodo=YYYY-MM&giorno=YYYY-MM-DD&ora=0..23` —
