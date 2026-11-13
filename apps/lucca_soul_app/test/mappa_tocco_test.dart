@@ -225,7 +225,18 @@ void main() {
       final visti = <int>[];
       await _soloMappa(t, onSegnaposto: visti.add, sagoma: _sagomaReale());
       final r = t.getRect(_segnaposto(2));
-      expect(r.width, kLarghezzaSegnaposto);
+      expect(
+        r.size,
+        const Size.square(Tk.areaMinima),
+        reason: 'riquadro di tocco 44x44 (sagoma disegnata 40 al centro)',
+      );
+      final disegno = find.descendant(
+        of: _segnaposto(2),
+        matching: find.byType(CustomPaint),
+      );
+      expect(t.getSize(disegno).width, kLarghezzaSegnaposto);
+      expect(t.getCenter(disegno).dx, closeTo(r.center.dx, 0.01));
+      expect(t.getCenter(disegno).dy, closeTo(r.center.dy, 0.01));
       expect(r.width, greaterThanOrEqualTo(Tk.areaMinima));
       expect(r.height, greaterThanOrEqualTo(Tk.areaMinima));
       // I quattro angoli, 3 px dentro il riquadro (fuori dal disegno): con il
@@ -311,7 +322,7 @@ void main() {
       for (final n in [1, 2, 3]) t.getRect(_segnaposto(n)),
     ];
     // variante esplicita: _schermata inietta la sagoma (sagomaSegnaposto)
-    expect(seg.first.width, kLarghezzaSegnaposto);
+    expect(seg.first.size, const Size.square(Tk.areaMinima));
     Offset? libero;
     for (var x = mappa.left + 20;
         x < mappa.right - 20 && libero == null;

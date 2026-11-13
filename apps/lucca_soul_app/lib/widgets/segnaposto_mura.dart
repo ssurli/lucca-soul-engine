@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -6,9 +7,10 @@ import 'package:flutter/services.dart' show rootBundle;
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
 
-/// Larghezza disegnata del segnaposto (px di schermo). L'altezza segue la
-/// viewBox. 48 ≥ Tk.areaMinima: la sagoma intera è l'area del tocco.
-const double kLarghezzaSegnaposto = 48;
+/// Larghezza DISEGNATA del segnaposto (px di schermo). L'altezza segue la
+/// viewBox. L'area del tocco è un riquadro di almeno [Tk.areaMinima] per lato,
+/// centrato sulla sagoma ([SagomaSegnaposto.dimensioneRiquadro]).
+const double kLarghezzaSegnaposto = 40;
 
 /// Geometria della sagoma, in unità della sua viewBox (y verso il basso).
 class SagomaSegnaposto {
@@ -55,17 +57,36 @@ class SagomaSegnaposto {
   Size dimensione(double larghezza) =>
       Size(larghezza, viewBox.height * scala(larghezza));
 
+  /// Riquadro di tocco: almeno [Tk.areaMinima] per lato, sagoma al centro.
+  Size dimensioneRiquadro(double larghezza) {
+    final d = dimensione(larghezza);
+    return Size(math.max(Tk.areaMinima, d.width),
+        math.max(Tk.areaMinima, d.height),);
+  }
+
+  /// Padding simmetrico tra il riquadro di tocco e la sagoma disegnata.
+  Offset paddingTocco(double larghezza) {
+    final d = dimensione(larghezza);
+    final r = dimensioneRiquadro(larghezza);
+    return Offset((r.width - d.width) / 2, (r.height - d.height) / 2);
+  }
+
+  /// Posizione della punta dentro il RIQUADRO di tocco (padding + punta del
+  /// disegno): è il punto del widget che deve cadere sul luogo.
+  Offset puntaNelRiquadro(double larghezza) =>
+      paddingTocco(larghezza) + puntaLocale(larghezza);
+
   /// Spazio che l'inquadratura deve lasciare attorno al punto perché l'intero
-  /// riquadro della sagoma (con la punta sul punto) resti dentro la mappa,
+  /// riquadro di tocco (con la punta sul punto) resti dentro la mappa,
   /// più [margine] px per lato.
   EdgeInsets margini(double larghezza, double margine) {
-    final d = dimensione(larghezza);
-    final t = puntaLocale(larghezza);
+    final d = dimensioneRiquadro(larghezza);
+    final t = puntaNelRiquadro(larghezza);
     return EdgeInsets.fromLTRB(t.dx + margine, t.dy + margine,
         d.width - t.dx + margine, d.height - t.dy + margine,);
   }
 
-  /// Posizione della punta dentro il widget (px), per l'ancoraggio.
+  /// Posizione della punta dentro la sagoma DISEGNATA (px).
   Offset puntaLocale(double larghezza) =>
       (punta - viewBox.topLeft) * scala(larghezza);
 }
@@ -150,7 +171,8 @@ class GuidePainter extends CustomPainter {
 }
 
 /// Diametro di collisione per [separaSegnaposti] con la sagoma: la larghezza
-/// disegnata (la sagoma è più larga che alta, quindi è il caso peggiore).
+/// DISEGNATA (non il riquadro di tocco: i riquadri di due segnaposti separati
+/// possono sovrapporsi di qualche px nel padding trasparente).
 double diametroCollisione(double larghezza) => larghezza;
 
 /// Legge la sagoma da `assets/brand/segnaposto_sagoma.json`. Nessuna

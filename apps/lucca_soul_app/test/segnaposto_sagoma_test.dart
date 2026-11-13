@@ -81,16 +81,33 @@ void main() {
       expect(sg.traccia.length, 22);
     });
 
-    test('geometria: viewBox, punta e dimensione a 48 px', () {
+    test(
+        'geometria: viewBox, punta, disegno 40 e riquadro di tocco 44x44 centrato',
+        () {
       final sg = sagomaMura();
       expect(sg.viewBox, const Rect.fromLTWH(-17, -14, 34, 32));
       expect(sg.punta, const Offset(-4.9, 17.2));
       final dim = sg.dimensione(kLarghezzaSegnaposto);
-      expect(dim.width, 48);
-      expect(dim.height, closeTo(45.18, 0.05));
+      expect(dim.width, 40);
+      expect(kLarghezzaSegnaposto, 40);
+      expect(dim.height, closeTo(37.65, 0.01));
+      // riquadro di tocco: almeno 44x44, sagoma centrata (padding simmetrico)
+      final rq = sg.dimensioneRiquadro(kLarghezzaSegnaposto);
+      expect(rq, const Size.square(Tk.areaMinima));
+      final pad = sg.paddingTocco(kLarghezzaSegnaposto);
+      expect(pad.dx, closeTo(2, 0.001));
+      expect(pad.dy, closeTo(3.18, 0.01));
+      expect(pad.dx * 2 + dim.width, rq.width);
+      expect(pad.dy * 2 + dim.height, closeTo(rq.height, 0.001));
+      // punta: dentro il disegno e, nel riquadro, = padding + punta locale
       final pl = sg.puntaLocale(kLarghezzaSegnaposto);
       expect(pl.dx, inInclusiveRange(0, dim.width));
       expect(pl.dy, inInclusiveRange(0, dim.height));
+      final pr = sg.puntaNelRiquadro(kLarghezzaSegnaposto);
+      expect(pr, pad + pl);
+      expect(pr.dx, closeTo(16.24, 0.01));
+      expect(pr.dy, closeTo(39.88, 0.01));
+      expect(Rect.fromLTWH(0, 0, rq.width, rq.height).contains(pr), isTrue);
     });
 
     test('contorno e punta stanno dentro la viewBox', () {
@@ -120,7 +137,7 @@ void main() {
         final vero = (t.getTopLeft(find.byType(FlutterMap)) +
             c.camera.latLngToScreenOffset(_ll(p)));
         final punta = t.getRect(_segnaposto(n)).topLeft +
-            sg.puntaLocale(kLarghezzaSegnaposto);
+            sg.puntaNelRiquadro(kLarghezzaSegnaposto);
         expect(
           (punta - vero).distance,
           lessThanOrEqualTo(1),
@@ -168,7 +185,7 @@ void main() {
       // le punte disegnate coincidono con quelle passate al painter
       for (final n in [1, 2]) {
         final punta = t.getRect(_segnaposto(n)).topLeft +
-            sg.puntaLocale(kLarghezzaSegnaposto);
+            sg.puntaNelRiquadro(kLarghezzaSegnaposto);
         expect(
           (punta - origine - g.punte[n - 1]).distance,
           lessThanOrEqualTo(1),
@@ -180,6 +197,69 @@ void main() {
         await t.pump(const Duration(milliseconds: 400));
         expect(visti, [n]);
       }
+    });
+
+    testWidgets(
+        'riquadri di tocco sovrapposti (punte a ~41 px): il tocco sul CORPO disegnato apre il proprio; nella striscia comune vince l ultimo (il 2)',
+        (t) async {
+      final visti = <int>[];
+      await _monta(
+        t,
+        [_s(1, _pA), _s(2, _pA)],
+        Future.value(sg),
+        visti: visti,
+      );
+      final r1 = t.getRect(_segnaposto(1));
+      final r2 = t.getRect(_segnaposto(2));
+      final g = t.widget<CustomPaint>(_guide()).painter! as GuidePainter;
+      final dp = (g.punte[0] - g.punte[1]).distance;
+      expect(
+        dp,
+        inInclusiveRange(kLarghezzaSegnaposto, kLarghezzaSegnaposto + 1.01),
+        reason: 'punte separate al minimo: ~41 px',
+      );
+      // i riquadri 44 si sovrappongono (striscia di qualche px)...
+      final comune = r1.intersect(r2);
+      expect(
+        comune.width > 0 && comune.height > 0,
+        isTrue,
+        reason: 'attesa una striscia comune: $r1 $r2',
+      );
+      expect(comune.shortestSide, lessThan(5));
+      // ...ma i corpi DISEGNATI (40 x 37,65 centrati) non si sovrappongono
+      // quanto basta a confondere i tocchi: ciascun centro del corpo apre il proprio.
+      Rect corpo(int n) {
+        final f = find.descendant(
+          of: _segnaposto(n),
+          matching: find.byType(CustomPaint),
+        );
+        return t.getRect(f);
+      }
+
+      for (final n in [1, 2]) {
+        final c = corpo(n);
+        expect(c.size.width, kLarghezzaSegnaposto);
+        for (final o in [
+          c.center,
+          c.center + const Offset(-10, 0),
+          c.center + const Offset(10, 0),
+          c.center + const Offset(0, -10),
+          c.center + const Offset(0, 10),
+        ]) {
+          if (comune.contains(o)) continue; // la striscia e' provata sotto
+          visti.clear();
+          await t.tapAt(o);
+          await t.pump(const Duration(milliseconds: 400));
+          expect(visti, [n], reason: 'tocco sul corpo di $n in $o');
+        }
+      }
+      // Striscia comune: vince il segnaposto costruito per ultimo (il 2, sopra
+      // nello Stack). Comportamento documentato, non una scelta di prodotto.
+      visti.clear();
+      await t.tapAt(comune.center);
+      await t.pump(const Duration(milliseconds: 400));
+      expect(visti, [2]);
+      expect(t.takeException(), isNull);
     });
 
     group('riquadro della sagoma dentro la mappa (senza separazione)', () {

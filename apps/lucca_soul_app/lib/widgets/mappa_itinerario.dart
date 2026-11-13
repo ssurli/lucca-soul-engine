@@ -283,11 +283,11 @@ class _StratoSegnaposti extends StatelessWidget {
             diametro: diametroCollisione(kLarghezzaSegnaposto),);
     final Size dim = sg == null
         ? const Size.square(Tk.areaMinima)
-        : sg.dimensione(kLarghezzaSegnaposto);
-    // Dove sta, dentro il widget, il punto che deve cadere sul luogo.
+        : sg.dimensioneRiquadro(kLarghezzaSegnaposto);
+    // Dove sta, dentro il riquadro di tocco, il punto che deve cadere sul luogo.
     final Offset ancora = sg == null
         ? Offset(dim.width / 2, dim.height / 2)
-        : sg.puntaLocale(kLarghezzaSegnaposto);
+        : sg.puntaNelRiquadro(kLarghezzaSegnaposto);
     return SizedBox.expand(
       child: Stack(
         children: [
@@ -320,8 +320,8 @@ class _StratoSegnaposti extends StatelessWidget {
 }
 
 /// Segnaposto numerato. Con [sagoma]: la sagoma delle Mura piena (accento),
-/// larga [kLarghezzaSegnaposto] e alta quanto la viewBox; l'area del tocco è
-/// l'intero riquadro (almeno 44x44). Senza sagoma (riserva): cerchio mattone di
+/// larga [kLarghezzaSegnaposto] e alta quanto la viewBox, centrata in un
+/// riquadro di tocco di almeno 44x44. Senza sagoma (riserva): cerchio mattone di
 /// 32 px dentro un'area di tocco 44x44. In entrambi i casi il numero è bianco
 /// (contrasto 5,9) e DISEGNATO (non è un `Text`) così non si confonde con quello
 /// della card nelle ricerche per testo; per l'accessibilità porta l'etichetta
@@ -344,7 +344,7 @@ class Segnaposto extends StatelessWidget {
     final sg = sagoma;
     final Size dim = sg == null
         ? const Size.square(Tk.areaMinima)
-        : sg.dimensione(kLarghezzaSegnaposto);
+        : sg.dimensioneRiquadro(kLarghezzaSegnaposto);
     return Semantics(
       label: '$etichetta $numero',
       button: true,
@@ -356,11 +356,14 @@ class Segnaposto extends StatelessWidget {
         child: SizedBox(
           width: dim.width,
           height: dim.height,
-          child: CustomPaint(
-            painter: sg == null
-                ? _SegnapostoPainter(numero)
-                : SagomaPainter(sg, numero),
-          ),
+          child: sg == null
+              ? CustomPaint(painter: _SegnapostoPainter(numero))
+              : Center(
+                  child: CustomPaint(
+                    size: sg.dimensione(kLarghezzaSegnaposto),
+                    painter: SagomaPainter(sg, numero),
+                  ),
+                ),
         ),
       ),
     );

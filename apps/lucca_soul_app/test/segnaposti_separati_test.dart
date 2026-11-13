@@ -40,7 +40,8 @@ ItineraryStop _s(int n, Punto p) => ItineraryStop(
     );
 
 // Le varianti si provano INIETTANDO la sagoma: mai affidarsi al bundle.
-// - sagoma delle Mura: punte a distanza >= diametroCollisione(kLarghezzaSegnaposto) = 48;
+// - sagoma delle Mura: punte a distanza >= diametroCollisione(kLarghezzaSegnaposto) = 40
+//   (larghezza DISEGNATA; i riquadri di tocco 44 possono sovrapporsi nel padding);
 // - cerchio di riserva (future con null): centri a distanza >= kDiametroSegnaposto (32).
 Future<SagomaSegnaposto?> _senzaSagoma() => Future.value(null);
 
@@ -81,7 +82,8 @@ Future<void> _monta(
 /// Punto che cade sul luogo: la punta della sagoma, oppure il centro del cerchio.
 Offset _punto(WidgetTester t, int n, SagomaSegnaposto? sg) => sg == null
     ? t.getCenter(_segnaposto(n))
-    : t.getRect(_segnaposto(n)).topLeft + sg.puntaLocale(kLarghezzaSegnaposto);
+    : t.getRect(_segnaposto(n)).topLeft +
+        sg.puntaNelRiquadro(kLarghezzaSegnaposto);
 
 double _soglia(SagomaSegnaposto? sg) =>
     sg == null ? kDiametroSegnaposto : diametroCollisione(kLarghezzaSegnaposto);
@@ -146,9 +148,9 @@ void main() {
       expect(_minDist(r), greaterThanOrEqualTo(kDiametroSegnaposto));
     });
 
-    test('diametro di collisione della sagoma (48): tutte le coppie >= 48', () {
+    test('diametro di collisione della sagoma (40): tutte le coppie >= 40', () {
       final d = diametroCollisione(kLarghezzaSegnaposto);
-      expect(d, 48);
+      expect(d, 40);
       for (final n in [2, 3, 5]) {
         final r =
             separaSegnaposti(List.filled(n, const Offset(10, 10)), diametro: d);
@@ -168,7 +170,7 @@ void main() {
   for (final (nome, fSagoma, sg)
       in <(String, Future<SagomaSegnaposto?> Function(), SagomaSegnaposto?)>[
     (
-      'sagoma mura 48',
+      'sagoma mura 40',
       () => Future.value(sagomaMura()),
       sagomaMura(),
     ),
