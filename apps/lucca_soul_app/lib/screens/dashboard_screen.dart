@@ -8,6 +8,7 @@ import '../models/flow_cell.dart';
 import '../models/urban_intelligence_index.dart';
 import '../util/app_strings.dart';
 import '../util/periodo.dart';
+import '../util/registrazione_eventi.dart';
 
 /// Le lingue in cui può presentarsi la dashboard. Stesso meccanismo del
 /// selettore di `citizen_screen.dart`: qui non esiste un `EmotionalProfile`
@@ -196,6 +197,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
+              if (!kAppRegistraEventi) ...[
+                Card(
+                  key: const Key('avviso-prova-senza-eventi'),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 20,
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(child: Text(strings.dashboardProvaSenzaEventi)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               _AudienceSelector(
                 audience: _audience,
                 strings: strings,

@@ -225,8 +225,14 @@ class AppStrings {
   String get dashboardIndexUnavailableFallback => _isEn
       ? 'Not enough aggregated activity this period to publish the index '
           'while keeping visitors anonymous.'
-      : 'Non c\'è ancora abbastanza attività aggregata in questo periodo per '
+      : 'Non c\'è abbastanza attività aggregata in questo periodo per '
           'pubblicare l\'index garantendo l\'anonimato dei visitatori.';
+
+  String get dashboardProvaSenzaEventi => _isEn
+      ? 'This trial version does not record routes, so the indicators stay '
+          'empty.'
+      : 'In questa versione di prova l\'app non registra i percorsi, quindi '
+          'gli indicatori restano vuoti.';
   String get dashboardCellUnavailableBadge => _isEn
       ? 'Insufficient data to guarantee anonymity'
       : 'Dato insufficiente per garantire l\'anonimato';
