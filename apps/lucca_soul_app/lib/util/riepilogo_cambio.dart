@@ -38,7 +38,7 @@ String _hhmm(int minuti) {
 int _inizioMin(ItineraryStop s) => s.arrivo.hour * 60 + s.arrivo.minute;
 
 /// Regola unica della "fine" della giornata, condivisa da
-/// [fasciaOrariaGiornata] e [confrontoInUnaRiga]: massimo di arrivo + durata,
+/// [fasciaOrariaGiornata] e [confrontoPrimaOra]: massimo di arrivo + durata,
 /// in minuti, formattato HH:MM (minuti mod 24h). [tappe] non vuota.
 String _fineGiornata(List<ItineraryStop> tappe) {
   final fine = tappe
@@ -55,12 +55,12 @@ String? fasciaOrariaGiornata(List<ItineraryStop> tappe) {
   return '${_hhmm(primo)}–${_fineGiornata(tappe)}';
 }
 
-/// Confronto in una riga tra l'itinerario originale e quello mostrato dopo un
-/// adattamento, es. «Prima: 5 tappe, fine 12:50 · Ora: 3 tappe, fine 11:34».
+/// Confronto tra l'itinerario originale e quello mostrato dopo un adattamento,
+/// in DUE righe: «Prima: 5 tappe, fine 12:50» e «Ora: 3 tappe, fine 11:34».
 /// La "fine" usa la stessa regola di [fasciaOrariaGiornata]. Se l'originale
 /// non ha tappe restituisce null (niente da confrontare); se è il mostrato a
 /// non averne, la parte «Ora» dice «nessuna tappa» senza orario. Pura.
-String? confrontoInUnaRiga({
+({String prima, String ora})? confrontoPrimaOra({
   required Itinerary originale,
   required Itinerary mostrato,
   required AppStrings strings,
@@ -69,5 +69,8 @@ String? confrontoInUnaRiga({
   String parte(List<ItineraryStop> tappe) => tappe.isEmpty
       ? strings.noStopsShort
       : strings.stopsAndEnd(tappe.length, _fineGiornata(tappe));
-  return strings.compareLine(parte(originale.stops), parte(mostrato.stops));
+  return (
+    prima: strings.beforeLine(parte(originale.stops)),
+    ora: strings.nowLine(parte(mostrato.stops)),
+  );
 }

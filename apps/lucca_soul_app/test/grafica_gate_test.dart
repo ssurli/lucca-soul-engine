@@ -20,7 +20,10 @@ import 'package:lucca_soul_app/util/interruttori_controller.dart';
 import 'package:lucca_soul_app/util/clock.dart';
 import 'package:lucca_soul_app/widgets/adaptive_card.dart';
 import 'package:lucca_soul_app/widgets/mura_logo.dart';
+import 'package:lucca_soul_app/widgets/segnaposto_mura.dart';
 import 'package:lucca_soul_app/widgets/testata_giornata.dart';
+
+import 'segnaposto_prove.dart';
 
 const _json = {'content-type': 'application/json; charset=utf-8'};
 final _it = AppStrings.forLanguages(['it']);
@@ -85,7 +88,9 @@ List<FlutterErrorDetails> _catturaErrori() {
   return errori;
 }
 
-Future<void> _monta(WidgetTester t, Size size, {Itinerary? itin}) async {
+/// [sagoma]: la variante della card e' SEMPRE esplicita (default: sagoma delle
+/// Mura iniettata dal file; `Future.value(null)` = cerchio di riserva).
+Future<void> _monta(WidgetTester t, Size size, {Itinerary? itin, Future<SagomaSegnaposto?>? sagoma}) async {
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.resetPhysicalSize);
@@ -100,7 +105,7 @@ Future<void> _monta(WidgetTester t, Size size, {Itinerary? itin}) async {
   addTearDown(() => Orologio.impostaPerTest(null));
   await t.pumpWidget(MaterialApp(
     theme: buildAppTheme(),
-    home: ItineraryScreen(bffClient: _client(i), personId: 'p', profile: _profilo),
+    home: ItineraryScreen(bffClient: _client(i), personId: 'p', profile: _profilo, sagomaSegnaposto: sagoma ?? Future.value(sagomaMura())),
   ),);
   await t.pumpAndSettle();
 }
@@ -238,8 +243,25 @@ void main() {
       expect(cont.color, _testo);
     });
 
-    testWidgets('ogni Text dentro una StopCard ha contrasto >= 4,5 sul suo sfondo (riga chiusa e aperta)', (t) async {
-      await _monta(t, const Size(390, 2400));
+    for (final conSagoma in [true, false]) {
+    testWidgets('ogni Text dentro una StopCard ha contrasto >= 4,5 sul suo sfondo (riga chiusa e aperta) [${conSagoma ? "sagoma" : "cerchio"}]', (t) async {
+      await _monta(t, const Size(390, 2400), sagoma: conSagoma ? null : Future.value(null));
+      // Il numero della card e' un Text solo nel cerchio di riserva; con la sagoma e'
+      // disegnato e il suo contrasto si calcola sui colori del painter (sotto).
+      final testiNumero = [for (final n in ['1', '2', '3']) find.text(n)];
+      for (final f in testiNumero) {
+        expect(f, conSagoma ? findsNothing : findsOneWidget, reason: 'il numero come Text solo nel cerchio');
+      }
+      if (conSagoma) {
+        expect(numeriDisegnati(t), [1, 2, 3]);
+        // Colori del painter (SagomaPainter): riempimento Tk.accento, numero
+        // Tk.testoSuAccento. Il riempimento si verifica sul canvas; il colore del
+        // numero e' quello del token usato dal painter.
+        for (final r in disegnoNumero(numeroSagoma()).evaluate()) {
+          expect(r.renderObject, paints..path(color: Tk.accento));
+        }
+        expect(_rapporto(Tk.testoSuAccento, Tk.accento), greaterThanOrEqualTo(4.5), reason: 'numero su sagoma');
+      }
       void controlla() {
         for (final card in find.byType(StopCard).evaluate()) {
           for (final f in find.descendant(of: find.byWidget(card.widget), matching: find.byType(Text)).evaluate()) {
@@ -269,6 +291,7 @@ void main() {
       expect(find.text('Perché ti piace camminare.'), findsNWidgets(3));
       controlla(); // aperte
     });
+    }
   });
 
   group('2. schermata 390x844', () {
@@ -437,47 +460,94 @@ void main() {
   });
 
   group('5. card della tappa', () {
-    testWidgets('ordine: numero | ora e durata, titolo, (aperta) motivo, curiosita\', Come arrivo qui', (t) async {
-      await _monta(t, const Size(390, 2400));
-      final card = find.byType(StopCard).first;
-      await t.tap(card);
-      await t.pumpAndSettle();
-      Finder d(Finder f) => find.descendant(of: card, matching: f);
-      final num = t.getRect(d(find.text('1')));
-      final titolo = t.getRect(d(find.text('Passeggiata sulle Mura')));
-      final ora = t.getRect(d(find.text('09:00 · 60 min')));
-      final motivo = t.getRect(d(find.text('Perché ti piace camminare.')));
-      final cur = t.getRect(d(find.text('Le Mura sono alberate.')));
-      final come = t.getRect(d(find.text('Come arrivo qui')));
-      expect(num.right, lessThanOrEqualTo(titolo.left));
-      final cerchioRect = t.getRect(d(find.ancestor(of: find.text('1'), matching: find.byType(Container))).first);
-      expect(cerchioRect.size, const Size(32, 32));
-      expect(ora.bottom, lessThanOrEqualTo(titolo.top));
-      expect(titolo.bottom, lessThanOrEqualTo(motivo.top));
-      expect(motivo.bottom, lessThanOrEqualTo(cur.top));
-      expect(cur.bottom, lessThanOrEqualTo(come.top));
-      final cerchio = t.widget<Container>(d(find.ancestor(of: find.text('1'), matching: find.byType(Container))).first);
-      final deco = cerchio.decoration! as BoxDecoration;
-      expect(deco.shape, BoxShape.circle);
-      expect(deco.color, _mattone);
-      expect(_colore(t, d(find.text('1'))), _bianco);
-    });
+    for (final conSagoma in [true, false]) {
+      final v = conSagoma ? 'sagoma' : 'cerchio';
+      testWidgets('ordine [$v]: numero | ora e durata, titolo, (aperta) motivo, curiosita\', Come arrivo qui', (t) async {
+        await _monta(t, const Size(390, 2400), sagoma: conSagoma ? null : Future.value(null));
+        final card = find.byType(StopCard).first;
+        await t.tap(card);
+        await t.pumpAndSettle();
+        Finder d(Finder f) => find.descendant(of: card, matching: f);
+        final titolo = t.getRect(d(find.text('Passeggiata sulle Mura')));
+        final ora = t.getRect(d(find.text('09:00 · 60 min')));
+        final motivo = t.getRect(d(find.text('Perché ti piace camminare.')));
+        final cur = t.getRect(d(find.text('Le Mura sono alberate.')));
+        final come = t.getRect(d(find.text('Come arrivo qui')));
+        if (conSagoma) {
+          // Il numero e' DISEGNATO: si cerca il riquadro, non un Text.
+          expect(d(find.text('1')), findsNothing);
+          final riquadro = numeroSagoma(card);
+          expect(riquadro, findsOneWidget);
+          final num = t.getRect(riquadro);
+          // sagoma a sinistra del titolo (stessa regola del cerchio)
+          expect(num.right, lessThanOrEqualTo(titolo.left));
+          // larga 32 come il cerchio; alta quanto la viewBox senza punta
+          final sp = sagomaMura().senzaPunta!;
+          expect(num.width, 32);
+          expect(num.height, closeTo(sp.dimensione(32).height, 0.01));
+          expect(num.height, lessThan(32), reason: 'senza il puntale e piu bassa del cerchio');
+          // numero 1 (label e painter)
+          expect(numeriDisegnati(t, card), [1]);
+          // piena Tk.accento, bordo Tk.cardSfondo (nel painter, senza ombra)
+          final painter = (t.widget<CustomPaint>(disegnoNumero(riquadro)).painter! as SagomaPainter);
+          expect(painter.conOmbra, isFalse);
+          expect(
+            t.renderObject(disegnoNumero(riquadro)),
+            paints
+              ..path(color: Tk.accento)
+              ..path(color: Tk.cardSfondo, style: PaintingStyle.stroke),
+          );
+          // numero Tk.testoSuAccento (token) con contrasto >= 4,5 sull'accento
+          expect(Tk.testoSuAccento, _bianco);
+          expect(_rapporto(Tk.testoSuAccento, Tk.accento), greaterThanOrEqualTo(4.5));
+        } else {
+          final num = t.getRect(d(find.text('1')));
+          expect(num.right, lessThanOrEqualTo(titolo.left));
+          final cerchioRect = t.getRect(d(find.ancestor(of: find.text('1'), matching: find.byType(Container))).first);
+          expect(cerchioRect.size, const Size(32, 32));
+          final cerchio = t.widget<Container>(d(find.ancestor(of: find.text('1'), matching: find.byType(Container))).first);
+          final deco = cerchio.decoration! as BoxDecoration;
+          expect(deco.shape, BoxShape.circle);
+          expect(deco.color, _mattone);
+          expect(_colore(t, d(find.text('1'))), _bianco);
+        }
+        expect(ora.bottom, lessThanOrEqualTo(titolo.top));
+        expect(titolo.bottom, lessThanOrEqualTo(motivo.top));
+        expect(motivo.bottom, lessThanOrEqualTo(cur.top));
+        expect(cur.bottom, lessThanOrEqualTo(come.top));
+      });
+    }
 
-    testWidgets('numeri 1..3 in ordine; etichetta esito solo con esito, coi colori giusti', (t) async {
-      await _monta(t, const Size(390, 2400));
-      final y = [for (final n in ['1', '2', '3']) t.getRect(find.text(n)).top];
-      expect(y[0], lessThan(y[1]));
-      expect(y[1], lessThan(y[2]));
-      final cards = find.byType(StopCard);
-      Finder et(int i) => find.descendant(of: cards.at(i), matching: find.byType(EtichettaEsito));
-      expect(et(0), findsNothing);
-      expect(et(1), findsOneWidget);
-      expect(et(2), findsOneWidget);
-      final e1 = t.widget<EtichettaEsito>(et(1));
-      expect((e1.sfondo, e1.colore), (_sostSfondo, _sostTesto));
-      final e2 = t.widget<EtichettaEsito>(et(2));
-      expect((e2.sfondo, e2.colore), (_mantSfondo, _testo));
-    });
+    for (final conSagoma in [true, false]) {
+      final v = conSagoma ? 'sagoma' : 'cerchio';
+      testWidgets('numeri 1..3 in ordine [$v]; etichetta esito solo con esito, coi colori giusti', (t) async {
+        final h = t.ensureSemantics();
+        await _monta(t, const Size(390, 2400), sagoma: conSagoma ? null : Future.value(null));
+        final List<double> y;
+        if (conSagoma) {
+          // numeri disegnati: ordine dei painter, della semantica e della posizione
+          expect(numeriDisegnati(t), [1, 2, 3]);
+          y = [for (var i = 0; i < 3; i++) t.getRect(numeroSagoma().at(i)).top];
+          for (var i = 0; i < 3; i++) {
+            expect(t.getSemantics(numeroSagoma().at(i)).label, startsWith('${i + 1}\n'), reason: 'la card $i annuncia il numero');
+          }
+        } else {
+          y = [for (final n in ['1', '2', '3']) t.getRect(find.text(n)).top];
+        }
+        expect(y[0], lessThan(y[1]));
+        expect(y[1], lessThan(y[2]));
+        final cards = find.byType(StopCard);
+        Finder et(int i) => find.descendant(of: cards.at(i), matching: find.byType(EtichettaEsito));
+        expect(et(0), findsNothing);
+        expect(et(1), findsOneWidget);
+        expect(et(2), findsOneWidget);
+        final e1 = t.widget<EtichettaEsito>(et(1));
+        expect((e1.sfondo, e1.colore), (_sostSfondo, _sostTesto));
+        final e2 = t.widget<EtichettaEsito>(et(2));
+        expect((e2.sfondo, e2.colore), (_mantSfondo, _testo));
+        h.dispose();
+      });
+    }
 
     testWidgets('senza puntoArrivo e senza esito: niente "Come arrivo qui" ne\' etichetta', (t) async {
       await _monta(t, const Size(390, 2400), itin: _itin([_stop('a')]));
@@ -487,9 +557,9 @@ void main() {
   });
 
   group('6. testata', () {
-    testWidgets('Lucca Soul, data, fascia, tappe, a piedi, tutto in #F6F2EA, nessun prezzo', (t) async {
+    testWidgets('Lucca Soul Lab, data, fascia, tappe, a piedi, tutto in #F6F2EA, nessun prezzo', (t) async {
       await _monta(t, const Size(390, 844));
-      expect(_colore(t, find.text('Lucca Soul')), _sfondo);
+      expect(_colore(t, find.text('Lucca Soul Lab')), _sfondo);
       final riga = find.descendant(of: find.byType(TestataGiornata), matching: find.byType(Text));
       expect(riga, findsOneWidget);
       final testo = t.widget<Text>(riga).data!;

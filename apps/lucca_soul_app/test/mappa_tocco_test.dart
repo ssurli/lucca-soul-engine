@@ -16,6 +16,9 @@ import 'package:lucca_soul_app/screens/itinerary_screen.dart';
 import 'package:lucca_soul_app/theme/app_theme.dart';
 import 'package:lucca_soul_app/theme/tokens.dart';
 import 'package:lucca_soul_app/widgets/mappa_itinerario.dart';
+import 'package:lucca_soul_app/widgets/segnaposto_mura.dart';
+
+import 'segnaposto_prove.dart';
 
 class _TileKo extends TileProvider {
   @override
@@ -41,12 +44,17 @@ Future<void> _schermata(
   List<ItineraryStop> tappe, {
   Size size = const Size(390, 600),
   List<String> lingue = const ['it'],
+  Future<SagomaSegnaposto?>? sagoma,
 }) async {
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
   addTearDown(t.view.resetPhysicalSize);
   addTearDown(t.view.resetDevicePixelRatio);
-  final it = Itinerary(personId: 'p', stops: tappe, generatedAt: DateTime.utc(2026, 12, 12, 9));
+  final it = Itinerary(
+    personId: 'p',
+    stops: tappe,
+    generatedAt: DateTime.utc(2026, 12, 12, 9),
+  );
   final client = BffClient(
     baseUrl: Uri.parse('http://test'),
     httpClient: MockClient(
@@ -72,17 +80,24 @@ Future<void> _schermata(
           lingue: lingue,
         ),
         tileProvider: _TileKo(),
+        sagomaSegnaposto: sagoma ?? _sagomaReale(),
       ),
     ),
   );
   await t.pumpAndSettle();
 }
 
+// La variante e' esplicita: sia `_soloMappa` sia `_schermata` iniettano SEMPRE
+// la sagoma (reale, dal file), mai il bundle.
+Future<SagomaSegnaposto?> _sagomaReale() => Future.value(sagomaMura());
+
 Future<void> _soloMappa(
   WidgetTester t, {
-  String dicitura = "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.",
+  String dicitura =
+      "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.",
   ValueChanged<int>? onSegnaposto,
   Size size = const Size(390, 844),
+  Future<SagomaSegnaposto?>? sagoma,
 }) async {
   t.view.physicalSize = size;
   t.view.devicePixelRatio = 1;
@@ -93,6 +108,7 @@ Future<void> _soloMappa(
       theme: buildAppTheme(),
       home: Scaffold(
         body: MappaItinerario(
+          sagoma: sagoma ?? _sagomaReale(),
           tappe: [_s(1, p: _pA), _s(2, p: _pB), _s(3, p: _pC)],
           tileProvider: _TileKo(),
           dicitura: dicitura,
@@ -102,12 +118,17 @@ Future<void> _soloMappa(
     ),
   );
   await t.pump(const Duration(milliseconds: 200));
+  // la mappa nasce un frame dopo il caricamento della sagoma: un pump in piu'
+  await t.pump(const Duration(milliseconds: 200));
 }
 
-Finder _segnaposto(int n) => find.byWidgetPredicate((w) => w is Segnaposto && w.numero == n);
+Finder _segnaposto(int n) =>
+    find.byWidgetPredicate((w) => w is Segnaposto && w.numero == n);
 
-List<bool> _stati(WidgetTester t) =>
-    [for (final c in t.widgetList<StopCard>(find.byType(StopCard))) c.aperta ?? false];
+List<bool> _stati(WidgetTester t) => [
+      for (final c in t.widgetList<StopCard>(find.byType(StopCard)))
+        c.aperta ?? false,
+    ];
 
 void main() {
   test('altezza mappa 168', () => expect(kAltezzaMappa, 168));
@@ -119,17 +140,26 @@ void main() {
 
   testWidgets('polilinea puntinata, colore e spessore invariati', (t) async {
     await _soloMappa(t);
-    final l = t.widget<PolylineLayer>(find.byType(PolylineLayer)).polylines.single;
+    final l =
+        t.widget<PolylineLayer>(find.byType(PolylineLayer)).polylines.single;
     expect(l.pattern, const StrokePattern.dotted());
     expect(l.strokeWidth, 3);
     expect(l.color, Tk.accento);
   });
 
   for (final (lingue, testo) in [
-    (['it'], "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso."),
-    (['en'], 'Tap a number to open the stop. The line shows the order, not the route.'),
+    (
+      ['it'],
+      "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso."
+    ),
+    (
+      ['en'],
+      'Tap a number to open the stop. The line shows the order, not the route.'
+    ),
   ]) {
-    testWidgets('dicitura in ${lingue.first}: in alto a sinistra, senza toccare l attribuzione', (t) async {
+    testWidgets(
+        'dicitura in ${lingue.first}: in alto a sinistra, senza toccare l attribuzione',
+        (t) async {
       await _schermata(t, [_s(1, p: _pA), _s(2, p: _pB)], lingue: lingue);
       final d = find.text(testo);
       expect(d, findsOneWidget);
@@ -142,24 +172,41 @@ void main() {
       expect(rd.top, greaterThanOrEqualTo(mappa.bottom));
       expect((rd.left - mappa.left).abs(), lessThan(1));
       expect(rd.overlaps(mappa), isFalse);
-      expect(mappa.contains(ra.bottomRight), isTrue); // attribuzione dentro la mappa
+      expect(
+        mappa.contains(ra.bottomRight),
+        isTrue,
+      ); // attribuzione dentro la mappa
       final st = t.widget<Text>(d).style!;
       expect(st.fontSize, 12);
       expect(st.fontWeight, FontWeight.w700);
-      expect(rapportoContrasto(st.color!, Tk.cardSfondo), greaterThanOrEqualTo(4.5));
+      expect(
+        rapportoContrasto(st.color!, Tk.cardSfondo),
+        greaterThanOrEqualTo(4.5),
+      );
     });
   }
 
-  testWidgets('dicitura e attribuzione non si sovrappongono a 360 px', (t) async {
-    await _soloMappa(t, dicitura: 'Tap a number to open the stop. The line shows the order, not the route.', size: const Size(360, 640));
-    final rd = t.getRect(find.text('Tap a number to open the stop. The line shows the order, not the route.'));
+  testWidgets('dicitura e attribuzione non si sovrappongono a 360 px',
+      (t) async {
+    await _soloMappa(
+      t,
+      dicitura:
+          'Tap a number to open the stop. The line shows the order, not the route.',
+      size: const Size(360, 640),
+    );
+    final rd = t.getRect(
+      find.text(
+        'Tap a number to open the stop. The line shows the order, not the route.',
+      ),
+    );
     final ra = t.getRect(find.text(kAttribuzioneOsm));
     expect(rd.overlaps(ra), isFalse);
     expect(rd.right, lessThanOrEqualTo(360));
     expect(t.takeException(), isNull);
   });
 
-  testWidgets('area del tocco del segnaposto >= 44x44, pulsante con etichetta', (t) async {
+  testWidgets('area del tocco del segnaposto >= 44x44, pulsante con etichetta',
+      (t) async {
     final h = t.ensureSemantics();
     await _soloMappa(t, onSegnaposto: (_) {});
     for (final n in [1, 2, 3]) {
@@ -171,17 +218,63 @@ void main() {
     h.dispose();
   });
 
-  testWidgets('tocco al bordo dell area 44 (fuori dal cerchio 32) arriva al segnaposto', (t) async {
+  {
+    testWidgets(
+        'tocco vicino al bordo del riquadro del segnaposto arriva al segnaposto (sagoma)',
+        (t) async {
+      final visti = <int>[];
+      await _soloMappa(t, onSegnaposto: visti.add, sagoma: _sagomaReale());
+      final r = t.getRect(_segnaposto(2));
+      expect(
+        r.size,
+        const Size.square(Tk.areaMinima),
+        reason: 'riquadro di tocco 44x44 (sagoma disegnata 40 al centro)',
+      );
+      final disegno = find.descendant(
+        of: _segnaposto(2),
+        matching: find.byType(CustomPaint),
+      );
+      expect(t.getSize(disegno).width, kLarghezzaSegnaposto);
+      expect(t.getCenter(disegno).dx, closeTo(r.center.dx, 0.01));
+      expect(t.getCenter(disegno).dy, closeTo(r.center.dy, 0.01));
+      expect(r.width, greaterThanOrEqualTo(Tk.areaMinima));
+      expect(r.height, greaterThanOrEqualTo(Tk.areaMinima));
+      // I quattro angoli, 3 px dentro il riquadro (fuori dal disegno): con il
+      // padding di inquadratura derivato dalla sagoma il riquadro sta tutto
+      // dentro la mappa, anche in alto.
+      for (final o in [
+        r.topLeft + const Offset(3, 3),
+        r.topRight + const Offset(-3, 3),
+        r.bottomLeft + const Offset(3, -3),
+        r.bottomRight - const Offset(3, 3),
+      ]) {
+        visti.clear();
+        await t.tapAt(o);
+        await t.pump(const Duration(milliseconds: 400));
+        expect(visti, [2], reason: 'tocco in $o, riquadro $r');
+      }
+    });
+  }
+
+  testWidgets(
+      'cerchio di riserva: tocco al bordo dell area 44 (fuori dal cerchio 32) arriva al segnaposto',
+      (t) async {
     final visti = <int>[];
-    await _soloMappa(t, onSegnaposto: visti.add);
+    await _soloMappa(t, onSegnaposto: visti.add, sagoma: Future.value(null));
     final r = t.getRect(_segnaposto(2));
+    expect(r.size, const Size.square(Tk.areaMinima));
     await t.tapAt(r.topLeft + const Offset(3, 3));
     await t.pump(const Duration(milliseconds: 400));
     expect(visti, [2]);
   });
 
-  testWidgets('tocco sul segnaposto N apre la tappa N (lista corta)', (t) async {
-    await _schermata(t, [_s(1, p: _pA), _s(2, p: _pB), _s(3, p: _pC)], size: const Size(390, 844));
+  testWidgets('tocco sul segnaposto N apre la tappa N (lista corta)',
+      (t) async {
+    await _schermata(
+      t,
+      [_s(1, p: _pA), _s(2, p: _pB), _s(3, p: _pC)],
+      size: const Size(390, 844),
+    );
     expect(_stati(t), [false, false, false]);
     await t.tap(_segnaposto(2));
     await t.pumpAndSettle();
@@ -189,7 +282,9 @@ void main() {
     expect(find.text('motivo 2'), findsOneWidget);
   });
 
-  testWidgets('lista lunga: la tappa fuori vista viene aperta e portata nel viewport', (t) async {
+  testWidgets(
+      'lista lunga: la tappa fuori vista viene aperta e portata nel viewport',
+      (t) async {
     final tappe = [
       _s(1, p: _pA),
       for (var n = 2; n <= 29; n++) _s(n),
@@ -201,7 +296,10 @@ void main() {
     await t.tap(_segnaposto(30));
     await t.pumpAndSettle();
     expect(t.takeException(), isNull);
-    final card = find.ancestor(of: find.text('Titolo 30'), matching: find.byType(StopCard));
+    final card = find.ancestor(
+      of: find.text('Titolo 30'),
+      matching: find.byType(StopCard),
+    );
     expect(card, findsOneWidget);
     expect(t.widget<StopCard>(card).aperta, isTrue);
     expect(find.text('motivo 30'), findsOneWidget);
@@ -211,12 +309,24 @@ void main() {
     expect(rc.bottom, lessThanOrEqualTo(vista.bottom + 0.5));
   });
 
-  testWidgets('nessun altro gesto: il tocco sulla mappa fuori dai segnaposti non apre nulla', (t) async {
-    await _schermata(t, [_s(1, p: _pA), _s(2, p: _pB), _s(3, p: _pC)], size: const Size(390, 844));
+  testWidgets(
+      'nessun altro gesto: il tocco sulla mappa fuori dai segnaposti non apre nulla',
+      (t) async {
+    await _schermata(
+      t,
+      [_s(1, p: _pA), _s(2, p: _pB), _s(3, p: _pC)],
+      size: const Size(390, 844),
+    );
     final mappa = t.getRect(find.byType(FlutterMap));
-    final seg = [for (final n in [1, 2, 3]) t.getRect(_segnaposto(n))];
+    final seg = [
+      for (final n in [1, 2, 3]) t.getRect(_segnaposto(n)),
+    ];
+    // variante esplicita: _schermata inietta la sagoma (sagomaSegnaposto)
+    expect(seg.first.size, const Size.square(Tk.areaMinima));
     Offset? libero;
-    for (var x = mappa.left + 20; x < mappa.right - 20 && libero == null; x += 10) {
+    for (var x = mappa.left + 20;
+        x < mappa.right - 20 && libero == null;
+        x += 10) {
       for (var y = mappa.top + 50; y < mappa.bottom - 30; y += 10) {
         final o = Offset(x, y);
         if (!seg.any((r) => r.inflate(4).contains(o))) {
@@ -227,8 +337,49 @@ void main() {
     }
     expect(libero, isNotNull);
     await t.tapAt(libero!);
-    await t.pump(const Duration(milliseconds: 400)); // attesa del doppio tocco della mappa
+    await t.pump(
+      const Duration(
+        milliseconds: 400,
+      ),
+    ); // attesa del doppio tocco della mappa
     await t.pumpAndSettle();
     expect(_stati(t), [false, false, false]);
   });
+
+  // I future si creano DENTRO il test (factory): creati a livello di gruppo
+  // vivono fuori dalla zona FakeAsync del test e il FutureBuilder non li vede.
+  for (final (nome, creaSagoma)
+      in <(String, Future<SagomaSegnaposto?> Function())>[
+    ('sagoma', _sagomaReale),
+    ('cerchio', () => Future.value(null)),
+  ]) {
+    testWidgets(
+        '[$nome] mappa sola: un tocco fuori dai riquadri non chiama onSegnaposto',
+        (t) async {
+      final visti = <int>[];
+      await _soloMappa(t, onSegnaposto: visti.add, sagoma: creaSagoma());
+      final mappa = t.getRect(find.byType(FlutterMap));
+      final seg = [
+        for (final n in [1, 2, 3]) t.getRect(_segnaposto(n)),
+      ];
+      Offset? libero;
+      for (var x = mappa.left + 20;
+          x < mappa.right - 20 && libero == null;
+          x += 10) {
+        for (var y = mappa.top + 50; y < mappa.bottom - 30; y += 10) {
+          final o = Offset(x, y);
+          if (!seg.any((r) => r.inflate(4).contains(o))) {
+            libero = o;
+            break;
+          }
+        }
+      }
+      expect(libero, isNotNull);
+      await t.tapAt(libero!);
+      await t.pump(const Duration(milliseconds: 400));
+      await t.pumpAndSettle();
+      expect(visti, isEmpty);
+      expect(t.takeException(), isNull);
+    });
+  }
 }

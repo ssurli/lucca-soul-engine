@@ -60,6 +60,7 @@ class AppStrings {
   String get mapCaption => _isEn
       ? 'Tap a number to open the stop. The line shows the order, not the route.'
       : "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.";
+  String get allStops => _isEn ? 'All stops' : 'Tutte le tappe';
   String get genericStop => _isEn ? 'Stop' : 'Tappa';
   String get legendLabel => _isEn ? 'Legend' : 'Leggenda';
   String get curiosityLabel => _isEn ? 'Did you know' : 'Curiosità';
@@ -72,8 +73,8 @@ class AppStrings {
   String stopsAndEnd(int n, String fine) => _isEn
       ? '$n ${n == 1 ? 'stop' : 'stops'}, ends $fine'
       : '$n ${n == 1 ? 'tappa' : 'tappe'}, fine $fine';
-  String compareLine(String prima, String ora) =>
-      _isEn ? 'Before: $prima · Now: $ora' : 'Prima: $prima · Ora: $ora';
+  String beforeLine(String parte) => _isEn ? 'Before: $parte' : 'Prima: $parte';
+  String nowLine(String parte) => _isEn ? 'Now: $parte' : 'Ora: $parte';
   String get resetShortAction => _isEn ? 'Original plan' : 'Percorso iniziale';
   String get howToArrive => _isEn ? 'How to get here' : 'Come arrivo qui';
   String minutesOnFoot(int n) => _isEn ? 'about $n min on foot' : 'circa $n min a piedi';
