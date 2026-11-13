@@ -20,7 +20,13 @@ class TitoloMarchio extends StatelessWidget {
       children: [
         MuraLogo(size: 32),
         SizedBox(width: 10),
-        Flexible(child: Text('Lucca Soul', overflow: TextOverflow.ellipsis)),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text('Lucca Soul Lab'),
+          ),
+        ),
       ],
     );
   }

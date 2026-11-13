@@ -487,9 +487,9 @@ void main() {
   });
 
   group('6. testata', () {
-    testWidgets('Lucca Soul, data, fascia, tappe, a piedi, tutto in #F6F2EA, nessun prezzo', (t) async {
+    testWidgets('Lucca Soul Lab, data, fascia, tappe, a piedi, tutto in #F6F2EA, nessun prezzo', (t) async {
       await _monta(t, const Size(390, 844));
-      expect(_colore(t, find.text('Lucca Soul')), _sfondo);
+      expect(_colore(t, find.text('Lucca Soul Lab')), _sfondo);
       final riga = find.descendant(of: find.byType(TestataGiornata), matching: find.byType(Text));
       expect(riga, findsOneWidget);
       final testo = t.widget<Text>(riga).data!;

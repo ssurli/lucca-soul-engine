@@ -163,7 +163,7 @@ void main() {
         expect(s.axisDirection, anyOf(AxisDirection.down, AxisDirection.up));
       }
       expect(find.bySemanticsLabel('Le Mura di Lucca: dieci baluardi e una piattaforma'), findsOneWidget);
-      expect(find.text('Lucca Soul'), findsOneWidget);
+      expect(find.text('Lucca Soul Lab'), findsOneWidget);
       expect(find.textContaining('3 tappe'), findsOneWidget);
       expect(find.textContaining('a piedi'), findsOneWidget);
       expect(find.byType(MuraLogo), findsOneWidget);
