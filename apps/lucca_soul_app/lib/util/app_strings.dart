@@ -73,8 +73,8 @@ class AppStrings {
   String stopsAndEnd(int n, String fine) => _isEn
       ? '$n ${n == 1 ? 'stop' : 'stops'}, ends $fine'
       : '$n ${n == 1 ? 'tappa' : 'tappe'}, fine $fine';
-  String compareLine(String prima, String ora) =>
-      _isEn ? 'Before: $prima · Now: $ora' : 'Prima: $prima · Ora: $ora';
+  String beforeLine(String parte) => _isEn ? 'Before: $parte' : 'Prima: $parte';
+  String nowLine(String parte) => _isEn ? 'Now: $parte' : 'Ora: $parte';
   String get resetShortAction => _isEn ? 'Original plan' : 'Percorso iniziale';
   String get howToArrive => _isEn ? 'How to get here' : 'Come arrivo qui';
   String minutesOnFoot(int n) => _isEn ? 'about $n min on foot' : 'circa $n min a piedi';

@@ -279,21 +279,38 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     );
   }
 
-  /// Riga «Prima/Ora» sopra le tappe, solo con un adattamento mostrato.
+  /// Righe «Prima» e «Ora» sopra le tappe, una sotto l'altra, solo con un
+  /// adattamento mostrato. Ciascuna sta su una riga sola: se non ci sta a
+  /// questa larghezza si rimpicciolisce (FittedBox) invece di andare a capo.
   List<Widget> _confronto(InterruttoriController controller) {
-    final testo = confrontoInUnaRiga(
+    final confronto = confrontoPrimaOra(
       originale: controller.originale,
       mostrato: controller.itinerarioMostrato,
       strings: _strings,
     );
-    if (testo == null) return const [];
+    if (confronto == null) return const [];
+    final stile = Theme.of(context).textTheme.bodyMedium;
+    Widget riga(String chiave, String testo) => FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            testo,
+            key: Key(chiave),
+            maxLines: 1,
+            softWrap: false,
+            style: stile,
+          ),
+        );
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-        child: Text(
-          testo,
-          key: const Key('confronto-in-una-riga'),
-          style: Theme.of(context).textTheme.bodyMedium,
+        child: Column(
+          key: const Key('confronto-prima-ora'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            riga('confronto-prima', confronto.prima),
+            riga('confronto-ora', confronto.ora),
+          ],
         ),
       ),
     ];
