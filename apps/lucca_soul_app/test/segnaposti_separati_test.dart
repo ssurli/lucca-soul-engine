@@ -11,7 +11,6 @@ import 'package:lucca_soul_app/theme/app_theme.dart';
 import 'package:lucca_soul_app/util/segnaposti_separati.dart';
 import 'package:lucca_soul_app/widgets/mappa_itinerario.dart';
 import 'package:lucca_soul_app/widgets/segnaposto_mura.dart';
-import 'package:lucca_soul_app/widgets/segnaposto_variante.dart';
 
 import 'segnaposto_prove.dart';
 
@@ -41,7 +40,7 @@ ItineraryStop _s(int n, Punto p) => ItineraryStop(
     );
 
 // Le varianti si provano INIETTANDO la sagoma: mai affidarsi al bundle.
-// - sagoma (mura 48, baluardo 44): punte a distanza >= diametroCollisione(sg.larghezza);
+// - sagoma delle Mura: punte a distanza >= diametroCollisione(kLarghezzaSegnaposto) = 48;
 // - cerchio di riserva (future con null): centri a distanza >= kDiametroSegnaposto (32).
 Future<SagomaSegnaposto?> _senzaSagoma() => Future.value(null);
 
@@ -82,10 +81,10 @@ Future<void> _monta(
 /// Punto che cade sul luogo: la punta della sagoma, oppure il centro del cerchio.
 Offset _punto(WidgetTester t, int n, SagomaSegnaposto? sg) => sg == null
     ? t.getCenter(_segnaposto(n))
-    : t.getRect(_segnaposto(n)).topLeft + sg.puntaLocale(sg.larghezza);
+    : t.getRect(_segnaposto(n)).topLeft + sg.puntaLocale(kLarghezzaSegnaposto);
 
 double _soglia(SagomaSegnaposto? sg) =>
-    sg == null ? kDiametroSegnaposto : diametroCollisione(sg.larghezza);
+    sg == null ? kDiametroSegnaposto : diametroCollisione(kLarghezzaSegnaposto);
 
 void _controllaLeggibiliEToccabili(
   WidgetTester t,
@@ -147,24 +146,15 @@ void main() {
       expect(_minDist(r), greaterThanOrEqualTo(kDiametroSegnaposto));
     });
 
-    for (final (v, atteso) in [
-      (VarianteSegnaposto.mura, 48.0),
-      (VarianteSegnaposto.baluardo, 44.0),
-    ]) {
-      test(
-          'diametro di collisione della sagoma ${v.name} ($atteso): tutte le coppie >= $atteso',
-          () {
-        final d = diametroCollisione(sagomaDi(v).larghezza);
-        expect(d, atteso);
-        for (final n in [2, 3, 5]) {
-          final r = separaSegnaposti(
-            List.filled(n, const Offset(10, 10)),
-            diametro: d,
-          );
-          expect(_minDist(r), greaterThanOrEqualTo(d), reason: 'n=$n');
-        }
-      });
-    }
+    test('diametro di collisione della sagoma (48): tutte le coppie >= 48', () {
+      final d = diametroCollisione(kLarghezzaSegnaposto);
+      expect(d, 48);
+      for (final n in [2, 3, 5]) {
+        final r =
+            separaSegnaposti(List.filled(n, const Offset(10, 10)), diametro: d);
+        expect(_minDist(r), greaterThanOrEqualTo(d), reason: 'n=$n');
+      }
+    });
 
     test('deterministico', () {
       const p = [Offset(3, 3), Offset(3, 3), Offset(4, 3)];
@@ -177,12 +167,11 @@ void main() {
 
   for (final (nome, fSagoma, sg)
       in <(String, Future<SagomaSegnaposto?> Function(), SagomaSegnaposto?)>[
-    for (final v in kVarianti)
-      (
-        'sagoma ${v.name} ${sagomaDi(v).larghezza.round()}',
-        () => Future.value(sagomaDi(v)),
-        sagomaDi(v),
-      ),
+    (
+      'sagoma mura 48',
+      () => Future.value(sagomaMura()),
+      sagomaMura(),
+    ),
     ('cerchio 32', _senzaSagoma, null),
   ]) {
     group(nome, () {

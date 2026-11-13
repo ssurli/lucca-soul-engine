@@ -27,9 +27,7 @@ const double kAltezzaMappa = 168;
 /// percorso a piedi. Se tra due tappe con punto ce n'è una senza punto, la
 /// linea le collega comunque (2→4): indica la successione sulla mappa.
 ///
-/// I segnaposti hanno la sagoma della variante scelta (mura:
-/// `segnaposto_sagoma.json`, baluardo: `segnaposto_baluardo.json`, vedi
-/// `segnaposto_variante.dart`):
+/// I segnaposti hanno la sagoma delle Mura (`assets/brand/segnaposto_sagoma.json`):
 /// la PUNTA della sagoma cade sul luogo vero. Se la sagoma non si carica
 /// (asset mancante o JSON malformato) restano i cerchi numerati, senza errori.
 ///
@@ -113,7 +111,7 @@ class _MappaItinerarioState extends State<MappaItinerario> {
   /// ancora spingere un segnaposto oltre il bordo.
   CameraFit _inquadra(List<LatLng> punti) {
     const base = 40.0;
-    final m = _sg?.margini(_sg!.larghezza, _margineSagoma);
+    final m = _sg?.margini(kLarghezzaSegnaposto, _margineSagoma);
     return CameraFit.bounds(
         bounds: LatLngBounds.fromPoints(punti),
         padding: m == null
@@ -282,14 +280,14 @@ class _StratoSegnaposti extends StatelessWidget {
     final punte = sg == null
         ? separaSegnaposti(veri)
         : separaSegnaposti(veri,
-            diametro: diametroCollisione(sg.larghezza),);
+            diametro: diametroCollisione(kLarghezzaSegnaposto),);
     final Size dim = sg == null
         ? const Size.square(Tk.areaMinima)
-        : sg.dimensione(sg.larghezza);
+        : sg.dimensione(kLarghezzaSegnaposto);
     // Dove sta, dentro il widget, il punto che deve cadere sul luogo.
     final Offset ancora = sg == null
         ? Offset(dim.width / 2, dim.height / 2)
-        : sg.puntaLocale(sg.larghezza);
+        : sg.puntaLocale(kLarghezzaSegnaposto);
     return SizedBox.expand(
       child: Stack(
         children: [
@@ -346,7 +344,7 @@ class Segnaposto extends StatelessWidget {
     final sg = sagoma;
     final Size dim = sg == null
         ? const Size.square(Tk.areaMinima)
-        : sg.dimensione(sg.larghezza);
+        : sg.dimensione(kLarghezzaSegnaposto);
     return Semantics(
       label: '$etichetta $numero',
       button: true,

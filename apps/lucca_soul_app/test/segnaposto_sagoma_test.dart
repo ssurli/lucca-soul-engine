@@ -14,7 +14,6 @@ import 'package:lucca_soul_app/theme/app_theme.dart';
 import 'package:lucca_soul_app/theme/tokens.dart';
 import 'package:lucca_soul_app/widgets/mappa_itinerario.dart';
 import 'package:lucca_soul_app/widgets/segnaposto_mura.dart';
-import 'package:lucca_soul_app/widgets/segnaposto_variante.dart';
 
 import 'segnaposto_prove.dart';
 
@@ -76,139 +75,52 @@ Future<MapController> _monta(
 
 void main() {
   group('asset reale', () {
-    test('mura: parseSagomaSegnaposto: 58 punti di contorno, 22 di traccia',
-        () {
-      final sg = sagomaDi(VarianteSegnaposto.mura);
+    test('parseSagomaSegnaposto: 58 punti di contorno, 22 di traccia', () {
+      final sg = sagomaMura();
       expect(sg.contorno.length, 58);
       expect(sg.traccia.length, 22);
-      expect(sg.stile, StileSegnaposto.mura);
     });
 
-    test('mura: geometria: viewBox, punta e dimensione a 48 px', () {
-      final sg = sagomaDi(VarianteSegnaposto.mura);
-      expect(sg.larghezza, 48);
+    test('geometria: viewBox, punta e dimensione a 48 px', () {
+      final sg = sagomaMura();
       expect(sg.viewBox, const Rect.fromLTWH(-17, -14, 34, 32));
       expect(sg.punta, const Offset(-4.9, 17.2));
-      final dim = sg.dimensione(sg.larghezza);
+      final dim = sg.dimensione(kLarghezzaSegnaposto);
       expect(dim.width, 48);
       expect(dim.height, closeTo(45.18, 0.05));
-      final pl = sg.puntaLocale(sg.larghezza);
+      final pl = sg.puntaLocale(kLarghezzaSegnaposto);
       expect(pl.dx, inInclusiveRange(0, dim.width));
       expect(pl.dy, inInclusiveRange(0, dim.height));
     });
 
-    test(
-        'baluardo: geometria: viewBox = riquadro di tocco 44x44, punta in (0,0)',
-        () {
-      final sg = sagomaDi(VarianteSegnaposto.baluardo);
-      expect(sg.stile, StileSegnaposto.baluardo);
-      expect(sg.larghezza, 44);
-      expect(sg.viewBox, const Rect.fromLTWH(-22, -40, 44, 44));
-      expect(sg.punta, Offset.zero);
-      expect(sg.punta.dx, 0, reason: 'la punta sta sull asse x=0');
-      expect(sg.dimensione(sg.larghezza), const Size(44, 44));
-      expect(
-        sg.dimensione(sg.larghezza).width,
-        greaterThanOrEqualTo(Tk.areaMinima),
-      );
-      expect(
-        sg.dimensione(sg.larghezza).height,
-        greaterThanOrEqualTo(Tk.areaMinima),
-      );
-      // punta locale: centro del bordo basso meno 4 px
-      expect(sg.puntaLocale(sg.larghezza), const Offset(22, 40));
-      expect(sg.contorno, const [
-        Offset(0, 0),
-        Offset(18, -22),
-        Offset(12, -36),
-        Offset(-12, -36),
-        Offset(-18, -22),
-      ]);
-      expect(sg.traccia.length, 5);
-      expect(sg.centroNumero.dx, 0);
-    });
-
-    test('baluardo: contorno simmetrico rispetto a x=0', () {
-      final c = sagomaDi(VarianteSegnaposto.baluardo).contorno;
-      for (final q in c) {
-        expect(
-          c.any(
-            (r) => (r.dx + q.dx).abs() < 1e-9 && (r.dy - q.dy).abs() < 1e-9,
-          ),
-          isTrue,
-          reason: 'manca lo specchio di $q',
-        );
-      }
-      final t = sagomaDi(VarianteSegnaposto.baluardo).traccia;
-      for (final q in t) {
-        expect(
-          t.any(
-            (r) => (r.dx + q.dx).abs() < 0.01 && (r.dy - q.dy).abs() < 0.01,
-          ),
-          isTrue,
-          reason: 'traccia: manca lo specchio di $q',
-        );
-      }
-    });
-
-    test('ogni contorno sta dentro la propria viewBox', () {
-      for (final v in kVarianti) {
-        final sg = sagomaDi(v);
-        for (final q in [...sg.contorno, sg.punta]) {
-          expect(
-            sg.viewBox.inflate(0.001).contains(q),
-            isTrue,
-            reason: '${v.name}: $q',
-          );
-        }
+    test('contorno e punta stanno dentro la viewBox', () {
+      final sg = sagomaMura();
+      for (final q in [...sg.contorno, sg.punta]) {
+        expect(sg.viewBox.inflate(0.001).contains(q), isTrue, reason: '$q');
       }
     });
   });
 
-  test('varianteDaTesto: mura, baluardo, vuoto e sconosciuto', () {
-    expect(varianteDaTesto('mura'), VarianteSegnaposto.mura);
-    expect(varianteDaTesto('baluardo'), VarianteSegnaposto.baluardo);
-    expect(varianteDaTesto(''), VarianteSegnaposto.baluardo);
-    expect(varianteDaTesto('xyz'), VarianteSegnaposto.baluardo);
-  });
-
-  test('senza define SEGNAPOSTO la variante di build e il baluardo', () {
-    expect(kVarianteSegnaposto, VarianteSegnaposto.baluardo);
-  });
-
-  testWidgets('default di caricaSagomaSegnaposto() senza define: baluardo',
+  testWidgets('caricaSagomaSegnaposto() carica la sagoma dal bundle',
       (t) async {
     azzeraCacheSagoma();
     final sg = await t.runAsync(() => caricaSagomaSegnaposto());
     expect(sg, isNotNull);
-    expect(sg!.stile, StileSegnaposto.baluardo);
-    expect(sg.larghezza, 44);
+    expect(sg!.contorno.length, 58);
+    expect(sg.traccia.length, 22);
     azzeraCacheSagoma();
   });
 
-  testWidgets(
-      'caricaSagomaSegnaposto(variante) carica ciascuna variante dal bundle',
-      (t) async {
-    azzeraCacheSagoma();
-    for (final v in kVarianti) {
-      final sg = await t.runAsync(() => caricaSagomaSegnaposto(variante: v));
-      expect(sg, isNotNull, reason: v.name);
-      expect(sg!.stile.name, v.name);
-    }
-    azzeraCacheSagoma();
-  });
-
-  for (final v in kVarianti) {
-    final sg = sagomaDi(v);
-    testWidgets(
-        '[${v.name}] la punta del segnaposto cade sul punto vero (tolleranza 1 px)',
+  {
+    final sg = sagomaMura();
+    testWidgets('la punta del segnaposto cade sul punto vero (tolleranza 1 px)',
         (t) async {
       final c = await _monta(t, [_s(1, _pA), _s(2, _pB)], Future.value(sg));
       for (final (n, p) in [(1, _pA), (2, _pB)]) {
         final vero = (t.getTopLeft(find.byType(FlutterMap)) +
             c.camera.latLngToScreenOffset(_ll(p)));
-        final punta =
-            t.getRect(_segnaposto(n)).topLeft + sg.puntaLocale(sg.larghezza);
+        final punta = t.getRect(_segnaposto(n)).topLeft +
+            sg.puntaLocale(kLarghezzaSegnaposto);
         expect(
           (punta - vero).distance,
           lessThanOrEqualTo(1),
@@ -224,7 +136,7 @@ void main() {
     });
 
     testWidgets(
-        '[${v.name}] due tappe nello stesso punto: linee di richiamo, punte scostate, ciascun tocco apre la propria tappa',
+        'due tappe nello stesso punto: linee di richiamo, punte scostate, ciascun tocco apre la propria tappa',
         (t) async {
       final visti = <int>[];
       final c = await _monta(
@@ -251,12 +163,12 @@ void main() {
       }
       expect(
         (g.punte[0] - g.punte[1]).distance,
-        greaterThanOrEqualTo(sg.larghezza),
+        greaterThanOrEqualTo(kLarghezzaSegnaposto),
       );
       // le punte disegnate coincidono con quelle passate al painter
       for (final n in [1, 2]) {
-        final punta =
-            t.getRect(_segnaposto(n)).topLeft + sg.puntaLocale(sg.larghezza);
+        final punta = t.getRect(_segnaposto(n)).topLeft +
+            sg.puntaLocale(kLarghezzaSegnaposto);
         expect(
           (punta - origine - g.punte[n - 1]).distance,
           lessThanOrEqualTo(1),
@@ -275,7 +187,7 @@ void main() {
         ('un solo punto', [_pA]),
         ('due punti', [_pA, _pB]),
       ]) {
-        testWidgets('[${v.name}] $nome', (t) async {
+        testWidgets(nome, (t) async {
           await _monta(
             t,
             [for (var i = 0; i < punti.length; i++) _s(i + 1, punti[i])],
