@@ -109,7 +109,7 @@ def test_maskable_logo_nella_zona_sicura() -> None:
 
 def test_manifest() -> None:
     m = json.loads((WEB / "manifest.json").read_text(encoding="utf-8"))
-    assert m["name"] == "Lucca Soul"
+    assert m["name"] == "Lucca Soul Lab"
     assert m["short_name"] == "Lucca Soul"
     assert m["theme_color"].upper() == "#1F2A2E"
     assert m["background_color"].upper() == "#1F2A2E"
