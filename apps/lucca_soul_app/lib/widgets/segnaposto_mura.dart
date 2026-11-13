@@ -145,9 +145,23 @@ class SagomaPainter extends CustomPainter {
       old.numero != numero || old.sagoma != sagoma;
 }
 
+/// Spessore della linea di richiamo (px): sottile, diverso dai 3 px della
+/// linea dell'ordine.
+const double kSpessoreRichiamo = 1;
+
+/// Raggio del pallino sul luogo vero (px).
+const double kRaggioPallinoRichiamo = 2.5;
+
+/// Colore della linea e del pallino di richiamo: grigio non testuale, mai il
+/// nero né l'accento (che e' della linea dell'ordine).
+const Color kColoreRichiamo = Tk.grigioNonTestuale;
+
 /// Linee di richiamo: quando un segnaposto è stato scostato
-/// ([separaSegnaposti]), una linea sottile va dalla sua punta al luogo vero,
-/// segnato da un punto. Va disegnato SOTTO i segnaposti.
+/// ([separaSegnaposti]), una linea continua e sottile va dalla sua punta al
+/// luogo vero, segnato da un pallino. Si distingue dalla linea dell'ordine
+/// (tratteggiata, accento, 3 px) per colore, spessore e tratto. Nessun alone:
+/// il grigio da solo e' leggibile sullo sfondo della mappa. Va disegnato SOTTO
+/// i segnaposti.
 class GuidePainter extends CustomPainter {
   final List<Offset> veri; // punti veri sullo schermo
   final List<Offset> punte; // punte dopo la separazione
@@ -156,13 +170,13 @@ class GuidePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final linea = Paint()
-      ..color = Tk.testo
-      ..strokeWidth = 1.5;
+      ..color = kColoreRichiamo
+      ..strokeWidth = kSpessoreRichiamo;
     for (var i = 0; i < veri.length; i++) {
       if ((punte[i] - veri[i]).distance < 2) continue;
       canvas.drawLine(punte[i], veri[i], linea);
-      canvas.drawCircle(veri[i], 4, Paint()..color = Tk.cardSfondo);
-      canvas.drawCircle(veri[i], 2.8, Paint()..color = Tk.testo);
+      canvas.drawCircle(
+          veri[i], kRaggioPallinoRichiamo, Paint()..color = kColoreRichiamo,);
     }
   }
 
