@@ -228,6 +228,32 @@ class AppStrings {
       : 'Non c\'è abbastanza attività aggregata in questo periodo per '
           'pubblicare l\'index garantendo l\'anonimato dei visitatori.';
 
+  /// Nome leggibile di un indicatore dalla chiave tecnica del BFF; null se
+  /// la chiave non è nota.
+  String? nomeIndicatore(String chiave) {
+    switch (chiave) {
+      case 'tempo_medio_esperienza_min':
+        return indicatorTempoMedioLabel;
+      case 'coinvolgimento':
+        return indicatorCoinvolgimentoLabel;
+      case 'tasso_ritorno':
+        return indicatorTassoRitornoLabel;
+      case 'attivazione_locale':
+        return indicatorAttivazioneLocaleLabel;
+      case 'distribuzione_flussi':
+        return dashboardHeroLabel;
+      case 'nuovi_percorsi':
+        return indicatorNuoviPercorsiLabel;
+      case 'contributi_memoria':
+        return indicatorContributiMemoriaLabel;
+    }
+    return null;
+  }
+
+  String dashboardPrimoIndicatoreSottoSoglia(String nome) => _isEn
+      ? 'The first indicator below the threshold is: $nome.'
+      : 'Il primo indicatore sotto la soglia è: $nome.';
+
   String get dashboardProvaSenzaEventi => _isEn
       ? 'This trial version does not record routes, so the indicators stay '
           'empty.'
