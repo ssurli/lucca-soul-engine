@@ -128,6 +128,8 @@ from __future__ import annotations
 
 import logging
 import math
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Annotated
@@ -205,7 +207,40 @@ class Utf8JSONResponse(JSONResponse):
     media_type = "application/json; charset=utf-8"
 
 
-app = FastAPI(title="Lucca Soul — BFF", default_response_class=Utf8JSONResponse)
+def _configura_log_api() -> None:
+    """Rende visibili in console i log INFO di `api.*` sotto uvicorn.
+
+    Uvicorn configura solo i propri logger: il root non ha handler e un
+    `info` di `api.*` andrebbe perso (passerebbero solo i warning, via
+    `lastResort`). Un handler sul logger `api`, aggiunto una sola volta,
+    mostra INFO+ senza duplicare (il root resta senza handler) e senza
+    sopprimere i warning. Sotto pytest `propagate` resta attivo: `caplog`
+    cattura comunque.
+    """
+    logger = logging.getLogger("api")
+    if logger.handlers:
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(levelname)s:     %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
+    """All'avvio la fonte dei candidati viene scelta (e loggata da
+    `get_candidate_source`) invece che alla prima richiesta. Costruire
+    `Neo4jCandidateSource` non apre connessioni: il driver è pigro."""
+    get_candidate_source()
+    yield
+
+
+_configura_log_api()
+app = FastAPI(
+    title="Lucca Soul — BFF",
+    default_response_class=Utf8JSONResponse,
+    lifespan=_lifespan,
+)
 
 
 def _con_charset(response: Response) -> Response:

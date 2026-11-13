@@ -3,6 +3,10 @@
 #   powershell -ExecutionPolicy Bypass -File scripts\avvia_demo.ps1
 #   powershell -ExecutionPolicy Bypass -File scripts\avvia_demo.ps1 -Rete
 # Il BFF usa il .env reale (Aura/Neon): lo script va lanciato dall'utente.
+# Dopo l'avvio fa UNA sola lettura del grafo (POST /itinerary/adapt con itinerario
+# vuoto: nessuna scrittura) e dice se il grafo risponde. Un grafo che non risponde
+# (503) e' un AVVISO, non ferma la demo: l'app mostra l'errore in modo gestito.
+# Il BFF resta in esecuzione finche' non premi Ctrl+C.
 param(
     [string]$Istante = "2026-12-12T09:00:00Z",
     [switch]$Rete
@@ -89,6 +93,75 @@ if ($Rete) {
 }
 Write-Host ""
 
-# 7. Avvio del BFF (Ctrl+C per fermarlo).
-& $python -m uvicorn api.main:app --app-dir services\api --host $bindHost --port 8000
-if ($LASTEXITCODE -ne 0) { throw "uvicorn terminato con errore (exit $LASTEXITCODE)." }
+# 7. Avvio del BFF (Ctrl+C per fermarlo). Non in primo piano: serve poter
+# controllare il grafo dopo l'avvio.
+$argomenti = @("-m", "uvicorn", "api.main:app", "--app-dir", "services\api", "--host", $bindHost, "--port", "8000")
+$proc = Start-Process -FilePath $python -ArgumentList $argomenti -NoNewWindow -PassThru
+$null = $proc.Handle   # PS 5.1: senza leggere Handle subito, ExitCode resta vuoto
+
+try {
+    # 8. Attesa di /health (al massimo ~30 s).
+    $pronto = $false
+    for ($i = 0; $i -lt 30; $i++) {
+        if ($proc.HasExited) {
+            throw "uvicorn e' terminato prima di rispondere (exit $($proc.ExitCode))."
+        }
+        try {
+            $r = Invoke-WebRequest "http://127.0.0.1:8000/health" -UseBasicParsing -TimeoutSec 2
+            if ($r.StatusCode -eq 200) { $pronto = $true; break }
+        }
+        catch { }
+        Start-Sleep -Seconds 1
+    }
+    if (-not $pronto) {
+        throw "Il BFF non risponde su /health dopo 30 secondi."
+    }
+
+    # 9. Una sola lettura del grafo, senza scritture (niente /itinerary, /memory, /events, /booking).
+    $verifica = @'
+import json, sys, urllib.error, urllib.request
+corpo = {
+    "itinerary": {"person_id": "verifica-avvio", "stops": [], "generated_at": "2026-12-12T09:00:00Z"},
+    "signal": {"meteo": "sereno", "data": "2026-12-12", "ora": "10:00:00", "affollamento": {}, "stanchezza": 0},
+}
+req = urllib.request.Request(
+    "http://127.0.0.1:8000/itinerary/adapt",
+    data=json.dumps(corpo).encode("utf-8"),
+    headers={"Content-Type": "application/json; charset=utf-8"},
+    method="POST",
+)
+try:
+    with urllib.request.build_opener(urllib.request.ProxyHandler({})).open(req, timeout=60) as r:
+        sys.exit(0 if r.status == 200 else 1)
+except urllib.error.HTTPError as e:
+    print(e.code)
+    sys.exit(3 if e.code == 503 else 1)
+except Exception as e:
+    print(type(e).__name__)
+    sys.exit(1)
+'@
+    $fileVerifica = Join-Path $env:TEMP "lucca_verifica_grafo.py"
+    Set-Content -Path $fileVerifica -Value $verifica -Encoding UTF8
+    & $python $fileVerifica
+    $esitoVerifica = $LASTEXITCODE
+    Remove-Item -Path $fileVerifica -Force -ErrorAction SilentlyContinue
+    if ($esitoVerifica -eq 0) {
+        Write-Host "Grafo raggiungibile"
+    }
+    elseif ($esitoVerifica -eq 3) {
+        Write-Warning "ATTENZIONE: il grafo non risponde (503). La demo parte lo stesso."
+    }
+    else {
+        Write-Warning "Verifica del grafo non riuscita (codice $esitoVerifica): controlla i messaggi sopra."
+    }
+
+    # 10. Il BFF resta attivo fino a Ctrl+C.
+    $proc.WaitForExit()
+    if ($proc.ExitCode -ne 0) { throw "uvicorn terminato con errore (exit $($proc.ExitCode))." }
+}
+finally {
+    if ($fileVerifica) { Remove-Item -Path $fileVerifica -Force -ErrorAction SilentlyContinue }
+    if (-not $proc.HasExited) {
+        Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
+    }
+}
