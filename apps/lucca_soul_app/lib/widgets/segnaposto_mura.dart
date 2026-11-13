@@ -12,6 +12,17 @@ import '../theme/tokens.dart';
 /// centrato sulla sagoma ([SagomaSegnaposto.dimensioneRiquadro]).
 const double kLarghezzaSegnaposto = 40;
 
+/// Larghezza (px) della sagoma senza punta usata come numero nelle card della
+/// lista delle tappe. L'altezza segue la sua viewBox.
+const double kLarghezzaNumeroCard = 32;
+
+/// Altezza delle cifre in proporzione al corpo del carattere (Nunito Sans): serve
+/// a misurare il rettangolo del numero ([SagomaSegnaposto.rettangoloNumero]).
+const double kAltezzaCifre = 0.72;
+
+/// Fattore di riduzione del carattere con due cifre.
+const double kRiduzioneDueCifre = 0.85;
+
 /// Geometria della sagoma, in unità della sua viewBox (y verso il basso).
 class SagomaSegnaposto {
   final Rect viewBox;
@@ -21,6 +32,10 @@ class SagomaSegnaposto {
   final Offset centroNumero;
   final double dimensioneNumero; // in unità della viewBox
 
+  /// Versione senza punta per la lista delle tappe; null se l'asset non la
+  /// contiene (la card ripiega sul cerchio). Vedi [senzaPuntaDaJson].
+  final SagomaSegnaposto? senzaPunta;
+
   const SagomaSegnaposto({
     required this.viewBox,
     required this.contorno,
@@ -28,6 +43,7 @@ class SagomaSegnaposto {
     required this.punta,
     required this.centroNumero,
     required this.dimensioneNumero,
+    this.senzaPunta,
   });
 
   factory SagomaSegnaposto.fromJson(Map<String, dynamic> j) {
@@ -48,10 +64,64 @@ class SagomaSegnaposto {
       punta: o(j['punta'] as List<dynamic>),
       centroNumero: o(j['centroNumero'] as List<dynamic>),
       dimensioneNumero: (j['dimensioneNumero'] as num).toDouble(),
+      senzaPunta: senzaPuntaDaJson(j),
     );
   }
 
+  /// Versione senza punta (il baluardo sud allungato sostituito da uno tozzo),
+  /// per il numero nella lista delle tappe. Legge `contornoSenzaPunta`,
+  /// `viewBoxSenzaPunta`, `centroNumeroSenzaPunta`, `dimensioneNumeroSenzaPunta`;
+  /// se manca anche uno solo (o sono malformati) restituisce null e la card
+  /// ripiega sul cerchio. Senza traccia; la punta e' il centro in basso (non usata).
+  static SagomaSegnaposto? senzaPuntaDaJson(Map<String, dynamic> j) {
+    try {
+      Offset o(List<dynamic> p) =>
+          Offset((p[0] as num).toDouble(), (p[1] as num).toDouble());
+      final vb = j['viewBoxSenzaPunta'] as Map<String, dynamic>;
+      final r = Rect.fromLTWH(
+        (vb['x'] as num).toDouble(),
+        (vb['y'] as num).toDouble(),
+        (vb['larghezza'] as num).toDouble(),
+        (vb['altezza'] as num).toDouble(),
+      );
+      final contorno = [
+        for (final p in j['contornoSenzaPunta'] as List<dynamic>)
+          o(p as List<dynamic>),
+      ];
+      if (contorno.length < 3) return null;
+      return SagomaSegnaposto(
+        viewBox: r,
+        contorno: contorno,
+        traccia: const [],
+        punta: Offset(r.center.dx, r.bottom),
+        centroNumero: o(j['centroNumeroSenzaPunta'] as List<dynamic>),
+        dimensioneNumero: (j['dimensioneNumeroSenzaPunta'] as num).toDouble(),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   double scala(double larghezza) => larghezza / viewBox.width;
+
+  /// Dimensione del carattere (px) per [numero] a una data larghezza.
+  double dimensioneCarattere(double larghezza, int numero) =>
+      dimensioneNumero * scala(larghezza) * (numero >= 10 ? kRiduzioneDueCifre : 1);
+
+  /// Rettangolo occupato dalle cifre di [numero] (px, nel riquadro della
+  /// sagoma disegnata): larghezza misurata dal testo, altezza = altezza delle
+  /// cifre ([kAltezzaCifre]), centrato su `centroNumero`. I test lo confrontano
+  /// con il contorno.
+  Rect rettangoloNumero(double larghezza, int numero) {
+    final dim = dimensioneCarattere(larghezza, numero);
+    final tp = TextPainter(
+      text: TextSpan(text: '$numero', style: stileTesto(dim, 800, Tk.testoSuAccento)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    final c = (centroNumero - viewBox.topLeft) * scala(larghezza);
+    return Rect.fromCenter(
+        center: c, width: tp.width, height: dim * kAltezzaCifre,);
+  }
 
   /// Dimensione del widget a una data larghezza.
   Size dimensione(double larghezza) =>
@@ -95,7 +165,10 @@ class SagomaSegnaposto {
 class SagomaPainter extends CustomPainter {
   final SagomaSegnaposto sagoma;
   final int numero;
-  SagomaPainter(this.sagoma, this.numero);
+
+  /// Ombra sotto la sagoma: sulla mappa si', nella lista delle tappe no.
+  final bool conOmbra;
+  SagomaPainter(this.sagoma, this.numero, {this.conOmbra = true});
 
   Path _percorso(List<Offset> punti, double s, {bool chiuso = true}) {
     final p = Path();
@@ -111,7 +184,7 @@ class SagomaPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final s = sagoma.scala(size.width);
     final corpo = _percorso(sagoma.contorno, s);
-    canvas.drawShadow(corpo, Colors.black, 2, false);
+    if (conOmbra) canvas.drawShadow(corpo, Colors.black, 2, false);
     canvas.drawPath(corpo, Paint()..color = Tk.accento);
     canvas.drawPath(
       corpo,
@@ -121,16 +194,18 @@ class SagomaPainter extends CustomPainter {
         ..strokeWidth = 1.4 * s
         ..color = Tk.cardSfondo,
     );
-    canvas.drawPath(
-      _percorso(sagoma.traccia, s),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeJoin = StrokeJoin.round
-        ..strokeWidth = 0.9 * s
-        ..color = Tk.cardSfondo.withValues(alpha: 0.75),
-    );
+    if (sagoma.traccia.isNotEmpty) {
+      canvas.drawPath(
+        _percorso(sagoma.traccia, s),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeJoin = StrokeJoin.round
+          ..strokeWidth = 0.9 * s
+          ..color = Tk.cardSfondo.withValues(alpha: 0.75),
+      );
+    }
     // Due cifre: carattere un po' più piccolo per restare dentro la traccia.
-    final dim = sagoma.dimensioneNumero * s * (numero >= 10 ? 0.85 : 1);
+    final dim = sagoma.dimensioneCarattere(size.width, numero);
     final tp = TextPainter(
       text: TextSpan(
           text: '$numero', style: stileTesto(dim, 800, Tk.testoSuAccento),),
@@ -142,7 +217,7 @@ class SagomaPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(SagomaPainter old) =>
-      old.numero != numero || old.sagoma != sagoma;
+      old.numero != numero || old.sagoma != sagoma || old.conOmbra != conOmbra;
 }
 
 /// Spessore della linea di richiamo (px): sottile, diverso dai 3 px della

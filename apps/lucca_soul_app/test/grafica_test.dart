@@ -20,6 +20,9 @@ import 'package:lucca_soul_app/util/clock.dart';
 import 'package:lucca_soul_app/util/riepilogo_cambio.dart';
 import 'package:lucca_soul_app/widgets/adaptive_card.dart';
 import 'package:lucca_soul_app/widgets/mura_logo.dart';
+import 'package:lucca_soul_app/widgets/segnaposto_mura.dart';
+
+import 'segnaposto_prove.dart';
 
 const _json = {'content-type': 'application/json; charset=utf-8'};
 final _it = AppStrings.forLanguages(['it']);
@@ -55,7 +58,9 @@ const _profilo = EmotionalProfile(
   tempoDisponibileMin: 240,
 );
 
-Future<void> _montaSchermata(WidgetTester tester, Size size) async {
+/// [sagoma]: variante della card sempre esplicita (default sagoma delle Mura dal
+/// file; `Future.value(null)` = cerchio di riserva).
+Future<void> _montaSchermata(WidgetTester tester, Size size, {Future<SagomaSegnaposto?>? sagoma}) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
@@ -74,7 +79,7 @@ Future<void> _montaSchermata(WidgetTester tester, Size size) async {
   await tester.pumpWidget(
     MaterialApp(
       theme: buildAppTheme(),
-      home: ItineraryScreen(bffClient: client, personId: 'p', profile: _profilo),
+      home: ItineraryScreen(bffClient: client, personId: 'p', profile: _profilo, sagomaSegnaposto: sagoma ?? Future.value(sagomaMura())),
     ),
   );
   await tester.pumpAndSettle();
@@ -185,14 +190,27 @@ void main() {
       expect(tester.getSize(come).height, greaterThanOrEqualTo(44));
     });
 
-    testWidgets('etichette dell\'esito solo dove c\'è un esito; numeri nell\'ordine', (tester) async {
-      await _montaSchermata(tester, const Size(390, 2400));
-      expect(find.byType(EtichettaEsito, skipOffstage: false), findsNWidgets(2));
-      expect(find.text('Cambiata dal segnale'), findsOneWidget);
-      for (final n in ['1', '2', '3']) {
-        expect(find.text(n, skipOffstage: false), findsOneWidget);
-      }
-    });
+    for (final conSagoma in [true, false]) {
+      final v = conSagoma ? 'sagoma' : 'cerchio';
+      testWidgets('etichette dell\'esito solo dove c\'è un esito; numeri nell\'ordine [$v]', (tester) async {
+        await _montaSchermata(tester, const Size(390, 2400), sagoma: conSagoma ? null : Future.value(null));
+        expect(find.byType(EtichettaEsito, skipOffstage: false), findsNWidgets(2));
+        expect(find.text('Cambiata dal segnale'), findsOneWidget);
+        if (conSagoma) {
+          // numero disegnato: 3 sagome, painter con 1, 2, 3 nell'ordine delle card
+          expect(numeroSagoma(), findsNWidgets(3));
+          expect(numeriDisegnati(tester), [1, 2, 3]);
+          for (final n in ['1', '2', '3']) {
+            expect(find.text(n, skipOffstage: false), findsNothing);
+          }
+        } else {
+          for (final n in ['1', '2', '3']) {
+            expect(find.text(n, skipOffstage: false), findsOneWidget);
+          }
+          expect(numeroSagoma(), findsNothing);
+        }
+      });
+    }
   });
 
   testWidgets('schermo largo: colonna centrata di al massimo 600 px', (tester) async {

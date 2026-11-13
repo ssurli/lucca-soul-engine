@@ -1,5 +1,5 @@
 {
- "descrizione": "Sagoma del segnaposto delle tappe: profilo delle mura urbane semplificato per la lettura a 44-60 px, con il baluardo piu' a sud allungato in una punta che indica il luogo. Unita' della viewBox, nord in alto, y verso il basso. Derivata dalla relation 9385404 (c) OpenStreetMap contributors, ODbL, interrogata il 2026-11-13 via Overpass; orecchioni dei baluardi riempiti, contorno interno levigato per il numero.",
+ "descrizione": "Sagoma del segnaposto delle tappe: profilo delle mura urbane semplificato per la lettura a 44-60 px, con il baluardo piu' a sud allungato in una punta che indica il luogo. Unita' della viewBox, nord in alto, y verso il basso. Derivata dalla relation 9385404 (c) OpenStreetMap contributors, ODbL, interrogata il 2026-11-13 via Overpass; orecchioni dei baluardi riempiti, contorno interno levigato per il numero. Versione senza punta (per il numero nella lista delle tappe): stesso contorno, con i tre punti del baluardo sud allungato (indici 30-32: -6.0,10.6; -4.9,17.2; -3.7,10.6) sostituiti da un baluardo tozzo di cinque punti (-6.0,10.6; -5.65,11.35; -4.9,11.7; -4.15,11.35; -3.7,10.6), ricavati una volta a mano e non calcolati dall'app. viewBoxSenzaPunta ritaglia il contorno (y da -11.33 a 11.7) con mezzo punto di bordo per lato; centroNumeroSenzaPunta e' il centroide del contorno senza punta; la dimensione del numero e' scelta perche' 'nn' stia dentro il contorno.",
  "viewBox": {
   "x": -17,
   "y": -14,
@@ -338,5 +338,9 @@
    11.39,
    -3.36
   ]
- ]
+ ],
+ "viewBoxSenzaPunta": {"x": -17, "y": -13, "larghezza": 34, "altezza": 26},
+ "centroNumeroSenzaPunta": [0.9, 0.2],
+ "dimensioneNumeroSenzaPunta": 13,
+ "contornoSenzaPunta": [[13.86, -10.8], [11.5, -10.48], [10.74, -9.76], [7.31, -10.05], [6.92, -10.76], [5.52, -11.33], [4.24, -10.23], [4.02, -9.26], [-0.2, -7.08], [-1.41, -6.76], [-2.09, -7.15], [-3.24, -6.76], [-3.59, -6.04], [-8.74, -4.86], [-9.53, -5.51], [-11.64, -5.54], [-12.07, -3.93], [-11.71, -2.93], [-13.28, -0.39], [-14.11, -0.36], [-15.5, 0.86], [-14.25, 2.36], [-13.68, 2.4], [-13.32, 2.82], [-12.5, 5.11], [-13.0, 5.9], [-12.85, 7.58], [-10.89, 8.12], [-9.81, 7.72], [-6.35, 9.48], [-6.0, 10.6], [-5.65, 11.35], [-4.9, 11.7], [-4.15, 11.35], [-3.7, 10.6], [-3.41, 9.98], [0.66, 8.8], [1.59, 9.3], [3.49, 9.44], [4.45, 8.51], [4.63, 7.58], [5.92, 7.04], [6.78, 7.54], [8.46, 7.65], [9.74, 6.33], [9.74, 5.61], [11.1, 4.97], [11.6, 5.01], [12.0, 5.51], [13.5, 5.47], [13.5, 2.86], [13.0, 2.4], [13.78, -0.89], [14.53, -1.11], [15.46, -2.43], [14.57, -4.22], [13.96, -4.33], [13.68, -4.83], [13.14, -7.94], [13.71, -8.4]]
 }

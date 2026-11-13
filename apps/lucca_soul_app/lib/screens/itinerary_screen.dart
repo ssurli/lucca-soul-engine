@@ -77,6 +77,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   InterruttoriController? _controller;
   ArchivioFoto _foto = const ArchivioFoto();
   bool _caricando = true;
+  SagomaSegnaposto? _sagoma;
   // Due dita sulla mappa: la pagina non scorre (vedi MappaItinerario.onDueDita).
   bool _mappaDueDita = false;
   String? _errore;
@@ -147,6 +148,20 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     _strings = AppStrings.forLanguages(widget.profile.lingue);
     _caricaItinerario();
     _caricaFoto();
+    _caricaSagoma();
+  }
+
+  /// La stessa sagoma della mappa (cache e iniezione comprese): la versione
+  /// senza punta fa da numero nelle card. Finche' non e' pronta, o se manca,
+  /// le card hanno il cerchio.
+  Future<void> _caricaSagoma() async {
+    SagomaSegnaposto? sg;
+    try {
+      sg = await (widget.sagomaSegnaposto ?? caricaSagomaSegnaposto());
+    } catch (_) {
+      sg = null;
+    }
+    if (mounted && sg != null) setState(() => _sagoma = sg);
   }
 
   Future<void> _caricaFoto() async {
@@ -376,6 +391,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                           tappaMantenutaSenzaAlternativa(itinerario.stops[i]),
                       strings: _strings,
                       numero: i + 1,
+                      sagoma: _sagoma,
                       foto: _foto.per(itinerario.stops[i].experienceId),
                       onLasciaRicordo: () =>
                           _lasciaRicordo(itinerario.stops[i]),
@@ -472,6 +488,11 @@ class StopCard extends StatefulWidget {
   /// Numero della tappa (1-based), nello stesso ordine della mappa. Null = senza cerchio.
   final int? numero;
 
+  /// Sagoma delle Mura: se ha la versione senza punta, il numero e' disegnato
+  /// su di essa (larga [kLarghezzaNumeroCard]); se e' null o ne e' priva, resta
+  /// il cerchio con il numero come testo.
+  final SagomaSegnaposto? sagoma;
+
   /// Foto della tappa, se esiste (file + voce nel json). Null = nessuna foto.
   final FotoTappa? foto;
 
@@ -493,6 +514,7 @@ class StopCard extends StatefulWidget {
     required this.strings,
     required this.onLasciaRicordo,
     this.numero,
+    this.sagoma,
     this.foto,
     this.aperta,
     this.onToggle,
@@ -535,7 +557,12 @@ class _StopCardState extends State<StopCard> {
             : null;
     final titolo = titoloTappa(stop.titolo, strings);
     final aperta = _aperta;
-    const sinistra = 32.0 + 12.0; // cerchio + spazio: la colonna di destra
+    // Numero: sagoma senza punta (se disponibile) oppure cerchio di 32 px.
+    final sp = widget.sagoma?.senzaPunta;
+    final altezzaNumero = sp == null
+        ? kLarghezzaNumeroCard
+        : sp.dimensione(kLarghezzaNumeroCard).height;
+    const sinistra = kLarghezzaNumeroCard + 12.0; // numero + spazio: la colonna di destra
     final minuti = widget.minutiAllaProssima;
     final rientro = widget.numero != null ? sinistra : 0.0;
     return Padding(
@@ -543,12 +570,16 @@ class _StopCardState extends State<StopCard> {
       child: Stack(
         children: [
           if (widget.numero != null && widget.conLinea)
-            const Positioned(
-              left: 15,
-              top: 32,
+            // Asse = centro orizzontale del numero. Col cerchio parte dal suo
+            // bordo basso; con la sagoma parte dal suo centro, DIETRO la sagoma
+            // (opaca): il contorno e' irregolare e cosi' non resta nessuno
+            // spazio tra il corpo e la linea.
+            Positioned(
+              left: kLarghezzaNumeroCard / 2 - 1,
+              top: sp == null ? kLarghezzaNumeroCard : altezzaNumero / 2,
               bottom: 0,
               width: 2,
-              child: ColoredBox(color: Tk.cardBordo),
+              child: const ColoredBox(color: Tk.cardBordo),
             ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -569,15 +600,32 @@ class _StopCardState extends State<StopCard> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           if (widget.numero != null) ...[
-                            Container(
-                              width: 32,
-                              height: 32,
-                              alignment: Alignment.center,
-                              decoration: const BoxDecoration(
-                                  color: Tk.accento, shape: BoxShape.circle,),
-                              child: Text('${widget.numero}',
-                                  style: stileTesto(15, 800, Tk.testoSuAccento),),
-                            ),
+                            if (sp == null)
+                              Container(
+                                width: kLarghezzaNumeroCard,
+                                height: kLarghezzaNumeroCard,
+                                alignment: Alignment.center,
+                                decoration: const BoxDecoration(
+                                    color: Tk.accento, shape: BoxShape.circle,),
+                                child: Text('${widget.numero}',
+                                    style:
+                                        stileTesto(15, 800, Tk.testoSuAccento),),
+                              )
+                            else
+                              // Numero disegnato: lo annuncia la label.
+                              Semantics(
+                                label: '${widget.numero}',
+                                child: SizedBox(
+                                  key: const Key('numero-sagoma'),
+                                  width: kLarghezzaNumeroCard,
+                                  height: altezzaNumero,
+                                  child: CustomPaint(
+                                    painter: SagomaPainter(
+                                        sp, widget.numero!,
+                                        conOmbra: false,),
+                                  ),
+                                ),
+                              ),
                             const SizedBox(width: 12),
                           ],
                           Expanded(
