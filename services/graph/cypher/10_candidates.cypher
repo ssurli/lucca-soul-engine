@@ -20,6 +20,13 @@
 // rende raggiungibile, per sole relazioni di significato, il percorso
 // "Puccini -> ... -> liutaio -> violino" (vedi graph/topology.py).
 //
+// `frase` del tema si legge con `properties(tema).frase`, NON con
+// `tema.frase`: finché nessun nodo del grafo ha la chiave `frase` (il seed
+// la imposta a NULL, che non crea la proprietà), `tema.frase` fa emettere ad
+// Aura la notifica 01N52 «property key does not exist» a ogni richiesta.
+// L'accesso a una mappa non la genera; il risultato è identico (null quando
+// manca). Non "semplificare" tornando a `tema.frase`.
+//
 // ORDINE: i `collect` non sono ordinati e non serve: l'ordine canonico delle
 // `connessioni` lo impone `graph.connessioni.frasi_connessioni` in Python,
 // identico al seed. `temi_evocati` e `racconti_ispirazione` portano gli id
@@ -112,7 +119,7 @@ WITH e, l,
                        fittizio: coalesce(bot.fittizio, true)}) AS botteghe,
      collect(DISTINCT {id: tema.id, nome: tema.nome, etichetta: tema.etichetta,
                        mostra_etichetta: tema.mostra_etichetta,
-                       frase: tema.frase, fonte: tema.fonte}) AS temi_evocati,
+                       frase: properties(tema).frase, fonte: tema.fonte}) AS temi_evocati,
      collect(DISTINCT {artista_id: ispart.id, racconto: isp.racconto}) AS racconti_ispirazione,
      collect(DISTINCT {id: temab.id, nome: temab.nome}) AS temi_bottega,
      min(vic.metri) AS distanza_m,

@@ -16,7 +16,7 @@ import pytest
 from contracts import EmotionalProfile, Signal, VisitorContext, codifica_fasce
 from graph.connessioni import frasi_connessioni
 from graph.seed_lucca import DATASET, ESPERIENZE
-from graph.source import Neo4jCandidateSource, SeedCandidateSource
+from graph.source import CANDIDATES_QUERY_PATH, Neo4jCandidateSource, SeedCandidateSource
 
 _LUOGHI = {x.id: x for x in DATASET.luoghi}
 _ARTISTI = {x.id: x for x in DATASET.artisti}
@@ -164,6 +164,65 @@ def test_connessioni_identiche_tra_seed_e_neo4j(visti: list[str], seed_casuale: 
         assert da_neo4j.temi_etichette == atteso.temi_etichette, esp_id
         assert da_neo4j.vicinanza_nome == atteso.vicinanza_nome, esp_id
         assert da_neo4j.vicinanza_articolo == atteso.vicinanza_articolo, esp_id
+
+
+class _SessioneFinta:
+    def __init__(self, driver: _DriverFinto) -> None:
+        self._driver = driver
+
+    def __enter__(self) -> _SessioneFinta:
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        return None
+
+    def run(self, query: str, params: dict[str, object]) -> list[dict[str, Any]]:
+        self._driver.query_inviate.append(query)
+        return self._driver.records
+
+
+class _DriverFinto:
+    def __init__(self, records: list[dict[str, Any]]) -> None:
+        self.records = records
+        self.query_inviate: list[str] = []
+
+    def session(self, **_kwargs: Any) -> _SessioneFinta:
+        return _SessioneFinta(self)
+
+    def close(self) -> None:
+        return None
+
+
+@pytest.mark.parametrize("visti", [[], ["mura-urbane"]], ids=["senza-visti", "con-visti"])
+def test_fonte_neo4j_con_frase_null_come_aura_coincide_col_seed(visti: list[str]) -> None:
+    """Aura oggi restituisce `frase: null` per ogni tema (`properties(tema).frase`
+    con la proprieta' assente): `Neo4jCandidateSource.candidates()` end-to-end su
+    un driver finto, stessi candidati della SeedCandidateSource e nessuna frase
+    nel motivo. La query inviata e' esattamente `10_candidates.cypher`."""
+    rng = random.Random(0)
+    vicino_a = visti[-1] if visti else None
+    dal_seed = {c.experience.id: c for c in SeedCandidateSource().candidates(_ctx(visti))}
+    records = [_record(esp_id, vicino_a, rng) for esp_id in dal_seed]
+    for r in records:
+        for t in r["temi_evocati"]:
+            t["frase"] = None
+            t["fonte"] = None
+    driver = _DriverFinto(records)
+
+    candidati = Neo4jCandidateSource(driver).candidates(_ctx(visti))  # type: ignore[arg-type]
+
+    query = CANDIDATES_QUERY_PATH.read_text(encoding="utf-8")
+    assert driver.query_inviate == [query]
+    assert "properties(tema).frase" in query
+    assert len(candidati) == len(dal_seed)
+    assert any(r["temi_evocati"] for r in records)
+    for c in candidati:
+        atteso = dal_seed[c.experience.id]
+        assert c.connessioni == atteso.connessioni, c.experience.id
+        assert c.temi_etichette == atteso.temi_etichette, c.experience.id
+        assert c.racconti == atteso.racconti, c.experience.id
+        assert c.place_articolo == atteso.place_articolo, c.experience.id
+        assert c.vicinanza_nome == atteso.vicinanza_nome, c.experience.id
 
 
 def test_gia_visitato_compare_su_entrambe_e_per_ultimo() -> None:
