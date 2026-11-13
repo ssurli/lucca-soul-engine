@@ -18,6 +18,7 @@ import '../util/riepilogo_cambio.dart';
 import '../util/foto_tappa.dart';
 import '../util/excluded_stop_line.dart';
 import '../util/itinerary_diff.dart';
+import '../util/raggruppa_escluse.dart';
 import '../util/interruttori_controller.dart';
 import '../util/known_places.dart';
 import '../util/minuti_a_piedi.dart';
@@ -420,6 +421,7 @@ class TappeEscluseNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+    final raggruppate = raggruppaEscluse(escluse);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
@@ -427,7 +429,32 @@ class TappeEscluseNote extends StatelessWidget {
         children: [
           Text(strings.excludedStopsTitle, style: textTheme.titleSmall),
           const SizedBox(height: 4),
-          for (final t in escluse)
+          for (final g in raggruppate.gruppi)
+            Padding(
+              key: Key('gruppo-escluse-${g.esito}'),
+              padding: const EdgeInsets.only(top: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    strings.titoloGruppoEscluse(g.esito, g.tappe.length),
+                    style: textTheme.bodySmall
+                        ?.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  for (final t in g.tappe)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        g.reasonUniforme
+                            ? titoloTappa(t.titolo, strings)
+                            : rigaTappaEsclusa(t, strings),
+                        style: textTheme.bodySmall,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          for (final t in raggruppate.sconosciute)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(rigaTappaEsclusa(t, strings),
