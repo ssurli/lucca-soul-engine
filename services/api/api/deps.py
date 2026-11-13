@@ -19,6 +19,7 @@ ogni richiesta sarebbe costoso e inutile. Stesso pattern per
 
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from functools import lru_cache
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -54,6 +55,8 @@ from urban_memory.frizione_pattern import Neo4jFrizioneClient
 
 from api.settings import get_settings
 
+_log = logging.getLogger(__name__)
+
 __all__ = [
     "get_dataset",
     "get_candidate_source",
@@ -86,12 +89,15 @@ def get_candidate_source() -> CandidateSource:
     # all'avvio in ogni profilo. Il risultato serve al solo fallback.
     dataset = get_dataset()
     if settings.neo4j_uri and settings.neo4j_username and settings.neo4j_password:
+        # Unica riga di log della scelta: mai URI, utente, password o database.
+        _log.info("fonte dei candidati: Neo4j")
         return Neo4jCandidateSource.from_credentials(
             uri=settings.neo4j_uri,
             username=settings.neo4j_username,
             password=settings.neo4j_password,
             database=settings.neo4j_database or "neo4j",
         )
+    _log.info("fonte dei candidati: seed (credenziali Neo4j assenti)")
     return SeedCandidateSource(dataset)
 
 

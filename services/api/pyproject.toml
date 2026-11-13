@@ -14,6 +14,11 @@ dependencies = [
     "pydantic>=2",
     "pydantic-settings>=2",
     "tzdata>=2024.1",  # Windows non ha un database dei fusi di sistema (CITY_TZ)
+    # Windows puo' non avere nell'archivio la radice SSL.com del certificato di
+    # Aura; il driver Neo4j legge solo quell'archivio (load_default_certs), non
+    # certifi. pip-system-certs fa usare a Python la verifica di Windows
+    # (truststore), senza disattivarla.
+    "pip-system-certs; sys_platform == 'win32'",
 ]
 
 # NOTA — pacchetti locali (packages/contracts, services/graph, services/rag,

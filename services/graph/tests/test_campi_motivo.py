@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import time
 from typing import Any
 
@@ -312,8 +313,31 @@ def test_query_candidati_restituisce_i_dati_nuovi() -> None:
         "riferimento_articolo",
         "etichetta: tema.etichetta",
         "mostra_etichetta: tema.mostra_etichetta",
-        "frase: tema.frase",
+        "frase: properties(tema).frase",
         "fonte: tema.fonte",
         "racconto: la.racconto",
     ):
         assert pezzo in q, pezzo
+
+
+_ACCESSO_DIRETTO_FRASE = re.compile(r"\btema\.frase\b")
+
+
+def _senza_commenti(cypher: str) -> str:
+    """Il codice della query senza le righe `//` (che citano `tema.frase` per
+    spiegare perche' non va usato)."""
+    return "\n".join(r for r in cypher.splitlines() if not r.lstrip().startswith("//"))
+
+
+def test_query_candidati_non_accede_direttamente_a_tema_frase() -> None:
+    """`tema.frase` darebbe la notifica Neo4j 01N52 (property key inesistente)
+    quando nessun Tema ha la proprieta': si usa `properties(tema).frase`."""
+    q = (CYPHER_DIR / "10_candidates.cypher").read_text(encoding="utf-8")
+    assert _ACCESSO_DIRETTO_FRASE.search(_senza_commenti(q)) is None
+
+
+def test_il_controllo_sull_accesso_diretto_scatta_su_tema_frase() -> None:
+    q = (CYPHER_DIR / "10_candidates.cypher").read_text(encoding="utf-8")
+    vecchia = q.replace("properties(tema).frase", "tema.frase")
+    assert vecchia != q
+    assert _ACCESSO_DIRETTO_FRASE.search(_senza_commenti(vecchia)) is not None

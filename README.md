@@ -83,6 +83,8 @@ python -m venv .venv
 powershell -ExecutionPolicy Bypass -File scripts\avvia_demo.ps1
 ```
 
+Su Windows `-e services\api` installa anche `pip-system-certs` (serve al driver Neo4j per fidarsi del certificato di Aura).
+
 Lo script costruisce l'app web, avvia il BFF sulla porta 8000 e stampa gli indirizzi: mattina
 `http://localhost:8000/`, pomeriggio con `?istante=...`.
 
