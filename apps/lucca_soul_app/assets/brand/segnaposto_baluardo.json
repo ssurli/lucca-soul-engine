@@ -1,0 +1,11 @@
+{
+ "descrizione": "Segnaposto a baluardo: pentagono con la punta in basso sul luogo. Unita' = px di schermo a scala 1 (larghezza 44 = viewBox). Il disegno misura 36 px di larghezza piu' i bordi; la viewBox e' il riquadro di tocco 44x44, centrato sul disegno, con la punta in (0,0). La traccia e' il pentagono interno parallelo al contorno, a 5 px, che richiama il terrapieno. centroNumero e' il centroide del corpo.",
+ "stile": "baluardo",
+ "larghezza": 44,
+ "viewBox": {"x": -22, "y": -40, "larghezza": 44, "altezza": 44},
+ "punta": [0, 0],
+ "centroNumero": [0, -21.8],
+ "dimensioneNumero": 16,
+ "contorno": [[0, 0], [18, -22], [12, -36], [-12, -36], [-18, -22]],
+ "traccia": [[0, -7.9], [12.21, -22.82], [8.7, -31], [-8.7, -31], [-12.21, -22.82]]
+}

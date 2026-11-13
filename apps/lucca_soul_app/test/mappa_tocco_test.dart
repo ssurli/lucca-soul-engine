@@ -1,7 +1,6 @@
 // Compito 4: mappa bassa, linea puntinata, dicitura, tocco sul segnaposto che
 // apre e porta in vista la tappa. Nessuna rete: tile finti.
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -18,6 +17,9 @@ import 'package:lucca_soul_app/theme/app_theme.dart';
 import 'package:lucca_soul_app/theme/tokens.dart';
 import 'package:lucca_soul_app/widgets/mappa_itinerario.dart';
 import 'package:lucca_soul_app/widgets/segnaposto_mura.dart';
+import 'package:lucca_soul_app/widgets/segnaposto_variante.dart';
+
+import 'segnaposto_prove.dart';
 
 class _TileKo extends TileProvider {
   @override
@@ -87,12 +89,15 @@ Future<void> _schermata(
 }
 
 // La variante e' esplicita: sia `_soloMappa` sia `_schermata` iniettano SEMPRE
-// la sagoma (reale, dal file), mai il bundle.
-Future<SagomaSegnaposto?> _sagomaReale() => Future.value(
-      parseSagomaSegnaposto(
-        File('assets/brand/segnaposto_sagoma.json').readAsStringSync(),
-      ),
-    );
+// la sagoma (reale, dal file; default baluardo), mai il bundle.
+/// Variante usata dai test che non riguardano una variante in particolare: il
+/// default del prodotto (baluardo).
+const _varianteDefault = VarianteSegnaposto.baluardo;
+
+Future<SagomaSegnaposto?> _sagomaReale([
+  VarianteSegnaposto v = _varianteDefault,
+]) =>
+    Future.value(sagomaDi(v));
 
 Future<void> _soloMappa(
   WidgetTester t, {
@@ -221,28 +226,32 @@ void main() {
     h.dispose();
   });
 
-  testWidgets(
-      'tocco vicino al bordo del riquadro del segnaposto arriva al segnaposto (sagoma)',
-      (t) async {
-    final visti = <int>[];
-    await _soloMappa(t, onSegnaposto: visti.add);
-    final r = t.getRect(_segnaposto(2));
-    expect(r.width, kLarghezzaSegnaposto);
-    // I quattro angoli, 3 px dentro il riquadro (fuori dal disegno): con il
-    // padding di inquadratura derivato dalla sagoma il riquadro sta tutto
-    // dentro la mappa, anche in alto.
-    for (final o in [
-      r.topLeft + const Offset(3, 3),
-      r.topRight + const Offset(-3, 3),
-      r.bottomLeft + const Offset(3, -3),
-      r.bottomRight - const Offset(3, 3),
-    ]) {
-      visti.clear();
-      await t.tapAt(o);
-      await t.pump(const Duration(milliseconds: 400));
-      expect(visti, [2], reason: 'tocco in $o, riquadro $r');
-    }
-  });
+  for (final v in kVarianti) {
+    testWidgets(
+        'tocco vicino al bordo del riquadro del segnaposto arriva al segnaposto (sagoma ${v.name})',
+        (t) async {
+      final visti = <int>[];
+      await _soloMappa(t, onSegnaposto: visti.add, sagoma: _sagomaReale(v));
+      final r = t.getRect(_segnaposto(2));
+      expect(r.width, sagomaDi(v).larghezza);
+      expect(r.width, greaterThanOrEqualTo(Tk.areaMinima));
+      expect(r.height, greaterThanOrEqualTo(Tk.areaMinima));
+      // I quattro angoli, 3 px dentro il riquadro (fuori dal disegno): con il
+      // padding di inquadratura derivato dalla sagoma il riquadro sta tutto
+      // dentro la mappa, anche in alto.
+      for (final o in [
+        r.topLeft + const Offset(3, 3),
+        r.topRight + const Offset(-3, 3),
+        r.bottomLeft + const Offset(3, -3),
+        r.bottomRight - const Offset(3, 3),
+      ]) {
+        visti.clear();
+        await t.tapAt(o);
+        await t.pump(const Duration(milliseconds: 400));
+        expect(visti, [2], reason: 'tocco in $o, riquadro $r');
+      }
+    });
+  }
 
   testWidgets(
       'cerchio di riserva: tocco al bordo dell area 44 (fuori dal cerchio 32) arriva al segnaposto',
@@ -310,7 +319,7 @@ void main() {
       for (final n in [1, 2, 3]) t.getRect(_segnaposto(n)),
     ];
     // variante esplicita: _schermata inietta la sagoma (sagomaSegnaposto)
-    expect(seg.first.width, kLarghezzaSegnaposto);
+    expect(seg.first.width, sagomaDi(_varianteDefault).larghezza);
     Offset? libero;
     for (var x = mappa.left + 20;
         x < mappa.right - 20 && libero == null;
@@ -338,7 +347,7 @@ void main() {
   // vivono fuori dalla zona FakeAsync del test e il FutureBuilder non li vede.
   for (final (nome, creaSagoma)
       in <(String, Future<SagomaSegnaposto?> Function())>[
-    ('sagoma', _sagomaReale),
+    for (final v in kVarianti) (v.name, () => _sagomaReale(v)),
     ('cerchio', () => Future.value(null)),
   ]) {
     testWidgets(

@@ -28,6 +28,7 @@ flutter:
   assets:
     - assets/brand/mura_punti.json
     - assets/brand/segnaposto_sagoma.json
+    - assets/brand/segnaposto_baluardo.json
     # Foto delle tappe: solo dati (vedi README). Oggi la cartella contiene solo foto.json.
     - assets/foto/
   # Caratteri incorporati (variabili, licenza OFL: vedi OFL.txt accanto a ciascun file).

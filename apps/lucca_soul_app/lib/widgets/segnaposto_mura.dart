@@ -5,10 +5,15 @@ import 'package:flutter/services.dart' show rootBundle;
 
 import '../theme/app_theme.dart';
 import '../theme/tokens.dart';
+import 'segnaposto_baluardo.dart';
+import 'segnaposto_variante.dart';
 
 /// Larghezza disegnata del segnaposto (px di schermo). L'altezza segue la
 /// viewBox. 48 ≥ Tk.areaMinima: la sagoma intera è l'area del tocco.
 const double kLarghezzaSegnaposto = 48;
+
+/// Stile di disegno della sagoma (vedi [SagomaPainter]).
+enum StileSegnaposto { mura, baluardo }
 
 /// Geometria della sagoma, in unità della sua viewBox (y verso il basso).
 class SagomaSegnaposto {
@@ -18,6 +23,10 @@ class SagomaSegnaposto {
   final Offset punta; // il luogo esatto: ancoraggio del segnaposto
   final Offset centroNumero;
   final double dimensioneNumero; // in unità della viewBox
+  final StileSegnaposto stile;
+
+  /// Larghezza disegnata (px di schermo): mura 48, baluardo 44 (scala 1).
+  final double larghezza;
 
   const SagomaSegnaposto({
     required this.viewBox,
@@ -26,6 +35,8 @@ class SagomaSegnaposto {
     required this.punta,
     required this.centroNumero,
     required this.dimensioneNumero,
+    this.stile = StileSegnaposto.mura,
+    this.larghezza = kLarghezzaSegnaposto,
   });
 
   factory SagomaSegnaposto.fromJson(Map<String, dynamic> j) {
@@ -46,6 +57,10 @@ class SagomaSegnaposto {
       punta: o(j['punta'] as List<dynamic>),
       centroNumero: o(j['centroNumero'] as List<dynamic>),
       dimensioneNumero: (j['dimensioneNumero'] as num).toDouble(),
+      stile: j['stile'] == 'baluardo'
+          ? StileSegnaposto.baluardo
+          : StileSegnaposto.mura,
+      larghezza: (j['larghezza'] as num?)?.toDouble() ?? kLarghezzaSegnaposto,
     );
   }
 
@@ -88,6 +103,10 @@ class SagomaPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (sagoma.stile == StileSegnaposto.baluardo) {
+      disegnaBaluardo(canvas, size, sagoma, numero);
+      return;
+    }
     final s = sagoma.scala(size.width);
     final corpo = _percorso(sagoma.contorno, s);
     canvas.drawShadow(corpo, Colors.black, 2, false);
@@ -150,27 +169,32 @@ class GuidePainter extends CustomPainter {
 }
 
 /// Diametro di collisione per [separaSegnaposti] con la sagoma: la larghezza
-/// disegnata (la sagoma è più larga che alta, quindi è il caso peggiore).
+/// del riquadro ([SagomaSegnaposto.larghezza]: 48 mura, 44 baluardo). E' la
+/// larghezza dell'area di tocco, quindi due riquadri non si sovrappongono
+/// orizzontalmente (la sagoma e' piu' larga che alta: caso peggiore).
 double diametroCollisione(double larghezza) => larghezza;
 
-/// Legge la sagoma da `assets/brand/segnaposto_sagoma.json`. Nessuna
-/// coordinata nel codice: la geometria è dato.
+/// Legge la sagoma da un asset JSON. Nessuna coordinata nel codice: la
+/// geometria e' dato.
 SagomaSegnaposto parseSagomaSegnaposto(String json) =>
     SagomaSegnaposto.fromJson(jsonDecode(json) as Map<String, dynamic>);
 
-SagomaSegnaposto? _sagomaCaricata;
+final Map<VarianteSegnaposto, SagomaSegnaposto> _sagomeCaricate = {};
 
-/// Carica la sagoma dall'asset. Si memorizza solo il SUCCESSO (il valore, non
+/// Carica la sagoma della [variante] (default: quella scelta all'avvio, vedi
+/// `segnaposto_variante.dart`). Si memorizza solo il SUCCESSO (il valore, non
 /// il Future): un fallimento, o un caricamento rimasto in sospeso in un test
 /// con tempo finto, non resta in cache e il tentativo successivo riparte.
 /// Non lancia mai: asset mancante o JSON malformato danno `null` e la mappa
 /// resta con il cerchio di riserva.
-Future<SagomaSegnaposto?> caricaSagomaSegnaposto() async {
-  final nota = _sagomaCaricata;
+Future<SagomaSegnaposto?> caricaSagomaSegnaposto(
+    {VarianteSegnaposto? variante,}) async {
+  final v = variante ?? kVarianteSegnaposto;
+  final nota = _sagomeCaricate[v];
   if (nota != null) return nota;
   try {
-    final j = await rootBundle.loadString('assets/brand/segnaposto_sagoma.json');
-    return _sagomaCaricata = parseSagomaSegnaposto(j);
+    final j = await rootBundle.loadString(v.asset);
+    return _sagomeCaricate[v] = parseSagomaSegnaposto(j);
   } catch (_) {
     return null;
   }
@@ -179,4 +203,4 @@ Future<SagomaSegnaposto?> caricaSagomaSegnaposto() async {
 /// Solo test: azzera la cache del successo, per riprovare il caricamento da
 /// capo. Costa una riga e rende ripetibili i test che verificano il default.
 @visibleForTesting
-void azzeraCacheSagoma() => _sagomaCaricata = null;
+void azzeraCacheSagoma() => _sagomeCaricate.clear();

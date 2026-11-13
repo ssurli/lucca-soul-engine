@@ -9,7 +9,9 @@
 # Il BFF resta in esecuzione finche' non premi Ctrl+C.
 param(
     [string]$Istante = "2026-12-12T09:00:00Z",
-    [switch]$Rete
+    [switch]$Rete,
+    [ValidateSet('mura','baluardo')]
+    [string]$Segnaposto = "baluardo"
 )
 
 # Niente $ErrorActionPreference = "Stop": in PS 5.1 lo stderr dei comandi nativi
@@ -59,7 +61,7 @@ if ($occupata) {
 # 5. Build web dell'app.
 Push-Location $cartellaApp
 try {
-    flutter build web --release --no-web-resources-cdn --dart-define=DEMO=true "--dart-define=DEMO_ISTANTE=$Istante"
+    flutter build web --release --no-web-resources-cdn --dart-define=DEMO=true "--dart-define=DEMO_ISTANTE=$Istante" "--dart-define=SEGNAPOSTO=$Segnaposto"
     if ($LASTEXITCODE -ne 0) { throw "flutter build web fallita (exit $LASTEXITCODE)." }
 }
 finally {
