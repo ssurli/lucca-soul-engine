@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
@@ -8,6 +10,7 @@ import '../theme/tokens.dart';
 import '../util/app_strings.dart' show kUserAgentPackage;
 import '../util/mappa_tappe.dart';
 import '../util/segnaposti_separati.dart';
+import 'segnaposto_mura.dart';
 
 /// Strato OpenStreetMap. Regola d'uso di tile.openstreetmap.org: attribuzione
 /// sempre visibile, User-Agent identificativo, nessun prefetch/download in
@@ -23,6 +26,10 @@ const double kAltezzaMappa = 168;
 /// i segnaposto consecutivi. La linea indica l'ORDINE delle tappe, non il
 /// percorso a piedi. Se tra due tappe con punto ce n'è una senza punto, la
 /// linea le collega comunque (2→4): indica la successione sulla mappa.
+///
+/// I segnaposti hanno la sagoma delle Mura (`assets/brand/segnaposto_sagoma.json`):
+/// la PUNTA della sagoma cade sul luogo vero. Se la sagoma non si carica
+/// (asset mancante o JSON malformato) restano i cerchi numerati, senza errori.
 ///
 /// Senza nessun punto non c'è mappa (nessun riquadro vuoto da spiegare).
 /// Se gli strati non si caricano (rete assente) restano segnaposto e linee su
@@ -46,6 +53,13 @@ class MappaItinerario extends StatefulWidget {
   /// Tocco su un segnaposto: riceve il numero della tappa (1-based).
   final ValueChanged<int>? onSegnaposto;
 
+  /// Iniettabile nei test: la sagoma dei segnaposti. Un future che completa con
+  /// `null` (o con errore) simula l'asset mancante e lascia il cerchio; uno che
+  /// completa con una [SagomaSegnaposto] simula l'asset presente. Default:
+  /// [caricaSagomaSegnaposto] (asset del bundle, Future in cache). Finché il
+  /// future non completa si disegna il cerchio di riserva.
+  final Future<SagomaSegnaposto?>? sagoma;
+
   const MappaItinerario({
     super.key,
     required this.tappe,
@@ -55,6 +69,7 @@ class MappaItinerario extends StatefulWidget {
     this.dicitura =
         "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.",
     this.onSegnaposto,
+    this.sagoma,
   });
 
   @override
@@ -64,16 +79,56 @@ class MappaItinerario extends StatefulWidget {
 class _MappaItinerarioState extends State<MappaItinerario> {
   late final MapController _controller = widget.controller ?? MapController();
   bool _pronta = false;
+  SagomaSegnaposto? _sg; // null: attesa, errore o asset mancante -> cerchio
+  Object? _richiesta; // scarta le risposte di un future ormai sostituito
+  bool _risolta = false; // la mappa si costruisce a sagoma nota (o assente)
 
-  static CameraFit _inquadra(List<LatLng> punti) => CameraFit.bounds(
+  @override
+  void initState() {
+    super.initState();
+    _risolvi();
+  }
+
+  void _risolvi() {
+    final richiesta = _richiesta = Object();
+    (widget.sagoma ?? caricaSagomaSegnaposto()).then<SagomaSegnaposto?>(
+        (v) => v, onError: (Object _) => null,).then((v) {
+      if (!mounted || richiesta != _richiesta) return;
+      setState(() {
+        _sg = v;
+        _risolta = true;
+      });
+    });
+  }
+
+  /// Margine tra il riquadro della sagoma e il bordo della mappa (px).
+  static const double _margineSagoma = 4;
+
+  /// Padding per lato: 40 px come per il cerchio di riserva, ma mai meno di
+  /// quanto serve al riquadro della sagoma attorno alla punta (derivato dalla
+  /// geometria). Il minimo di 40 tiene i segnaposti lontani anche
+  /// dall'attribuzione in basso a destra. Rischio residuo: la separazione può
+  /// ancora spingere un segnaposto oltre il bordo.
+  CameraFit _inquadra(List<LatLng> punti) {
+    const base = 40.0;
+    final m = _sg?.margini(kLarghezzaSegnaposto, _margineSagoma);
+    return CameraFit.bounds(
         bounds: LatLngBounds.fromPoints(punti),
-        padding: const EdgeInsets.all(40),
+        padding: m == null
+            ? const EdgeInsets.all(base)
+            : EdgeInsets.fromLTRB(math.max(base, m.left), math.max(base, m.top),
+                math.max(base, m.right), math.max(base, m.bottom),),
         maxZoom: 16, // un solo punto: zoom da quartiere, non da portone
       );
+  }
 
   @override
   void didUpdateWidget(MappaItinerario old) {
     super.didUpdateWidget(old);
+    if (widget.sagoma != old.sagoma) {
+      _risolta = false;
+      _risolvi();
+    }
     // Dopo un adattamento tappe e numeri cambiano: si reinquadra.
     final nuovi = segnapostiMappa(widget.tappe);
     final vecchi = segnapostiMappa(old.tappe);
@@ -105,6 +160,24 @@ class _MappaItinerarioState extends State<MappaItinerario> {
     final segnaposti = segnapostiMappa(widget.tappe);
     if (segnaposti.isEmpty) return const SizedBox.shrink();
     final punti = [for (final s in segnaposti) s.punto];
+    if (!_risolta) {
+      // Sagoma in arrivo: il riquadro c'è già, la mappa parte subito con
+      // l'inquadratura giusta (niente reinquadratura, niente tile sprecati).
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: kAltezzaMappa),
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Text(widget.dicitura,
+                  style: stileTesto(12, 700, Tk.testoSecondario),),
+            ),
+          ],
+        ),
+      );
+    }
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
@@ -123,7 +196,9 @@ class _MappaItinerarioState extends State<MappaItinerario> {
                   options: MapOptions(
                     backgroundColor: Tk.avviso,
                     initialCameraFit: _inquadra(punti),
-                    onMapReady: () => _pronta = true,
+                    onMapReady: () {
+                      _pronta = true;
+                    },
                     interactionOptions: const InteractionOptions(
                       flags: InteractiveFlag.pinchZoom |
                           InteractiveFlag.doubleTapZoom,
@@ -151,11 +226,12 @@ class _MappaItinerarioState extends State<MappaItinerario> {
                         ],
                       ),
                     _StratoSegnaposti(
-                  segnaposti: segnaposti,
-                  etichetta: widget.etichettaTappa,
-                  onSegnaposto: widget.onSegnaposto,
-                ),
-                const _Attribuzione(),
+                      segnaposti: segnaposti,
+                      etichetta: widget.etichettaTappa,
+                      onSegnaposto: widget.onSegnaposto,
+                      sagoma: _sg, // attesa o errore: cerchio di riserva
+                    ),
+                    const _Attribuzione(),
                   ],
                 ),
               ),
@@ -173,38 +249,65 @@ class _MappaItinerarioState extends State<MappaItinerario> {
 }
 
 /// Strato dei segnaposti. Posizione sullo schermo dalla camera CORRENTE
-/// (si ricalcola a ogni pizzico); i segnaposti più vicini del diametro del
-/// cerchio vengono scostati in pixel di schermo ([separaSegnaposti]) perché
-/// numeri e tocchi restino distinti. La linea usa sempre i punti veri.
+/// (si ricalcola a ogni pizzico). I punti veri vengono scostati in pixel di
+/// schermo ([separaSegnaposti]) perché numeri e tocchi restino distinti; la
+/// linea della mappa usa sempre i punti veri.
+///
+/// Con [sagoma]: la punta ancorata al punto (eventualmente scostato), distanza
+/// minima [kLarghezzaSegnaposto] tra le punte, e sotto i segnaposti una linea
+/// di richiamo dalla punta scostata al luogo vero (solo se lo scostamento
+/// supera 2 px). Senza sagoma (cerchio di riserva): centrato sul punto,
+/// distanza [kDiametroSegnaposto], nessuna linea di richiamo.
 class _StratoSegnaposti extends StatelessWidget {
   final List<SegnapostoMappa> segnaposti;
   final String etichetta;
   final ValueChanged<int>? onSegnaposto;
+  final SagomaSegnaposto? sagoma;
   const _StratoSegnaposti({
     required this.segnaposti,
     required this.etichetta,
     required this.onSegnaposto,
+    this.sagoma,
   });
 
   @override
   Widget build(BuildContext context) {
     final camera = MapCamera.of(context);
-    final centri = separaSegnaposti([
+    final veri = [
       for (final s in segnaposti) camera.latLngToScreenOffset(s.punto),
-    ]);
+    ];
+    final sg = sagoma;
+    final punte = sg == null
+        ? separaSegnaposti(veri)
+        : separaSegnaposti(veri,
+            diametro: diametroCollisione(kLarghezzaSegnaposto),);
+    final Size dim = sg == null
+        ? const Size.square(Tk.areaMinima)
+        : sg.dimensione(kLarghezzaSegnaposto);
+    // Dove sta, dentro il widget, il punto che deve cadere sul luogo.
+    final Offset ancora = sg == null
+        ? Offset(dim.width / 2, dim.height / 2)
+        : sg.puntaLocale(kLarghezzaSegnaposto);
     return SizedBox.expand(
       child: Stack(
         children: [
+          if (sg != null)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: CustomPaint(painter: GuidePainter(veri, punte)),
+              ),
+            ),
           for (var i = 0; i < segnaposti.length; i++)
             Positioned(
               key: ValueKey('segnaposto-${segnaposti[i].numero}'),
-              left: centri[i].dx - Tk.areaMinima / 2,
-              top: centri[i].dy - Tk.areaMinima / 2,
-              width: Tk.areaMinima,
-              height: Tk.areaMinima,
+              left: punte[i].dx - ancora.dx,
+              top: punte[i].dy - ancora.dy,
+              width: dim.width,
+              height: dim.height,
               child: Segnaposto(
                 numero: segnaposti[i].numero,
                 etichetta: etichetta,
+                sagoma: sg,
                 onTap: onSegnaposto == null
                     ? null
                     : () => onSegnaposto!(segnaposti[i].numero),
@@ -216,19 +319,32 @@ class _StratoSegnaposti extends StatelessWidget {
   }
 }
 
-/// Segnaposto numerato (area del tocco 44x44, cerchio disegnato 32): cerchio mattone, numero bianco (contrasto 5,9). Il
-/// numero è disegnato (non è un `Text`) così non si confonde con quello della
-/// card nelle ricerche per testo; per l'accessibilità porta l'etichetta
+/// Segnaposto numerato. Con [sagoma]: la sagoma delle Mura piena (accento),
+/// larga [kLarghezzaSegnaposto] e alta quanto la viewBox; l'area del tocco è
+/// l'intero riquadro (almeno 44x44). Senza sagoma (riserva): cerchio mattone di
+/// 32 px dentro un'area di tocco 44x44. In entrambi i casi il numero è bianco
+/// (contrasto 5,9) e DISEGNATO (non è un `Text`) così non si confonde con quello
+/// della card nelle ricerche per testo; per l'accessibilità porta l'etichetta
 /// "Tappa N".
 class Segnaposto extends StatelessWidget {
   final int numero;
   final String etichetta;
   final VoidCallback? onTap;
-  const Segnaposto(
-      {super.key, required this.numero, this.etichetta = 'Tappa', this.onTap,});
+  final SagomaSegnaposto? sagoma;
+  const Segnaposto({
+    super.key,
+    required this.numero,
+    this.etichetta = 'Tappa',
+    this.onTap,
+    this.sagoma,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final sg = sagoma;
+    final Size dim = sg == null
+        ? const Size.square(Tk.areaMinima)
+        : sg.dimensione(kLarghezzaSegnaposto);
     return Semantics(
       label: '$etichetta $numero',
       button: true,
@@ -238,9 +354,13 @@ class Segnaposto extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: SizedBox(
-          width: Tk.areaMinima,
-          height: Tk.areaMinima,
-          child: CustomPaint(painter: _SegnapostoPainter(numero)),
+          width: dim.width,
+          height: dim.height,
+          child: CustomPaint(
+            painter: sg == null
+                ? _SegnapostoPainter(numero)
+                : SagomaPainter(sg, numero),
+          ),
         ),
       ),
     );

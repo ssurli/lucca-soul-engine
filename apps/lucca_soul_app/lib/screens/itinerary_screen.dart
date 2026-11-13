@@ -26,6 +26,7 @@ import '../widgets/adaptive_card.dart';
 import '../widgets/colonna_centrata.dart';
 import '../widgets/foto_tappa_widget.dart';
 import '../widgets/mappa_itinerario.dart';
+import '../widgets/segnaposto_mura.dart';
 import '../widgets/testata_giornata.dart';
 import '../widgets/memory_contribution_sheet.dart';
 
@@ -41,6 +42,9 @@ class ItineraryScreen extends StatefulWidget {
   /// Solo test: strato di tile finto (nessuna rete). Default: rete.
   final TileProvider? tileProvider;
 
+  /// Solo test: sagoma dei segnaposti (null/errore = cerchio). Default: asset.
+  final Future<SagomaSegnaposto?>? sagomaSegnaposto;
+
   /// Solo test: foto delle tappe iniettate. Default: dal bundle dell'app.
   final ArchivioFoto? archivioFoto;
 
@@ -51,6 +55,7 @@ class ItineraryScreen extends StatefulWidget {
   const ItineraryScreen({
     this.demo = demoAttivoDefine,
     this.tileProvider,
+    this.sagomaSegnaposto,
     this.archivioFoto,
     super.key,
     required this.bffClient,
@@ -315,6 +320,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                   MappaItinerario(
                     tappe: itinerario.stops,
                     tileProvider: widget.tileProvider,
+                    sagoma: widget.sagomaSegnaposto,
                     etichettaTappa: _strings.genericStop,
                     dicitura: _strings.mapCaption,
                     onSegnaposto: _apriDaMappa,
