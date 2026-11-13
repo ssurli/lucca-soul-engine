@@ -164,6 +164,91 @@ void main() {
     });
   });
 
+  group('separaSegnaposti con limiti (pura)', () {
+    const limiti = Rect.fromLTRB(20, 30, 300, 120);
+    // inclusivo: Rect.contains esclude destra e basso
+    bool inclusivo(Rect l, Offset o) =>
+        o.dx >= l.left && o.dx <= l.right && o.dy >= l.top && o.dy <= l.bottom;
+    bool dentro(Offset o) => inclusivo(limiti, o);
+
+    test('punti fuori dai limiti: portati dentro (clamp all ingresso)', () {
+      final r = separaSegnaposti(
+        const [Offset(-50, 500), Offset(900, -9)],
+        limiti: limiti,
+      );
+      expect(r.every(dentro), isTrue);
+      expect(r[0], const Offset(20, 120));
+      expect(r[1], const Offset(300, 30));
+    });
+
+    test('punti gia dentro e distanti: invariati', () {
+      const p = [Offset(50, 50), Offset(200, 100)];
+      expect(separaSegnaposti(p, limiti: limiti), p);
+    });
+
+    test('spazio sufficiente: tutti dentro e coppie >= diametro (angoli)', () {
+      for (final d in [kDiametroSegnaposto, 40.0]) {
+        for (final n in [2, 3, 4]) {
+          for (final c in [
+            limiti.topLeft,
+            limiti.bottomRight,
+            limiti.topRight,
+            limiti.bottomLeft,
+          ]) {
+            final r = separaSegnaposti(
+              List.filled(n, c),
+              diametro: d,
+              limiti: limiti,
+            );
+            expect(r.every(dentro), isTrue, reason: 'n=$n d=$d c=$c: $r');
+            expect(
+              _minDist(r),
+              greaterThanOrEqualTo(d),
+              reason: 'n=$n d=$d c=$c: $r',
+            );
+          }
+        }
+      }
+    });
+
+    test('spazio insufficiente: vince il clamp, tutti dentro i limiti', () {
+      const stretto = Rect.fromLTRB(0, 0, 10, 10);
+      final r = separaSegnaposti(
+        List.filled(5, const Offset(5, 5)),
+        limiti: stretto,
+      );
+      expect(r.length, 5);
+      expect(r.every((o) => inclusivo(stretto, o)), isTrue, reason: '$r');
+    });
+
+    test('deterministico', () {
+      const p = [
+        Offset(25, 35),
+        Offset(25, 35),
+        Offset(26, 36),
+        Offset(400, 400),
+      ];
+      expect(
+        separaSegnaposti(p, limiti: limiti),
+        separaSegnaposti(p, limiti: limiti),
+      );
+    });
+
+    test('rettangolo invertito: tutti al centro', () {
+      const invertito = Rect.fromLTRB(60, 80, 20, 40);
+      final r = separaSegnaposti(
+        const [Offset(0, 0), Offset(100, 100)],
+        limiti: invertito,
+      );
+      expect(r, everyElement(const Offset(40, 60)));
+    });
+
+    test('senza limiti (null) il comportamento e quello di prima', () {
+      const p = [Offset(0, 0), Offset(10, 0)];
+      expect(separaSegnaposti(p), separaSegnaposti(p, limiti: null));
+    });
+  });
+
   const stesso = Punto(lat: 43.8429, lon: 10.5027);
   const lontano = Punto(lat: 43.8465, lon: 10.5071);
 

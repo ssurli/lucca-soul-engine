@@ -74,6 +74,7 @@ Future<MapController> _monta(
 }
 
 void main() {
+  _provaVistaIniziale();
   group('asset reale', () {
     test('parseSagomaSegnaposto: 58 punti di contorno, 22 di traccia', () {
       final sg = sagomaMura();
@@ -338,4 +339,193 @@ void main() {
       });
     }
   });
+
+  // ---- Nessun segnaposto tagliato dai bordi della mappa ----
+  for (final (nome, creaSagoma)
+      in <(String, Future<SagomaSegnaposto?> Function())>[
+    ('sagoma', () => Future.value(sagomaMura())),
+    ('cerchio di riserva', () => Future.value(null)),
+  ]) {
+    group('bordi della mappa [$nome]', () {
+      // Porta il punto [p] alla posizione (dx, dy) in coordinate locali della mappa.
+      Future<void> posiziona(
+        WidgetTester t,
+        MapController c,
+        Punto p,
+        double dx,
+        double dy,
+      ) async {
+        c.move(_ll(p), 16);
+        await t.pump(const Duration(milliseconds: 200));
+        final cam = c.camera;
+        final w = cam.size.width;
+        final h = cam.size.height;
+        final nuovoCentro = cam.screenOffsetToLatLng(
+          Offset(w / 2 + (w / 2 - dx), h / 2 + (h / 2 - dy)),
+        );
+        c.move(nuovoCentro, 16);
+        await t.pump(const Duration(milliseconds: 200));
+      }
+
+      Rect attribuzione(WidgetTester t) => t.getRect(
+            find
+                .ancestor(
+                  of: find.text(kAttribuzioneOsm),
+                  matching: find.byType(Container),
+                )
+                .first,
+          );
+
+      testWidgets(
+          'bordo ALTO: due tappe nello stesso punto, riquadri interi dentro la mappa',
+          (t) async {
+        final c = await _monta(t, [_s(1, _pA), _s(2, _pA)], creaSagoma());
+        await posiziona(t, c, _pA, 180, 6);
+        final mappa = t.getRect(find.byType(FlutterMap));
+        for (final n in [1, 2]) {
+          final r = t.getRect(_segnaposto(n));
+          expect(
+            r.top,
+            greaterThanOrEqualTo(mappa.top - 0.01),
+            reason: 'riquadro $n sopra la mappa: $r $mappa',
+          );
+          expect(r.left, greaterThanOrEqualTo(mappa.left - 0.01));
+          expect(r.right, lessThanOrEqualTo(mappa.right + 0.01));
+          expect(r.bottom, lessThanOrEqualTo(mappa.bottom + 0.01));
+        }
+        expect(t.takeException(), isNull);
+      });
+
+      testWidgets(
+          'bordo BASSO (in basso a destra): dentro la mappa, sopra l attribuzione, tocco e richiamo',
+          (t) async {
+        final visti = <int>[];
+        final c = await _monta(
+          t,
+          [_s(1, _pA), _s(2, _pA)],
+          creaSagoma(),
+          visti: visti,
+        );
+        final mappa0 = t.getRect(find.byType(FlutterMap));
+        await posiziona(t, c, _pA, mappa0.width - 25, mappa0.height - 5);
+        final mappa = t.getRect(find.byType(FlutterMap));
+        final attr = attribuzione(t);
+        expect(attr.height, greaterThan(0));
+        for (final n in [1, 2]) {
+          final r = t.getRect(_segnaposto(n));
+          expect(
+            mappa.inflate(0.01).contains(r.topLeft) &&
+                mappa.inflate(0.01).contains(r.bottomRight),
+            isTrue,
+            reason: 'riquadro $n fuori dalla mappa: $r $mappa',
+          );
+          expect(
+            r.overlaps(attr),
+            isFalse,
+            reason: 'riquadro $n copre l attribuzione: $r $attr',
+          );
+          expect(r.bottom, lessThanOrEqualTo(attr.top + 0.01));
+        }
+        for (final n in [1, 2]) {
+          visti.clear();
+          await t.tapAt(t.getCenter(_segnaposto(n)));
+          await t.pump(const Duration(milliseconds: 400));
+          expect(visti, [n], reason: 'tocco su $n');
+        }
+        if (_guide().evaluate().isNotEmpty) {
+          // sagoma: la linea di richiamo parte dalla punta CLAMPATA (quella
+          // passata al painter) e arriva al luogo vero.
+          final g = t.widget<CustomPaint>(_guide()).painter! as GuidePainter;
+          for (var i = 0; i < 2; i++) {
+            expect(
+              g.punte[i].dy,
+              lessThanOrEqualTo(mappa.height - attr.height + 0.01),
+              reason: 'punta $i oltre il limite basso',
+            );
+            expect(
+              (g.punte[i] - g.veri[i]).distance,
+              greaterThan(2),
+              reason: 'tappa ${i + 1}: serve il richiamo',
+            );
+            final punta = t.getRect(_segnaposto(i + 1)).topLeft +
+                sagomaMura().puntaNelRiquadro(kLarghezzaSegnaposto);
+            expect(
+              (punta - mappa.topLeft - g.punte[i]).distance,
+              lessThanOrEqualTo(1),
+            );
+          }
+        } else {
+          expect(nome, 'cerchio di riserva');
+        }
+        expect(t.takeException(), isNull);
+      });
+
+      testWidgets(
+          'una tappa sola vicino al bordo basso: dentro la mappa e sopra l attribuzione',
+          (t) async {
+        final c = await _monta(t, [_s(1, _pA)], creaSagoma());
+        final mappa0 = t.getRect(find.byType(FlutterMap));
+        await posiziona(t, c, _pA, mappa0.width - 25, mappa0.height - 2);
+        final mappa = t.getRect(find.byType(FlutterMap));
+        final r = t.getRect(_segnaposto(1));
+        expect(
+          mappa.inflate(0.01).contains(r.topLeft) &&
+              mappa.inflate(0.01).contains(r.bottomRight),
+          isTrue,
+        );
+        expect(r.overlaps(attribuzione(t)), isFalse);
+      });
+    });
+  }
+}
+
+// Vista iniziale, punti distanti: il clamp non interviene mai.
+void _provaVistaIniziale() {
+  const pC = Punto(lat: 43.8390, lon: 10.5120); // sud-est
+  const pD = Punto(lat: 43.8395, lon: 10.4990); // sud-ovest
+  for (final (nome, creaSagoma)
+      in <(String, Future<SagomaSegnaposto?> Function())>[
+    ('sagoma', () => Future.value(sagomaMura())),
+    ('cerchio di riserva', () => Future.value(null)),
+  ]) {
+    testWidgets(
+        'vista iniziale [$nome]: ogni segnaposto cade sul suo luogo (1 px), anche i piu a sud, est e ovest, senza richiami',
+        (t) async {
+      final punti = [_pA, _pB, pC, pD];
+      final c = await _monta(
+        t,
+        [for (var i = 0; i < punti.length; i++) _s(i + 1, punti[i])],
+        creaSagoma(),
+      );
+      final origine = t.getTopLeft(find.byType(FlutterMap));
+      final sg = nome == 'sagoma' ? sagomaMura() : null;
+      for (var i = 0; i < punti.length; i++) {
+        final r = t.getRect(_segnaposto(i + 1));
+        final punto = sg == null
+            ? r.center
+            : r.topLeft + sg.puntaNelRiquadro(kLarghezzaSegnaposto);
+        final vero = origine + c.camera.latLngToScreenOffset(_ll(punti[i]));
+        expect(
+          (punto - vero).distance,
+          lessThanOrEqualTo(1),
+          reason: 'tappa ${i + 1} ($nome): $punto contro $vero',
+        );
+      }
+      // Nessun richiamo: con la sagoma il GuidePainter c'e ma non ha scostamenti
+      // (> 2 px); col cerchio non esiste proprio.
+      if (sg == null) {
+        expect(_guide(), findsNothing);
+      } else {
+        final g = t.widget<CustomPaint>(_guide()).painter! as GuidePainter;
+        for (var i = 0; i < g.veri.length; i++) {
+          expect(
+            (g.punte[i] - g.veri[i]).distance,
+            lessThan(2),
+            reason: 'tappa ${i + 1}: richiamo inatteso',
+          );
+        }
+      }
+      expect(t.takeException(), isNull);
+    });
+  }
 }

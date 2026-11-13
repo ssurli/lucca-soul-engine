@@ -21,6 +21,37 @@ const String kAttribuzioneOsm = '© OpenStreetMap contributors';
 /// Altezza della mappa nella schermata dell'itinerario.
 const double kAltezzaMappa = 168;
 
+const double _kPaddingVerticaleAttribuzione = 2;
+
+/// Stile della scritta di attribuzione (unico: lo usano il widget e la misura).
+TextStyle _stileAttribuzione() => stileTesto(12, 600, Tk.testo);
+
+/// Riquadro di tocco del segnaposto e punto del riquadro che cade sul luogo:
+/// con la sagoma, riquadro e punta; senza (cerchio di riserva), il riquadro
+/// minimo con il punto al centro. Unica fonte per i limiti del clamp e per i
+/// padding dell'inquadratura.
+({Size dim, Offset ancora}) ingombroSegnaposto(SagomaSegnaposto? sg) {
+  if (sg == null) {
+    const d = Size.square(Tk.areaMinima);
+    return (dim: d, ancora: Offset(d.width / 2, d.height / 2));
+  }
+  return (
+    dim: sg.dimensioneRiquadro(kLarghezzaSegnaposto),
+    ancora: sg.puntaNelRiquadro(kLarghezzaSegnaposto),
+  );
+}
+
+/// Altezza MISURATA dell'attribuzione in basso a destra (una riga con lo stesso
+/// stile, piu' il padding verticale). La usano sia `_Attribuzione` sia il limite
+/// in basso dei segnaposti, che non devono coprirla.
+double altezzaAttribuzione() {
+  final tp = TextPainter(
+    text: TextSpan(text: kAttribuzioneOsm, style: _stileAttribuzione()),
+    textDirection: TextDirection.ltr,
+  )..layout();
+  return tp.height + 2 * _kPaddingVerticaleAttribuzione;
+}
+
 /// Mappa in alto nella schermata dell'itinerario: un segnaposto numerato per
 /// ogni tappa con punto (stessa numerazione delle card) e una linea DRITTA tra
 /// i segnaposto consecutivi. La linea indica l'ORDINE delle tappe, non il
@@ -104,20 +135,24 @@ class _MappaItinerarioState extends State<MappaItinerario> {
   /// Margine tra il riquadro della sagoma e il bordo della mappa (px).
   static const double _margineSagoma = 4;
 
-  /// Padding per lato: 40 px come per il cerchio di riserva, ma mai meno di
-  /// quanto serve al riquadro della sagoma attorno alla punta (derivato dalla
-  /// geometria). Il minimo di 40 tiene i segnaposti lontani anche
-  /// dall'attribuzione in basso a destra. Rischio residuo: la separazione può
-  /// ancora spingere un segnaposto oltre il bordo.
+  /// Padding per lato: mai meno di 40 px e mai meno di quanto serve al riquadro
+  /// di tocco attorno alla punta ([ingombroSegnaposto], la stessa fonte dei
+  /// limiti del clamp) piu' [_margineSagoma]; in basso si aggiunge l'altezza
+  /// dell'attribuzione. Cosi' nella vista iniziale, senza separazione, il clamp
+  /// non interviene mai e la punta cade sul luogo, con la sagoma e col cerchio.
+  /// Il padding verticale resta ben dentro [kAltezzaMappa].
   CameraFit _inquadra(List<LatLng> punti) {
     const base = 40.0;
-    final m = _sg?.margini(kLarghezzaSegnaposto, _margineSagoma);
+    final (:dim, :ancora) = ingombroSegnaposto(_sg);
+    final sinistra = ancora.dx + _margineSagoma;
+    final alto = ancora.dy + _margineSagoma;
+    final destra = dim.width - ancora.dx + _margineSagoma;
+    final basso =
+        dim.height - ancora.dy + altezzaAttribuzione() + _margineSagoma;
     return CameraFit.bounds(
         bounds: LatLngBounds.fromPoints(punti),
-        padding: m == null
-            ? const EdgeInsets.all(base)
-            : EdgeInsets.fromLTRB(math.max(base, m.left), math.max(base, m.top),
-                math.max(base, m.right), math.max(base, m.bottom),),
+        padding: EdgeInsets.fromLTRB(math.max(base, sinistra),
+            math.max(base, alto), math.max(base, destra), math.max(base, basso),),
         maxZoom: 16, // un solo punto: zoom da quartiere, non da portone
       );
   }
@@ -277,17 +312,24 @@ class _StratoSegnaposti extends StatelessWidget {
       for (final s in segnaposti) camera.latLngToScreenOffset(s.punto),
     ];
     final sg = sagoma;
-    final punte = sg == null
-        ? separaSegnaposti(veri)
-        : separaSegnaposti(veri,
-            diametro: diametroCollisione(kLarghezzaSegnaposto),);
-    final Size dim = sg == null
-        ? const Size.square(Tk.areaMinima)
-        : sg.dimensioneRiquadro(kLarghezzaSegnaposto);
     // Dove sta, dentro il riquadro di tocco, il punto che deve cadere sul luogo.
-    final Offset ancora = sg == null
-        ? Offset(dim.width / 2, dim.height / 2)
-        : sg.puntaNelRiquadro(kLarghezzaSegnaposto);
+    final (:dim, :ancora) = ingombroSegnaposto(sg);
+    // Limiti della PUNTA perché l'intero riquadro di tocco (e quindi la sagoma)
+    // resti dentro la mappa e sopra l'attribuzione. Il vincolo in basso vale
+    // su tutta la larghezza (non solo dove sta il testo): non dipende dalla
+    // larghezza del testo e resta un rettangolo, quindi il clamp e' semplice.
+    final lato = camera.size;
+    final limiti = Rect.fromLTRB(
+      ancora.dx,
+      ancora.dy,
+      lato.width - (dim.width - ancora.dx),
+      lato.height - altezzaAttribuzione() - (dim.height - ancora.dy),
+    );
+    final punte = sg == null
+        ? separaSegnaposti(veri, limiti: limiti)
+        : separaSegnaposti(veri,
+            diametro: diametroCollisione(kLarghezzaSegnaposto),
+            limiti: limiti,);
     return SizedBox.expand(
       child: Stack(
         children: [
@@ -402,8 +444,9 @@ class _Attribuzione extends StatelessWidget {
       alignment: Alignment.bottomRight,
       child: Container(
         color: Tk.cardSfondo.withValues(alpha: 0.9),
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-        child: Text(kAttribuzioneOsm, style: stileTesto(12, 600, Tk.testo)),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 6, vertical: _kPaddingVerticaleAttribuzione,),
+        child: Text(kAttribuzioneOsm, style: _stileAttribuzione()),
       ),
     );
   }
