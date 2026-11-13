@@ -60,6 +60,7 @@ class AppStrings {
   String get mapCaption => _isEn
       ? 'Tap a number to open the stop. The line shows the order, not the route.'
       : "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.";
+  String get allStops => _isEn ? 'All stops' : 'Tutte le tappe';
   String get genericStop => _isEn ? 'Stop' : 'Tappa';
   String get legendLabel => _isEn ? 'Legend' : 'Leggenda';
   String get curiosityLabel => _isEn ? 'Did you know' : 'Curiosità';

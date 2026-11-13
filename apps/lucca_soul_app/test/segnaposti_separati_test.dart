@@ -249,6 +249,131 @@ void main() {
     });
   });
 
+  group('separaSegnaposti con zona vietata (pura)', () {
+    const limiti = Rect.fromLTRB(20, 30, 300, 120);
+    // zona in alto a destra (dove sta il pulsante)
+    const vietata = Rect.fromLTRB(200, 30, 300, 74);
+    bool inclusivo(Rect l, Offset o) =>
+        o.dx >= l.left && o.dx <= l.right && o.dy >= l.top && o.dy <= l.bottom;
+    // dentro la zona = all'interno stretto (il bordo e' ammesso)
+    bool nellaZona(Rect z, Offset o) =>
+        o.dx > z.left && o.dx < z.right && o.dy > z.top && o.dy < z.bottom;
+
+    test('nessun punto finisce dentro la zona; tutti dentro i limiti', () {
+      for (final n in [1, 2, 3, 4]) {
+        for (final c in [
+          const Offset(290, 40),
+          const Offset(250, 50),
+          const Offset(205, 35),
+          const Offset(300, 30),
+        ]) {
+          final r = separaSegnaposti(
+            List.filled(n, c),
+            limiti: limiti,
+            vietata: vietata,
+          );
+          expect(
+            r.any((o) => nellaZona(vietata, o)),
+            isFalse,
+            reason: 'n=$n c=$c: $r',
+          );
+          expect(
+            r.every((o) => inclusivo(limiti, o)),
+            isTrue,
+            reason: 'n=$n c=$c: $r',
+          );
+        }
+      }
+    });
+
+    test('spazio sufficiente: coppie >= diametro, fuori dalla zona', () {
+      for (final d in [kDiametroSegnaposto, 40.0]) {
+        final r = separaSegnaposti(
+          List.filled(3, const Offset(290, 40)),
+          diametro: d,
+          limiti: limiti,
+          vietata: vietata,
+        );
+        expect(_minDist(r), greaterThanOrEqualTo(d), reason: 'd=$d: $r');
+        expect(r.any((o) => nellaZona(vietata, o)), isFalse, reason: '$r');
+      }
+    });
+
+    test('un punto dentro la zona va sul bordo sinistro o inferiore', () {
+      final r = separaSegnaposti(
+        const [Offset(250, 50)],
+        limiti: limiti,
+        vietata: vietata,
+      );
+      expect(
+        r.single == const Offset(200, 50) || r.single == const Offset(250, 74),
+        isTrue,
+        reason: '${r.single}',
+      );
+    });
+
+    test('punti fuori dalla zona: invariati', () {
+      const p = [Offset(50, 50), Offset(150, 100)];
+      expect(separaSegnaposti(p, limiti: limiti, vietata: vietata), p);
+    });
+
+    test('deterministico', () {
+      const p = [Offset(290, 40), Offset(290, 40), Offset(260, 60)];
+      expect(
+        separaSegnaposti(p, limiti: limiti, vietata: vietata),
+        separaSegnaposti(p, limiti: limiti, vietata: vietata),
+      );
+    });
+
+    test('vietata: null = comportamento di prima', () {
+      const p = [Offset(290, 40), Offset(290, 40), Offset(260, 60)];
+      expect(
+        separaSegnaposti(p, limiti: limiti, vietata: null),
+        separaSegnaposti(p, limiti: limiti),
+      );
+      expect(separaSegnaposti(p, vietata: null), separaSegnaposti(p));
+    });
+
+    test(
+        'zona fino al bordo basso dei limiti: i punti stanno sul bordo basso, dentro i limiti',
+        () {
+      const zona = Rect.fromLTRB(100, 30, 300, 120);
+      final r = separaSegnaposti(
+        List.filled(3, const Offset(250, 50)),
+        limiti: limiti,
+        vietata: zona,
+      );
+      expect(r.every((o) => inclusivo(limiti, o)), isTrue, reason: '$r');
+      expect(r.any((o) => nellaZona(zona, o)), isFalse, reason: '$r');
+    });
+
+    test(
+        'zona che supera il bordo basso dei limiti, sinistro valido: sul bordo sinistro, dentro i limiti',
+        () {
+      const zona = Rect.fromLTRB(100, 30, 300, 140);
+      final r = separaSegnaposti(
+        List.filled(3, const Offset(250, 50)),
+        limiti: limiti,
+        vietata: zona,
+      );
+      expect(r.every((o) => inclusivo(limiti, o)), isTrue, reason: '$r');
+      expect(r.any((o) => nellaZona(zona, o)), isFalse, reason: '$r');
+    });
+
+    test(
+      'zona che esce dai limiti sia a sinistra sia in basso: i punti devono restare dentro i limiti',
+      () {
+        const zona = Rect.fromLTRB(0, 30, 300, 140);
+        final r = separaSegnaposti(
+          List.filled(3, const Offset(250, 50)),
+          limiti: limiti,
+          vietata: zona,
+        );
+        expect(r.every((o) => inclusivo(limiti, o)), isTrue, reason: '$r');
+      },
+    );
+  });
+
   const stesso = Punto(lat: 43.8429, lon: 10.5027);
   const lontano = Punto(lat: 43.8465, lon: 10.5071);
 

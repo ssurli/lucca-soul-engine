@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -64,8 +65,10 @@ double altezzaAttribuzione() {
 ///
 /// Senza nessun punto non c'è mappa (nessun riquadro vuoto da spiegare).
 /// Se gli strati non si caricano (rete assente) restano segnaposto e linee su
-/// sfondo neutro. Niente prefetch: `panBuffer: 0`; il trascinamento è spento
-/// (la mappa sta dentro una lista che scorre), restano pizzico e doppio tocco.
+/// sfondo neutro. Niente prefetch: `panBuffer: 0`; il trascinamento a un dito è
+/// spento (la mappa sta dentro una lista che scorre): restano pizzico, doppio
+/// tocco e spostamento con due dita. Quando l'inquadratura non è più quella
+/// iniziale compare il pulsante [etichettaTutteLeTappe] che la ripristina.
 class MappaItinerario extends StatefulWidget {
   final List<ItineraryStop> tappe;
 
@@ -77,6 +80,16 @@ class MappaItinerario extends StatefulWidget {
 
   /// Etichetta accessibile dei segnaposto ("Tappa" nella lingua dell'app).
   final String etichettaTappa;
+
+  /// Testo del pulsante che riporta all'inquadratura iniziale.
+  final String etichettaTutteLeTappe;
+
+  /// Avvisa quando due o piu' dita toccano la mappa (true) o non piu' (false):
+  /// la pagina che la contiene deve smettere di scorrere, altrimenti il suo
+  /// riconoscitore di trascinamento verticale vince l'arena (slop 18 px contro
+  /// i 36 del pizzico) e lo spostamento a due dita scorre la pagina invece di
+  /// muovere la mappa.
+  final ValueChanged<bool>? onDueDita;
 
   /// Riga sotto la mappa: la linea indica l'ordine, non il percorso.
   final String dicitura;
@@ -97,6 +110,8 @@ class MappaItinerario extends StatefulWidget {
     this.tileProvider,
     this.controller,
     this.etichettaTappa = 'Tappa',
+    this.etichettaTutteLeTappe = 'Tutte le tappe',
+    this.onDueDita,
     this.dicitura =
         "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.",
     this.onSegnaposto,
@@ -113,6 +128,55 @@ class _MappaItinerarioState extends State<MappaItinerario> {
   SagomaSegnaposto? _sg; // null: attesa, errore o asset mancante -> cerchio
   Object? _richiesta; // scarta le risposte di un future ormai sostituito
   bool _risolta = false; // la mappa si costruisce a sagoma nota (o assente)
+  StreamSubscription<MapEvent>? _eventi;
+  // Inquadratura iniziale (dopo il fit), per sapere se l'utente se n'e' andato.
+  LatLng? _centroIniziale;
+  double? _zoomIniziale;
+  final Set<int> _dita = {};
+  bool _dueDita = false;
+  bool _lontano =
+      false; // inquadratura diversa dall'iniziale: mostra il pulsante
+
+  /// Tolleranze per dire che l'inquadratura e' ancora quella iniziale.
+  static const double _tolleranzaZoom = 0.05;
+  static const double _tolleranzaPx = 2;
+
+  /// Memorizza l'inquadratura iniziale. Alla partenza ([punti] dato) la camera
+  /// del controller non ha ancora applicato il fit iniziale: si ricava dallo
+  /// stesso `CameraFit` con cui la mappa e' stata costruita.
+  void _memorizzaIniziale([List<LatLng>? punti]) {
+    final c = punti == null
+        ? _controller.camera
+        : _inquadra(punti).fit(_controller.camera);
+    _centroIniziale = c.center;
+    _zoomIniziale = c.zoom;
+    _lontano = false;
+  }
+
+  void _aggiornaLontano(MapEvent _) {
+    final ci = _centroIniziale, zi = _zoomIniziale;
+    if (ci == null || zi == null || !mounted) return;
+    final c = _controller.camera;
+    final spostamento =
+        (c.latLngToScreenOffset(ci) - c.size.center(Offset.zero)).distance;
+    final lontano =
+        (c.zoom - zi).abs() > _tolleranzaZoom || spostamento > _tolleranzaPx;
+    if (lontano != _lontano) setState(() => _lontano = lontano);
+  }
+
+  void _contaDita(PointerEvent e, {required bool giu}) {
+    giu ? _dita.add(e.pointer) : _dita.remove(e.pointer);
+    final due = _dita.length >= 2;
+    if (due != _dueDita) {
+      _dueDita = due;
+      widget.onDueDita?.call(due);
+    }
+  }
+
+  void _tornaAllaVistaIniziale(List<LatLng> punti) {
+    _controller.fitCamera(_inquadra(punti));
+    setState(_memorizzaIniziale);
+  }
 
   @override
   void initState() {
@@ -122,8 +186,12 @@ class _MappaItinerarioState extends State<MappaItinerario> {
 
   void _risolvi() {
     final richiesta = _richiesta = Object();
-    (widget.sagoma ?? caricaSagomaSegnaposto()).then<SagomaSegnaposto?>(
-        (v) => v, onError: (Object _) => null,).then((v) {
+    (widget.sagoma ?? caricaSagomaSegnaposto())
+        .then<SagomaSegnaposto?>(
+      (v) => v,
+      onError: (Object _) => null,
+    )
+        .then((v) {
       if (!mounted || richiesta != _richiesta) return;
       setState(() {
         _sg = v;
@@ -150,11 +218,15 @@ class _MappaItinerarioState extends State<MappaItinerario> {
     final basso =
         dim.height - ancora.dy + altezzaAttribuzione() + _margineSagoma;
     return CameraFit.bounds(
-        bounds: LatLngBounds.fromPoints(punti),
-        padding: EdgeInsets.fromLTRB(math.max(base, sinistra),
-            math.max(base, alto), math.max(base, destra), math.max(base, basso),),
-        maxZoom: 16, // un solo punto: zoom da quartiere, non da portone
-      );
+      bounds: LatLngBounds.fromPoints(punti),
+      padding: EdgeInsets.fromLTRB(
+        math.max(base, sinistra),
+        math.max(base, alto),
+        math.max(base, destra),
+        math.max(base, basso),
+      ),
+      maxZoom: 16, // un solo punto: zoom da quartiere, non da portone
+    );
   }
 
   @override
@@ -171,6 +243,7 @@ class _MappaItinerarioState extends State<MappaItinerario> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _controller.fitCamera(_inquadra([for (final s in nuovi) s.punto]));
+          setState(_memorizzaIniziale);
         }
       });
     }
@@ -186,6 +259,12 @@ class _MappaItinerarioState extends State<MappaItinerario> {
 
   @override
   void dispose() {
+    _eventi?.cancel();
+    if (_dueDita) {
+      // Non si notifica durante lo smontaggio: dopo il frame.
+      final cb = widget.onDueDita;
+      WidgetsBinding.instance.addPostFrameCallback((_) => cb?.call(false));
+    }
     if (widget.controller == null) _controller.dispose();
     super.dispose();
   }
@@ -206,8 +285,10 @@ class _MappaItinerarioState extends State<MappaItinerario> {
             const SizedBox(height: kAltezzaMappa),
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(widget.dicitura,
-                  style: stileTesto(12, 700, Tk.testoSecondario),),
+              child: Text(
+                widget.dicitura,
+                style: stileTesto(12, 700, Tk.testoSecondario),
+              ),
             ),
           ],
         ),
@@ -222,60 +303,83 @@ class _MappaItinerarioState extends State<MappaItinerario> {
             borderRadius: BorderRadius.circular(Tk.raggio),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                  border: Border.all(color: Tk.cardBordo),
-                  borderRadius: BorderRadius.circular(Tk.raggio),),
+                border: Border.all(color: Tk.cardBordo),
+                borderRadius: BorderRadius.circular(Tk.raggio),
+              ),
               child: SizedBox(
                 height: kAltezzaMappa,
-                child: FlutterMap(
-                  mapController: _controller,
-                  options: MapOptions(
-                    backgroundColor: Tk.avviso,
-                    initialCameraFit: _inquadra(punti),
-                    onMapReady: () {
-                      _pronta = true;
-                    },
-                    interactionOptions: const InteractionOptions(
-                      flags: InteractiveFlag.pinchZoom |
-                          InteractiveFlag.doubleTapZoom,
-                    ),
-                  ),
-                  children: [
-                    TileLayer(
-                      urlTemplate: kUrlTileOsm,
-                      userAgentPackageName: kUserAgentPackage,
-                      tileProvider: widget.tileProvider,
-                      panBuffer: 0,
-                      // Rete assente o tile rifiutata: nessuna eccezione, la
-                      // mappa resta su sfondo neutro.
-                      errorTileCallback: (tile, error, stackTrace) {},
-                    ),
-                    if (punti.length > 1)
-                      PolylineLayer(
-                        polylines: [
-                          Polyline(
-                            points: punti,
-                            strokeWidth: 3,
-                            color: Tk.accento,
-                            pattern: const StrokePattern.dotted(),
-                          ),
-                        ],
+                child: Listener(
+                  onPointerDown: (e) => _contaDita(e, giu: true),
+                  onPointerUp: (e) => _contaDita(e, giu: false),
+                  onPointerCancel: (e) => _contaDita(e, giu: false),
+                  child: FlutterMap(
+                    mapController: _controller,
+                    options: MapOptions(
+                      backgroundColor: Tk.avviso,
+                      initialCameraFit: _inquadra(punti),
+                      onMapReady: () {
+                        _pronta = true;
+                        _memorizzaIniziale(punti);
+                        _eventi?.cancel();
+                        _eventi =
+                            _controller.mapEventStream.listen(_aggiornaLontano);
+                      },
+                      // Niente `drag`: con un dito la pagina continua a scorrere.
+                      interactionOptions: const InteractionOptions(
+                        flags: InteractiveFlag.pinchZoom |
+                            InteractiveFlag.doubleTapZoom |
+                            InteractiveFlag.pinchMove,
                       ),
-                    _StratoSegnaposti(
-                      segnaposti: segnaposti,
-                      etichetta: widget.etichettaTappa,
-                      onSegnaposto: widget.onSegnaposto,
-                      sagoma: _sg, // attesa o errore: cerchio di riserva
                     ),
-                    const _Attribuzione(),
-                  ],
+                    children: [
+                      TileLayer(
+                        urlTemplate: kUrlTileOsm,
+                        userAgentPackageName: kUserAgentPackage,
+                        tileProvider: widget.tileProvider,
+                        panBuffer: 0,
+                        // Rete assente o tile rifiutata: nessuna eccezione, la
+                        // mappa resta su sfondo neutro.
+                        errorTileCallback: (tile, error, stackTrace) {},
+                      ),
+                      if (punti.length > 1)
+                        PolylineLayer(
+                          polylines: [
+                            Polyline(
+                              points: punti,
+                              strokeWidth: 3,
+                              color: Tk.accento,
+                              pattern: const StrokePattern.dotted(),
+                            ),
+                          ],
+                        ),
+                      _StratoSegnaposti(
+                        segnaposti: segnaposti,
+                        etichetta: widget.etichettaTappa,
+                        onSegnaposto: widget.onSegnaposto,
+                        sagoma: _sg, // attesa o errore: cerchio di riserva
+                        pulsante: _lontano
+                            ? _PulsanteTutteLeTappe.dimensione(
+                                widget.etichettaTutteLeTappe,)
+                            : null,
+                      ),
+                      if (_lontano)
+                        _PulsanteTutteLeTappe(
+                          etichetta: widget.etichettaTutteLeTappe,
+                          onTap: () => _tornaAllaVistaIniziale(punti),
+                        ),
+                      const _Attribuzione(),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text(widget.dicitura,
-                style: stileTesto(12, 700, Tk.testoSecondario),),
+            child: Text(
+              widget.dicitura,
+              style: stileTesto(12, 700, Tk.testoSecondario),
+            ),
           ),
         ],
       ),
@@ -298,7 +402,12 @@ class _StratoSegnaposti extends StatelessWidget {
   final String etichetta;
   final ValueChanged<int>? onSegnaposto;
   final SagomaSegnaposto? sagoma;
+
+  /// Dimensione del pulsante «Tutte le tappe» se visibile (in alto a destra):
+  /// i segnaposti non devono finirci sotto.
+  final Size? pulsante;
   const _StratoSegnaposti({
+    this.pulsante,
     required this.segnaposti,
     required this.etichetta,
     required this.onSegnaposto,
@@ -325,11 +434,26 @@ class _StratoSegnaposti extends StatelessWidget {
       lato.width - (dim.width - ancora.dx),
       lato.height - altezzaAttribuzione() - (dim.height - ancora.dy),
     );
+    // Con il pulsante visibile, le punte per cui il riquadro finirebbe sotto di
+    // lui (in alto a destra) sono vietate: solo la zona del pulsante, non una
+    // fascia su tutta la larghezza, cosi' gli altri segnaposti non si muovono.
+    final btn = pulsante;
+    final vietata = btn == null
+        ? null
+        : Rect.fromLTRB(
+            lato.width - btn.width - (dim.width - ancora.dx),
+            -(dim.height - ancora.dy),
+            lato.width + ancora.dx,
+            btn.height + ancora.dy,
+          );
     final punte = sg == null
-        ? separaSegnaposti(veri, limiti: limiti)
-        : separaSegnaposti(veri,
+        ? separaSegnaposti(veri, limiti: limiti, vietata: vietata)
+        : separaSegnaposti(
+            veri,
             diametro: diametroCollisione(kLarghezzaSegnaposto),
-            limiti: limiti,);
+            limiti: limiti,
+            vietata: vietata,
+          );
     return SizedBox.expand(
       child: Stack(
         children: [
@@ -424,7 +548,9 @@ class _SegnapostoPainter extends CustomPainter {
     canvas.drawCircle(c, r - 2, Paint()..color = Tk.accento);
     final tp = TextPainter(
       text: TextSpan(
-          text: '$numero', style: stileTesto(14, 800, Tk.testoSuAccento),),
+        text: '$numero',
+        style: stileTesto(14, 800, Tk.testoSuAccento),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
     tp.paint(canvas, c - Offset(tp.width / 2, tp.height / 2));
@@ -445,8 +571,86 @@ class _Attribuzione extends StatelessWidget {
       child: Container(
         color: Tk.cardSfondo.withValues(alpha: 0.9),
         padding: const EdgeInsets.symmetric(
-            horizontal: 6, vertical: _kPaddingVerticaleAttribuzione,),
+          horizontal: 6,
+          vertical: _kPaddingVerticaleAttribuzione,
+        ),
         child: Text(kAttribuzioneOsm, style: _stileAttribuzione()),
+      ),
+    );
+  }
+}
+
+/// Chiave del pulsante che riporta all'inquadratura iniziale (per i test).
+const Key kChiavePulsanteTutteLeTappe = ValueKey('pulsante-tutte-le-tappe');
+
+/// Pulsante in alto a destra: area di tocco >= 44x44, aspetto compatto
+/// (testo accento su card: contrasto 5,0). Sta in alto, lontano
+/// dall'attribuzione in basso a destra.
+class _PulsanteTutteLeTappe extends StatelessWidget {
+  static const EdgeInsets margine = EdgeInsets.all(4);
+  static const EdgeInsets riempimento =
+      EdgeInsets.symmetric(horizontal: 10, vertical: 6);
+  static const double bordo = 1; // Border.all di default
+
+  static TextStyle get stile => stileTesto(12, 700, Tk.accento);
+
+  /// Dimensione MISURATA del pulsante: testo (stesso stile) + riempimento +
+  /// bordo + margine, con il minimo [Tk.areaMinima] per lato. La usano il
+  /// layout del pulsante e il limite dei segnaposti.
+  static Size dimensione(String etichetta) {
+    final tp = TextPainter(
+      text: TextSpan(text: etichetta, style: stile),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return Size(
+      math.max(Tk.areaMinima,
+          tp.width + riempimento.horizontal + 2 * bordo + margine.horizontal,),
+      math.max(Tk.areaMinima,
+          tp.height + riempimento.vertical + 2 * bordo + margine.vertical,),
+    );
+  }
+
+  final String etichetta;
+  final VoidCallback onTap;
+  const _PulsanteTutteLeTappe({required this.etichetta, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.topRight,
+      child: Semantics(
+        button: true,
+        label: etichetta,
+        excludeSemantics: true,
+        onTap: onTap,
+        child: GestureDetector(
+          key: kChiavePulsanteTutteLeTappe,
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: Tk.areaMinima,
+              minHeight: Tk.areaMinima,
+            ),
+            child: Center(
+              widthFactor: 1,
+              heightFactor: 1,
+              child: Container(
+                margin: margine,
+                padding: riempimento,
+                decoration: BoxDecoration(
+                  color: Tk.cardSfondo,
+                  border: Border.all(color: Tk.cardBordo, width: bordo),
+                  borderRadius: BorderRadius.circular(Tk.raggioEtichetta),
+                ),
+                child: Text(
+                  etichetta,
+                  style: stile,
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

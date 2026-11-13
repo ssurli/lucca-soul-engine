@@ -77,6 +77,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   InterruttoriController? _controller;
   ArchivioFoto _foto = const ArchivioFoto();
   bool _caricando = true;
+  // Due dita sulla mappa: la pagina non scorre (vedi MappaItinerario.onDueDita).
+  bool _mappaDueDita = false;
   String? _errore;
   bool _erroreDiRete = false;
 
@@ -315,6 +317,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
               onRefresh: _caricaItinerario,
               child: ListView(
                 controller: _scroll,
+                physics:
+                    _mappaDueDita ? const NeverScrollableScrollPhysics() : null,
                 padding: const EdgeInsets.only(bottom: 24),
                 children: [
                   MappaItinerario(
@@ -322,8 +326,14 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                     tileProvider: widget.tileProvider,
                     sagoma: widget.sagomaSegnaposto,
                     etichettaTappa: _strings.genericStop,
+                    etichettaTutteLeTappe: _strings.allStops,
                     dicitura: _strings.mapCaption,
                     onSegnaposto: _apriDaMappa,
+                    onDueDita: (v) {
+                      if (mounted && v != _mappaDueDita) {
+                        setState(() => _mappaDueDita = v);
+                      }
+                    },
                   ),
                   AdaptiveCard(controller: controller, strings: _strings),
                   if (controller.adattamentoMostrato != null)
