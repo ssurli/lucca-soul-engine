@@ -1,5 +1,6 @@
 import '../models/memory_kind.dart';
 import '../models/person_kind.dart';
+import 'raggruppa_escluse.dart';
 
 /// Localizzazione minima per la Wave 1 (itinerario/card adattiva) e la
 /// Wave 2 (conferimento a Urban Memory, vista Cittadino).
@@ -57,6 +58,42 @@ class AppStrings {
   String get adaptError => _isEn ? 'Could not adapt the itinerary.' : 'Non riesco ad adattare l\'itinerario.';
   String get emptyStops => _isEn ? 'No stops yet.' : 'Ancora nessuna tappa.';
   String get excludedStopsTitle => _isEn ? 'Left out of today' : 'Rimaste fuori oggi';
+
+  /// Titolo del gruppo di tappe escluse con lo stesso esito (singolare/plurale
+  /// sulla cardinalita'; in inglese la forma e' invariabile). Esito non noto:
+  /// stringa vuota (non si raggruppa).
+  String titoloGruppoEscluse(String esito, int n) {
+    final s = n == 1;
+    switch (esito) {
+      case EsitoTaglio.stanchezza:
+        return _isEn
+            ? 'Left out because of tiredness, for a lighter day:'
+            : (s
+                ? 'Tolta per la stanchezza, per una giornata più leggera:'
+                : 'Tolte per la stanchezza, per una giornata più leggera:');
+      case EsitoTaglio.tettoGiornata:
+        return _isEn
+            ? 'Left out, no time left before the day ends at midnight:'
+            : (s
+                ? "Tolta, non c'è più tempo prima della mezzanotte:"
+                : "Tolte, non c'è più tempo prima della mezzanotte:");
+      case EsitoTaglio.orario:
+        return _isEn
+            ? 'Left out, closed when you would arrive:'
+            : (s
+                ? "Tolta, chiusa all'ora in cui ci arriveresti:"
+                : "Tolte, chiuse all'ora in cui ci arriveresti:");
+      case EsitoTaglio.sospesa:
+        return _isEn
+            ? 'Left out, closed at this time of year:'
+            : (s
+                ? 'Tolta, in questo periodo è chiusa:'
+                : 'Tolte, in questo periodo sono chiuse:');
+      default:
+        return '';
+    }
+  }
+
   String get mapCaption => _isEn
       ? 'Tap a number to open the stop. The line shows the order, not the route.'
       : "Tocca un numero per aprire la tappa. La linea indica l'ordine, non il percorso.";
