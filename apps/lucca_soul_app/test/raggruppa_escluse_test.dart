@@ -111,6 +111,17 @@ void main() {
       }
     });
 
+    test('orario e sospesa: testi allineati alle frasi del motore', () {
+      expect(_it.titoloGruppoEscluse(EsitoTaglio.orario, 1),
+          "Tolta, chiusa all'arrivo o prima della fine della visita:",);
+      expect(_it.titoloGruppoEscluse(EsitoTaglio.orario, 2),
+          "Tolte, chiuse all'arrivo o prima della fine della visita:",);
+      expect(_en.titoloGruppoEscluse(EsitoTaglio.orario, 2),
+          'Left out, closed on arrival or before the visit ends:',);
+      expect(_en.titoloGruppoEscluse(EsitoTaglio.sospesa, 2),
+          'Left out, temporarily closed:',);
+    });
+
     test('sconosciuto: stringa vuota', () {
       expect(_it.titoloGruppoEscluse('esclusa', 1), '');
       expect(_en.titoloGruppoEscluse('esclusa', 2), '');
@@ -142,7 +153,7 @@ void main() {
         _t('exp-a', EsitoTaglio.orario, _rOrario, titolo: 'Museo A'),
         _t('exp-b', EsitoTaglio.orario, 'Tolta: chiude prima della fine della visita.', titolo: 'Torre B'),
       ]);
-      expect(find.text("Tolte, chiuse all'ora in cui ci arriveresti:"), findsOneWidget);
+      expect(find.text("Tolte, chiuse all'arrivo o prima della fine della visita:"), findsOneWidget);
       expect(find.text('Museo A: $_rOrario'), findsOneWidget);
       expect(find.text('Torre B: Tolta: chiude prima della fine della visita.'), findsOneWidget);
     });

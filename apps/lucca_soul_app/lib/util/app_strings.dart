@@ -79,13 +79,13 @@ class AppStrings {
                 : "Tolte, non c'è più tempo prima della mezzanotte:");
       case EsitoTaglio.orario:
         return _isEn
-            ? 'Left out, closed when you would arrive:'
+            ? 'Left out, closed on arrival or before the visit ends:'
             : (s
-                ? "Tolta, chiusa all'ora in cui ci arriveresti:"
-                : "Tolte, chiuse all'ora in cui ci arriveresti:");
+                ? "Tolta, chiusa all'arrivo o prima della fine della visita:"
+                : "Tolte, chiuse all'arrivo o prima della fine della visita:");
       case EsitoTaglio.sospesa:
         return _isEn
-            ? 'Left out, closed at this time of year:'
+            ? 'Left out, temporarily closed:'
             : (s
                 ? 'Tolta, in questo periodo è chiusa:'
                 : 'Tolte, in questo periodo sono chiuse:');
