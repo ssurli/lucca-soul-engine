@@ -8,7 +8,7 @@ d'organo». Accanto, una leggenda sulla facciata e la sua fonte.
 ## Stato
 
 Prototipo dimostrativo. Non è in linea: gira sul computer di chi lo avvia.
-README aggiornato al 12 novembre 2026.
+README aggiornato al 14 novembre 2026.
 
 ## Cosa fa oggi
 
@@ -28,6 +28,47 @@ README aggiornato al 12 novembre 2026.
 - **Raccoglie ricordi.** Da ogni tappa si può lasciare un ricordo (racconto, foto, musica, mestiere,
   ricetta, dialetto, testimonianza), solo con consenso esplicito e una licenza. Va in revisione
   prima di essere pubblicato. Una vista per i cittadini elenca, luogo per luogo, i ricordi approvati.
+
+## La memoria della città: cosa resta scritto
+
+L'itinerario si compone e si dimentica. Due cose invece restano, e sono il motivo per cui il
+progetto esiste: quello che le persone raccontano, e quello che in città accade e ritorna.
+
+**I ricordi delle persone.** Un ricordo si salva solo con consenso esplicito e con una licenza: è
+la base dati stessa a rifiutare un ricordo che ne è privo. Di chi lo lascia resta uno
+pseudonimo, mai un nome. Una persona lo rivede prima che compaia, e compare solo se il luogo di
+cui parla esiste davvero tra quelli della città. Un ricordo scartato non viene cancellato: resta
+segnato come scartato, con la data e il motivo.
+
+**Ciò che accade ora, e ciò che ritorna.** Un musicista suona in una piazza: è un fatto che dura
+poco.
+
+1. **Segnalazione.** Il fatto viene registrato con un luogo, uno o più temi e una scadenza, al
+   massimo 24 ore. Finché è valido, chi cerca quel tema può trovarlo come tappa in più. Niente di
+   commerciale entra per questa strada.
+2. **Traccia.** Alla scadenza il fatto sparisce dagli itinerari, ma lascia una riga: il luogo, i
+   temi, la data. Niente nomi, niente testo. Le tracce si aggiungono e non si modificano.
+3. **Ricorrenza.** Quando nello stesso luogo, sugli stessi temi, le tracce sono almeno tre e
+   cadono a intervalli regolari, il sistema lo fa notare. Non decide nulla.
+4. **Decisione.** Una persona approva o rifiuta, una proposta alla volta. Se approva, nasce un
+   appuntamento ricorrente della città, con la sua cadenza. Resta scritto chi ha deciso e quando,
+   sempre con uno pseudonimo.
+5. **Freno.** Un appuntamento si può togliere in ogni momento, e chi lo toglie deve scrivere perché.
+   Se smette di ripetersi viene sospeso, ma solo quando qualcuno lancia il controllo: oggi non
+   parte da solo.
+
+Le tracce servono anche a una frase: quando in un luogo se ne sono accumulate abbastanza, il
+motivo di una tappa può dire «È un luogo che torna spesso a vivere di musica».
+
+Cosa manca, detto chiaro:
+
+- **Dall'app non si può segnalare nulla.** Oggi segnalazioni, decisioni e freno si fanno solo da
+  riga di comando, da chi gestisce l'installazione. Chi può segnalare, e con quale controllo, è
+  una scelta ancora da fare.
+- **Non c'è ancora nessuna segnalazione reale.** Il meccanismo è costruito e provato dai test, non
+  dall'uso.
+- **Serve la base dati.** Nella prova senza `.env` i ricordi durano fino allo spegnimento e delle
+  segnalazioni non resta nulla.
 
 ## Cosa è vero e cosa è d'esempio
 
@@ -114,6 +155,54 @@ Test: `.venv\Scripts\python.exe -m pytest` (più le cartelle `services\*\tests`,
 
 ## Com'è fatto
 
+Un solo programma risponde all'app: il BFF. Raccoglie i candidati, l'ordine, i testi e ciò che
+accade in città, e li passa al motore. Il motore è l'unico che decide le tappe, e non legge
+nessuna base dati: lavora solo su ciò che riceve.
+
+```mermaid
+flowchart TB
+    APP["App nel browser<br/>(Flutter web)"]
+    BFF["BFF FastAPI<br/>unico ingresso"]
+    ENGINE["experience-engine<br/><b>decide</b> le tappe e le spiega<br/>non legge nessuna base dati"]
+    APP -->|HTTP| BFF
+    BFF ==>|"candidati, ordine, testi,<br/>segnalazioni attive e tracce"| ENGINE
+
+    subgraph FONTI["Pacchetti che il BFF interroga"]
+        direction LR
+        GRAPH["graph<br/>propone i candidati<br/><i>Neo4j</i>"]
+        REC["recommender<br/>ordina le proposte<br/><i>PostgreSQL</i>"]
+        RAG["rag<br/>domande e testi dei motivi<br/><i>nessuna base dati</i>"]
+        MEM["urban-memory<br/>ricordi, segnalazioni,<br/>tracce, appuntamenti<br/><i>PostgreSQL e Neo4j</i>"]
+        IDX["intelligence-index<br/>indicatori anonimi<br/><i>PostgreSQL e Neo4j</i>"]
+        MKT["marketplace<br/>prenotazioni<br/><i>PostgreSQL</i>"]
+    end
+    BFF --> FONTI
+
+    NEO[("Neo4j<br/>luoghi, esperienze, temi, legami,<br/>ricordi approvati, appuntamenti")]
+    PG[("PostgreSQL<br/>ricordi, segnalazioni, tracce,<br/>decisioni, eventi d'uso, prenotazioni")]
+    FONTI --- NEO
+    FONTI --- PG
+```
+
+Senza `.env` le due basi dati non servono: il grafo viene letto dai dati versionati nel repo e
+niente viene salvato.
+
+**Dove sta ciò che resta scritto**
+
+| Cosa | Dove | Cosa contiene |
+|---|---|---|
+| Ricordo | PostgreSQL, `memory_contribution` | testo o media, luoghi a cui si riferisce, pseudonimo, consenso, licenza, esito della revisione, eventuale scarto con data e motivo |
+| Ricordo approvato | Neo4j, nodo collegato al luogo | il legame tra il ricordo e i luoghi di cui parla |
+| Segnalazione | PostgreSQL, `segnale_fluttuante` | descrizione, temi, luogo, scadenza, stato (attiva o scaduta) |
+| Traccia | PostgreSQL, `traccia_luogo` | luogo, temi, data; una riga per segnalazione scaduta, solo in aggiunta |
+| Ultima traccia di un luogo | Neo4j, proprietà del luogo | la data dell'ultima traccia, ricavata dal registro |
+| Appuntamento approvato | PostgreSQL, `pattern_promosso`; Neo4j, nodo evento | luogo, temi, cadenza in giorni, chi ha deciso e quando |
+| Proposta rifiutata | PostgreSQL, `pattern_cestinato` | luogo, temi, chi ha deciso, motivo facoltativo |
+| Freno | PostgreSQL, `pattern_frenato` | appuntamento, azione (tirato o rilasciato), chi, quando, motivazione obbligatoria per tirarlo |
+
+Gli schemi sono in `services/urban-memory/sql/`; il progetto completo del registro delle tracce è
+in [`docs/PROMOZIONE_TRACCIA.md`](docs/PROMOZIONE_TRACCIA.md).
+
 | Cartella | Cosa contiene |
 |---|---|
 | `apps/lucca_soul_app` | L'app Flutter (web): domande, itinerario, mappa, ricordi, dashboard. |
@@ -122,7 +211,7 @@ Test: `.venv\Scripts\python.exe -m pytest` (più le cartelle `services\*\tests`,
 | `services/graph` | Il grafo dei luoghi (Neo4j): schema, Cypher, dati della città scelti da `CITY_SEED`. |
 | `services/rag` | Le domande iniziali e i testi dei motivi; l'arricchimento via LLM è facoltativo. |
 | `services/recommender` | Riordina le proposte penalizzando i luoghi già più frequentati. |
-| `services/urban-memory` | I ricordi: consenso, licenza, revisione, aggancio ai luoghi. |
+| `services/urban-memory` | I ricordi (consenso, licenza, revisione, aggancio ai luoghi) e ciò che accade: segnalazioni, registro delle tracce, appuntamenti ricorrenti, freno. |
 | `services/intelligence-index` | Gli indicatori aggregati e anonimi per la dashboard. |
 | `services/marketplace` | Prenotazioni delle botteghe partner; non influisce sul punteggio. |
 | `packages/contracts` | I tipi di dati condivisi da tutti i servizi (vedi `docs/DATA_CONTRACTS.md`). |
